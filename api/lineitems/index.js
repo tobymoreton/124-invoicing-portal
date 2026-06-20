@@ -24,7 +24,8 @@
 const https  = require('https');
 const { URL } = require('url');
 
-const LIST_GUID = '496468a5-e2ed-48db-8826-58cb08844eee';
+const LIST_GUID  = '496468a5-e2ed-48db-8826-58cb08844eee';
+const SITE_PATH  = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
 // Fields to retrieve
 // CompletedByEmail and ValueMirror are mirror fields populated by PA099.12
@@ -151,7 +152,7 @@ async function fetchAllLineItems(token, siteId, isAdmin, callerEmail) {
     ? 'fields/BillableYorN_x0020__x2753_ eq true'
     : `fields/BillableYorN_x0020__x2753_ eq true and fields/CompletedByEmail eq '${callerEmail}'`;
 
-  const base = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_GUID}/items` +
+  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
                `?$expand=fields($select=${SELECT_FIELDS})&$filter=${encodeURIComponent(emailFilter)}&$top=500`;
 
   let url = base;
