@@ -4,14 +4,6 @@ const { URL } = require('url');
 const LIST_GUID = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
-const SELECT_FIELDS = [
-  'id','OrderDetails','VendorName','Casename','Ourref',
-  'InvoiceDate','DueDate','AmountDue','AmountOutstanding',
-  'Status','Invoicetype','LAorIP',
-  'PaymentAmount1','PaymentAmount2','PaymentAmount3',
-  'PaymentDate1','PaymentDate2','PaymentDate3','Case_x0020_ID',
-].join(',');
-
 module.exports = async function (context, req) {
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
@@ -106,24 +98,32 @@ function normalise(item) {
   const f = item.fields || {};
   return {
     _id: String(item.id),
-    OrderDetails: f.OrderDetails || null,
-    VendorName: f.VendorName || null,
-    Casename: f.Casename || null,
-    Ourref: f.Ourref || null,
-    InvoiceDate: f.InvoiceDate || null,
-    DueDate: f.DueDate || null,
-    AmountDue: toNum(f.AmountDue),
-    AmountOutstanding: toNum(f.AmountOutstanding) !== null ? toNum(f.AmountOutstanding) :   Math.max(0, (toNum(f.AmountDue) || 0) - (toNum(f.PaymentAmount1) || 0) - (toNum(f.PaymentAmount2) || 0) - (toNum(f.PaymentAmount3) || 0)),
-    Status: f.Status || null,
-    Invoicetype: f.Invoicetype || null,
-    LAorIP: f.LAorIP || null,
-    PaymentAmount1: toNum(f.PaymentAmount1),
-    PaymentAmount2: toNum(f.PaymentAmount2),
-    PaymentAmount3: toNum(f.PaymentAmount3),
-    PaymentDate1: f.PaymentDate1 || null,
-    PaymentDate2: f.PaymentDate2 || null,
-    PaymentDate3: f.PaymentDate3 || null,
-    Case_x0020_ID: f.Case_x0020_ID || null,
+    OrderDetails:       f.OrderDetails       || null,
+    VendorName:         f.VendorName         || null,
+    Casename:           f.Casename           || null,
+    Ourref:             f.Ourref             || null,
+    InvoiceDate:        f.InvoiceDate        || null,
+    DueDate:            f.DueDate            || null,
+    AmountDue:          toNum(f.AmountDue),
+    AmountOutstanding:  toNum(f.AmountOutstanding) !== null
+                          ? toNum(f.AmountOutstanding)
+                          : Math.max(0, (toNum(f.AmountDue) || 0)
+                              - (toNum(f.PaymentAmount1) || 0)
+                              - (toNum(f.PaymentAmount2) || 0)
+                              - (toNum(f.PaymentAmount3) || 0)),
+    Status:             f.Status_Text        || null,
+    Cancelled:          f.Cancelled          || false,
+    Invoicetype:        f.Invoicetype        || null,
+    LAorIP:             f.LAorIP             || null,
+    DraftedByEmail:     f.DraftedByEmail     || null,
+    DraftingFeeElement: toNum(f.DraftingFeeElement),
+    PaymentAmount1:     toNum(f.PaymentAmount1),
+    PaymentAmount2:     toNum(f.PaymentAmount2),
+    PaymentAmount3:     toNum(f.PaymentAmount3),
+    PaymentDate1:       f.PaymentDate1       || null,
+    PaymentDate2:       f.PaymentDate2       || null,
+    PaymentDate3:       f.PaymentDate3       || null,
+    Case_x0020_ID:      f.Case_x0020_ID      || null,
   };
 }
 
