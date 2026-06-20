@@ -63,8 +63,12 @@ function getCallerEmail(req) {
     if (!header) return null;
     const decoded = Buffer.from(header, 'base64').toString('utf8');
     const principal = JSON.parse(decoded);
+    // userDetails is the most reliable field for AAD (always contains UPN/email)
+    if (principal.userDetails) return principal.userDetails.toLowerCase();
+    // Fallback: hunt through claims
     const claim = (principal.claims || []).find(
       c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+        || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
     );
     return claim ? claim.val.toLowerCase() : null;
   } catch { return null; }
