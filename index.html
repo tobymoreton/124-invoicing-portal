@@ -626,7 +626,9 @@ function renderDraftsman() {
 
   const buildBreakdown = (name, v) => {
     const bkdId = 'bkd-' + name.replace(/\s+/g, '-');
-    const caseInvs = allInvoices.filter(inv => {
+
+    // Drafting rows — one per invoice attributed to this draftsman
+    const draftInvs = allInvoices.filter(inv => {
       const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
       if (!d) return false;
       const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -636,25 +638,60 @@ function renderDraftsman() {
       ourref:   inv.Ourref   || '—',
       drafting: parseFloat(inv.DraftingFeeElement) || 0,
       vat:      parseFloat(inv.VAT) || 0,
-      get total() { return this.drafting + this.vat; },
-    })).sort((a, b) => b.total - a.total);
-    const bRows = caseInvs.map(r => `
+    }));
+
+    // Timed rows — group line items by OurRef for this draftsman
+    const timedByRef = {};
+    allLineItems.forEach(li => {
+      const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
+      if (!d) return;
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (k !== mk || nameFromEmail(li.CompletedByEmail) !== name) return;
+      const ref = li.OurRef || '__none__';
+      if (!timedByRef[ref]) timedByRef[ref] = { casename: li.CaseName || '—', timed: 0 };
+      timedByRef[ref].timed += li.Value || 0;
+    });
+
+    // Merge: build a map keyed by ourref, combining drafting + timed
+    const caseMap = {};
+    draftInvs.forEach(r => {
+      const key = r.ourref;
+      if (!caseMap[key]) caseMap[key] = { casename: r.casename, ourref: r.ourref, drafting: 0, timed: 0, vat: 0 };
+      caseMap[key].drafting += r.drafting;
+      caseMap[key].vat      += r.vat;
+    });
+    Object.entries(timedByRef).forEach(([ref, t]) => {
+      if (ref === '__none__') return; // handle unlinked timed work below
+      if (!caseMap[ref]) caseMap[ref] = { casename: t.casename, ourref: ref, drafting: 0, timed: 0, vat: 0 };
+      caseMap[ref].timed += t.timed;
+    });
+
+    const rows = Object.values(caseMap)
+      .map(r => ({ ...r, total: r.drafting + r.timed + r.vat }))
+      .sort((a, b) => b.total - a.total);
+
+    // Unlinked timed work (no OurRef on line item)
+    const unlinkedTimed = timedByRef['__none__'] ? timedByRef['__none__'].timed : 0;
+
+    const bRows = rows.map(r => `
       <tr>
         <td>${esc(r.casename)}</td>
         <td>${esc(r.ourref)}</td>
         <td>${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
-        <td>—</td>
-        <td>${r.vat > 0 ? fc(r.vat) : '—'}</td>
-        <td>${r.total > 0 ? fc(r.total) : '—'}</td>
+        <td>${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
+        <td>${r.vat      > 0 ? fc(r.vat)      : '—'}</td>
+        <td>${fc(r.total)}</td>
       </tr>`).join('');
-    const timedRow = v.timed > 0 ? `
+
+    const unlinkedRow = unlinkedTimed > 0 ? `
       <tr style="font-style:italic;color:var(--grey-mid);">
-        <td colspan="2">Timed work</td>
+        <td colspan="2">Timed work (no case ref)</td>
         <td>—</td>
-        <td>${fc(v.timed)}</td>
+        <td>${fc(unlinkedTimed)}</td>
         <td>—</td>
-        <td>${fc(v.timed)}</td>
+        <td>${fc(unlinkedTimed)}</td>
       </tr>` : '';
+
     return `<div class="ds-breakdown-inner" id="${bkdId}">
       <table class="ds-breakdown-table">
         <thead><tr>
@@ -665,7 +702,7 @@ function renderDraftsman() {
           <th>VAT</th>
           <th>Total</th>
         </tr></thead>
-        <tbody>${bRows}${timedRow}</tbody>
+        <tbody>${bRows}${unlinkedRow}</tbody>
       </table>
     </div>`;
   };
