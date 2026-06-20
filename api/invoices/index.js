@@ -50,8 +50,35 @@ const SELECT_FIELDS = [
   'Theirref',             // Client's own reference
 ].join(',');
 
+const ADMIN_EMAILS = [
+  'toby@tmclegal.co.uk',
+  'lesley@tmclegal.co.uk',
+  'danielle@tmclegal.co.uk',
+];
+
+// Decode the x-ms-client-principal header injected by Azure SWA
+function getCallerEmail(req) {
+  try {
+    const header = req.headers && req.headers['x-ms-client-principal'];
+    if (!header) return null;
+    const decoded = Buffer.from(header, 'base64').toString('utf8');
+    const principal = JSON.parse(decoded);
+    const claim = (principal.claims || []).find(
+      c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+    );
+    return claim ? claim.val.toLowerCase() : null;
+  } catch { return null; }
+}
+
 module.exports = async function (context, req) {
   context.log('P124 /api/invoices called');
+
+  // Identity check — admins only
+  const callerEmail = getCallerEmail(req);
+  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
+    context.res = { status: 403, body: 'Forbidden — invoice data is restricted to administrators.' };
+    return;
+  }
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
