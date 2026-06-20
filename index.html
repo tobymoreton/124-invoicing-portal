@@ -28,6 +28,8 @@
     .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
     .nav-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(201,168,76,.6);letter-spacing:.04em;}
+    .nav-jump{font-size:12px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;letter-spacing:.06em;text-transform:uppercase;transition:color .18s ease;}
+    .nav-jump:hover{color:#C9A84C;}
     .ledger{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);display:grid;grid-template-columns:repeat(4,1fr);}
     .ledger-cell{padding:18px 28px 20px;position:relative;}
     .ledger-cell+.ledger-cell::before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;background:rgba(201,168,76,.22);}
@@ -122,7 +124,8 @@
     .ds-table{width:100%;border-collapse:collapse;font-size:12px;}
     .ds-table thead{background:var(--navy);}
     .ds-table th{padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,242,235,.65);white-space:nowrap;}
-    .ds-table th.ds-name{text-align:left;}
+    .ds-table th.ds-name{text-align:left;width:220px;}
+    .ds-table th:not(.ds-name){width:120px;}
     .ds-table td{padding:10px 14px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:top;}
     .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;}
     .ds-table tbody tr:hover{background:var(--cream);}
@@ -132,7 +135,7 @@
     .ds-df{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px;}
     .ds-nil{color:var(--grey-light);}
     .ds-sub-label{padding:14px 16px 6px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);}
-    .ds-sub-label+.ds-sub-label{border-top:1px solid var(--grey-faint);margin-top:8px;}.ds-table th.ds-name{width:220px;}.ds-table th:not(.ds-name){width:120px;}.ds-table th.ds-name{width:220px;}.ds-table th:not(.ds-name){width:120px;}.ds-table th.ds-name{width:220px;}.ds-table th:not(.ds-name){width:120px;}
+    .ds-sub-label+.ds-sub-label{border-top:1px solid var(--grey-faint);margin-top:8px;}
     @media(max-width:1100px){td.col-case,th.col-case{display:none;}}
     @media(max-width:900px){.ledger{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}.drawer{width:100vw;}}
     @media(max-width:640px){.nav-meta{display:none;}.ledger-value{font-size:22px;}.filters-bar{padding:12px 16px;}}
@@ -147,7 +150,10 @@
     <div class="nav-divider"></div>
     <span class="nav-title">Invoice Portal</span>
   </div>
-  <span class="nav-meta" id="nav-date"></span>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <a href="#ds-section" class="nav-jump">Draftsman Earnings ↓</a>
+    <span class="nav-meta" id="nav-date"></span>
+  </div>
 </nav>
 
 <div class="ledger">
@@ -224,7 +230,7 @@
   </div>
 </main>
 
-<section class="ds-section">
+<section class="ds-section" id="ds-section">
   <div class="ds-header">
     <div class="ds-title">Draftsman Billing</div>
     <select class="ds-select" id="ds-period" onchange="renderDraftsman()">
@@ -443,6 +449,11 @@ function el(id,html)   { const e=document.getElementById(id); if(e)e.innerHTML=h
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderError(msg) { document.getElementById('table-body').innerHTML=`<tr><td colspan="10"><div class="state-block"><div class="state-icon">⚠</div><h3>Could not load invoices</h3><p>${esc(msg)}</p></div></td></tr>`; }
 
+function nameFromEmail(email) {
+  if (!email) return 'Unassigned';
+  return email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+}
+
 function getMonths(period) {
   const today=new Date(), months=[];
   let start, count;
@@ -467,27 +478,26 @@ function renderDraftsman() {
   const months = getMonths(period);
   const mSet   = new Set(months.map(m=>m.key));
   const fc     = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
-  const cell   = (t,sub)=>t>0?`<div class="ds-amt">${fc(t)}</div>${sub?`<div class="ds-df">${sub}</div>`:''}`:`<span class="ds-nil">—</span>`;
+  const cell   = (t)=>t>0?`<div class="ds-amt">${fc(t)}</div>`:`<span class="ds-nil">—</span>`;
   const colHdr = `<th class="ds-name">Draftsman</th>${months.map(m=>`<th>${m.label}</th>`).join('')}<th>Total</th>`;
 
+  // ── TIMED WORK ───────────────────────────────────────────
   const timed = {};
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
     if (!d) return;
     const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (!mSet.has(mk)) return;
-    const rawEmail = li.CompletedByEmail || ''; const name = rawEmail ? rawEmail.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Unassigned';
-    if (!timed[name]) timed[name]={m:{},tot:0,time:0};
-    if (!timed[name].m[mk]) timed[name].m[mk]={tot:0,time:0};
-    timed[name].m[mk].tot  += li.Value||0;
-    timed[name].m[mk].time += li.TimeSpent||0;
-    timed[name].tot  += li.Value||0;
-    timed[name].time += li.TimeSpent||0;
+    const name = nameFromEmail(li.CompletedByEmail);
+    if (!timed[name]) timed[name]={m:{},tot:0};
+    if (!timed[name].m[mk]) timed[name].m[mk]=0;
+    timed[name].m[mk] += li.Value||0;
+    timed[name].tot   += li.Value||0;
   });
   const tRows = Object.entries(timed).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
-  const tcT={}, tcTime={};
-  months.forEach(m=>{tcT[m.key]=0;tcTime[m.key]=0;});
-  tRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]){tcT[m.key]+=r.m[m.key].tot;tcTime[m.key]+=r.m[m.key].time;}}));
+  const tcT={};
+  months.forEach(m=>{tcT[m.key]=0;});
+  tRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) tcT[m.key]+=r.m[m.key];}));
   const tGrand=tRows.reduce((s,[,r])=>s+r.tot,0);
 
   const timedHTML = tRows.length ? `
@@ -496,36 +506,36 @@ function renderDraftsman() {
       <tbody>
         ${tRows.map(([name,r])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,''):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot,'')}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key]):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot)}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(tcT[m.key],'')}</td>`).join('')}
+          ${months.map(m=>`<td>${cell(tcT[m.key])}</td>`).join('')}
           <td><div class="ds-amt">${fc(tGrand)}</div></td>
         </tr>
       </tbody>
     </table>`
     : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
 
+  // ── DRAFTING FEES ────────────────────────────────────────
   const draft = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
     if (!d) return;
     const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (!mSet.has(mk)) return;
-    const email = inv.DraftedByEmail||'unassigned';
-    const name  = email==='unassigned'?'Unassigned':email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const name = nameFromEmail(inv.DraftedByEmail);
     if (!draft[name]) draft[name]={m:{},tot:0};
-    if (!draft[name].m[mk]) draft[name].m[mk]={tot:0};
+    if (!draft[name].m[mk]) draft[name].m[mk]=0;
     const df=parseFloat(inv.DraftingFeeElement)||0;
-    draft[name].m[mk].tot+=df;
+    draft[name].m[mk]+=df;
     draft[name].tot+=df;
   });
   const dRows = Object.entries(draft).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
   const dcT={};
   months.forEach(m=>{dcT[m.key]=0;});
-  dRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) dcT[m.key]+=r.m[m.key].tot;}));
+  dRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) dcT[m.key]+=r.m[m.key];}));
   const dGrand=dRows.reduce((s,[,r])=>s+r.tot,0);
 
   const draftHTML = dRows.length ? `
@@ -534,19 +544,72 @@ function renderDraftsman() {
       <tbody>
         ${dRows.map(([name,r])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,''):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot,'')}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key]):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot)}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(dcT[m.key],'')}</td>`).join('')}
+          ${months.map(m=>`<td>${cell(dcT[m.key])}</td>`).join('')}
           <td><div class="ds-amt">${fc(dGrand)}</div></td>
         </tr>
       </tbody>
     </table>`
     : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
 
+  // ── TOTAL INVOICED ───────────────────────────────────────
+  const totals = {};
+  allInvoices.forEach(inv => {
+    const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    if (!d) return;
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!mSet.has(mk)) return;
+    const name = nameFromEmail(inv.DraftedByEmail);
+    if (!totals[name]) totals[name]={drafting:0,timed:0};
+    totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
+  });
+  allLineItems.forEach(li => {
+    const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
+    if (!d) return;
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!mSet.has(mk)) return;
+    const name = nameFromEmail(li.CompletedByEmail);
+    if (!totals[name]) totals[name]={drafting:0,timed:0};
+    totals[name].timed += li.Value||0;
+  });
+  const totRows = Object.entries(totals)
+    .map(([name,v])=>([name,{...v,total:v.drafting+v.timed}]))
+    .sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].total-a[1].total);
+  const tTotDrafting = totRows.reduce((s,[,v])=>s+v.drafting,0);
+  const tTotTimed    = totRows.reduce((s,[,v])=>s+v.timed,0);
+  const tTotTotal    = tTotDrafting + tTotTimed;
+
+  const totalHTML = totRows.length ? `
+    <table class="ds-table">
+      <thead><tr>
+        <th class="ds-name">Draftsman</th>
+        <th>Drafting Fees</th>
+        <th>Timed Work</th>
+        <th>Total</th>
+      </tr></thead>
+      <tbody>
+        ${totRows.map(([name,v])=>`<tr>
+          <td class="ds-name">${esc(name)}</td>
+          <td>${cell(v.drafting)}</td>
+          <td>${cell(v.timed)}</td>
+          <td><div class="ds-amt">${fc(v.total)}</div></td>
+        </tr>`).join('')}
+        <tr class="ds-total-row">
+          <td class="ds-name">Total</td>
+          <td><div class="ds-amt">${fc(tTotDrafting)}</div></td>
+          <td><div class="ds-amt">${fc(tTotTimed)}</div></td>
+          <td><div class="ds-amt">${fc(tTotTotal)}</div></td>
+        </tr>
+      </tbody>
+    </table>` : '';
+
   document.getElementById('ds-inner').innerHTML = `
+    <div class="ds-sub-label">Total Invoiced</div>
+    <div class="ds-table-wrap">${totalHTML}</div>
     <div class="ds-sub-label">Timed Work</div>
     <div class="ds-table-wrap">${timedHTML}</div>
     <div class="ds-sub-label">Drafting Fees</div>
