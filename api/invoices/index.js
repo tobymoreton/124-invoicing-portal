@@ -2,7 +2,7 @@ const https  = require('https');
 const { URL } = require('url');
 
 const LIST_GUID = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
-const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited';
+const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
 const SELECT_FIELDS = [
   'id','OrderDetails','VendorName','Casename','Ourref',
