@@ -54,7 +54,7 @@
     .chip.active.overdue-chip{background:var(--overdue);border-color:var(--overdue);}
     .filter-count{margin-left:auto;font-size:12px;color:var(--grey-mid);white-space:nowrap;}
     .filter-count strong{color:var(--navy);font-weight:600;}
-    .main{padding:20px 28px 32px;}
+    .main{padding:20px 28px 24px;}
     .table-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
     .table-wrap{overflow-x:auto;}
     table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -115,10 +115,15 @@
     .payment-slot-date{font-size:12px;color:var(--grey-mid);}
     .payment-slot-amount{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
     .no-payments{font-size:13px;color:var(--grey-mid);font-style:italic;}
-    .ds-section{padding:0 28px 60px;}
-    .ds-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+    /* ── DRAFTSMAN SECTION ── */
+    .ds-section{padding:0 28px 32px;}
+    .ds-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
     .ds-title{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);}
-    .ds-select{padding:6px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);cursor:pointer;}
+    .ds-period-group{display:flex;gap:0;border:2px solid var(--navy);border-radius:var(--radius);overflow:hidden;}
+    .ds-period-btn{padding:8px 20px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:var(--white);color:var(--navy);border:none;border-right:1px solid var(--navy);transition:all var(--transition);letter-spacing:.02em;}
+    .ds-period-btn:last-child{border-right:none;}
+    .ds-period-btn:hover{background:var(--gold-pale);}
+    .ds-period-btn.active{background:var(--navy);color:var(--gold);}
     .ds-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
     .ds-table-wrap{overflow-x:auto;}
     .ds-table{width:100%;border-collapse:collapse;font-size:12px;}
@@ -126,16 +131,19 @@
     .ds-table th{padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,242,235,.65);white-space:nowrap;}
     .ds-table th.ds-name{text-align:left;width:220px;}
     .ds-table th:not(.ds-name){width:120px;}
-    .ds-table td{padding:10px 14px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:top;}
+    .ds-table td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
     .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;}
     .ds-table tbody tr:hover{background:var(--cream);}
     .ds-table tbody tr:last-child td{border-bottom:none;}
     .ds-total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);border-bottom:none;}
     .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--navy);}
-    .ds-df{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px;}
     .ds-nil{color:var(--grey-light);}
-    .ds-sub-label{padding:14px 16px 6px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);}
-    .ds-sub-label+.ds-sub-label{border-top:1px solid var(--grey-faint);margin-top:8px;}
+    .ds-sub-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;user-select:none;border-top:1px solid var(--grey-faint);}
+    .ds-sub-header:first-child{border-top:none;}
+    .ds-sub-header .ds-toggle{font-size:11px;color:var(--grey-mid);transition:transform .2s ease;}
+    .ds-sub-header.collapsed .ds-toggle{transform:rotate(-90deg);}
+    .ds-sub-body{overflow:hidden;transition:max-height .25s ease;}
+    .ds-sub-body.collapsed{max-height:0!important;}
     @media(max-width:1100px){td.col-case,th.col-case{display:none;}}
     @media(max-width:900px){.ledger{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}.drawer{width:100vw;}}
     @media(max-width:640px){.nav-meta{display:none;}.ledger-value{font-size:22px;}.filters-bar{padding:12px 16px;}}
@@ -233,11 +241,10 @@
 <section class="ds-section" id="ds-section">
   <div class="ds-header">
     <div class="ds-title">Draftsman Billing</div>
-    <select class="ds-select" id="ds-period" onchange="renderDraftsman()">
-      <option value="financial">This Financial Year (Apr–Mar)</option>
-      <option value="calendar">This Calendar Year</option>
-      <option value="12m">Last 12 Months</option>
-    </select>
+    <div class="ds-period-group">
+      <button class="ds-period-btn active" data-period="this" onclick="setPeriod(this)">This Month</button>
+      <button class="ds-period-btn" data-period="last" onclick="setPeriod(this)">Last Month</button>
+    </div>
   </div>
   <div class="ds-card">
     <div id="ds-inner">
@@ -266,6 +273,7 @@ let sortField = 'DueDate';
 let sortDir   = 1;
 let filters   = { search: '', status: 'Outstanding', type: 'all' };
 let activeId  = null;
+let dsPeriod  = 'this';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-date').textContent =
@@ -431,6 +439,13 @@ function sortBy(field,th) {
   renderTable();
 }
 
+function setPeriod(btn) {
+  dsPeriod = btn.dataset.period;
+  document.querySelectorAll('.ds-period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDraftsman();
+}
+
 function normalizeStatus(inv, today) {
   const raw=(inv.Status_Text||inv.Status||'').trim();
   const due=inv.DueDate?new Date(inv.DueDate):null;
@@ -454,115 +469,110 @@ function nameFromEmail(email) {
   return email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 }
 
-function getMonths(period) {
-  const today=new Date(), months=[];
-  let start, count;
-  if (period==='financial') {
-    const fy=today.getMonth()>=3?today.getFullYear():today.getFullYear()-1;
-    start=new Date(fy,3,1);
-    count=today.getMonth()>=3?today.getMonth()-2:12+today.getMonth()-2;
-  } else if (period==='calendar') {
-    start=new Date(today.getFullYear(),0,1); count=today.getMonth()+1;
+const MEDALS = ['🥇','🥈','🥉'];
+
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const hdr  = body.previousElementSibling;
+  const isCollapsed = body.classList.contains('collapsed');
+  if (isCollapsed) {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    body.classList.remove('collapsed');
+    hdr.classList.remove('collapsed');
   } else {
-    start=new Date(today.getFullYear(),today.getMonth()-11,1); count=12;
+    body.style.maxHeight = body.scrollHeight + 'px';
+    requestAnimationFrame(() => { body.style.maxHeight = '0'; });
+    body.classList.add('collapsed');
+    hdr.classList.add('collapsed');
   }
-  for (let i=0;i<count;i++) {
-    const d=new Date(start.getFullYear(),start.getMonth()+i,1);
-    months.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'})});
-  }
-  return months;
+}
+
+function getMonthKey(offset) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getMonthLabel(offset) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return d.toLocaleDateString('en-GB', {month:'long', year:'numeric'});
 }
 
 function renderDraftsman() {
-  const period = document.getElementById('ds-period').value;
-  const months = getMonths(period);
-  const mSet   = new Set(months.map(m=>m.key));
-  const fc     = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
-  const cell   = (t)=>t>0?`<div class="ds-amt">${fc(t)}</div>`:`<span class="ds-nil">—</span>`;
-  const colHdr = `<th class="ds-name">Draftsman</th>${months.map(m=>`<th>${m.label}</th>`).join('')}<th>Total</th>`;
+  const mk    = dsPeriod === 'this' ? getMonthKey(0) : getMonthKey(-1);
+  const label = dsPeriod === 'this' ? getMonthLabel(0) : getMonthLabel(-1);
+  const fc    = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
+  const cell  = (t)=>t>0?`<div class="ds-amt">${fc(t)}</div>`:`<span class="ds-nil">—</span>`;
+  const colHdr = `<th class="ds-name">Draftsman</th><th>${label}</th>`;
 
   // ── TIMED WORK ───────────────────────────────────────────
   const timed = {};
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
     if (!d) return;
-    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!mSet.has(mk)) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (k !== mk) return;
     const name = nameFromEmail(li.CompletedByEmail);
-    if (!timed[name]) timed[name]={m:{},tot:0};
-    if (!timed[name].m[mk]) timed[name].m[mk]=0;
-    timed[name].m[mk] += li.Value||0;
-    timed[name].tot   += li.Value||0;
+    if (!timed[name]) timed[name]=0;
+    timed[name] += li.Value||0;
   });
-  const tRows = Object.entries(timed).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
-  const tcT={};
-  months.forEach(m=>{tcT[m.key]=0;});
-  tRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) tcT[m.key]+=r.m[m.key];}));
-  const tGrand=tRows.reduce((s,[,r])=>s+r.tot,0);
+  const tRows = Object.entries(timed).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1]-a[1]);
+  const tGrand = tRows.reduce((s,[,v])=>s+v,0);
 
   const timedHTML = tRows.length ? `
     <table class="ds-table">
       <thead><tr>${colHdr}</tr></thead>
       <tbody>
-        ${tRows.map(([name,r])=>`<tr>
+        ${tRows.map(([name,v])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key]):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot)}</td>
+          <td>${cell(v)}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(tcT[m.key])}</td>`).join('')}
           <td><div class="ds-amt">${fc(tGrand)}</div></td>
         </tr>
       </tbody>
-    </table>`
-    : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
+    </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
 
   // ── DRAFTING FEES ────────────────────────────────────────
   const draft = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
     if (!d) return;
-    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!mSet.has(mk)) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (k !== mk) return;
     const name = nameFromEmail(inv.DraftedByEmail);
-    if (!draft[name]) draft[name]={m:{},tot:0};
-    if (!draft[name].m[mk]) draft[name].m[mk]=0;
-    const df=parseFloat(inv.DraftingFeeElement)||0;
-    draft[name].m[mk]+=df;
-    draft[name].tot+=df;
+    if (!draft[name]) draft[name]=0;
+    draft[name] += parseFloat(inv.DraftingFeeElement)||0;
   });
-  const dRows = Object.entries(draft).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
-  const dcT={};
-  months.forEach(m=>{dcT[m.key]=0;});
-  dRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) dcT[m.key]+=r.m[m.key];}));
-  const dGrand=dRows.reduce((s,[,r])=>s+r.tot,0);
+  const dRows = Object.entries(draft).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1]-a[1]);
+  const dGrand = dRows.reduce((s,[,v])=>s+v,0);
 
   const draftHTML = dRows.length ? `
     <table class="ds-table">
       <thead><tr>${colHdr}</tr></thead>
       <tbody>
-        ${dRows.map(([name,r])=>`<tr>
+        ${dRows.map(([name,v])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key]):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot)}</td>
+          <td>${cell(v)}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(dcT[m.key])}</td>`).join('')}
           <td><div class="ds-amt">${fc(dGrand)}</div></td>
         </tr>
       </tbody>
-    </table>`
-    : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
+    </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
 
   // ── TOTAL INVOICED ───────────────────────────────────────
   const totals = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
     if (!d) return;
-    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!mSet.has(mk)) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (k !== mk) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0};
     totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
@@ -570,8 +580,8 @@ function renderDraftsman() {
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
     if (!d) return;
-    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if (!mSet.has(mk)) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (k !== mk) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0};
     totals[name].timed += li.Value||0;
@@ -583,6 +593,12 @@ function renderDraftsman() {
   const tTotTimed    = totRows.reduce((s,[,v])=>s+v.timed,0);
   const tTotTotal    = tTotDrafting + tTotTimed;
 
+  let medalIdx = 0;
+  const medalMap = {};
+  totRows.forEach(([name]) => {
+    if (name !== 'Unassigned' && medalIdx < 3) { medalMap[name] = MEDALS[medalIdx++]; }
+  });
+
   const totalHTML = totRows.length ? `
     <table class="ds-table">
       <thead><tr>
@@ -593,7 +609,7 @@ function renderDraftsman() {
       </tr></thead>
       <tbody>
         ${totRows.map(([name,v])=>`<tr>
-          <td class="ds-name">${esc(name)}</td>
+          <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
           <td>${cell(v.drafting)}</td>
           <td>${cell(v.timed)}</td>
           <td><div class="ds-amt">${fc(v.total)}</div></td>
@@ -608,12 +624,24 @@ function renderDraftsman() {
     </table>` : '';
 
   document.getElementById('ds-inner').innerHTML = `
-    <div class="ds-sub-label">Total Invoiced</div>
-    <div class="ds-table-wrap">${totalHTML}</div>
-    <div class="ds-sub-label">Timed Work</div>
-    <div class="ds-table-wrap">${timedHTML}</div>
-    <div class="ds-sub-label">Drafting Fees</div>
-    <div class="ds-table-wrap">${draftHTML}</div>`;
+    <div class="ds-sub-header" onclick="toggleSection('ds-total-body')">
+      Total Invoiced <span class="ds-toggle">▾</span>
+    </div>
+    <div class="ds-sub-body" id="ds-total-body">
+      <div class="ds-table-wrap">${totalHTML}</div>
+    </div>
+    <div class="ds-sub-header collapsed" onclick="toggleSection('ds-timed-body')">
+      Timed Work <span class="ds-toggle">▾</span>
+    </div>
+    <div class="ds-sub-body collapsed" id="ds-timed-body" style="max-height:0">
+      <div class="ds-table-wrap">${timedHTML}</div>
+    </div>
+    <div class="ds-sub-header collapsed" onclick="toggleSection('ds-draft-body')">
+      Drafting Fees <span class="ds-toggle">▾</span>
+    </div>
+    <div class="ds-sub-body collapsed" id="ds-draft-body" style="max-height:0">
+      <div class="ds-table-wrap">${draftHTML}</div>
+    </div>`;
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
