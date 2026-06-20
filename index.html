@@ -484,7 +484,7 @@ function renderDraftsman() {
     timed[name].tot  += li.Value||0;
     timed[name].time += li.TimeSpent||0;
   });
-  const tRows = Object.entries(timed).sort((a,b)=>b[1].tot-a[1].tot);
+  const tRows = Object.entries(timed).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
   const tcT={}, tcTime={};
   months.forEach(m=>{tcT[m.key]=0;tcTime[m.key]=0;});
   tRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]){tcT[m.key]+=r.m[m.key].tot;tcTime[m.key]+=r.m[m.key].time;}}));
@@ -522,7 +522,7 @@ function renderDraftsman() {
     draft[name].m[mk].tot+=df;
     draft[name].tot+=df;
   });
-  const dRows = Object.entries(draft).sort((a,b)=>b[1].tot-a[1].tot);
+  const dRows = Object.entries(draft).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].tot-a[1].tot);
   const dcT={};
   months.forEach(m=>{dcT[m.key]=0;});
   dRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) dcT[m.key]+=r.m[m.key].tot;}));
