@@ -1,3 +1,6 @@
+Here's the complete replacement — Ctrl+A, paste, commit:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,16 +25,12 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
-
-    /* NAV */
     .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
     .nav-brand{display:flex;align-items:baseline;gap:14px;}
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
     .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
     .nav-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(201,168,76,.6);letter-spacing:.04em;}
-
-    /* LEDGER */
     .ledger{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);display:grid;grid-template-columns:repeat(4,1fr);}
     .ledger-cell{padding:18px 28px 20px;position:relative;}
     .ledger-cell+.ledger-cell::before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;background:rgba(201,168,76,.22);}
@@ -42,8 +41,6 @@
     .ledger-value.overdue-alert.has-overdue{color:#F87171;animation:pulse-red 2.4s ease-in-out infinite;}
     @keyframes pulse-red{0%,100%{opacity:1;}50%{opacity:.65;}}
     .ledger-sub{font-size:11px;color:rgba(245,242,235,.38);margin-top:4px;font-weight:300;}
-
-    /* FILTERS */
     .filters-bar{background:var(--white);border-bottom:1px solid var(--grey-light);padding:14px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
     .search-wrap{position:relative;flex:1;min-width:220px;max-width:380px;}
     .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.38;pointer-events:none;}
@@ -58,8 +55,6 @@
     .chip.active.overdue-chip{background:var(--overdue);border-color:var(--overdue);}
     .filter-count{margin-left:auto;font-size:12px;color:var(--grey-mid);white-space:nowrap;}
     .filter-count strong{color:var(--navy);font-weight:600;}
-
-    /* TABLE */
     .main{padding:20px 28px 32px;}
     .table-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
     .table-wrap{overflow-x:auto;}
@@ -89,16 +84,12 @@
     .type-badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
     .type-LA{background:#EFF6FF;color:#1E40AF;}
     .type-IP{background:#F5F3FF;color:#5B21B6;}
-
-    /* STATE */
     .state-block{text-align:center;padding:64px 24px;color:var(--grey-mid);}
     .state-block .state-icon{font-size:36px;margin-bottom:12px;}
     .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);margin-bottom:6px;}
     .state-block p{font-size:13px;}
     .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
     @keyframes spin{to{transform:rotate(360deg);}}
-
-    /* DRAWER */
     .drawer-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.25);z-index:300;backdrop-filter:blur(2px);}
     .drawer-overlay.open{display:block;}
     .drawer{position:fixed;top:0;right:0;bottom:0;width:var(--drawer-w);max-width:100vw;background:var(--white);box-shadow:var(--shadow-lg);transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:400;display:flex;flex-direction:column;overflow:hidden;}
@@ -125,8 +116,6 @@
     .payment-slot-date{font-size:12px;color:var(--grey-mid);}
     .payment-slot-amount{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
     .no-payments{font-size:13px;color:var(--grey-mid);font-style:italic;}
-
-    /* DRAFTSMAN */
     .ds-section{padding:0 28px 60px;}
     .ds-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
     .ds-title{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);}
@@ -145,8 +134,8 @@
     .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--navy);}
     .ds-df{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px;}
     .ds-nil{color:var(--grey-light);}
-
-    /* RESPONSIVE */
+    .ds-sub-label{padding:14px 16px 6px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);}
+    .ds-sub-label+.ds-sub-label{border-top:1px solid var(--grey-faint);margin-top:8px;}
     @media(max-width:1100px){td.col-case,th.col-case{display:none;}}
     @media(max-width:900px){.ledger{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}.drawer{width:100vw;}}
     @media(max-width:640px){.nav-meta{display:none;}.ledger-value{font-size:22px;}.filters-bar{padding:12px 16px;}}
@@ -238,7 +227,6 @@
   </div>
 </main>
 
-<!-- DRAFTSMAN SECTION -->
 <section class="ds-section">
   <div class="ds-header">
     <div class="ds-title">Draftsman Billing</div>
@@ -249,10 +237,8 @@
     </select>
   </div>
   <div class="ds-card">
-    <div class="ds-table-wrap">
-      <table class="ds-table" id="ds-table">
-        <tbody><tr><td colspan="2" style="padding:32px;text-align:center;color:var(--grey-mid)">Loading…</td></tr></tbody>
-      </table>
+    <div id="ds-inner">
+      <div style="padding:32px;text-align:center;color:var(--grey-mid)">Loading…</div>
     </div>
   </div>
 </section>
@@ -269,8 +255,10 @@
 </div>
 
 <script>
-const API = '/api/invoices';
-let allInvoices = [];
+const API    = '/api/invoices';
+const API_LI = '/api/lineitems';
+let allInvoices  = [];
+let allLineItems = [];
 let sortField = 'DueDate';
 let sortDir   = 1;
 let filters   = { search: '', status: 'Outstanding', type: 'all' };
@@ -284,9 +272,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function load() {
   try {
-    const res = await fetch(API, { headers: { Accept: 'application/json' } });
-    if (!res.ok) { const t = await res.text(); throw new Error(`API ${res.status}: ${t.slice(0,160)}`); }
-    allInvoices = (await res.json()).filter(inv => !inv.Cancelled);
+    const [invRes, liRes] = await Promise.all([
+      fetch(API,    { headers: { Accept: 'application/json' } }),
+      fetch(API_LI, { headers: { Accept: 'application/json' } }),
+    ]);
+    if (!invRes.ok) { const t=await invRes.text(); throw new Error(`Invoices API ${invRes.status}: ${t.slice(0,160)}`); }
+    if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
+    allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
+    allLineItems = await liRes.json();
     renderStats();
     renderTable();
     renderDraftsman();
@@ -474,53 +467,102 @@ function getMonths(period) {
 }
 
 function renderDraftsman() {
-  if (!allInvoices||!allInvoices.length) return;
-  const period=document.getElementById('ds-period').value;
-  const months=getMonths(period);
-  const mSet=new Set(months.map(m=>m.key));
-  const by={};
-  allInvoices.forEach(inv => {
-    const d=inv.InvoiceDate?new Date(inv.InvoiceDate):null;
+  const period = document.getElementById('ds-period').value;
+  const months = getMonths(period);
+  const mSet   = new Set(months.map(m=>m.key));
+  const fc     = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
+  const cell   = (t,sub)=>t>0?`<div class="ds-amt">${fc(t)}</div>${sub?`<div class="ds-df">${sub}</div>`:''}`:`<span class="ds-nil">—</span>`;
+  const colHdr = `<th class="ds-name">Draftsman</th>${months.map(m=>`<th>${m.label}</th>`).join('')}<th>Total</th>`;
+
+  // ── TIMED WORK ──────────────────────────────────────────
+  const timed = {};
+  allLineItems.forEach(li => {
+    const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
     if (!d) return;
-    const mk=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (!mSet.has(mk)) return;
-    const email=inv.DraftedByEmail||'unassigned';
-    const name=email==='unassigned'?'Unassigned':email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-    if (!by[email]) by[email]={name,m:{},tot:0,df:0};
-    if (!by[email].m[mk]) by[email].m[mk]={tot:0,df:0};
-    const t=parseFloat(inv.AmountDue)||0, dr=parseFloat(inv.DraftingFeeElement)||0;
-    by[email].m[mk].tot+=t; by[email].m[mk].df+=dr;
-    by[email].tot+=t; by[email].df+=dr;
+    const name = li.CompletedBy || 'Unassigned';
+    if (!timed[name]) timed[name]={m:{},tot:0,time:0};
+    if (!timed[name].m[mk]) timed[name].m[mk]={tot:0,time:0};
+    timed[name].m[mk].tot  += li.Value||0;
+    timed[name].m[mk].time += li.TimeSpent||0;
+    timed[name].tot  += li.Value||0;
+    timed[name].time += li.TimeSpent||0;
   });
-  const rows=Object.values(by).sort((a,b)=>b.tot-a.tot);
-  if (!rows.length) { document.getElementById('ds-table').innerHTML='<tbody><tr><td colspan="20" style="padding:32px;text-align:center;color:var(--grey-mid)">No data for this period.</td></tr></tbody>'; return; }
-  const cT={},cD={};
-  months.forEach(m=>{cT[m.key]=0;cD[m.key]=0;});
-  rows.forEach(r=>months.forEach(m=>{ if(r.m[m.key]){cT[m.key]+=r.m[m.key].tot;cD[m.key]+=r.m[m.key].df;} }));
-  const gT=rows.reduce((s,r)=>s+r.tot,0), gD=rows.reduce((s,r)=>s+r.df,0);
-  const fc=n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
-  const cell=(t,d)=>t>0?`<div class="ds-amt">${fc(t)}</div>${d>0?`<div class="ds-df">df: ${fc(d)}</div>`:''}`:`<span class="ds-nil">—</span>`;
-  document.getElementById('ds-table').innerHTML=`
-    <thead><tr>
-      <th class="ds-name">Draftsman</th>
-      ${months.map(m=>`<th>${m.label}</th>`).join('')}
-      <th>Total</th>
-    </tr></thead>
-    <tbody>
-      ${rows.map(r=>`<tr>
-        <td class="ds-name">${r.name}</td>
-        ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,r.m[m.key].df):'<span class="ds-nil">—</span>'}</td>`).join('')}
-        <td>${cell(r.tot,r.df)}</td>
-      </tr>`).join('')}
-      <tr class="ds-total-row">
-        <td class="ds-name">Total</td>
-        ${months.map(m=>`<td>${cell(cT[m.key],cD[m.key])}</td>`).join('')}
-        <td>${cell(gT,gD)}</td>
-      </tr>
-    </tbody>`;
+  const tRows = Object.entries(timed).sort((a,b)=>b[1].tot-a[1].tot);
+  const tcT={}, tcTime={};
+  months.forEach(m=>{tcT[m.key]=0;tcTime[m.key]=0;});
+  tRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]){tcT[m.key]+=r.m[m.key].tot;tcTime[m.key]+=r.m[m.key].time;}}));
+  const tGrand=tRows.reduce((s,[,r])=>s+r.tot,0);
+
+  const timedHTML = tRows.length ? `
+    <table class="ds-table">
+      <thead><tr>${colHdr}</tr></thead>
+      <tbody>
+        ${tRows.map(([name,r])=>`<tr>
+          <td class="ds-name">${esc(name)}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,r.m[m.key].time?`${r.m[m.key].time} units`:''):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot,r.time?`${r.time} units`:'')}</td>
+        </tr>`).join('')}
+        <tr class="ds-total-row">
+          <td class="ds-name">Total</td>
+          ${months.map(m=>`<td>${cell(tcT[m.key],tcTime[m.key]?`${tcTime[m.key]} units`:'')}</td>`).join('')}
+          <td><div class="ds-amt">${fc(tGrand)}</div></td>
+        </tr>
+      </tbody>
+    </table>`
+    : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
+
+  // ── DRAFTING FEES ────────────────────────────────────────
+  const draft = {};
+  allInvoices.forEach(inv => {
+    const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    if (!d) return;
+    const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!mSet.has(mk)) return;
+    const email = inv.DraftedByEmail||'unassigned';
+    const name  = email==='unassigned'?'Unassigned':email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    if (!draft[name]) draft[name]={m:{},tot:0};
+    if (!draft[name].m[mk]) draft[name].m[mk]={tot:0};
+    const df=parseFloat(inv.DraftingFeeElement)||0;
+    draft[name].m[mk].tot+=df;
+    draft[name].tot+=df;
+  });
+  const dRows = Object.entries(draft).sort((a,b)=>b[1].tot-a[1].tot);
+  const dcT={};
+  months.forEach(m=>{dcT[m.key]=0;});
+  dRows.forEach(([,r])=>months.forEach(m=>{if(r.m[m.key]) dcT[m.key]+=r.m[m.key].tot;}));
+  const dGrand=dRows.reduce((s,[,r])=>s+r.tot,0);
+
+  const draftHTML = dRows.length ? `
+    <table class="ds-table">
+      <thead><tr>${colHdr}</tr></thead>
+      <tbody>
+        ${dRows.map(([name,r])=>`<tr>
+          <td class="ds-name">${esc(name)}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,''):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot,'')}</td>
+        </tr>`).join('')}
+        <tr class="ds-total-row">
+          <td class="ds-name">Total</td>
+          ${months.map(m=>`<td>${cell(dcT[m.key],'')}</td>`).join('')}
+          <td><div class="ds-amt">${fc(dGrand)}</div></td>
+        </tr>
+      </tbody>
+    </table>`
+    : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
+
+  document.getElementById('ds-inner').innerHTML = `
+    <div class="ds-sub-label">Timed Work</div>
+    <div class="ds-table-wrap">${timedHTML}</div>
+    <div class="ds-sub-label">Drafting Fees</div>
+    <div class="ds-table-wrap">${draftHTML}</div>`;
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
 </script>
 </body>
 </html>
+```
+
+Commit → wait for green → refresh portal.
