@@ -498,12 +498,12 @@ function renderDraftsman() {
       <tbody>
         ${tRows.map(([name,r])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,r.m[m.key].time?`${Math.round(r.m[m.key].time)} units`:''):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot,r.time?`${Math.round(r.time)} units`:'')}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,r.m[m.key].time?``:''):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot,r.time?`:'')}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(tcT[m.key],tcTime[m.key]?`${tcTime[m.key]} units`:'')}</td>`).join('')}
+          ${months.map(m=>`<td>${cell(tcT[m.key],tcTime[m.key]?`:'')}</td>`).join('')}
           <td><div class="ds-amt">${fc(tGrand)}</div></td>
         </tr>
       </tbody>
