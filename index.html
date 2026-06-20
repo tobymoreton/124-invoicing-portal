@@ -617,9 +617,14 @@ function renderStats() {
 
     if (status !== 'Paid') { totalOut += out; totalOutN++; }
     if (status === 'Overdue') { overdueAmt += out; overdueN++; }
-    if (status === 'Paid' && invD && invD.getFullYear() === nowY && invD.getMonth() === nowM) {
-      paidMonth += amt; paidMonthN++;
-    }
+    [1,2,3].forEach(i => {
+      const pd = inv[`PaymentDate${i}`] ? new Date(inv[`PaymentDate${i}`]) : null;
+      const pa = parseFloat(inv[`PaymentAmount${i}`]) || 0;
+      if (pd && pa > 0 && pd.getFullYear() === nowY && pd.getMonth() === nowM) {
+        paidMonth += pa;
+        paidMonthN++;
+      }
+    });
   });
 
   el('stat-outstanding',       fmt(totalOut));
