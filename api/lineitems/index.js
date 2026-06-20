@@ -2,6 +2,7 @@ const https  = require('https');
 const { URL } = require('url');
 
 const LIST_GUID = '496468a5-e2ed-48db-8826-58cb08844eee';
+const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
 const SELECT_FIELDS = [
   'id','field_1','field_2','field_3','ProRataApportionment',
@@ -11,14 +12,14 @@ const SELECT_FIELDS = [
 ].join(',');
 
 module.exports = async function (context, req) {
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, SITE_ID } = process.env;
-  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !SITE_ID) {
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
     return;
   }
   try {
     const token     = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const lineItems = await fetchAll(token, SITE_ID);
+    const lineItems = await fetchAll(token);
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -61,8 +62,8 @@ function getToken(tenantId, clientId, clientSecret) {
   });
 }
 
-async function fetchAll(token, siteId) {
-  const base = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_GUID}/items` +
+async function fetchAll(token) {
+  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
                `?$expand=fields($select=${SELECT_FIELDS})&$top=500`;
   let url = base, all = [];
   while (url) {
@@ -98,20 +99,20 @@ function graphGet(url, token) {
 function normalise(item) {
   const f = item.fields || {};
   return {
-    _id:             String(item.id),
-    WorkDone:        f.field_1                        || null,
-    TimeSpent:       toNum(f.field_2),
-    Rate:            toNum(f.field_3),
-    ProRata:         toNum(f.ProRataApportionment),
+    _id:              String(item.id),
+    WorkDone:         f.field_1                       || null,
+    TimeSpent:        toNum(f.field_2),
+    Rate:             toNum(f.field_3),
+    ProRata:          toNum(f.ProRataApportionment),
     CompletedByEmail: f.CompletedByEmail              || null,
-    Value:           toNum(f.ValueMirror),
-    InvoiceIDRef:    f.InvoiceIDRef                   || null,
-    CaseName:        f.CaseName                       || null,
-    OurRef:          f.field_5                        || null,
-    CompletedOn:     f.Completed_x0020_on             || null,
-    Billable:        f.BillableYorN_x0020__x2753_     === true,
-    InvoiceType:     f.InvoiceType                    || null,
-    InvoiceDate:     f.InvoiceDate                    || null,
+    Value:            toNum(f.ValueMirror),
+    InvoiceIDRef:     f.InvoiceIDRef                  || null,
+    CaseName:         f.CaseName                      || null,
+    OurRef:           f.field_5                       || null,
+    CompletedOn:      f.Completed_x0020_on            || null,
+    Billable:         f.BillableYorN_x0020__x2753_    === true,
+    InvoiceType:      f.InvoiceType                   || null,
+    InvoiceDate:      f.InvoiceDate                   || null,
   };
 }
 
