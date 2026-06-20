@@ -113,7 +113,7 @@ function normalise(item) {
     InvoiceDate: f.InvoiceDate || null,
     DueDate: f.DueDate || null,
     AmountDue: toNum(f.AmountDue),
-    AmountOutstanding: toNum(f.AmountOutstanding),
+    AmountOutstanding: toNum(f.AmountOutstanding) !== null ? toNum(f.AmountOutstanding) :   Math.max(0, (toNum(f.AmountDue) || 0) - (toNum(f.PaymentAmount1) || 0) - (toNum(f.PaymentAmount2) || 0) - (toNum(f.PaymentAmount3) || 0)),
     Status: f.Status || null,
     Invoicetype: f.Invoicetype || null,
     LAorIP: f.LAorIP || null,
