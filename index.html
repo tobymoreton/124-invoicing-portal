@@ -608,6 +608,7 @@ function renderDraftsman() {
         <th class="ds-name">Draftsman</th>
         <th>Drafting (Net)</th>
         <th>Timed (Net)</th>
+        <th>Total (Net)</th>
         <th>VAT</th>
         <th>Total (inc. VAT)</th>
       </tr></thead>
@@ -616,6 +617,7 @@ function renderDraftsman() {
           <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
           <td>${cell(v.drafting)}</td>
           <td>${cell(v.timed)}</td>
+          <td><div class="ds-amt">${fc(v.net)}</div></td>
           <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
           <td><div class="ds-amt">${fc(v.total)}</div></td>
         </tr>`).join('')}
@@ -623,6 +625,7 @@ function renderDraftsman() {
           <td class="ds-name">Total</td>
           <td><div class="ds-amt">${fc(tTotDrafting)}</div></td>
           <td><div class="ds-amt">${fc(tTotTimed)}</div></td>
+          <td><div class="ds-amt">${fc(tTotNet)}</div></td>
           <td><div class="ds-amt" style="color:var(--grey-mid)">${fc(tTotVat)}</div></td>
           <td><div class="ds-amt">${fc(tTotTotal)}</div></td>
         </tr>
