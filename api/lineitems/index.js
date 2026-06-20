@@ -96,7 +96,7 @@ function normalise(item) {
   const value = parseFloat(f.Value) || (rate > 0 && time > 0 ? rate * time / 10 : 0);
   return {
     _id:            String(item.id),
-    CompletedBy:    f.CompletedByLookupValue || null,
+    CompletedBy:    f.CompletedBy || f.CompletedByLookupValue || null,
     CompletedOn:    f.Completed_x0020_on     || null,
     InvoiceDate:    f.InvoiceDate            || null,
     InvoiceIDRef:   f.InvoiceIDRef           || null,
