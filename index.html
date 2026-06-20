@@ -309,7 +309,7 @@ function renderStats() {
 }
 
 function renderTable() {
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today    = new Date(); today.setHours(0,0,0,0);
   const filtered = applyFilters(today);
   const sorted   = applySort(filtered);
   el('filter-count', `<strong>${filtered.length}</strong> of ${allInvoices.length}`);
@@ -426,7 +426,7 @@ function sortBy(field,th) {
 }
 
 function normalizeStatus(inv, today) {
-  const raw=(inv.Status||'').trim();
+  const raw=(inv.Status_Text||inv.Status||'').trim();
   const due=inv.DueDate?new Date(inv.DueDate):null;
   if (raw==='Paid') return 'Paid';
   if (due&&today&&due<today) return 'Overdue';
@@ -443,7 +443,6 @@ function el(id,html)   { const e=document.getElementById(id); if(e)e.innerHTML=h
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function renderError(msg) { document.getElementById('table-body').innerHTML=`<tr><td colspan="10"><div class="state-block"><div class="state-icon">⚠</div><h3>Could not load invoices</h3><p>${esc(msg)}</p></div></td></tr>`; }
 
-// ─── DRAFTSMAN BILLING ───────────────────────────────────
 function getMonths(period) {
   const today=new Date(), months=[];
   let start, count;
@@ -471,7 +470,6 @@ function renderDraftsman() {
   const cell   = (t,sub)=>t>0?`<div class="ds-amt">${fc(t)}</div>${sub?`<div class="ds-df">${sub}</div>`:''}`:`<span class="ds-nil">—</span>`;
   const colHdr = `<th class="ds-name">Draftsman</th>${months.map(m=>`<th>${m.label}</th>`).join('')}<th>Total</th>`;
 
-  // ── TIMED WORK ──────────────────────────────────────────
   const timed = {};
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
@@ -498,19 +496,18 @@ function renderDraftsman() {
       <tbody>
         ${tRows.map(([name,r])=>`<tr>
           <td class="ds-name">${esc(name)}</td>
-          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,r.m[m.key].time?``:''):'<span class="ds-nil">—</span>'}</td>`).join('')}
-          <td>${cell(r.tot,r.time?`:'')}</td>
+          ${months.map(m=>`<td>${r.m[m.key]?cell(r.m[m.key].tot,''):'<span class="ds-nil">—</span>'}</td>`).join('')}
+          <td>${cell(r.tot,'')}</td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
-          ${months.map(m=>`<td>${cell(tcT[m.key],tcTime[m.key]?`:'')}</td>`).join('')}
+          ${months.map(m=>`<td>${cell(tcT[m.key],'')}</td>`).join('')}
           <td><div class="ds-amt">${fc(tGrand)}</div></td>
         </tr>
       </tbody>
     </table>`
     : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
 
-  // ── DRAFTING FEES ────────────────────────────────────────
   const draft = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
