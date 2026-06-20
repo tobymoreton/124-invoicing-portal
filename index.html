@@ -648,8 +648,10 @@ function renderDraftsman() {
       const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
       if (k !== mk || nameFromEmail(li.CompletedByEmail) !== name) return;
       const ref = li.OurRef || '__none__';
-      if (!timedByRef[ref]) timedByRef[ref] = { casename: li.CaseName || '—', timed: 0 };
-      timedByRef[ref].timed += li.Value || 0;
+      if (!timedByRef[ref]) timedByRef[ref] = { casename: li.CaseName || '—', timed: 0, timedVat: 0 };
+      const liVal = li.Value || 0;
+      timedByRef[ref].timed    += liVal;
+      timedByRef[ref].timedVat += liVal * 0.2;
     });
 
     // Merge: build a map keyed by ourref, combining drafting + timed
@@ -661,9 +663,10 @@ function renderDraftsman() {
       caseMap[key].vat      += r.vat;
     });
     Object.entries(timedByRef).forEach(([ref, t]) => {
-      if (ref === '__none__') return; // handle unlinked timed work below
+      if (ref === '__none__') return;
       if (!caseMap[ref]) caseMap[ref] = { casename: t.casename, ourref: ref, drafting: 0, timed: 0, vat: 0 };
       caseMap[ref].timed += t.timed;
+      caseMap[ref].vat   += t.timedVat;
     });
 
     const rows = Object.values(caseMap)
@@ -671,7 +674,8 @@ function renderDraftsman() {
       .sort((a, b) => b.total - a.total);
 
     // Unlinked timed work (no OurRef on line item)
-    const unlinkedTimed = timedByRef['__none__'] ? timedByRef['__none__'].timed : 0;
+    const unlinkedTimed    = timedByRef['__none__'] ? timedByRef['__none__'].timed    : 0;
+    const unlinkedTimedVat = timedByRef['__none__'] ? timedByRef['__none__'].timedVat : 0;
 
     const bRows = rows.map(r => `
       <tr>
@@ -688,8 +692,8 @@ function renderDraftsman() {
         <td colspan="2">Timed work (no case ref)</td>
         <td>—</td>
         <td>${fc(unlinkedTimed)}</td>
-        <td>—</td>
-        <td>${fc(unlinkedTimed)}</td>
+        <td>${fc(unlinkedTimedVat)}</td>
+        <td>${fc(unlinkedTimed + unlinkedTimedVat)}</td>
       </tr>` : '';
 
     return `<div class="ds-breakdown-inner" id="${bkdId}">
