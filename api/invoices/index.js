@@ -115,7 +115,7 @@ function normalise(item) {
     Cancelled:          f.Cancelled          || false,
     Invoicetype:        f.Invoicetype        || null,
     LAorIP:             f.LAorIP             || null,
-    DraftedByEmail:     f.DraftedByEmail     || null,
+    DraftedByEmail:     f.DraftedByEmail || f.DraftedByLookupValue || null,
     DraftingFeeElement: toNum(f.DraftingFeeElement),
     PaymentAmount1:     toNum(f.PaymentAmount1),
     PaymentAmount2:     toNum(f.PaymentAmount2),
