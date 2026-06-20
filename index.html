@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Portal — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --navy:        #1B2A4A;
+      --navy-mid:    #253A60;
+      --gold:        #C9A84C;
+      --gold-pale:   #F0E6C8;
+      --cream:       #F5F2EB;
+      --cream-dark:  #ECE8DF;
+      --white:       #FFFFFF;
+      --grey-mid:    #6B7280;
+      --grey-light:  #E5E1D6;
+      --grey-faint:  #F0EDE6;
+      --overdue:     #991B1B;
+      --overdue-bg:  #FEF2F2;
+      --paid:        #065F46;
+      --paid-bg:     #ECFDF5;
+      --partpaid:    #92400E;
+      --partpaid-bg: #FFFBEB;
+      --shadow:      0 1px 3px rgba(27,42,74,.10), 0 4px 16px rgba(27,42,74,.06);
+      --shadow-lg:   0 8px 32px rgba(27,42,74,.18);
+      --radius:      6px;
+      --drawer-w:    480px;
+      --transition:  .18s ease;
+    }
+
+    /* ─── RESET ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--cream);
+      color: var(--navy);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ─── NAV ────────────────────────────────────────────── */
+    .nav {
+      background: var(--navy);
+      padding: 0 28px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+    }
+    .nav-wordmark {
+      font-family: 'Spectral', serif;
+      font-weight: 300;
+      font-size: 15px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .nav-divider {
+      width: 1px;
+      height: 16px;
+      background: rgba(201,168,76,.35);
+      align-self: center;
+    }
+    .nav-title {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: rgba(245,242,235,.65);
+    }
+    .nav-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: rgba(201,168,76,.6);
+      letter-spacing: .04em;
+    }
+
+    /* ─── LEDGER STRIP ───────────────────────────────────── */
+    .ledger {
+      background: var(--navy);
+      border-top: 1px solid rgba(201,168,76,.18);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .ledger-cell {
+      padding: 18px 28px 20px;
+      position: relative;
+    }
+    .ledger-cell + .ledger-cell::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 16px;
+      bottom: 16px;
+      width: 1px;
+      background: rgba(201,168,76,.22);
+    }
+    .ledger-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(201,168,76,.7);
+      margin-bottom: 6px;
+    }
+    .ledger-value {
+      font-family: 'Spectral', serif;
+      font-weight: 300;
+      font-size: 28px;
+      color: var(--white);
+      line-height: 1;
+    }
+    .ledger-value.is-currency::before {
+      content: '£';
+      font-size: 16px;
+      vertical-align: top;
+      margin-top: 4px;
+      display: inline-block;
+      margin-right: 2px;
+      opacity: .7;
+    }
+    .ledger-value.overdue-alert { color: #FCA5A5; }
+    .ledger-value.overdue-alert.has-overdue {
+      color: #F87171;
+      animation: pulse-red 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-red {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .65; }
+    }
+    .ledger-sub {
+      font-size: 11px;
+      color: rgba(245,242,235,.38);
+      margin-top: 4px;
+      font-weight: 300;
+    }
+
+    /* ─── FILTERS ────────────────────────────────────────── */
+    .filters-bar {
+      background: var(--white);
+      border-bottom: 1px solid var(--grey-light);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 220px;
+      max-width: 380px;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: .38;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 34px;
+      border: 1px solid var(--grey-light);
+      border-radius: var(--radius);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 13px;
+      color: var(--navy);
+      background: var(--cream);
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .search-input:focus { border-color: var(--gold); background: var(--white); }
+    .search-input::placeholder { color: var(--grey-mid); }
+
+    .chip-group { display: flex; gap: 6px; align-items: center; }
+    .chip-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--grey-mid);
+      margin-right: 2px;
+    }
+    .chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--grey-light);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--grey-mid);
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--navy); color: var(--navy); }
+    .chip.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+    .chip.active.overdue-chip { background: var(--overdue); border-color: var(--overdue); }
+
+    .filter-count {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--grey-mid);
+      white-space: nowrap;
+    }
+    .filter-count strong { color: var(--navy); font-weight: 600; }
+
+    /* ─── TABLE ──────────────────────────────────────────── */
+    .main { padding: 20px 28px 60px; }
+    .table-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: var(--navy); }
+    th {
+      padding: 11px 16px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(245,242,235,.65);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: color var(--transition);
+    }
+    th:hover { color: var(--gold); }
+    th.sorted { color: var(--gold); }
+    th .sort-arrow { margin-left: 4px; opacity: .6; font-style: normal; }
+    th.num { text-align: right; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--grey-faint);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--cream); }
+    tbody tr.active-row { background: var(--gold-pale); }
+
+    td {
+      padding: 12px 16px;
+      vertical-align: middle;
+    }
+    td.mono {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+    td.num {
+      text-align: right;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    td.col-due-overdue {
+      color: var(--overdue);
+      font-weight: 500;
+    }
+    td.col-due-overdue::before { content: '⚠ '; font-size: 11px; }
+    td.col-outstanding-nonzero { color: var(--overdue); font-weight: 600; }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+    .chip-Paid        { background: var(--paid-bg);     color: var(--paid);     }
+    .chip-Outstanding { background: #EFF6FF;             color: #1D4ED8;         }
+    .chip-Overdue     { background: var(--overdue-bg);  color: var(--overdue);  }
+    .chip-PartPaid    { background: var(--partpaid-bg); color: var(--partpaid); }
+    .chip-unknown     { background: var(--grey-faint);  color: var(--grey-mid); }
+
+    .type-badge {
+      display: inline-flex;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .type-LA { background: #EFF6FF; color: #1E40AF; }
+    .type-IP { background: #F5F3FF; color: #5B21B6; }
+
+    /* ─── STATE BLOCKS ───────────────────────────────────── */
+    .state-block {
+      text-align: center;
+      padding: 64px 24px;
+      color: var(--grey-mid);
+    }
+    .state-block .state-icon { font-size: 36px; margin-bottom: 12px; }
+    .state-block h3 {
+      font-family: 'Spectral', serif;
+      font-weight: 300;
+      font-size: 20px;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .state-block p { font-size: 13px; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--grey-light);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── DRAWER ─────────────────────────────────────────── */
+    .drawer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(27,42,74,.25);
+      z-index: 300;
+      backdrop-filter: blur(2px);
+    }
+    .drawer-overlay.open { display: block; }
+    .drawer {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: var(--drawer-w);
+      max-width: 100vw;
+      background: var(--white);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
+      z-index: 400;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-head {
+      background: var(--navy);
+      padding: 20px 24px 18px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .drawer-close {
+      position: absolute;
+      top: 16px; right: 20px;
+      background: none;
+      border: none;
+      color: rgba(245,242,235,.55);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color var(--transition);
+    }
+    .drawer-close:hover { color: var(--gold); }
+    .drawer-inv-num {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--gold);
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }
+    .drawer-client {
+      font-family: 'Spectral', serif;
+      font-weight: 400;
+      font-size: 19px;
+      color: var(--white);
+      line-height: 1.3;
+      padding-right: 32px;
+    }
+    .drawer-case {
+      font-size: 12px;
+      color: rgba(245,242,235,.55);
+      margin-top: 4px;
+    }
+
+    .drawer-body { flex: 1; overflow-y: auto; }
+    .drawer-section {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--grey-faint);
+    }
+    .drawer-section:last-child { border-bottom: none; }
+    .drawer-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .dl { display: grid; grid-template-columns: 140px 1fr; row-gap: 8px; }
+    .dl dt { font-size: 11px; font-weight: 500; color: var(--grey-mid); padding-top: 2px; }
+    .dl dd { font-size: 13px; color: var(--navy); }
+    .dl dd.mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+    .dl dd.amount { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; }
+    .dl dd.overdue-text { color: var(--overdue); font-weight: 600; }
+    .dl dd.paid-text { color: var(--paid); }
+
+    .payment-slot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--grey-faint);
+      gap: 12px;
+    }
+    .payment-slot:last-child { border-bottom: none; }
+    .payment-slot-date { font-size: 12px; color: var(--grey-mid); }
+    .payment-slot-amount {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+    }
+    .no-payments { font-size: 13px; color: var(--grey-mid); font-style: italic; }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      td.col-case, th.col-case { display: none; }
+    }
+    @media (max-width: 900px) {
+      .ledger { grid-template-columns: repeat(2, 1fr); }
+      .main { padding: 16px; }
+      .drawer { width: 100vw; }
+    }
+    @media (max-width: 640px) {
+      .nav-meta { display: none; }
+      .ledger-value { font-size: 22px; }
+      .filters-bar { padding: 12px 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ledger-value.has-overdue { animation: none; }
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <div class="nav-divider"></div>
+    <span class="nav-title">Invoice Portal</span>
+  </div>
+  <span class="nav-meta" id="nav-date"></span>
+</nav>
+
+<!-- LEDGER STRIP -->
+<div class="ledger">
+  <div class="ledger-cell">
+    <div class="ledger-label">Total Outstanding</div>
+    <div class="ledger-value is-currency" id="stat-outstanding">—</div>
+    <div class="ledger-sub" id="stat-outstanding-count">&nbsp;</div>
+  </div>
+  <div class="ledger-cell">
+    <div class="ledger-label">Overdue Invoices</div>
+    <div class="ledger-value overdue-alert" id="stat-overdue-count">—</div>
+    <div class="ledger-sub" id="stat-overdue-sub">&nbsp;</div>
+  </div>
+  <div class="ledger-cell">
+    <div class="ledger-label">Overdue Amount</div>
+    <div class="ledger-value is-currency overdue-alert" id="stat-overdue-amount">—</div>
+    <div class="ledger-sub">past due date</div>
+  </div>
+  <div class="ledger-cell">
+    <div class="ledger-label">Paid This Month</div>
+    <div class="ledger-value is-currency" id="stat-paid-month">—</div>
+    <div class="ledger-sub" id="stat-paid-month-sub">&nbsp;</div>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters-bar">
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="6" cy="6" r="4.5" stroke="#1B2A4A" stroke-width="1.4"/>
+      <line x1="9.2" y1="9.2" x2="12.5" y2="12.5" stroke="#1B2A4A" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    <input type="text" class="search-input" id="search" placeholder="Search client, case, ref…" oninput="onSearch()" />
+  </div>
+
+  <div class="chip-group" id="status-chips">
+    <span class="chip-label">Status</span>
+    <button class="chip active" data-val="all" onclick="setStatus(this)">All</button>
+    <button class="chip" data-val="Outstanding" onclick="setStatus(this)">Outstanding</button>
+    <button class="chip overdue-chip" data-val="Overdue" onclick="setStatus(this)">Overdue</button>
+    <button class="chip" data-val="Part-Paid" onclick="setStatus(this)">Part-paid</button>
+    <button class="chip" data-val="Paid" onclick="setStatus(this)">Paid</button>
+  </div>
+
+  <div class="chip-group" id="type-chips">
+    <span class="chip-label">Type</span>
+    <button class="chip active" data-val="all" onclick="setType(this)">All</button>
+    <button class="chip" data-val="LA" onclick="setType(this)">LA</button>
+    <button class="chip" data-val="IP" onclick="setType(this)">IP</button>
+  </div>
+
+  <div class="filter-count" id="filter-count"></div>
+</div>
+
+<!-- TABLE -->
+<main class="main">
+  <div class="table-card">
+    <div class="table-wrap">
+      <table id="invoice-table">
+        <thead>
+          <tr>
+            <th onclick="sortBy('OrderDetails',this)">Invoice # <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('VendorName',this)">Client <span class="sort-arrow">↕</span></th>
+            <th class="col-case" onclick="sortBy('Casename',this)">Case <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('Ourref',this)">Our Ref <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('InvoiceDate',this)">Inv. Date <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('DueDate',this)" class="sorted">Due Date <span class="sort-arrow">↑</span></th>
+            <th class="num" onclick="sortBy('AmountDue',this)">Amount Due <span class="sort-arrow">↕</span></th>
+            <th class="num" onclick="sortBy('AmountOutstanding',this)">Outstanding <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('Status',this)">Status <span class="sort-arrow">↕</span></th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="10">
+            <div class="state-block">
+              <div class="spinner"></div>
+              <p>Loading invoices…</p>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Invoice detail">
+  <div class="drawer-head">
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Close">✕</button>
+    <div class="drawer-inv-num" id="d-inv-num"></div>
+    <div class="drawer-client"  id="d-client"></div>
+    <div class="drawer-case"    id="d-case"></div>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+const API = '/api/invoices';
+let allInvoices = [];
+let sortField   = 'DueDate';
+let sortDir     = 1;   // 1=asc, -1=desc
+let filters     = { search: '', status: 'all', type: 'all' };
+let activeId    = null;
+
+// ─── BOOT ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const d = new Date();
+  document.getElementById('nav-date').textContent =
+    d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
+  load();
+});
+
+async function load() {
+  try {
+    const res = await fetch(API, { headers: { Accept: 'application/json' } });
+    if (!res.ok) { const t = await res.text(); throw new Error(`API ${res.status}: ${t.slice(0,160)}`); }
+    allInvoices = await res.json();
+    renderStats();
+    renderTable();
+  } catch(e) {
+    renderError(e.message);
+  }
+}
+
+// ─── STATS ───────────────────────────────────────────────
+function renderStats() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nowY  = today.getFullYear(), nowM = today.getMonth();
+
+  let totalOut = 0, totalOutN = 0;
+  let overdueAmt = 0, overdueN = 0;
+  let paidMonth = 0, paidMonthN = 0;
+
+  allInvoices.forEach(inv => {
+    const due  = inv.DueDate    ? new Date(inv.DueDate)    : null;
+    const invD = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    const status = normalizeStatus(inv, today);
+    const out  = parseFloat(inv.AmountOutstanding) || 0;
+    const amt  = parseFloat(inv.AmountDue)         || 0;
+
+    if (status !== 'Paid') { totalOut += out; totalOutN++; }
+    if (status === 'Overdue') { overdueAmt += out; overdueN++; }
+    if (status === 'Paid' && invD && invD.getFullYear() === nowY && invD.getMonth() === nowM) {
+      paidMonth += amt; paidMonthN++;
+    }
+  });
+
+  el('stat-outstanding',       fmt(totalOut));
+  el('stat-outstanding-count', `${totalOutN} invoice${totalOutN !== 1 ? 's' : ''}`);
+  el('stat-overdue-count',     String(overdueN));
+  el('stat-overdue-sub',       overdueN > 0 ? 'need attention' : 'none overdue ✓');
+  el('stat-overdue-amount',    fmt(overdueAmt));
+  el('stat-paid-month',        fmt(paidMonth));
+  el('stat-paid-month-sub',    `${paidMonthN} invoice${paidMonthN !== 1 ? 's' : ''}`);
+
+  document.querySelectorAll('.overdue-alert').forEach(e =>
+    e.classList.toggle('has-overdue', overdueN > 0)
+  );
+}
+
+// ─── TABLE ───────────────────────────────────────────────
+function renderTable() {
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const filtered = applyFilters(today);
+  const sorted   = applySort(filtered, today);
+
+  el('filter-count', `<strong>${filtered.length}</strong> of ${allInvoices.length}`);
+
+  const tbody = document.getElementById('table-body');
+  if (sorted.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="state-block">
+      <div class="state-icon">📋</div>
+      <h3>No invoices found</h3>
+      <p>Try adjusting your filters or search.</p>
+    </div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sorted.map(inv => {
+    const status  = normalizeStatus(inv, today);
+    const isOver  = status === 'Overdue';
+    const out     = parseFloat(inv.AmountOutstanding) || 0;
+    const laip    = (inv.LAorIP || '').trim();
+    const isAct   = inv._id === activeId;
+
+    return `<tr class="${isAct ? 'active-row' : ''}"
+        onclick="openDrawer('${esc(inv._id)}')"
+        tabindex="0"
+        onkeydown="if(event.key==='Enter')openDrawer('${esc(inv._id)}')">
+      <td class="mono">${esc(inv.OrderDetails||'—')}</td>
+      <td>${esc(inv.VendorName||'—')}</td>
+      <td class="col-case">${esc(inv.Casename||'—')}</td>
+      <td class="mono">${esc(inv.Ourref||'—')}</td>
+      <td>${fmtDate(inv.InvoiceDate)}</td>
+      <td class="${isOver?'col-due-overdue':''}">${fmtDate(inv.DueDate)}</td>
+      <td class="num">${fmtAmt(inv.AmountDue)}</td>
+      <td class="num${out>0?' col-outstanding-nonzero':''}">${fmtAmt(inv.AmountOutstanding)}</td>
+      <td><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></td>
+      <td>${laip ? `<span class="type-badge type-${laip==='LA'?'LA':'IP'}">${esc(laip)}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── DRAWER ──────────────────────────────────────────────
+function openDrawer(id) {
+  activeId = id;
+  const inv = allInvoices.find(i => i._id === id);
+  if (!inv) return;
+
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const status = normalizeStatus(inv, today);
+  const isOver = status === 'Overdue';
+  const isPaid = status === 'Paid';
+
+  el('d-inv-num', `Invoice ${esc(inv.OrderDetails||'—')}`);
+  el('d-client',  esc(inv.VendorName||'Unknown client'));
+  el('d-case',    esc(inv.Casename||''));
+
+  const slots = [1,2,3].map(i => {
+    const a = parseFloat(inv[`PaymentAmount${i}`]);
+    const d = inv[`PaymentDate${i}`];
+    return a > 0 ? `<div class="payment-slot">
+      <div class="payment-slot-date">${d ? fmtDate(d) : 'Date not recorded'}</div>
+      <div class="payment-slot-amount">£${a.toFixed(2)}</div>
+    </div>` : '';
+  }).filter(Boolean).join('');
+
+  el('drawer-body', `
+    <div class="drawer-section">
+      <div class="drawer-section-title">Amounts</div>
+      <div class="dl">
+        <dt>Amount Due</dt>   <dd class="amount">${fmtAmtFull(inv.AmountDue)}</dd>
+        <dt>Outstanding</dt>  <dd class="amount${isOver?' overdue-text':isPaid?' paid-text':''}">${fmtAmtFull(inv.AmountOutstanding)}</dd>
+        <dt>Status</dt>       <dd><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></dd>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Dates</div>
+      <div class="dl">
+        <dt>Invoice Date</dt> <dd>${fmtDate(inv.InvoiceDate)}</dd>
+        <dt>Due Date</dt>     <dd class="${isOver?'overdue-text':''}">${fmtDate(inv.DueDate)}</dd>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Matter</div>
+      <div class="dl">
+        <dt>Our Ref</dt>      <dd class="mono">${esc(inv.Ourref||'—')}</dd>
+        <dt>Case Name</dt>    <dd>${esc(inv.Casename||'—')}</dd>
+        <dt>Invoice Type</dt> <dd>${esc(inv.Invoicetype||'—')}</dd>
+        <dt>LA / IP</dt>      <dd>${inv.LAorIP ? `<span class="type-badge type-${inv.LAorIP==='LA'?'LA':'IP'}">${esc(inv.LAorIP)}</span>` : '—'}</dd>
+        <dt>Case ID</dt>      <dd class="mono">${esc(String(inv.Case_x0020_ID||'—'))}</dd>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Payment History</div>
+      ${slots || '<p class="no-payments">No payments recorded.</p>'}
+    </div>
+  `);
+
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderTable();
+}
+
+function closeDrawer() {
+  activeId = null;
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  renderTable();
+}
+
+// ─── FILTER / SORT ───────────────────────────────────────
+function applyFilters(today) {
+  const s = filters.search.toLowerCase().trim();
+  return allInvoices.filter(inv => {
+    if (s) {
+      const hay = [inv.VendorName, inv.Casename, inv.OrderDetails, inv.Ourref]
+        .map(v => (v||'').toLowerCase()).join(' ');
+      if (!hay.includes(s)) return false;
+    }
+    if (filters.status !== 'all' && normalizeStatus(inv, today) !== filters.status) return false;
+    if (filters.type !== 'all' && (inv.LAorIP||'').trim() !== filters.type) return false;
+    return true;
+  });
+}
+
+function applySort(invoices, today) {
+  const DATE_FIELDS = ['DueDate','InvoiceDate','PaymentDate1','PaymentDate2','PaymentDate3'];
+  const NUM_FIELDS  = ['AmountDue','AmountOutstanding','PaymentAmount1','PaymentAmount2','PaymentAmount3'];
+  return [...invoices].sort((a, b) => {
+    let av = a[sortField], bv = b[sortField];
+    if (DATE_FIELDS.includes(sortField)) {
+      av = new Date(av||0).getTime(); bv = new Date(bv||0).getTime();
+    } else if (NUM_FIELDS.includes(sortField)) {
+      av = parseFloat(av)||0; bv = parseFloat(bv)||0;
+    } else {
+      av = (av||'').toLowerCase(); bv = (bv||'').toLowerCase();
+    }
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+}
+
+function onSearch() { filters.search = document.getElementById('search').value; renderTable(); }
+
+function setStatus(btn) {
+  filters.status = btn.dataset.val;
+  document.querySelectorAll('#status-chips .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function setType(btn) {
+  filters.type = btn.dataset.val;
+  document.querySelectorAll('#type-chips .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function sortBy(field, th) {
+  if (sortField === field) sortDir *= -1; else { sortField = field; sortDir = 1; }
+  document.querySelectorAll('th').forEach(h => { h.classList.remove('sorted'); h.querySelector('.sort-arrow').textContent = '↕'; });
+  th.classList.add('sorted');
+  th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '↑' : '↓';
+  renderTable();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────
+function normalizeStatus(inv, today) {
+  // ⚠️ VERIFY: check these match the actual SP Invoice Library Status field choices.
+  // Adjust if SP uses e.g. "Part Paid" vs "Part-Paid" or different capitalisation.
+  const raw  = (inv.Status||'').trim();
+  const due  = inv.DueDate ? new Date(inv.DueDate) : null;
+  if (raw === 'Paid') return 'Paid';
+  if (due && today && due < today) return 'Overdue';
+  if (raw.toLowerCase().includes('part')) return 'Part-Paid';
+  return raw || 'Outstanding';
+}
+
+function chipClass(s) {
+  return { Paid:'chip-Paid', Outstanding:'chip-Outstanding', Overdue:'chip-Overdue', 'Part-Paid':'chip-PartPaid' }[s] || 'chip-unknown';
+}
+
+function fmt(n)       { return (n||0).toLocaleString('en-GB', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtAmt(v)    { const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtAmtFull(v){ const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtDate(v)   { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function el(id,html)  { const e=document.getElementById(id); if(e)e.innerHTML=html; }
+function esc(s)       { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderError(msg) {
+  document.getElementById('table-body').innerHTML = `<tr><td colspan="10">
+    <div class="state-block">
+      <div class="state-icon">⚠</div>
+      <h3>Could not load invoices</h3>
+      <p>${esc(msg)}</p>
+    </div>
+  </td></tr>`;
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+</body>
+</html>
