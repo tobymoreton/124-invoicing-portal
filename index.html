@@ -645,7 +645,9 @@ function renderDraftsman() {
     if (k !== mk) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
-    totals[name].timed += li.Value||0;
+    const liVal = li.Value||0;
+    totals[name].timed += liVal;
+    totals[name].vat   += liVal * 0.2;
   });
   const totRows = Object.entries(totals)
     .map(([name,v])=>([name,{...v,net:v.drafting+v.timed,total:v.drafting+v.timed+v.vat}]))
