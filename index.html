@@ -144,7 +144,13 @@
     .ds-sub-header.collapsed .ds-toggle{transform:rotate(-90deg);}
     .ds-sub-body{overflow:hidden;transition:max-height .25s ease;}
     .ds-sub-body.collapsed{max-height:0!important;}
-    @media(max-width:1100px){td.col-case,th.col-case{display:none;}}
+    tbody tr:hover .stmt-btn{opacity:1;}
+    .stmt-btn{opacity:0;transition:opacity var(--transition);background:var(--navy);color:var(--gold);border:none;border-radius:3px;padding:3px 8px;font-size:10px;font-weight:600;letter-spacing:.05em;cursor:pointer;white-space:nowrap;}
+    .stmt-btn:hover{background:var(--gold);color:var(--navy);}
+    @media print{
+      .nav,.filters-bar,.main,.ds-section{display:none!important;}
+      .stmt-print{display:block!important;}
+    }
     @media(max-width:900px){.ledger{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}.drawer{width:100vw;}}
     @media(max-width:640px){.nav-meta{display:none;}.ledger-value{font-size:22px;}.filters-bar{padding:12px 16px;}}
     @media(prefers-reduced-motion:reduce){.ledger-value.has-overdue{animation:none;}*{transition:none!important;animation:none!important;}}
@@ -232,6 +238,7 @@
             <th class="num" onclick="sortBy('AmountOutstanding',this)">Outstanding <span class="sort-arrow">↕</span></th>
             <th onclick="sortBy('Status',this)">Status <span class="sort-arrow">↕</span></th>
             <th>Type</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="table-body">
@@ -361,6 +368,7 @@ function renderTable() {
       <td class="num${out>0?' col-outstanding-nonzero':''}">${fmtAmt(inv.AmountOutstanding)}</td>
       <td><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></td>
       <td>${laip?`<span class="type-badge type-${laip==='LA'?'LA':'IP'}">${esc(laip)}</span>`:'—'}</td>
+      <td><button class="stmt-btn" onclick="event.stopPropagation();printStatement('${esc(inv.VendorName||'')}')">Statement</button></td>
     </tr>`;
   }).join('');
 }
@@ -655,6 +663,112 @@ function renderDraftsman() {
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
+
+function printStatement(clientName) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const invoices = allInvoices.filter(inv => {
+    const s = normalizeStatus(inv, today);
+    return inv.VendorName === clientName && (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid');
+  }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
+  if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+
+  const groups = {};
+  invoices.forEach(inv => {
+    const g = (inv.LAorIP||'').trim() === 'LA' ? 'Legal Aid' : 'Inter Partes';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(inv);
+  });
+
+  const totalOutstanding = invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0);
+  const stmtDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+  const f = v => { const n=parseFloat(v); return isNaN(n)?'£0.00':'£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
+  const fd = v => { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+
+  const groupHTML = Object.entries(groups).map(([grp, invs]) => {
+    const rows = invs.map((inv,i) => {
+      const paid = [1,2,3].reduce((s,n)=>s+(parseFloat(inv[`PaymentAmount${n}`])||0),0);
+      const bg = i%2===1?'background:#f5f5f8;':'';
+      return `<tr style="${bg}">
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.OrderDetails||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Ourref||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Theirref||'None'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;max-width:220px;">${inv.Casename||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:center;">${fd(inv.InvoiceDate)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${f(inv.AmountDue)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${paid>0?f(paid):'£0.00'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;font-weight:700;color:#1B2A4A;">${f(inv.AmountOutstanding)}</td>
+      </tr>`;
+    }).join('');
+    const grpTotal = invs.reduce((s,inv)=>s+(parseFloat(inv.AmountOutstanding)||0),0);
+    return `<div style="margin-bottom:28px;">
+      <div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #C9A84C;padding-bottom:4px;margin-bottom:0;">${grp}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#1B2A4A;">
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE NO</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">YOUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">CASE</th>
+          <th style="padding:8px 10px;text-align:center;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE DATE</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">AMOUNT INVOICED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">PAYMENTS RECEIVED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUTSTANDING (£)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f0ede6;">
+          <td colspan="7" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
+          <td style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;color:#1B2A4A;">${f(grpTotal)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Client Statement — ${clientName}</title>
+  <style>
+    @page{margin:20mm 18mm;}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1B2A4A;margin:0;padding:0;font-size:13px;}
+    @media print{.no-print{display:none;}}
+  </style>
+</head><body>
+  <div class="no-print" style="background:#1B2A4A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;">
+    <span style="color:#C9A84C;font-weight:600;font-size:14px;">Client Statement — ${clientName}</span>
+    <button onclick="window.print()" style="background:#C9A84C;color:#1B2A4A;border:none;padding:8px 20px;font-weight:700;cursor:pointer;border-radius:4px;font-size:13px;">Print / Save as PDF</button>
+  </div>
+  <div style="padding:20px 24px;">
+    <table style="width:100%;margin-bottom:24px;"><tr>
+      <td style="vertical-align:top;width:50%;">
+        <img src="/logo.png" style="height:60px;" alt="TMC Legal" />
+        <div style="margin-top:12px;">
+          <div style="font-size:18px;font-weight:700;color:#1B2A4A;margin-bottom:2px;">Client Statement</div>
+          <div style="font-size:14px;color:#555;">${clientName}</div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;font-size:12px;line-height:1.7;color:#1B2A4A;">
+        Fennels Lodge<br>St Peters Close<br>Loudwater<br>Buckinghamshire<br>HP11 1JT
+        <br><br>
+        Tel: 01628 526 236<br>
+        Email: danielle@tmclegal.co.uk
+      </td>
+    </tr></table>
+    <div style="font-size:11px;color:#555;margin-bottom:20px;">Statement date: ${stmtDate}</div>
+    ${groupHTML}
+    <table style="width:100%;margin-top:16px;"><tr>
+      <td style="background:#1B2A4A;padding:12px 16px;text-align:right;">
+        <span style="color:rgba(255,255,255,.7);font-size:12px;font-weight:600;letter-spacing:.08em;">TOTAL OUTSTANDING</span>
+        <span style="color:#C9A84C;font-size:20px;font-weight:700;margin-left:20px;font-family:Georgia,serif;">${f(totalOutstanding)}</span>
+      </td>
+    </tr></table>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e1d6;font-size:11px;color:#888;">
+      <strong style="color:#1B2A4A;">Payment Details:</strong> Please make cheques payable to T M Costings or bank transfer to Sort Code: 40-47-84 | Account: 61842959 | Reference: your invoice number.
+    </div>
+  </div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=1000,height=800');
+  w.document.write(html);
+  w.document.close();
+}
 </script>
 </body>
 </html>
