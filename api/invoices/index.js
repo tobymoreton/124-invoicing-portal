@@ -2,38 +2,25 @@ const https  = require('https');
 const { URL } = require('url');
 
 const LIST_GUID = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited';
 
 const SELECT_FIELDS = [
-  'id',
-  'OrderDetails',
-  'VendorName',
-  'Casename',
-  'Ourref',
-  'InvoiceDate',
-  'DueDate',
-  'AmountDue',
-  'AmountOutstanding',
-  'Status',
-  'Invoicetype',
-  'LAorIP',
-  'PaymentAmount1',
-  'PaymentAmount2',
-  'PaymentAmount3',
-  'PaymentDate1',
-  'PaymentDate2',
-  'PaymentDate3',
-  'Case_x0020_ID',
+  'id','OrderDetails','VendorName','Casename','Ourref',
+  'InvoiceDate','DueDate','AmountDue','AmountOutstanding',
+  'Status','Invoicetype','LAorIP',
+  'PaymentAmount1','PaymentAmount2','PaymentAmount3',
+  'PaymentDate1','PaymentDate2','PaymentDate3','Case_x0020_ID',
 ].join(',');
 
 module.exports = async function (context, req) {
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, SITE_ID } = process.env;
-  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !SITE_ID) {
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
     return;
   }
   try {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const invoices = await fetchAllInvoices(token, SITE_ID);
+    const invoices = await fetchAllInvoices(token);
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -76,8 +63,8 @@ function getToken(tenantId, clientId, clientSecret) {
   });
 }
 
-async function fetchAllInvoices(token, siteId) {
-  const base = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_GUID}/items` +
+async function fetchAllInvoices(token) {
+  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
                `?$expand=fields($select=${SELECT_FIELDS})&$top=500`;
   let url = base, all = [];
   while (url) {
