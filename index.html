@@ -133,6 +133,19 @@
     .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;font-size:13px;}
     .ds-table tbody tr:nth-child(even){background:var(--grey-faint);}
     .ds-table tbody tr:hover{background:var(--cream);}
+    .ds-breakdown-row td{padding:0!important;background:var(--cream-dark)!important;}
+    .ds-breakdown-row:hover{background:var(--cream-dark)!important;}
+    .ds-breakdown-inner{overflow:hidden;transition:max-height .25s ease;max-height:0;}
+    .ds-breakdown-inner.open{max-height:800px;}
+    .ds-breakdown-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .ds-breakdown-table th{padding:7px 12px 7px 32px;text-align:right;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);font-weight:600;background:var(--cream-dark);border-bottom:1px solid var(--grey-light);}
+    .ds-breakdown-table th:first-child{text-align:left;}
+    .ds-breakdown-table td{padding:6px 12px 6px 32px;text-align:right;border-bottom:1px solid var(--grey-faint);color:var(--navy);font-family:'IBM Plex Mono',monospace;font-size:12px;}
+    .ds-breakdown-table td:first-child{text-align:left;font-family:'IBM Plex Sans',sans-serif;font-size:12px;}
+    .ds-breakdown-table tr:last-child td{border-bottom:none;}
+    .ds-row-clickable{cursor:pointer;}
+    .ds-row-clickable td.ds-name::after{content:' ▸';font-size:10px;color:var(--gold);margin-left:6px;transition:transform .2s ease;display:inline-block;}
+    .ds-row-clickable.expanded td.ds-name::after{content:' ▾';}
     .ds-table tbody tr:last-child td{border-bottom:none;}
     .ds-total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);border-bottom:none;}
     .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
@@ -611,6 +624,52 @@ function renderDraftsman() {
     if (name !== 'Unassigned' && medalIdx < 3) { medalMap[name] = MEDALS[medalIdx++]; }
   });
 
+  const buildBreakdown = (name, v) => {
+    const bkdId = 'bkd-' + name.replace(/\s+/g, '-');
+    const caseInvs = allInvoices.filter(inv => {
+      const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+      if (!d) return false;
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      return k === mk && nameFromEmail(inv.DraftedByEmail) === name;
+    }).map(inv => ({
+      casename: inv.Casename || '—',
+      ourref:   inv.Ourref   || '—',
+      drafting: parseFloat(inv.DraftingFeeElement) || 0,
+      vat:      parseFloat(inv.VAT) || 0,
+      get total() { return this.drafting + this.vat; },
+    })).sort((a, b) => b.total - a.total);
+    const bRows = caseInvs.map(r => `
+      <tr>
+        <td>${esc(r.casename)}</td>
+        <td>${esc(r.ourref)}</td>
+        <td>${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
+        <td>—</td>
+        <td>${r.vat > 0 ? fc(r.vat) : '—'}</td>
+        <td>${r.total > 0 ? fc(r.total) : '—'}</td>
+      </tr>`).join('');
+    const timedRow = v.timed > 0 ? `
+      <tr style="font-style:italic;color:var(--grey-mid);">
+        <td colspan="2">Timed work</td>
+        <td>—</td>
+        <td>${fc(v.timed)}</td>
+        <td>—</td>
+        <td>${fc(v.timed)}</td>
+      </tr>` : '';
+    return `<div class="ds-breakdown-inner" id="${bkdId}">
+      <table class="ds-breakdown-table">
+        <thead><tr>
+          <th style="text-align:left">Case</th>
+          <th style="text-align:left">Our Ref</th>
+          <th>Drafting</th>
+          <th>Timed</th>
+          <th>VAT</th>
+          <th>Total</th>
+        </tr></thead>
+        <tbody>${bRows}${timedRow}</tbody>
+      </table>
+    </div>`;
+  };
+
   const totalHTML = totRows.length ? `
     <table class="ds-table">
       <thead><tr>
@@ -622,14 +681,18 @@ function renderDraftsman() {
         <th>Total (inc. VAT)</th>
       </tr></thead>
       <tbody>
-        ${totRows.map(([name,v])=>`<tr>
-          <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
-          <td>${cell(v.drafting)}</td>
-          <td>${cell(v.timed)}</td>
-          <td><div class="ds-amt">${fc(v.net)}</div></td>
-          <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
-          <td><div class="ds-amt">${fc(v.total)}</div></td>
-        </tr>`).join('')}
+        ${totRows.map(([name,v])=>{
+          const bkdId = 'bkd-' + name.replace(/\s+/g,'-');
+          return `<tr class="ds-row-clickable" onclick="toggleBreakdown('${bkdId}',this)">
+            <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
+            <td>${cell(v.drafting)}</td>
+            <td>${cell(v.timed)}</td>
+            <td><div class="ds-amt">${fc(v.net)}</div></td>
+            <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
+            <td><div class="ds-amt">${fc(v.total)}</div></td>
+          </tr>
+          <tr class="ds-breakdown-row"><td colspan="6">${buildBreakdown(name,v)}</td></tr>`;
+        }).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
           <td><div class="ds-amt">${fc(tTotDrafting)}</div></td>
@@ -660,6 +723,14 @@ function renderDraftsman() {
     <div class="ds-sub-body collapsed" id="ds-draft-body" style="max-height:0">
       <div class="ds-table-wrap">${draftHTML}</div>
     </div>`;
+}
+
+function toggleBreakdown(id, row) {
+  const inner = document.getElementById(id);
+  if (!inner) return;
+  const isOpen = inner.classList.contains('open');
+  inner.classList.toggle('open', !isOpen);
+  row.classList.toggle('expanded', !isOpen);
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
