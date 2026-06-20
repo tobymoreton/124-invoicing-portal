@@ -797,8 +797,7 @@ function setType(btn) {
 
 function sortBy(field, th) {
   if (sortField === field) sortDir *= -1; else { sortField = field; sortDir = 1; }
-  document.querySelectorAll('th').forEach(h => { h.classList.remove('sorted'); h.querySelector('.sort-arrow').textContent = '↕'; });
-  th.classList.add('sorted');
+document.querySelectorAll('th').forEach(h => { h.classList.remove('sorted'); const a = h.querySelector('.sort-arrow'); if (a) a.textContent = '↕'; });   th.classList.add('sorted');
   th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '↑' : '↓';
   renderTable();
 }
@@ -812,7 +811,7 @@ function normalizeStatus(inv, today) {
   if (raw === 'Paid') return 'Paid';
   if (due && today && due < today) return 'Overdue';
   if (raw.toLowerCase().includes('part')) return 'Part-Paid';
-  return raw || 'Outstanding';
+  return 'Outstanding';
 }
 
 function chipClass(s) {
