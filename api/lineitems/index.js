@@ -1,53 +1,49 @@
 /**
  * P124 — Invoicing Portal
- * Azure Function: /api/invoices
+ * Azure Function: /api/lineitems
  *
- * Fetches all items from the SP Invoice Library using client-credentials
- * (app-only Graph auth). Returns a normalised JSON array.
+ * Fetches all billable items from the SP Invoice | Line Items list using
+ * client-credentials (app-only Graph auth). Returns a normalised JSON array.
  *
  * ⚠️  READ-ONLY — no write operations in this function.
- * ⚠️  AmountOutstanding is a ReadOnly/calculated SP field — computed client-side instead.
- * ⚠️  Do NOT include Update, Cancel, or EditMetadata in any $select —
- *     these are Infowise action triggers on this list.
- * ⚠️  DraftedBy (User field) returns null via Graph app-only — use DraftedByEmail instead.
+ * ⚠️  CompletedBy (User field) returns null via Graph app-only auth.
+ *     Use CompletedByEmail (Text mirror) instead — populated by PA099.12.
+ * ⚠️  Value (Calculated field) returns null via Graph.
+ *     Use ValueMirror (Currency mirror) instead — populated by PA099.12.
  *
- * List: Invoice Library
- * GUID: 5c366b19-0da9-4be9-b68f-60e6a0209cdb
+ * Required App Settings (same as /api/invoices):
+ *   TENANT_ID      — Entra tenant ID (GUID)
+ *   CLIENT_ID      — App registration client ID
+ *   CLIENT_SECRET  — App registration client secret
+ *   SITE_ID        — SharePoint site ID
+ *
+ * List: Invoice | Line Items
+ * GUID: 496468a5-e2ed-48db-8826-58cb08844eee
  */
 
 const https  = require('https');
 const { URL } = require('url');
 
-const LIST_GUID  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
-const SITE_PATH  = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const LIST_GUID = '496468a5-e2ed-48db-8826-58cb08844eee';
 
+// Fields to retrieve
+// CompletedByEmail and ValueMirror are mirror fields populated by PA099.12
+// CompletedBy and Value return null via Graph app-only — do not use
 const SELECT_FIELDS = [
   'id',
-  'OrderDetails',
-  'VendorName',
-  'Casename',
-  'Ourref',
-  'InvoiceDate',
-  'DueDate',
-  'AmountDue',
-  'AmountOutstanding',    // ReadOnly: explicit $select required
-  'Status',
-  'Status_Text',          // Mirror of calculated Status field — use this
-  'Invoicetype',
-  'LAorIP',
-  'PaymentAmount1',
-  'PaymentAmount2',
-  'PaymentAmount3',
-  'PaymentDate1',
-  'PaymentDate2',
-  'PaymentDate3',
-  'Case_x0020_ID',
-  'DraftedByEmail',       // Mirror of DraftedBy/Email — use this, not DraftedBy
-  'DraftingFeeElement',   // Drafting fee portion of invoice
-  'VAT',                  // VAT amount
-  'Net',                  // Net amount (ex VAT)
-  'Cancelled',            // Boolean — filter these out
-  'Theirref',             // Client's own reference
+  'field_1',              // Work done
+  'field_2',              // Time spent (units)
+  'field_3',              // Rate (£/hr)
+  'ProRataApportionment', // Percentage (e.g. 57 = 57%)
+  'CompletedByEmail',     // Mirror of CompletedBy/Email — use this, not CompletedBy
+  'ValueMirror',          // Mirror of Value calculated field — use this, not Value
+  'InvoiceIDRef',         // Links to Invoice Library OrderDetails (invoice number)
+  'CaseName',             // Case name
+  'field_5',              // Our reference
+  'Completed_x0020_on',   // Date completed
+  'BillableYorN_x0020__x2753_', // Billable boolean
+  'InvoiceType',          // Choice: Time Only, Drafting & Time
+  'InvoiceDate',          // Invoice date
 ].join(',');
 
 const ADMIN_EMAILS = [
@@ -63,32 +59,39 @@ function getCallerEmail(req) {
     if (!header) return null;
     const decoded = Buffer.from(header, 'base64').toString('utf8');
     const principal = JSON.parse(decoded);
+    // userDetails is the most reliable field for AAD (always contains UPN/email)
+    if (principal.userDetails) return principal.userDetails.toLowerCase();
+    // Fallback: hunt through claims
     const claim = (principal.claims || []).find(
       c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+        || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
     );
     return claim ? claim.val.toLowerCase() : null;
   } catch { return null; }
 }
 
 module.exports = async function (context, req) {
-  context.log('P124 /api/invoices called');
+  context.log('P124 /api/lineitems called');
 
-  // Identity check — admins only
+  // Resolve caller identity
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — invoice data is restricted to administrators.' };
+  const isAdmin     = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+
+  // Non-admins must be authenticated
+  if (!callerEmail) {
+    context.res = { status: 403, body: 'Forbidden — authentication required.' };
     return;
   }
 
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
-  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, SITE_ID } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !SITE_ID) {
     context.res = { status: 500, body: 'Missing required app settings.' };
     return;
   }
 
   try {
-    const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const invoices = await fetchAllInvoices(token);
+    const token     = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    const lineItems = await fetchAllLineItems(token, SITE_ID, isAdmin, callerEmail);
 
     context.res = {
       status: 200,
@@ -96,10 +99,10 @@ module.exports = async function (context, req) {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
       },
-      body: JSON.stringify(invoices),
+      body: JSON.stringify(lineItems),
     };
   } catch (err) {
-    context.log.error('Error fetching invoices:', err.message);
+    context.log.error('Error fetching line items:', err.message);
     context.res = { status: 500, body: `Error: ${err.message}` };
   }
 };
@@ -142,9 +145,14 @@ function getToken(tenantId, clientId, clientSecret) {
 }
 
 // ─── FETCH ALL (handles pagination) ──────────────────────
-async function fetchAllInvoices(token) {
-  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields($select=${SELECT_FIELDS})&$top=500`;
+async function fetchAllLineItems(token, siteId, isAdmin, callerEmail) {
+  // Admins get all billable items; draftsmen get only their own
+  const emailFilter = isAdmin
+    ? 'fields/BillableYorN_x0020__x2753_ eq true'
+    : `fields/BillableYorN_x0020__x2753_ eq true and fields/CompletedByEmail eq '${callerEmail}'`;
+
+  const base = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${LIST_GUID}/items` +
+               `?$expand=fields($select=${SELECT_FIELDS})&$filter=${encodeURIComponent(emailFilter)}&$top=500`;
 
   let url = base;
   let all = [];
@@ -155,13 +163,6 @@ async function fetchAllInvoices(token) {
     all = all.concat(items);
     url = page['@odata.nextLink'] || null;
   }
-
-  // Sort by DueDate asc — null dates go last
-  all.sort((a, b) => {
-    const da = a.DueDate ? new Date(a.DueDate).getTime() : Infinity;
-    const db = b.DueDate ? new Date(b.DueDate).getTime() : Infinity;
-    return da - db;
-  });
 
   return all;
 }
@@ -199,50 +200,29 @@ function graphGet(url, token) {
 }
 
 // ─── NORMALISE ───────────────────────────────────────────
+// Flattens a SP list item into a plain object.
+// Uses mirror fields (CompletedByEmail, ValueMirror) not the originals.
 function normalise(item) {
   const f = item.fields || {};
   return {
-    _id:                String(item.id),
-    OrderDetails:       f.OrderDetails        || null,
-    VendorName:         f.VendorName          || null,
-    Casename:           f.Casename            || null,
-    Ourref:             f.Ourref              || null,
-    InvoiceDate:        f.InvoiceDate         || null,
-    DueDate:            f.DueDate             || null,
-    AmountDue:          toNum(f.AmountDue),
-    AmountOutstanding:  computeOutstanding(f),
-    Status:             f.Status              || null,
-    Status_Text:        f.Status_Text         || null,
-    Invoicetype:        f.Invoicetype         || null,
-    LAorIP:             f.LAorIP              || null,
-    PaymentAmount1:     toNum(f.PaymentAmount1),
-    PaymentAmount2:     toNum(f.PaymentAmount2),
-    PaymentAmount3:     toNum(f.PaymentAmount3),
-    PaymentDate1:       f.PaymentDate1        || null,
-    PaymentDate2:       f.PaymentDate2        || null,
-    PaymentDate3:       f.PaymentDate3        || null,
-    Case_x0020_ID:      f.Case_x0020_ID       || null,
-    DraftedByEmail:     f.DraftedByEmail      || null,
-    DraftingFeeElement: toNum(f.DraftingFeeElement),
-    VAT:                toNum(f.VAT),
-    Net:                toNum(f.Net),
-    Cancelled:          f.Cancelled           || false,
-    Theirref:           f.Theirref            || null,
+    _id:               String(item.id),
+    WorkDone:          f.field_1                          || null,
+    TimeSpent:         toNum(f.field_2),                           // units (1 unit = 6 min)
+    Rate:              toNum(f.field_3),                           // £/hr
+    ProRata:           toNum(f.ProRataApportionment),              // percentage
+    CompletedByEmail:  f.CompletedByEmail                 || null, // mirror — not CompletedBy
+    Value:             toNum(f.ValueMirror),                       // mirror — not Value
+    InvoiceIDRef:      f.InvoiceIDRef                     || null,
+    CaseName:          f.CaseName                         || null,
+    OurRef:            f.field_5                          || null,
+    CompletedOn:       f.Completed_x0020_on               || null,
+    Billable:          f.BillableYorN_x0020__x2753_       || false,
+    InvoiceType:       f.InvoiceType                      || null,
+    InvoiceDate:       f.InvoiceDate                      || null,
   };
 }
 
 function toNum(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
-}
-
-// AmountOutstanding is a calculated SP field — Graph returns null for it.
-// Compute client-side: AmountDue minus all recorded payments.
-function computeOutstanding(f) {
-  const due = parseFloat(f.AmountDue);
-  if (isNaN(due)) return null;
-  const p1 = parseFloat(f.PaymentAmount1) || 0;
-  const p2 = parseFloat(f.PaymentAmount2) || 0;
-  const p3 = parseFloat(f.PaymentAmount3) || 0;
-  return Math.round((due - p1 - p2 - p3) * 100) / 100;
 }
