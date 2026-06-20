@@ -147,20 +147,23 @@ function getToken(tenantId, clientId, clientSecret) {
 
 // ─── FETCH ALL (handles pagination) ──────────────────────
 async function fetchAllLineItems(token, siteId, isAdmin, callerEmail) {
-  // Admins get all billable items; draftsmen get only their own
+  // For non-admins, filter by CompletedByEmail server-side (field is indexed)
+  // BillableYorN filter removed from Graph query — not indexed, filter client-side instead
   const emailFilter = isAdmin
-    ? 'fields/BillableYorN_x0020__x2753_ eq true'
-    : `fields/BillableYorN_x0020__x2753_ eq true and fields/CompletedByEmail eq '${callerEmail}'`;
+    ? ''
+    : `fields/CompletedByEmail eq '${callerEmail}'`;
+
+  const filterParam = emailFilter ? `&$filter=${encodeURIComponent(emailFilter)}` : '';
 
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields($select=${SELECT_FIELDS})&$filter=${encodeURIComponent(emailFilter)}&$top=500`;
+               `?$expand=fields($select=${SELECT_FIELDS})${filterParam}&$top=500`;
 
   let url = base;
   let all = [];
 
   while (url) {
     const page  = await graphGet(url, token);
-    const items = (page.value || []).map(normalise);
+    const items = (page.value || []).map(normalise).filter(i => i.Billable);
     all = all.concat(items);
     url = page['@odata.nextLink'] || null;
   }
