@@ -27,10 +27,10 @@
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
     .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
-    .nav-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(201,168,76,.6);letter-spacing:.04em;}
-    .nav-jump{font-size:12px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;letter-spacing:.06em;text-transform:uppercase;transition:color .18s ease;}
-    .nav-jump:hover{color:#C9A84C;}
-    .ledger{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);display:grid;grid-template-columns:repeat(4,1fr);}
+    .nav-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(201,168,76,.45);letter-spacing:.04em;}
+    .nav-jump{font-family:'Spectral',serif;font-weight:400;font-size:16px;color:var(--gold);text-decoration:none;letter-spacing:.04em;transition:color .18s ease;border-bottom:1px solid rgba(201,168,76,.35);padding-bottom:1px;}
+    .nav-jump:hover{color:#E8C96A;border-bottom-color:var(--gold);}
+    .ledger{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);display:grid;grid-template-columns:repeat(5,1fr);}
     .ledger-cell{padding:18px 28px 20px;position:relative;}
     .ledger-cell+.ledger-cell::before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;background:rgba(201,168,76,.22);}
     .ledger-label{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,168,76,.7);margin-bottom:6px;}
@@ -71,8 +71,6 @@
     td{padding:12px 16px;vertical-align:middle;}
     td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;}
     td.num{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;}
-    td.col-due-overdue{color:var(--overdue);font-weight:500;}
-    td.col-due-overdue::before{content:'⚠ ';font-size:11px;}
     td.col-outstanding-nonzero{color:var(--overdue);font-weight:600;}
     .status-chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
     .chip-Paid{background:var(--paid-bg);color:var(--paid);}
@@ -126,17 +124,18 @@
     .ds-period-btn.active{background:var(--navy);color:var(--gold);}
     .ds-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
     .ds-table-wrap{overflow-x:auto;}
-    .ds-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .ds-table{width:100%;border-collapse:collapse;font-size:13px;}
     .ds-table thead{background:var(--navy);}
-    .ds-table th{padding:10px 14px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,242,235,.65);white-space:nowrap;}
-    .ds-table th.ds-name{text-align:left;width:220px;}
-    .ds-table th:not(.ds-name){width:120px;}
-    .ds-table td{padding:9px 14px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
-    .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;}
+    .ds-table th{padding:11px 16px;text-align:right;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,242,235,.65);white-space:nowrap;}
+    .ds-table th.ds-name{text-align:left;width:200px;}
+    .ds-table th:not(.ds-name){min-width:110px;}
+    .ds-table td{padding:11px 16px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
+    .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;font-size:13px;}
     .ds-table tbody tr:hover{background:var(--cream);}
     .ds-table tbody tr:last-child td{border-bottom:none;}
     .ds-total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);border-bottom:none;}
-    .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--navy);}
+    .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
+    .ds-vat{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--grey-mid);margin-top:2px;}
     .ds-nil{color:var(--grey-light);}
     .ds-sub-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;user-select:none;border-top:1px solid var(--grey-faint);}
     .ds-sub-header:first-child{border-top:none;}
@@ -158,7 +157,7 @@
     <div class="nav-divider"></div>
     <span class="nav-title">Invoice Portal</span>
   </div>
-  <div style="display:flex;align-items:center;gap:20px;">
+  <div style="display:flex;align-items:center;gap:24px;">
     <a href="#ds-section" class="nav-jump">Draftsman Earnings ↓</a>
     <span class="nav-meta" id="nav-date"></span>
   </div>
@@ -179,6 +178,11 @@
     <div class="ledger-label">Overdue Amount</div>
     <div class="ledger-value is-currency overdue-alert" id="stat-overdue-amount">—</div>
     <div class="ledger-sub">past due date</div>
+  </div>
+  <div class="ledger-cell">
+    <div class="ledger-label">Invoiced This Month</div>
+    <div class="ledger-value is-currency" id="stat-invoiced-month">—</div>
+    <div class="ledger-sub" id="stat-invoiced-month-sub">&nbsp;</div>
   </div>
   <div class="ledger-cell">
     <div class="ledger-label">Paid This Month</div>
@@ -223,7 +227,6 @@
             <th class="col-case" onclick="sortBy('Casename',this)">Case <span class="sort-arrow">↕</span></th>
             <th onclick="sortBy('Ourref',this)">Our Ref <span class="sort-arrow">↕</span></th>
             <th onclick="sortBy('InvoiceDate',this)">Inv. Date <span class="sort-arrow">↕</span></th>
-            <th onclick="sortBy('DueDate',this)" class="sorted">Due Date <span class="sort-arrow">↑</span></th>
             <th class="num" onclick="sortBy('AmountDue',this)">Amount Due <span class="sort-arrow">↕</span></th>
             <th class="num" onclick="sortBy('AmountOutstanding',this)">Outstanding <span class="sort-arrow">↕</span></th>
             <th onclick="sortBy('Status',this)">Status <span class="sort-arrow">↕</span></th>
@@ -231,7 +234,7 @@
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="10"><div class="state-block"><div class="spinner"></div><p>Loading invoices…</p></div></td></tr>
+          <tr><td colspan="9"><div class="state-block"><div class="spinner"></div><p>Loading invoices…</p></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -269,8 +272,8 @@ const API    = '/api/invoices';
 const API_LI = '/api/lineitems';
 let allInvoices  = [];
 let allLineItems = [];
-let sortField = 'DueDate';
-let sortDir   = 1;
+let sortField = 'InvoiceDate';
+let sortDir   = -1;
 let filters   = { search: '', status: 'Outstanding', type: 'all' };
 let activeId  = null;
 let dsPeriod  = 'this';
@@ -300,25 +303,33 @@ async function load() {
 function renderStats() {
   const today = new Date(); today.setHours(0,0,0,0);
   const nowY = today.getFullYear(), nowM = today.getMonth();
-  let totalOut=0,totalOutN=0,overdueAmt=0,overdueN=0,paidMonth=0,paidMonthN=0;
+  let totalOut=0,totalOutN=0,overdueAmt=0,overdueN=0;
+  let invoicedMonth=0,invoicedMonthN=0,paidMonth=0,paidMonthN=0;
   allInvoices.forEach(inv => {
     const status = normalizeStatus(inv, today);
     const out = parseFloat(inv.AmountOutstanding)||0;
+    const amt = parseFloat(inv.AmountDue)||0;
     if (status !== 'Paid') { totalOut += out; totalOutN++; }
     if (status === 'Overdue') { overdueAmt += out; overdueN++; }
+    const invD = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    if (invD && invD.getFullYear()===nowY && invD.getMonth()===nowM) {
+      invoicedMonth += amt; invoicedMonthN++;
+    }
     [1,2,3].forEach(i => {
       const pd = inv[`PaymentDate${i}`] ? new Date(inv[`PaymentDate${i}`]) : null;
       const pa = parseFloat(inv[`PaymentAmount${i}`])||0;
       if (pd && pa > 0 && pd.getFullYear()===nowY && pd.getMonth()===nowM) { paidMonth+=pa; paidMonthN++; }
     });
   });
-  el('stat-outstanding',       fmt(totalOut));
-  el('stat-outstanding-count', `${totalOutN} invoice${totalOutN!==1?'s':''}`);
-  el('stat-overdue-count',     String(overdueN));
-  el('stat-overdue-sub',       overdueN>0?'need attention':'none overdue ✓');
-  el('stat-overdue-amount',    fmt(overdueAmt));
-  el('stat-paid-month',        fmt(paidMonth));
-  el('stat-paid-month-sub',    `${paidMonthN} payment${paidMonthN!==1?'s':''}`);
+  el('stat-outstanding',        fmt(totalOut));
+  el('stat-outstanding-count',  `${totalOutN} invoice${totalOutN!==1?'s':''}`);
+  el('stat-overdue-count',      String(overdueN));
+  el('stat-overdue-sub',        overdueN>0?'need attention':'none overdue ✓');
+  el('stat-overdue-amount',     fmt(overdueAmt));
+  el('stat-invoiced-month',     fmt(invoicedMonth));
+  el('stat-invoiced-month-sub', `${invoicedMonthN} invoice${invoicedMonthN!==1?'s':''}`);
+  el('stat-paid-month',         fmt(paidMonth));
+  el('stat-paid-month-sub',     `${paidMonthN} payment${paidMonthN!==1?'s':''}`);
   document.querySelectorAll('.overdue-alert').forEach(e => e.classList.toggle('has-overdue', overdueN>0));
 }
 
@@ -329,7 +340,7 @@ function renderTable() {
   el('filter-count', `<strong>${filtered.length}</strong> of ${allInvoices.length}`);
   const tbody = document.getElementById('table-body');
   if (!sorted.length) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="state-block"><div class="state-icon">📋</div><h3>No invoices found</h3><p>Try adjusting your filters or search.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9"><div class="state-block"><div class="state-icon">📋</div><h3>No invoices found</h3><p>Try adjusting your filters or search.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = sorted.map(inv => {
@@ -345,7 +356,6 @@ function renderTable() {
       <td class="col-case">${esc(inv.Casename||'—')}</td>
       <td class="mono">${esc(inv.Ourref||'—')}</td>
       <td>${fmtDate(inv.InvoiceDate)}</td>
-      <td class="${isOver?'col-due-overdue':''}">${fmtDate(inv.DueDate)}</td>
       <td class="num">${fmtAmt(inv.AmountDue)}</td>
       <td class="num${out>0?' col-outstanding-nonzero':''}">${fmtAmt(inv.AmountOutstanding)}</td>
       <td><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></td>
@@ -371,6 +381,8 @@ function openDrawer(id) {
   el('drawer-body', `
     <div class="drawer-section"><div class="drawer-section-title">Amounts</div><div class="dl">
       <dt>Amount Due</dt><dd class="amount">${fmtAmtFull(inv.AmountDue)}</dd>
+      <dt>Net</dt><dd class="mono">${fmtAmtFull(inv.Net)}</dd>
+      <dt>VAT</dt><dd class="mono">${fmtAmtFull(inv.VAT)}</dd>
       <dt>Outstanding</dt><dd class="amount${isOver?' overdue-text':isPaid?' paid-text':''}">${fmtAmtFull(inv.AmountOutstanding)}</dd>
       <dt>Status</dt><dd><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></dd>
     </div></div>
@@ -462,7 +474,7 @@ function fmtAmtFull(v) { const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toF
 function fmtDate(v)    { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
 function el(id,html)   { const e=document.getElementById(id); if(e)e.innerHTML=html; }
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function renderError(msg) { document.getElementById('table-body').innerHTML=`<tr><td colspan="10"><div class="state-block"><div class="state-icon">⚠</div><h3>Could not load invoices</h3><p>${esc(msg)}</p></div></td></tr>`; }
+function renderError(msg) { document.getElementById('table-body').innerHTML=`<tr><td colspan="9"><div class="state-block"><div class="state-icon">⚠</div><h3>Could not load invoices</h3><p>${esc(msg)}</p></div></td></tr>`; }
 
 function nameFromEmail(email) {
   if (!email) return 'Unassigned';
@@ -506,7 +518,6 @@ function renderDraftsman() {
   const label = dsPeriod === 'this' ? getMonthLabel(0) : getMonthLabel(-1);
   const fc    = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
   const cell  = (t)=>t>0?`<div class="ds-amt">${fc(t)}</div>`:`<span class="ds-nil">—</span>`;
-  const colHdr = `<th class="ds-name">Draftsman</th><th>${label}</th>`;
 
   // ── TIMED WORK ───────────────────────────────────────────
   const timed = {};
@@ -524,16 +535,10 @@ function renderDraftsman() {
 
   const timedHTML = tRows.length ? `
     <table class="ds-table">
-      <thead><tr>${colHdr}</tr></thead>
+      <thead><tr><th class="ds-name">Draftsman</th><th>${label}</th></tr></thead>
       <tbody>
-        ${tRows.map(([name,v])=>`<tr>
-          <td class="ds-name">${esc(name)}</td>
-          <td>${cell(v)}</td>
-        </tr>`).join('')}
-        <tr class="ds-total-row">
-          <td class="ds-name">Total</td>
-          <td><div class="ds-amt">${fc(tGrand)}</div></td>
-        </tr>
+        ${tRows.map(([name,v])=>`<tr><td class="ds-name">${esc(name)}</td><td>${cell(v)}</td></tr>`).join('')}
+        <tr class="ds-total-row"><td class="ds-name">Total</td><td><div class="ds-amt">${fc(tGrand)}</div></td></tr>
       </tbody>
     </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
 
@@ -553,16 +558,10 @@ function renderDraftsman() {
 
   const draftHTML = dRows.length ? `
     <table class="ds-table">
-      <thead><tr>${colHdr}</tr></thead>
+      <thead><tr><th class="ds-name">Draftsman</th><th>${label}</th></tr></thead>
       <tbody>
-        ${dRows.map(([name,v])=>`<tr>
-          <td class="ds-name">${esc(name)}</td>
-          <td>${cell(v)}</td>
-        </tr>`).join('')}
-        <tr class="ds-total-row">
-          <td class="ds-name">Total</td>
-          <td><div class="ds-amt">${fc(dGrand)}</div></td>
-        </tr>
+        ${dRows.map(([name,v])=>`<tr><td class="ds-name">${esc(name)}</td><td>${cell(v)}</td></tr>`).join('')}
+        <tr class="ds-total-row"><td class="ds-name">Total</td><td><div class="ds-amt">${fc(dGrand)}</div></td></tr>
       </tbody>
     </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
 
@@ -574,8 +573,9 @@ function renderDraftsman() {
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
     const name = nameFromEmail(inv.DraftedByEmail);
-    if (!totals[name]) totals[name]={drafting:0,timed:0};
+    if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
+    totals[name].vat      += parseFloat(inv.VAT)||0;
   });
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
@@ -583,15 +583,17 @@ function renderDraftsman() {
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
     const name = nameFromEmail(li.CompletedByEmail);
-    if (!totals[name]) totals[name]={drafting:0,timed:0};
+    if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     totals[name].timed += li.Value||0;
   });
   const totRows = Object.entries(totals)
-    .map(([name,v])=>([name,{...v,total:v.drafting+v.timed}]))
+    .map(([name,v])=>([name,{...v,net:v.drafting+v.timed,total:v.drafting+v.timed+v.vat}]))
     .sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1].total-a[1].total);
   const tTotDrafting = totRows.reduce((s,[,v])=>s+v.drafting,0);
   const tTotTimed    = totRows.reduce((s,[,v])=>s+v.timed,0);
-  const tTotTotal    = tTotDrafting + tTotTimed;
+  const tTotVat      = totRows.reduce((s,[,v])=>s+v.vat,0);
+  const tTotNet      = tTotDrafting + tTotTimed;
+  const tTotTotal    = tTotNet + tTotVat;
 
   let medalIdx = 0;
   const medalMap = {};
@@ -603,21 +605,24 @@ function renderDraftsman() {
     <table class="ds-table">
       <thead><tr>
         <th class="ds-name">Draftsman</th>
-        <th>Drafting Fees</th>
-        <th>Timed Work</th>
-        <th>Total</th>
+        <th>Drafting (Net)</th>
+        <th>Timed (Net)</th>
+        <th>VAT</th>
+        <th>Total (inc. VAT)</th>
       </tr></thead>
       <tbody>
         ${totRows.map(([name,v])=>`<tr>
           <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
           <td>${cell(v.drafting)}</td>
           <td>${cell(v.timed)}</td>
+          <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
           <td><div class="ds-amt">${fc(v.total)}</div></td>
         </tr>`).join('')}
         <tr class="ds-total-row">
           <td class="ds-name">Total</td>
           <td><div class="ds-amt">${fc(tTotDrafting)}</div></td>
           <td><div class="ds-amt">${fc(tTotTimed)}</div></td>
+          <td><div class="ds-amt" style="color:var(--grey-mid)">${fc(tTotVat)}</div></td>
           <td><div class="ds-amt">${fc(tTotTotal)}</div></td>
         </tr>
       </tbody>
