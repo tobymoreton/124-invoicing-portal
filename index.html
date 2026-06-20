@@ -460,10 +460,12 @@ function setPeriod(btn) {
 
 function normalizeStatus(inv, today) {
   const raw=(inv.Status_Text||inv.Status||'').trim();
-  const due=inv.DueDate?new Date(inv.DueDate):null;
-  if (raw==='Paid') return 'Paid';
-  if (due&&today&&due<today) return 'Overdue';
-  if (raw.toLowerCase().includes('part')) return 'Part-Paid';
+  const lo=raw.toLowerCase();
+  if (lo==='paid')         return 'Paid';
+  if (lo.includes('part')) return 'Part-Paid';
+  if (lo==='outstanding')  return 'Outstanding';
+  if (lo==='overdue')      return 'Overdue';
+  const due=inv.DueDate?new Date(inv.DueDate):null;   if (due&&today&&due<today) return 'Overdue';
   return 'Outstanding';
 }
 
