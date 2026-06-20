@@ -47,6 +47,7 @@ const SELECT_FIELDS = [
   'VAT',                  // VAT amount
   'Net',                  // Net amount (ex VAT)
   'Cancelled',            // Boolean — filter these out
+  'Theirref',             // Client's own reference
 ].join(',');
 
 module.exports = async function (context, req) {
@@ -199,6 +200,7 @@ function normalise(item) {
     VAT:                toNum(f.VAT),
     Net:                toNum(f.Net),
     Cancelled:          f.Cancelled           || false,
+    Theirref:           f.Theirref            || null,
   };
 }
 
