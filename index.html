@@ -307,16 +307,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function load() {
   try {
-    const [invRes, liRes] = await Promise.all([
-      fetch(API,    { headers: { Accept: 'application/json' } }),
-      fetch(API_LI, { headers: { Accept: 'application/json' } }),
-    ]);
-    if (!invRes.ok) { const t=await invRes.text(); throw new Error(`Invoices API ${invRes.status}: ${t.slice(0,160)}`); }
-    if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
-    allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
-    allLineItems = await liRes.json();
-    renderStats();
-    renderTable();
+    // Resolve caller identity first
+    let callerEmail = null;
+    let isAdmin = false;
+    try {
+      const authRes = await fetch('/.auth/me');
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        const principal = (authData.clientPrincipal) || {};
+        const claims = principal.claims || [];
+        const claim = claims.find(c =>
+          c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+        );
+        callerEmail = claim ? claim.val.toLowerCase() : null;
+      }
+    } catch(e) { /* auth check failed — treat as non-admin */ }
+
+    const ADMIN_EMAILS = ['toby@tmclegal.co.uk','lesley@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+    isAdmin = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+
+    // Non-admins: hide invoice table, ledger, filters; show personal billing header
+    if (!isAdmin) {
+      document.querySelector('.ledger').style.display    = 'none';
+      document.querySelector('.filters-bar').style.display = 'none';
+      document.querySelector('.main').style.display      = 'none';
+      const dsTitle = document.querySelector('.ds-title');
+      if (dsTitle && callerEmail) {
+        const name = callerEmail.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        dsTitle.textContent = `Your Billing — ${name}`;
+      }
+    }
+
+    // Admins fetch both; non-admins skip invoices (API returns 403 anyway)
+    if (isAdmin) {
+      const [invRes, liRes] = await Promise.all([
+        fetch(API,    { headers: { Accept: 'application/json' } }),
+        fetch(API_LI, { headers: { Accept: 'application/json' } }),
+      ]);
+      if (!invRes.ok) { const t=await invRes.text(); throw new Error(`Invoices API ${invRes.status}: ${t.slice(0,160)}`); }
+      if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
+      allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
+      allLineItems = await liRes.json();
+      renderStats();
+      renderTable();
+    } else {
+      const liRes = await fetch(API_LI, { headers: { Accept: 'application/json' } });
+      if (!liRes.ok) { const t=await liRes.text(); throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
+      allLineItems = await liRes.json();
+    }
+
     renderDraftsman();
   } catch(e) { renderError(e.message); }
 }
