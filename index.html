@@ -465,7 +465,8 @@ function normalizeStatus(inv, today) {
   if (lo.includes('part')) return 'Part-Paid';
   if (lo==='outstanding')  return 'Outstanding';
   if (lo==='overdue')      return 'Overdue';
-  const due=inv.DueDate?new Date(inv.DueDate):null;   if (due&&today&&due<today) return 'Overdue';
+  const due=inv.DueDate?new Date(inv.DueDate):null;
+  if (due&&today&&due<today) return 'Overdue';
   return 'Outstanding';
 }
 
@@ -521,7 +522,6 @@ function renderDraftsman() {
   const fc    = n=>n>0?'£'+Math.round(n).toLocaleString('en-GB'):'';
   const cell  = (t)=>t>0?`<div class="ds-amt">${fc(t)}</div>`:`<span class="ds-nil">—</span>`;
 
-  // ── TIMED WORK ───────────────────────────────────────────
   const timed = {};
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
@@ -544,7 +544,6 @@ function renderDraftsman() {
       </tbody>
     </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No timed work entries for this period.</p>`;
 
-  // ── DRAFTING FEES ────────────────────────────────────────
   const draft = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
@@ -567,7 +566,6 @@ function renderDraftsman() {
       </tbody>
     </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
 
-  // ── TOTAL INVOICED ───────────────────────────────────────
   const totals = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
