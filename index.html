@@ -476,7 +476,7 @@ function renderDraftsman() {
     if (!d) return;
     const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (!mSet.has(mk)) return;
-    const name = li.CompletedByEmail || 'Unassigned';
+    const rawEmail = li.CompletedByEmail || ''; const name = rawEmail ? rawEmail.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Unassigned';
     if (!timed[name]) timed[name]={m:{},tot:0,time:0};
     if (!timed[name].m[mk]) timed[name].m[mk]={tot:0,time:0};
     timed[name].m[mk].tot  += li.Value||0;
