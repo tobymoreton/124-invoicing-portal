@@ -6,7 +6,7 @@
  * (app-only Graph auth). Returns a normalised JSON array.
  *
  * ⚠️  READ-ONLY — no write operations in this function.
- * ⚠️  AmountOutstanding is a ReadOnly/calculated SP field — explicit $select required.
+ * ⚠️  AmountOutstanding is a ReadOnly/calculated SP field — computed client-side instead.
  * ⚠️  Do NOT include Update, Cancel, or EditMetadata in any $select —
  *     these are Infowise action triggers on this list.
  * ⚠️  DraftedBy (User field) returns null via Graph app-only — use DraftedByEmail instead.
@@ -182,7 +182,7 @@ function normalise(item) {
     InvoiceDate:        f.InvoiceDate         || null,
     DueDate:            f.DueDate             || null,
     AmountDue:          toNum(f.AmountDue),
-    AmountOutstanding:  toNum(f.AmountOutstanding),
+    AmountOutstanding:  computeOutstanding(f),
     Status:             f.Status              || null,
     Status_Text:        f.Status_Text         || null,
     Invoicetype:        f.Invoicetype         || null,
@@ -205,4 +205,15 @@ function normalise(item) {
 function toNum(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
+}
+
+// AmountOutstanding is a calculated SP field — Graph returns null for it.
+// Compute client-side: AmountDue minus all recorded payments.
+function computeOutstanding(f) {
+  const due = parseFloat(f.AmountDue);
+  if (isNaN(due)) return null;
+  const p1 = parseFloat(f.PaymentAmount1) || 0;
+  const p2 = parseFloat(f.PaymentAmount2) || 0;
+  const p3 = parseFloat(f.PaymentAmount3) || 0;
+  return Math.round((due - p1 - p2 - p3) * 100) / 100;
 }
