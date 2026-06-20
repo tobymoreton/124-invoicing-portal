@@ -1,0 +1,111 @@
+const https  = require('https');
+const { URL } = require('url');
+
+const LIST_GUID = '496468a5-e2ed-48db-8826-58cb08844eee';
+const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+
+module.exports = async function (context, req) {
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
+    context.res = { status: 500, body: 'Missing required app settings.' };
+    return;
+  }
+  try {
+    const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    const items = await fetchAll(token);
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify(items),
+    };
+  } catch (err) {
+    context.log.error('lineitems error:', err.message);
+    context.res = { status: 500, body: `Error: ${err.message}` };
+  }
+};
+
+function getToken(tenantId, clientId, clientSecret) {
+  return new Promise((resolve, reject) => {
+    const body = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'https://graph.microsoft.com/.default',
+    }).toString();
+    const options = {
+      hostname: 'login.microsoftonline.com',
+      path: `/${tenantId}/oauth2/v2.0/token`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.access_token) resolve(json.access_token);
+          else reject(new Error(`Token error: ${json.error_description || data}`));
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+async function fetchAll(token) {
+  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
+               `?$expand=fields&$top=500`;
+  let url = base, all = [];
+  while (url) {
+    const page = await graphGet(url, token);
+    all = all.concat((page.value || []).map(normalise));
+    url = page['@odata.nextLink'] || null;
+  }
+  return all.filter(i => i.Billable !== false);
+}
+
+function graphGet(url, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        if (res.statusCode >= 400) { reject(new Error(`Graph ${res.statusCode}: ${data.slice(0,200)}`)); return; }
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function normalise(item) {
+  const f = item.fields || {};
+  const rate  = parseFloat(f.field_3) || 0;
+  const time  = parseFloat(f.field_2) || 0;
+  const value = parseFloat(f.Value) || (rate > 0 && time > 0 ? rate * time / 10 : 0);
+  return {
+    _id:            String(item.id),
+    CompletedBy:    f.CompletedByLookupValue || null,
+    CompletedOn:    f.Completed_x0020_on     || null,
+    InvoiceDate:    f.InvoiceDate            || null,
+    InvoiceIDRef:   f.InvoiceIDRef           || null,
+    CaseName:       f.CaseName               || null,
+    WorkDone:       f.field_1                || null,
+    TimeSpent:      time,
+    Rate:           rate,
+    Value:          value,
+    Billable:       f['BillableYorN_x0020__x2753_'] !== false,
+    ApprovalStatus: f.approvalStatus         || null,
+  };
+}
