@@ -65,7 +65,7 @@ function getToken(tenantId, clientId, clientSecret) {
 
 async function fetchAllInvoices(token) {
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields($select=${SELECT_FIELDS})&$top=500`;
+               `?$expand=fields&$top=500`;
   let url = base, all = [];
   while (url) {
     const page = await graphGet(url, token);
