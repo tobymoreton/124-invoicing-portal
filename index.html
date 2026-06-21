@@ -144,8 +144,8 @@
     .ds-breakdown-table td:first-child{text-align:left;font-family:'IBM Plex Sans',sans-serif;font-size:12px;}
     .ds-breakdown-table tr:last-child td{border-bottom:none;}
     .ds-row-clickable{cursor:pointer;}
-    .ds-row-clickable td.ds-name::after{content:' ▸';font-size:10px;color:var(--gold);margin-left:6px;transition:transform .2s ease;display:inline-block;}
-    .ds-row-clickable.expanded td.ds-name::after{content:' ▾';}
+    .ds-row-clickable.expanded td.ds-name::after{content:' ▾';font-size:10px;color:var(--gold);margin-left:6px;}
+    .ds-bkd-row{display:none;}
     .ds-table tbody tr:last-child td{border-bottom:none;}
     .ds-total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);border-bottom:none;}
     .ds-amt{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
@@ -742,9 +742,8 @@ function renderDraftsman() {
     const bkCellL = 'padding:6px 16px 6px 32px;text-align:left;';
 
     const dataRows = rows.map(r => `
-      <tr class="ds-bkd-row" style="${bkStyle}display:none">
-        <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}</td>
-        <td style="${bkCell}text-align:left">${esc(r.ourref)}</td>
+      <tr class="ds-bkd-row" style="${bkStyle}">
+        <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}<div style="font-size:10px;color:var(--grey-mid);margin-top:2px;font-family:'IBM Plex Mono',monospace;">${esc(r.ourref)}</div></td>
         <td style="${bkCell}">${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
         <td style="${bkCell}">${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
         <td style="${bkCell}">${r.vat      > 0 ? fc(r.vat)      : '—'}</td>
@@ -753,8 +752,8 @@ function renderDraftsman() {
       </tr>`).join('');
 
     const unlinkedRow = unlinkedTimed > 0 ? `
-      <tr class="ds-bkd-row" style="${bkStyle}display:none;font-style:italic;color:var(--grey-mid)">
-        <td style="${bkCellL}" colspan="2">Timed work (no case ref)</td>
+      <tr class="ds-bkd-row" style="${bkStyle}font-style:italic;color:var(--grey-mid)">
+        <td style="${bkCellL}" >Timed work (no case ref)</td>
         <td style="${bkCell}">—</td>
         <td style="${bkCell}">${fc(unlinkedTimed)}</td>
         <td style="${bkCell}">${fc(unlinkedTimedVat)}</td>
@@ -827,7 +826,6 @@ function renderDraftsman() {
 }
 
 function toggleBreakdown(id, headerRow) {
-  // Find all breakdown rows that follow the header row until the next non-bkd row
   const allBkdRows = [];
   let el = headerRow ? headerRow.nextElementSibling : null;
   while (el && el.classList.contains('ds-bkd-row')) {
@@ -835,8 +833,8 @@ function toggleBreakdown(id, headerRow) {
     el = el.nextElementSibling;
   }
   if (!allBkdRows.length) return;
-  const isOpen = allBkdRows[0].style.display !== 'none';
-  allBkdRows.forEach(r => r.style.display = isOpen ? 'none' : '');
+  const isOpen = !allBkdRows[0].classList.contains('ds-bkd-row') || getComputedStyle(allBkdRows[0]).display !== 'none';
+  allBkdRows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
   if (headerRow) headerRow.classList.toggle('expanded', !isOpen);
 }
 
