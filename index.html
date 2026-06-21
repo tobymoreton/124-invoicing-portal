@@ -1011,13 +1011,21 @@ function renderWIP() {
     return;
   }
 
+  // Only show items with a computable value (filters out non-billable entries like emails)
+  const wipItems = allWIPItems.filter(item => item.WIPValue > 0);
+
+  if (!wipItems.length) {
+    inner.innerHTML = `<div style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;font-style:italic;">No unbilled work in progress with a value.</div>`;
+    return;
+  }
+
   const fc = v => v > 0 ? '\u00a3' + v.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
   const fd = v => { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}); };
 
   // Group by email (DraftsmanName is unreliable via Graph app-only auth — returns app identity)
   // Derive display name from email: toby.moreton@tmclegal.co.uk → Toby Moreton
   const byDraftsman = {};
-  allWIPItems.forEach(item => {
+  wipItems.forEach(item => {
     const key  = item.Email ? item.Email.toLowerCase() : 'unassigned';
     const name = item.Email
       ? item.Email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase())
