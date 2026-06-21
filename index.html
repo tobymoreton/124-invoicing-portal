@@ -357,7 +357,7 @@ let allLineItems = [];
 let allWIPItems  = [];
 let sortField = 'InvoiceDate';
 let sortDir   = -1;
-let filters   = { search: '', status: 'Outstanding', type: 'all' };
+let filters   = { search: '', status: 'Outstanding', type: 'all', ageMin: null, ageMax: null };
 let activeId  = null;
 let dsPeriod  = 'this';
 let _callerEmail = null;
@@ -603,18 +603,22 @@ function closeDrawer() {
 function applyFilters(today) {
   const s = filters.search.toLowerCase().trim();
   return allInvoices.filter(inv => {
-    // Age band filter (set by clicking dashboard age card)
-    if (window._ageFilter) {
+    // Age band filter
+    if (filters.ageMin !== null) {
       const invD = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
       if (!invD || isNaN(invD)) return false;
       const ageDays = Math.floor((today - invD) / 86400000);
-      if (ageDays < window._ageFilter.min || ageDays > window._ageFilter.max) return false;
+      if (ageDays < filters.ageMin || ageDays > filters.ageMax) return false;
     }
     if (s) {
       const hay = [inv.VendorName,inv.Casename,inv.OrderDetails,inv.Ourref].map(v=>(v||'').toLowerCase()).join(' ');
       if (!hay.includes(s)) return false;
     }
-    if (filters.status!=='all' && normalizeStatus(inv,today)!==filters.status) return false;
+    if (filters.status!=='all') {
+      const s = normalizeStatus(inv,today);
+      if (filters.status === 'unpaid') { if (s === 'Paid') return false; }
+      else if (s !== filters.status) return false;
+    }
     if (filters.type!=='all' && (inv.LAorIP||'').trim()!==filters.type) return false;
     return true;
   });
@@ -632,9 +636,9 @@ function applySort(invoices) {
   });
 }
 
-function onSearch() { filters.search=document.getElementById('search').value; renderTable(); }
-function setStatus(btn) { filters.status=btn.dataset.val; document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active')); btn.classList.add('active'); renderTable(); }
-function setType(btn)   { filters.type=btn.dataset.val;   document.querySelectorAll('#type-chips .chip').forEach(c=>c.classList.remove('active'));   btn.classList.add('active'); renderTable(); }
+function onSearch() { filters.search=document.getElementById('search').value; filters.ageMin=null; filters.ageMax=null; renderTable(); }
+function setStatus(btn) { filters.status=btn.dataset.val; filters.ageMin=null; filters.ageMax=null; document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active')); btn.classList.add('active'); renderTable(); }
+function setType(btn)   { filters.type=btn.dataset.val;   filters.ageMin=null; filters.ageMax=null; document.querySelectorAll('#type-chips .chip').forEach(c=>c.classList.remove('active'));   btn.classList.add('active'); renderTable(); }
 function sortBy(field,th) {
   if (sortField===field) sortDir*=-1; else { sortField=field; sortDir=1; }
   document.querySelectorAll('th').forEach(h=>{ h.classList.remove('sorted'); const a=h.querySelector('.sort-arrow'); if(a)a.textContent='↕'; });
@@ -1247,6 +1251,8 @@ function filterByClient(name) {
   document.getElementById('search').value = name;
   filters.search = name.toLowerCase();
   filters.status = 'all';
+  filters.ageMin = null;
+  filters.ageMax = null;
   document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active'));
   document.querySelector('#status-chips .chip[data-val="all"]').classList.add('active');
   renderTable();
@@ -1255,16 +1261,15 @@ function filterByClient(name) {
 
 function filterByAge(min, max) {
   filters.search = '';
-  filters.status = 'all';
+  filters.status = 'unpaid'; // age bands exclude Paid — show Outstanding, Overdue, Part-Paid
   filters.type   = 'all';
+  filters.ageMin = min;
+  filters.ageMax = max;
   document.getElementById('search').value = '';
   document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active'));
-  document.querySelector('#status-chips .chip[data-val="all"]').classList.add('active');
   document.querySelectorAll('#type-chips .chip').forEach(c=>c.classList.remove('active'));
   document.querySelector('#type-chips .chip[data-val="all"]').classList.add('active');
-  window._ageFilter = { min, max };
   renderTable();
-  window._ageFilter = null;
   document.querySelector('.main').scrollIntoView({behavior:'smooth'});
 }
 
