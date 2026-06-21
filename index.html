@@ -971,7 +971,9 @@ function printStatement(clientName) {
   const today = new Date(); today.setHours(0,0,0,0);
   const invoices = allInvoices.filter(inv => {
     const s = normalizeStatus(inv, today);
-    return inv.VendorName === clientName && (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid');
+    return inv.VendorName === clientName
+      && (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid')
+      && (parseFloat(inv.AmountDue)||0) > 0;
   }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
   if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
 
