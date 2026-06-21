@@ -1012,7 +1012,9 @@ function renderWIP() {
   }
 
   // Only show items with a computable value (filters out non-billable entries like emails)
-  const wipItems = allWIPItems.filter(item => item.WIPValue > 0);
+  // Also exclude non-draftsman staff from WIP display
+  const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
+  const wipItems = allWIPItems.filter(item => item.WIPValue > 0 && !WIP_EXCLUDE.has((item.Email||'').toLowerCase()));
 
   if (!wipItems.length) {
     inner.innerHTML = `<div style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;font-style:italic;">No unbilled work in progress with a value.</div>`;
@@ -1055,7 +1057,7 @@ function renderWIP() {
       </tr>`).join('');
 
     return `
-      <div class="wip-ds-block" id="${blockId}">
+      <div class="wip-ds-block collapsed" id="${blockId}">
         <div class="wip-ds-header" onclick="toggleWIPBlock('${blockId}')">
           <span class="wip-ds-name">${esc(name)}</span>
           <span style="display:flex;align-items:center;">
@@ -1063,7 +1065,7 @@ function renderWIP() {
             <span class="wip-ds-toggle">▾</span>
           </span>
         </div>
-        <div class="wip-cases">
+        <div class="wip-cases" style="max-height:0;">
           <table class="wip-cases-table">
             <thead><tr>
               <th style="text-align:left;">Case</th>
@@ -1082,10 +1084,7 @@ function renderWIP() {
     <div class="wip-grand-total">Total WIP<span>${fc(grandTotal)}</span></div>
   `;
 
-  // Set initial max-height for all open case blocks
-  inner.querySelectorAll('.wip-cases').forEach(el => {
-    el.style.maxHeight = el.scrollHeight + 'px';
-  });
+  // Blocks start collapsed — no need to set max-height on load
 }
 
 function toggleWIPBlock(blockId) {
