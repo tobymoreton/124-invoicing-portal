@@ -52,8 +52,12 @@ const SELECT_FIELDS = [
 
 const ADMIN_EMAILS = [
   'toby@tmclegal.co.uk',
-  'lesley@tmclegal.co.uk',
   'danielle@tmclegal.co.uk',
+];
+
+// Finance tier: sees all draftsman billing but not the main invoice ledger/table
+const FINANCE_EMAILS = [
+  'lesley@tmclegal.co.uk',
 ];
 
 // Decode the x-ms-client-principal header injected by Azure SWA
@@ -83,7 +87,8 @@ module.exports = async function (context, req) {
     context.res = { status: 403, body: 'Forbidden — could not determine caller identity.' };
     return;
   }
-  const isAdmin = ADMIN_EMAILS.includes(callerEmail);
+  const isAdmin   = ADMIN_EMAILS.includes(callerEmail);
+  const isFinance  = FINANCE_EMAILS.includes(callerEmail);
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
@@ -93,8 +98,8 @@ module.exports = async function (context, req) {
 
   try {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    // Admins get all invoices; non-admins get only their own (by DraftedByEmail)
-    const invoices = await fetchAllInvoices(token, isAdmin ? null : callerEmail);
+    // Admins + finance get all invoices; non-admins get only their own (by DraftedByEmail)
+    const invoices = await fetchAllInvoices(token, (isAdmin || isFinance) ? null : callerEmail);
 
     context.res = {
       status: 200,
@@ -163,7 +168,7 @@ async function fetchAllInvoices(token, callerEmailFilter) {
     url = page['@odata.nextLink'] || null;
   }
 
-  // Non-admin: filter to caller's own invoices only (server-side security)
+  // Non-admin/non-finance: filter to caller's own invoices only (server-side security)
   if (callerEmailFilter) {
     all = all.filter(inv => (inv.DraftedByEmail || '').toLowerCase() === callerEmailFilter);
   }
