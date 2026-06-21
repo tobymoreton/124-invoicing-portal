@@ -150,8 +150,8 @@ function getToken(tenantId, clientId, clientSecret) {
 // NOTE: Completedby_x0028_text_x0029_ contains the draftsman name (text), not email.
 //       field_18 contains the email. Both selected; draftsman filter uses field_18.
 async function fetchAllWIP(token, isAdmin, isFinance, callerEmail) {
-  // Base WIP filter: billable and not yet billed
-  const wipFilter = `fields/Billable_x003f_ eq true and fields/Billed_x003f_ eq false`;
+  // Filter: not yet billed (Billable flag unreliable — many valid WIP entries have Billable=false)
+  const wipFilter = `fields/Billed_x003f_ eq false`;
 
   // Draftsmen additionally filtered by their email (field_18)
   // UNCERTAIN if field_18 is indexed — if Graph rejects it, fall back to client-side filter
