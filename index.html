@@ -132,7 +132,6 @@
     .ds-table th:not(.ds-name){min-width:110px;}
     .ds-table td{padding:11px 16px;text-align:right;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
     .ds-table td.ds-name{text-align:left;font-weight:500;color:var(--navy);white-space:nowrap;font-size:13px;}
-    .ds-table tbody tr:nth-child(even){background:var(--grey-faint);}
     .ds-table tbody tr:hover{background:var(--cream);}
     .ds-breakdown-row td{padding:0!important;background:var(--cream-dark)!important;}
     .ds-breakdown-row:hover{background:var(--cream-dark)!important;}
@@ -893,9 +892,10 @@ function renderDraftsman() {
         <th></th>
       </tr></thead>
       <tbody>
-        ${totRows.map(([name,v])=>{
+        ${totRows.map(([name,v], rowIdx)=>{
           const { bkdId, rows: bkdRows } = buildBreakdown(name,v);
-          return `<tr class="ds-row-clickable" id="hdr-${bkdId}" onclick="toggleBreakdown('${bkdId}',this)">
+          const stripe = rowIdx % 2 === 1 ? `style="background:var(--grey-faint)"` : '';
+          return `<tr class="ds-row-clickable" id="hdr-${bkdId}" ${stripe} onclick="toggleBreakdown('${bkdId}',this)">
             <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
             <td>${cell(v.drafting)}</td>
             <td>${cell(v.timed)}</td>
@@ -1105,8 +1105,10 @@ function renderWIP() {
 
   const grandTotal = draftsmanEntries.reduce((s, [, v]) => s + v.total, 0);
 
+  const MEDALS = ['🥇','🥈','🥉'];
   const blocksHTML = draftsmanEntries.map(([key, { name, items, total }], idx) => {
     const blockId = 'wip-block-' + idx;
+    const medal = key !== 'unassigned' && idx < 3 ? `<span style="font-size:16px;margin-right:8px;">${MEDALS[idx]}</span>` : '';
     const caseRows = items.map(item => `
       <tr>
         <td>
@@ -1121,7 +1123,7 @@ function renderWIP() {
     return `
       <div class="wip-ds-block collapsed" id="${blockId}">
         <div class="wip-ds-header" onclick="toggleWIPBlock('${blockId}')">
-          <span class="wip-ds-name">${esc(name)}</span>
+          <span style="display:flex;align-items:center;">${medal}<span class="wip-ds-name">${esc(name)}</span></span>
           <span style="display:flex;align-items:center;">
             <span class="wip-ds-total">${fc(total)}</span>
             <span class="wip-ds-toggle">▾</span>
