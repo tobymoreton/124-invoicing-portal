@@ -463,6 +463,7 @@ function openDrawer(id) {
       <dt>Invoice Type</dt><dd>${esc(inv.Invoicetype||'—')}</dd>
       <dt>LA / IP</dt><dd>${inv.LAorIP?`<span class="type-badge type-${inv.LAorIP==='LA'?'LA':'IP'}">${esc(inv.LAorIP)}</span>`:'—'}</dd>
       <dt>Drafting Fee</dt><dd class="mono">${fmtAmtFull(inv.DraftingFeeElement)}</dd>
+      <dt>Invoice PDF</dt><dd>${inv.FileUrl?`<a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Open in SharePoint ↗</a>`:'—'}</dd>
     </div></div>
     <div class="drawer-section"><div class="drawer-section-title">Payment History</div>
       ${slots||'<p class="no-payments">No payments recorded.</p>'}
