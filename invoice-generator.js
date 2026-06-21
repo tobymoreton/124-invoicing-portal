@@ -23,7 +23,7 @@
  *   vatOnDrafting    boolean      if true, VAT applies to drafting fee too
  */
 
-const LOGO_URL  = 'tmc-logo.png';
+const LOGO_URL  = 'New Logo Gold, Silver and Navy.png';
 const FIRM_ADDR = 'Fennels Lodge, St Peters Close, Loudwater, Buckinghamshire HP11 1JT.';
 const FIRM_CO   = 'Company No: 12348782';
 const FIRM_VAT  = 'VAT Registration No: 398 1109 74';
