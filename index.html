@@ -300,6 +300,7 @@ let activeId  = null;
 let dsPeriod  = 'this';
 let _callerEmail = null;
 let _isAdmin     = false;
+let _isFinance   = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-date').textContent =
@@ -337,13 +338,25 @@ async function load() {
       }
     } catch(e) { /* auth check failed — treat as non-admin */ }
 
-    const ADMIN_EMAILS = ['toby@tmclegal.co.uk','lesley@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+    const ADMIN_EMAILS   = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+    const FINANCE_EMAILS = ['lesley@tmclegal.co.uk'];
     isAdmin = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+    const isFinance = callerEmail && FINANCE_EMAILS.includes(callerEmail);
     _callerEmail = callerEmail;
     _isAdmin     = isAdmin;
+    _isFinance   = isFinance;
 
-    // Non-admins: hide invoice table, ledger, filters, nav jump; show personal billing header
-    if (!isAdmin) {
+    // Finance tier: hide invoice ledger/table/filters — show full draftsman section only
+    if (isFinance) {
+      document.querySelector('.ledger').style.display      = 'none';
+      document.querySelector('.filters-bar').style.display = 'none';
+      document.querySelector('.main').style.display        = 'none';
+      const navJump = document.querySelector('.nav-jump');
+      if (navJump) navJump.style.display = 'none';
+    }
+
+    // Non-admins (draftsmen): hide everything except their own billing row
+    if (!isAdmin && !isFinance) {
       document.querySelector('.ledger').style.display    = 'none';
       document.querySelector('.filters-bar').style.display = 'none';
       document.querySelector('.main').style.display      = 'none';
@@ -369,6 +382,7 @@ async function load() {
       renderStats();
       renderTable();
     }
+    // Finance: fetch completed but don't render stats/table (already hidden)
 
     renderDraftsman();
   } catch(e) { renderError(e.message); }
@@ -604,7 +618,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
+    if (!_isAdmin && !_isFinance && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!timed[name]) timed[name]=0;
     timed[name] += li.Value||0;
@@ -627,7 +641,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
+    if (!_isAdmin && !_isFinance && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!draft[name]) draft[name]=0;
     draft[name] += parseFloat(inv.DraftingFeeElement)||0;
@@ -650,7 +664,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
+    if (!_isAdmin && !_isFinance && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
@@ -661,7 +675,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
+    if (!_isAdmin && !_isFinance && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     const liVal = li.Value||0;
