@@ -279,8 +279,9 @@
   <div class="chip-group" id="type-chips">
     <span class="chip-label">Type</span>
     <button class="chip active" data-val="all" onclick="setType(this)">All</button>
-    <button class="chip" data-val="LA" onclick="setType(this)">LA</button>
-    <button class="chip" data-val="IP" onclick="setType(this)">IP</button>
+    <button class="chip" data-val="Legal Aid" onclick="setType(this)">LA</button>
+    <button class="chip" data-val="Inter Partes" onclick="setType(this)">IP</button>
+    <button class="chip" data-val="Other" onclick="setType(this)">Other</button>
   </div>
   <div class="filter-count" id="filter-count"></div>
 </div>
@@ -531,6 +532,8 @@ function renderTable() {
     const isOver = status==='Overdue';
     const out    = parseFloat(inv.AmountOutstanding)||0;
     const laip   = (inv.LAorIP||'').trim();
+    const laipShort = laip === 'Legal Aid' ? 'LA' : laip === 'Inter Partes' ? 'IP' : (laip || null);
+    const laipCls   = laip === 'Legal Aid' ? 'type-LA' : laip === 'Inter Partes' ? 'type-IP' : 'type-Other';
     return `<tr class="${inv._id===activeId?'active-row':''}"
         onclick="openDrawer('${esc(inv._id)}')" tabindex="0"
         onkeydown="if(event.key==='Enter')openDrawer('${esc(inv._id)}')">
@@ -542,7 +545,7 @@ function renderTable() {
       <td class="num">${fmtAmt(inv.AmountDue)}</td>
       <td class="num${out>0?' col-outstanding-nonzero':''}">${fmtAmt(inv.AmountOutstanding)}</td>
       <td><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></td>
-      <td>${laip?`<span class="type-badge type-${laip==='LA'?'LA':'IP'}">${esc(laip)}</span>`:'—'}</td>
+      <td>${laipShort?`<span class="type-badge ${laipCls}">${esc(laipShort)}</span>`:'—'}</td>
       <td><button class="stmt-btn" onclick="event.stopPropagation();printStatement('${esc(inv.VendorName||'')}')">Statement</button></td>
     </tr>`;
   }).join('');
@@ -579,7 +582,7 @@ function openDrawer(id) {
       <dt>Case Name</dt><dd>${esc(inv.Casename||'—')}</dd>
       <dt>Drafted By</dt><dd>${esc(inv.DraftedByEmail||'—')}</dd>
       <dt>Invoice Type</dt><dd>${esc(inv.Invoicetype||'—')}</dd>
-      <dt>LA / IP</dt><dd>${inv.LAorIP?`<span class="type-badge type-${inv.LAorIP==='LA'?'LA':'IP'}">${esc(inv.LAorIP)}</span>`:'—'}</dd>
+      <dt>LA / IP</dt><dd>${inv.LAorIP?`<span class="type-badge ${laip==='Legal Aid'?'type-LA':laip==='Inter Partes'?'type-IP':'type-Other'}">${esc(laip==='Legal Aid'?'LA':laip==='Inter Partes'?'IP':laip)}</span>`:'—'}</dd>
       <dt>Drafting Fee</dt><dd class="mono">${fmtAmtFull(inv.DraftingFeeElement)}</dd>
       <dt>Invoice PDF</dt><dd>${inv.FileUrl?`<a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Open in SharePoint ↗</a>`:'—'}</dd>
     </div></div>
@@ -1224,20 +1227,30 @@ function renderDashboard() {
     </div>`).join('');
 
   // ── ROW 3: WIP by draftsman ──
+  const NAME_TO_EMAIL_DASH = {
+    'toby moreton':       'toby@tmclegal.co.uk',
+    'tom winyard':        'tom@tmclegal.co.uk',
+    'joanna sinfield':    'joanna@tmclegal.co.uk',
+    'tracy':              'tracy@tmclegal.co.uk',
+    'kelly':              'kelly@tmclegal.co.uk',
+    'danielle':           'danielle@tmclegal.co.uk',
+    'julie':              'julie@tmclegal.co.uk',
+    'lesley cohen-taylor':'lesley@tmclegal.co.uk',
+  };
   const WIP_EXCLUDE_NAMES = new Set(['lesley cohen-taylor','lesley','julie','daniel','danielle']);
   const wipMap = {};
   allWIPItems.forEach(item => {
     if (!(item.WIPValue > 0)) return;
-    const email = (item.Email||'').toLowerCase();
+    let email = (item.Email||'').toLowerCase();
+    if (!email && item.DraftsmanName) email = NAME_TO_EMAIL_DASH[item.DraftsmanName.toLowerCase()] || '';
     if (WIP_EXCLUDE.has(email)) return;
-    // Derive a canonical display name: prefer email-based, fall back to DraftsmanName
     let name, key;
     if (email && email.includes('@')) {
       name = email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-      key  = email; // group by email when available
+      key  = email;
     } else {
       name = item.DraftsmanName || 'Unassigned';
-      key  = name.toLowerCase(); // group by name when no email
+      key  = name.toLowerCase();
     }
     if (WIP_EXCLUDE_NAMES.has(name.toLowerCase())) return;
     if (!wipMap[key]) wipMap[key] = { name, count:0, value:0 };
