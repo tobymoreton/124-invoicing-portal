@@ -298,6 +298,8 @@ let sortDir   = -1;
 let filters   = { search: '', status: 'Outstanding', type: 'all' };
 let activeId  = null;
 let dsPeriod  = 'this';
+let _callerEmail = null;
+let _isAdmin     = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-date').textContent =
@@ -337,6 +339,8 @@ async function load() {
 
     const ADMIN_EMAILS = ['toby@tmclegal.co.uk','lesley@tmclegal.co.uk','danielle@tmclegal.co.uk'];
     isAdmin = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+    _callerEmail = callerEmail;
+    _isAdmin     = isAdmin;
 
     // Non-admins: hide invoice table, ledger, filters; show personal billing header
     if (!isAdmin) {
@@ -350,22 +354,18 @@ async function load() {
       }
     }
 
-    // Admins fetch both; non-admins skip invoices (API returns 403 anyway)
+    // Both admins and non-admins fetch invoices — admins get all, non-admins get their own
+    const [invRes, liRes] = await Promise.all([
+      fetch(API,    { headers: { Accept: 'application/json' } }),
+      fetch(API_LI, { headers: { Accept: 'application/json' } }),
+    ]);
+    if (!invRes.ok) { const t=await invRes.text(); throw new Error(`Invoices API ${invRes.status}: ${t.slice(0,160)}`); }
+    if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
+    allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
+    allLineItems = await liRes.json();
     if (isAdmin) {
-      const [invRes, liRes] = await Promise.all([
-        fetch(API,    { headers: { Accept: 'application/json' } }),
-        fetch(API_LI, { headers: { Accept: 'application/json' } }),
-      ]);
-      if (!invRes.ok) { const t=await invRes.text(); throw new Error(`Invoices API ${invRes.status}: ${t.slice(0,160)}`); }
-      if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
-      allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
-      allLineItems = await liRes.json();
       renderStats();
       renderTable();
-    } else {
-      const liRes = await fetch(API_LI, { headers: { Accept: 'application/json' } });
-      if (!liRes.ok) { const t=await liRes.text(); throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
-      allLineItems = await liRes.json();
     }
 
     renderDraftsman();
@@ -602,6 +602,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
+    if (!_isAdmin && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!timed[name]) timed[name]=0;
     timed[name] += li.Value||0;
@@ -624,6 +625,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
+    if (!_isAdmin && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!draft[name]) draft[name]=0;
     draft[name] += parseFloat(inv.DraftingFeeElement)||0;
@@ -646,6 +648,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
+    if (!_isAdmin && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
@@ -656,6 +659,7 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
+    if (!_isAdmin && li.CompletedByEmail && li.CompletedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(li.CompletedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     const liVal = li.Value||0;
