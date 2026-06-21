@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Issue Invoice — TMC Legal Limited</title>
+  <title>Create Draft Invoice — TMC Legal Limited</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -146,7 +146,7 @@
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
     <div class="nav-divider"></div>
-    <span class="nav-title">Issue Invoice</span>
+    <span class="nav-title">Create Draft Invoice</span>
   </div>
   <div style="display:flex;align-items:center;gap:20px;">
     <span class="nav-meta" id="nav-user"></span>
@@ -164,8 +164,8 @@
 <div class="main" id="main-content" style="display:none;">
 
   <div class="page-heading">
-    <h1>Issue Invoice</h1>
-    <p>Search for a case, review the figures, then issue.</p>
+    <h1>Create Draft Invoice</h1>
+    <p>Search for a case, review the figures, then create the draft for Lesley to issue.</p>
   </div>
 
   <!-- Step 1: Case selector -->
@@ -231,12 +231,12 @@
 
     <!-- Step 3: Issue -->
     <div class="card" id="issue-section">
-      <div class="card-title">Step 3 — Issue Invoice</div>
+      <div class="card-title">Step 3 — Create Draft</div>
       <button class="btn-issue" id="btn-issue" disabled>
         <div class="spinner" id="issue-spinner"></div>
-        <span id="btn-issue-label">Issue Invoice</span>
+        <span id="btn-issue-label">Create Draft Invoice</span>
       </button>
-      <p class="issue-note">This will assign an invoice number, generate a PDF, and update SharePoint.</p>
+      <p class="issue-note">This will assign an invoice number and create a draft for Lesley to review and issue.</p>
       <div id="issue-status" class="status-msg"></div>
     </div>
   </div>
