@@ -232,6 +232,7 @@ function normalise(item) {
     Net:                toNum(f.Net),
     Cancelled:          f.Cancelled           || false,
     Theirref:           f.Theirref            || null,
+    FileUrl:            item.webUrl           || null,
   };
 }
 
