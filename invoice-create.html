@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Issue Invoice — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A; --navy-mid:#253A60; --gold:#C9A84C; --gold-pale:#F0E6C8;
+      --cream:#F5F2EB; --cream-dark:#ECE8DF; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E5E1D6; --grey-faint:#F0EDE6;
+      --success:#065F46; --success-bg:#ECFDF5;
+      --error:#991B1B; --error-bg:#FEF2F2;
+      --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
+      --shadow-lg:0 8px 32px rgba(27,42,74,.18);
+      --radius:6px; --transition:.18s ease;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* ── Nav (matches index.html exactly) ── */
+    .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+    .nav-brand{display:flex;align-items:baseline;gap:14px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
+    .nav-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(201,168,76,.45);letter-spacing:.04em;}
+    .nav-back{font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;color:rgba(245,242,235,.65);text-decoration:none;letter-spacing:.04em;transition:color var(--transition);}
+    .nav-back:hover{color:var(--gold);}
+    .nav-back::before{content:'← ';}
+
+    /* ── Access denied ── */
+    #access-denied{display:none;padding:80px 28px;text-align:center;}
+    #access-denied h2{font-family:'Spectral',serif;font-size:22px;font-weight:300;color:var(--navy);margin-bottom:8px;}
+    #access-denied p{color:var(--grey-mid);font-size:14px;}
+
+    /* ── Main layout ── */
+    .main{padding:32px 28px;max-width:720px;margin:0 auto;}
+
+    /* ── Page heading ── */
+    .page-heading{margin-bottom:28px;}
+    .page-heading h1{font-family:'Spectral',serif;font-weight:300;font-size:26px;color:var(--navy);letter-spacing:.02em;}
+    .page-heading p{font-size:13px;color:var(--grey-mid);margin-top:4px;}
+
+    /* ── Card ── */
+    .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;margin-bottom:20px;}
+    .card-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:16px;}
+
+    /* ── Case search ── */
+    .search-wrap{position:relative;}
+    .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.38;pointer-events:none;}
+    .case-search-input{
+      width:100%;padding:11px 14px 11px 38px;
+      border:1.5px solid var(--grey-light);border-radius:var(--radius);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
+      background:var(--cream);outline:none;transition:border-color var(--transition);
+    }
+    .case-search-input:focus{border-color:var(--gold);background:var(--white);}
+    .case-search-input::placeholder{color:var(--grey-mid);}
+
+    /* ── Typeahead dropdown ── */
+    .typeahead-list{
+      position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:100;
+      background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
+      box-shadow:var(--shadow-lg);max-height:280px;overflow-y:auto;display:none;
+    }
+    .typeahead-list.open{display:block;}
+    .typeahead-item{
+      padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--grey-faint);
+      transition:background var(--transition);
+    }
+    .typeahead-item:last-child{border-bottom:none;}
+    .typeahead-item:hover,.typeahead-item.focused{background:var(--cream);}
+    .typeahead-item .ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);margin-top:2px;}
+    .typeahead-empty{padding:14px;font-size:13px;color:var(--grey-mid);text-align:center;}
+
+    /* ── Selected case pill ── */
+    .selected-case{
+      display:none;margin-top:10px;padding:10px 14px;
+      background:var(--gold-pale);border:1px solid rgba(201,168,76,.4);border-radius:var(--radius);
+      font-size:13px;font-weight:500;color:var(--navy);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .selected-case.visible{display:flex;}
+    .selected-case .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);margin-top:2px;}
+    .selected-case-info{display:flex;flex-direction:column;}
+    .clear-case{background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:18px;line-height:1;padding:2px 4px;transition:color var(--transition);}
+    .clear-case:hover{color:var(--navy);}
+
+    /* ── Figures preview ── */
+    #figures-section{display:none;}
+    #figures-section.visible{display:block;}
+
+    .figures-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+    .figure-cell{padding:14px 16px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
+    .figure-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:6px;}
+    .figure-value{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--navy);line-height:1;}
+    .figure-value.is-currency::before{content:'£';font-size:14px;vertical-align:top;margin-top:3px;display:inline-block;margin-right:1px;opacity:.7;}
+    .figure-value.zero{color:var(--grey-mid);}
+    .figure-sub{font-size:11px;color:var(--grey-mid);margin-top:4px;}
+
+    .total-row{padding:16px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;}
+    .total-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.7);}
+    .total-value{font-family:'Spectral',serif;font-weight:300;font-size:30px;color:var(--white);line-height:1;}
+    .total-value::before{content:'£';font-size:17px;vertical-align:top;margin-top:5px;display:inline-block;margin-right:2px;opacity:.7;}
+
+    .loading-figures{padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;}
+
+    /* ── Issue button ── */
+    #issue-section{display:none;}
+    #issue-section.visible{display:block;}
+
+    .btn-issue{
+      width:100%;padding:15px 24px;
+      background:var(--navy);border:none;border-radius:var(--radius);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
+      letter-spacing:.04em;color:var(--white);cursor:pointer;
+      transition:background var(--transition);
+      display:flex;align-items:center;justify-content:center;gap:10px;
+    }
+    .btn-issue:hover:not(:disabled){background:var(--navy-mid);}
+    .btn-issue:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-issue.issuing{background:var(--navy-mid);}
+
+    .issue-note{font-size:12px;color:var(--grey-mid);text-align:center;margin-top:10px;}
+
+    /* ── Status messages ── */
+    .status-msg{display:none;padding:14px 16px;border-radius:var(--radius);font-size:13px;margin-top:16px;}
+    .status-msg.success{display:block;background:var(--success-bg);color:var(--success);border:1px solid rgba(6,95,70,.2);}
+    .status-msg.error{display:block;background:var(--error-bg);color:var(--error);border:1px solid rgba(153,27,27,.2);}
+
+    /* ── Spinner ── */
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
+    .spinner.visible{display:block;}
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <div class="nav-divider"></div>
+    <span class="nav-title">Issue Invoice</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <span class="nav-meta" id="nav-user"></span>
+    <a class="nav-back" href="/">Back to Portal</a>
+  </div>
+</nav>
+
+<!-- Access denied (shown for non-admin, non-finance) -->
+<div id="access-denied">
+  <h2>Access Restricted</h2>
+  <p>Invoice creation is available to admins only. Contact Toby if you need access.</p>
+</div>
+
+<!-- Main -->
+<div class="main" id="main-content" style="display:none;">
+
+  <div class="page-heading">
+    <h1>Issue Invoice</h1>
+    <p>Search for a case, review the figures, then issue.</p>
+  </div>
+
+  <!-- Step 1: Case selector -->
+  <div class="card">
+    <div class="card-title">Step 1 — Select Case</div>
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input
+        type="text"
+        id="case-search"
+        class="case-search-input"
+        placeholder="Search by case name or reference…"
+        autocomplete="off"
+      />
+      <div class="typeahead-list" id="typeahead-list"></div>
+    </div>
+    <div class="selected-case" id="selected-case">
+      <div class="selected-case-info">
+        <span id="selected-name"></span>
+        <span class="case-ref" id="selected-ref"></span>
+      </div>
+      <button class="clear-case" id="clear-case" title="Clear">×</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Figures preview -->
+  <div id="figures-section">
+    <div class="card">
+      <div class="card-title">Step 2 — Review Figures</div>
+      <div id="figures-loading" class="loading-figures">Loading figures…</div>
+      <div id="figures-content" style="display:none;">
+        <div class="figures-grid">
+          <div class="figure-cell">
+            <div class="figure-label">Drafting Fee</div>
+            <div class="figure-value is-currency" id="fig-drafting">0.00</div>
+            <div class="figure-sub" id="fig-drafting-line"></div>
+          </div>
+          <div class="figure-cell">
+            <div class="figure-label">Timed Work</div>
+            <div class="figure-value is-currency" id="fig-timed">0.00</div>
+            <div class="figure-sub" id="fig-timed-sub"></div>
+          </div>
+          <div class="figure-cell">
+            <div class="figure-label">VAT @ 20%</div>
+            <div class="figure-value is-currency" id="fig-vat">0.00</div>
+            <div class="figure-sub" id="fig-vat-sub"></div>
+          </div>
+          <div class="figure-cell">
+            <div class="figure-label">Expenses</div>
+            <div class="figure-value is-currency zero" id="fig-expenses">0.00</div>
+            <div class="figure-sub"></div>
+          </div>
+        </div>
+        <div class="total-row">
+          <span class="total-label">Grand Total</span>
+          <span class="total-value" id="fig-total">0.00</span>
+        </div>
+        <div id="figures-status" class="status-msg"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Issue -->
+    <div class="card" id="issue-section">
+      <div class="card-title">Step 3 — Issue Invoice</div>
+      <button class="btn-issue" id="btn-issue" disabled>
+        <div class="spinner" id="issue-spinner"></div>
+        <span id="btn-issue-label">Issue Invoice</span>
+      </button>
+      <p class="issue-note">This will assign an invoice number, generate a PDF, and update SharePoint.</p>
+      <div id="issue-status" class="status-msg"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const ADMIN_EMAILS   = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+const SITE_PATH      = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const CASES_GUID     = 'ae420bda-e550-499c-b337-90e4f33617c1';
+const TT2_GUID       = '67db204c-30a5-4f4d-b276-60852d9967e1';
+
+// ── Identity ───────────────────────────────────────────────────────────────
+let callerEmail = null;
+
+async function getIdentity() {
+  try {
+    const r = await fetch('/.auth/me');
+    if (!r.ok) return null;
+    const data = await r.json();
+    const principal = data?.clientPrincipal;
+    return principal?.userDetails?.toLowerCase() || null;
+  } catch { return null; }
+}
+
+// ── Dev preview override ───────────────────────────────────────────────────
+function resolveEmail(raw) {
+  const override = sessionStorage.getItem('__PREVIEW_AS');
+  return (override || raw || '').toLowerCase();
+}
+
+// ── Auth gate ──────────────────────────────────────────────────────────────
+async function init() {
+  const raw = await getIdentity();
+  callerEmail = resolveEmail(raw);
+
+  document.getElementById('nav-user').textContent = callerEmail || '';
+
+  if (!ADMIN_EMAILS.includes(callerEmail)) {
+    document.getElementById('access-denied').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('main-content').style.display = 'block';
+  initCaseSearch();
+}
+
+// ── Case typeahead ─────────────────────────────────────────────────────────
+let searchTimeout = null;
+let selectedCase  = null;
+
+function initCaseSearch() {
+  const input = document.getElementById('case-search');
+  const list  = document.getElementById('typeahead-list');
+
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    const q = input.value.trim();
+    if (q.length < 2) { closeList(); return; }
+    searchTimeout = setTimeout(() => searchCases(q), 280);
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeList(); input.blur(); }
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-wrap')) closeList();
+  });
+
+  document.getElementById('clear-case').addEventListener('click', clearSelection);
+}
+
+async function searchCases(q) {
+  const list = document.getElementById('typeahead-list');
+  list.innerHTML = '<div class="typeahead-empty">Searching…</div>';
+  list.classList.add('open');
+
+  try {
+    // Search by Title (case name) or Ourreference_x0028_text_x0029_ (our ref)
+    const filter = encodeURIComponent(
+      `startswith(fields/Title,'${q.replace(/'/g,"''")}') or startswith(fields/Ourreference_x0028_text_x0029_,'${q.replace(/'/g,"''")}') or contains(fields/Title,'${q.replace(/'/g,"''")}')`
+    );
+    const select = encodeURIComponent('Title,Ourreference_x0028_text_x0029_,Fee_x0025__x0028_number_x0029_,LAA_x0020_Drafting_x0020_Fee_x00,Net_x0020_Drafting_x0020_Fee,Drafting_x0020_fee_x0020_line,VatOnDraftingFee_x003f_,TimedWorkBillableFromOverride,TimedWorkLineOverride,Firm_x0028_text_x0029_,Address1_x0028_text_x0029_,Address2_x0028_text_x0029_,Address3_x0028_text_x0029_,Address4_x0028_text_x0029_,Address5_x0028_text_x0029_,ClientCaseReference,DraftingYetToBeInvoiced,caseID_text');
+
+    const url = `/api/cases?filter=${filter}&select=${select}&top=10`;
+    const r   = await fetch(url);
+    if (!r.ok) throw new Error('Search failed');
+    const data = await r.json();
+    renderList(data.value || []);
+  } catch (err) {
+    list.innerHTML = '<div class="typeahead-empty">Search failed — try again</div>';
+  }
+}
+
+function renderList(cases) {
+  const list = document.getElementById('typeahead-list');
+  if (!cases.length) {
+    list.innerHTML = '<div class="typeahead-empty">No cases found</div>';
+    return;
+  }
+  list.innerHTML = cases.map((c, i) => {
+    const fields = c.fields || c;
+    const name = fields.Title || '—';
+    const ref  = fields.Ourreference_x0028_text_x0029_ || '';
+    return `<div class="typeahead-item" data-idx="${i}" data-id="${c.id || ''}"
+      onclick="selectCase(${JSON.stringify(JSON.stringify(fields))}, '${c.id || ''}')">
+      <div>${escHtml(name)}</div>
+      <div class="ref">${escHtml(ref)}</div>
+    </div>`;
+  }).join('');
+  list.classList.add('open');
+}
+
+function selectCase(fieldsJson, spId) {
+  const fields = JSON.parse(fieldsJson);
+  selectedCase = { id: spId, fields };
+
+  document.getElementById('case-search').value   = '';
+  document.getElementById('selected-name').textContent = fields.Title || '—';
+  document.getElementById('selected-ref').textContent  = fields.Ourreference_x0028_text_x0029_ || '';
+  document.getElementById('selected-case').classList.add('visible');
+  closeList();
+
+  loadFigures(fields);
+}
+
+function clearSelection() {
+  selectedCase = null;
+  document.getElementById('selected-case').classList.remove('visible');
+  document.getElementById('figures-section').classList.remove('visible');
+  document.getElementById('issue-section').classList.remove('visible');
+  document.getElementById('case-search').value = '';
+  document.getElementById('case-search').focus();
+}
+
+function closeList() {
+  document.getElementById('typeahead-list').classList.remove('open');
+  document.getElementById('typeahead-list').innerHTML = '';
+}
+
+// ── Figures ────────────────────────────────────────────────────────────────
+async function loadFigures(fields) {
+  document.getElementById('figures-section').classList.add('visible');
+  document.getElementById('figures-loading').style.display = 'block';
+  document.getElementById('figures-content').style.display = 'none';
+  document.getElementById('issue-section').classList.remove('visible');
+
+  // Drafting fee — from case record
+  const draftingFee = parseFloat(fields.Net_x0020_Drafting_x0020_Fee) || 0;
+  const draftingLine = fields.Drafting_x0020_fee_x0020_line || '';
+  const vatOnDrafting = fields.VatOnDraftingFee_x003f_ === true;
+
+  // Timed work — live from Time Tracking2
+  let timedFee = 0, timedHours = 0, timedRate = 0, timedEntries = [];
+  try {
+    const ourRef = fields.Ourreference_x0028_text_x0029_ || '';
+    const r = await fetch(`/api/wip?ref=${encodeURIComponent(ourRef)}`);
+    if (r.ok) {
+      const data = await r.json();
+      timedEntries = (data.value || []).filter(e => !e.fields?.Billed_x003f_);
+      timedEntries.forEach(e => {
+        const f = e.fields || e;
+        const hrs  = parseFloat(f.TimeSpentMirror) || 0;
+        const rate = parseFloat(f.field_6) || 0;
+        timedHours += hrs;
+        timedFee   += hrs * rate;
+        if (!timedRate && rate) timedRate = rate; // use first found rate
+      });
+      timedFee = Math.round(timedFee * 100) / 100;
+    }
+  } catch (_) {}
+
+  const vatBase  = timedFee + (vatOnDrafting ? draftingFee : 0);
+  const vat      = Math.round(vatBase * 0.2 * 100) / 100;
+  const expenses = 0; // expenses not yet in scope
+  const grand    = Math.round((draftingFee + timedFee + vat + expenses) * 100) / 100;
+
+  // Render
+  const fmt = n => n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+  el('fig-drafting').textContent = fmt(draftingFee);
+  el('fig-drafting').classList.toggle('zero', draftingFee === 0);
+  el('fig-drafting-line').textContent = draftingLine;
+
+  el('fig-timed').textContent = fmt(timedFee);
+  el('fig-timed').classList.toggle('zero', timedFee === 0);
+  el('fig-timed-sub').textContent = timedHours ? `${Math.round(timedHours * 100)/100} hrs × £${timedRate}/hr` : 'No unbilled time entries';
+
+  el('fig-vat').textContent = fmt(vat);
+  el('fig-vat-sub').textContent = vatOnDrafting ? 'On drafting + timed work' : 'On timed work only';
+
+  el('fig-expenses').textContent = fmt(expenses);
+
+  el('fig-total').textContent = fmt(grand);
+
+  document.getElementById('figures-loading').style.display = 'none';
+  document.getElementById('figures-content').style.display = 'block';
+
+  // Store computed figures on selectedCase for use at issue time
+  selectedCase.computed = { draftingFee, draftingLine, timedFee, timedHours, timedRate,
+                             vatOnDrafting, vat, expenses, grand, timedEntries };
+
+  // Enable issue button only if there's something to bill
+  const hasSomething = draftingFee > 0 || timedFee > 0;
+  el('btn-issue').disabled = !hasSomething;
+  document.getElementById('issue-section').classList.add('visible');
+
+  if (!hasSomething) {
+    showFiguresMsg('No billable amounts found for this case.', 'error');
+  }
+}
+
+// ── Issue (stub — wired in next step) ─────────────────────────────────────
+el('btn-issue') && document.getElementById('btn-issue').addEventListener('click', async () => {
+  // TODO: implement in next step
+  showIssueMsg('Issue logic coming in next step.', 'error');
+});
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function el(id) { return document.getElementById(id); }
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showFiguresMsg(msg, type) {
+  const el = document.getElementById('figures-status');
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+}
+
+function showIssueMsg(msg, type) {
+  const el = document.getElementById('issue-status');
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
