@@ -1224,21 +1224,29 @@ function renderDashboard() {
     </div>`).join('');
 
   // ── ROW 3: WIP by draftsman ──
+  const WIP_EXCLUDE_NAMES = new Set(['lesley cohen-taylor','lesley','julie','daniel','danielle']);
   const wipMap = {};
   allWIPItems.forEach(item => {
     if (!(item.WIPValue > 0)) return;
     const email = (item.Email||'').toLowerCase();
     if (WIP_EXCLUDE.has(email)) return;
-    const name = email
-      ? email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase())
-      : (item.DraftsmanName||'Unknown');
-    if (!wipMap[name]) wipMap[name] = { count:0, value:0 };
-    wipMap[name].count++;
-    wipMap[name].value += item.WIPValue||0;
+    // Derive a canonical display name: prefer email-based, fall back to DraftsmanName
+    let name, key;
+    if (email && email.includes('@')) {
+      name = email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      key  = email; // group by email when available
+    } else {
+      name = item.DraftsmanName || 'Unassigned';
+      key  = name.toLowerCase(); // group by name when no email
+    }
+    if (WIP_EXCLUDE_NAMES.has(name.toLowerCase())) return;
+    if (!wipMap[key]) wipMap[key] = { name, count:0, value:0 };
+    wipMap[key].count++;
+    wipMap[key].value += item.WIPValue||0;
   });
   const wipEntries = Object.entries(wipMap).sort((a,b) => b[1].value - a[1].value);
   document.getElementById('dash-wip').innerHTML = wipEntries.length
-    ? wipEntries.map(([name,{count,value}]) => `
+    ? wipEntries.map(([,{name,count,value}]) => `
         <div class="dash-card">
           <div class="dash-card-label">${esc(name)}</div>
           <div class="dash-card-value is-currency">${value.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
