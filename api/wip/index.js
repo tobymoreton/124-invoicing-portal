@@ -36,7 +36,8 @@ const SELECT_FIELDS = [
   'field_16',                       // Our reference
   'field_12',                       // Date Completed
   'TimeSpentMirror',                // Hours spent (Number mirror)
-  'Num_BillableAmount_x00a3_',      // WIP value £ (native Currency field)
+  'field_6',                        // Rate £/hr
+  'Num_BillableAmount_x00a3_',      // WIP value £ — only populated post-billing; compute from TimeSpentMirror × field_6 for unbilled
   'Billable_x003f_',                // Billable? boolean (indexed)
   'Billed_x003f_',                  // Billed? boolean (indexed)
 ].join(',');
@@ -234,7 +235,12 @@ function normalise(item) {
     OurRef:        f.field_16                          || null,
     DateCompleted: f.field_12                          || null,
     HoursSpent:    toNum(f.TimeSpentMirror),
-    WIPValue:      toNum(f['Num_BillableAmount_x00a3_']),
+    Rate:          toNum(f.field_6),
+    // WIPValue: use BillableAmount if populated (billed rows), else compute from hours × rate
+    WIPValue:      toNum(f['Num_BillableAmount_x00a3_']) ||
+                   (toNum(f.TimeSpentMirror) != null && toNum(f.field_6) != null
+                     ? Math.round(toNum(f.TimeSpentMirror) * toNum(f.field_6) * 100) / 100
+                     : null),
     Billable:      f['Billable_x003f_']                || false,
     Billed:        f['Billed_x003f_']                  || false,
   };
