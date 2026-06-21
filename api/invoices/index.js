@@ -77,12 +77,13 @@ function getCallerEmail(req) {
 module.exports = async function (context, req) {
   context.log('P124 /api/invoices called');
 
-  // Identity check — admins only
+  // Identity check
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — invoice data is restricted to administrators.' };
+  if (!callerEmail) {
+    context.res = { status: 403, body: 'Forbidden — could not determine caller identity.' };
     return;
   }
+  const isAdmin = ADMIN_EMAILS.includes(callerEmail);
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
@@ -92,7 +93,8 @@ module.exports = async function (context, req) {
 
   try {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const invoices = await fetchAllInvoices(token);
+    // Admins get all invoices; non-admins get only their own (by DraftedByEmail)
+    const invoices = await fetchAllInvoices(token, isAdmin ? null : callerEmail);
 
     context.res = {
       status: 200,
@@ -146,7 +148,8 @@ function getToken(tenantId, clientId, clientSecret) {
 }
 
 // ─── FETCH ALL (handles pagination) ──────────────────────
-async function fetchAllInvoices(token) {
+// callerEmailFilter: null = return all (admin); string = return only that draftsman's invoices
+async function fetchAllInvoices(token, callerEmailFilter) {
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
                `?$expand=fields($select=${SELECT_FIELDS})&$top=500`;
 
@@ -158,6 +161,11 @@ async function fetchAllInvoices(token) {
     const items = (page.value || []).map(normalise);
     all = all.concat(items);
     url = page['@odata.nextLink'] || null;
+  }
+
+  // Non-admin: filter to caller's own invoices only (server-side security)
+  if (callerEmailFilter) {
+    all = all.filter(inv => (inv.DraftedByEmail || '').toLowerCase() === callerEmailFilter);
   }
 
   // Sort by DueDate asc — null dates go last
