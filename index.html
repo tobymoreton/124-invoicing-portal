@@ -68,6 +68,9 @@
     tbody tr{border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background var(--transition);}
     tbody tr:last-child{border-bottom:none;}
     tbody tr:hover{background:var(--cream);}
+    tbody tr.la-row{background:#EFF6FF;}
+    tbody tr.la-row:hover{background:#DBEAFE;}
+    tbody tr.la-row.active-row{background:var(--gold-pale);}
     tbody tr.active-row{background:var(--gold-pale);}
     td{padding:12px 16px;vertical-align:middle;}
     td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;}
@@ -534,7 +537,7 @@ function renderTable() {
     const laip   = (inv.LAorIP||'').trim();
     const laipShort = laip === 'Legal Aid' ? 'LA' : laip === 'Inter Partes' ? 'IP' : (laip || null);
     const laipCls   = laip === 'Legal Aid' ? 'type-LA' : laip === 'Inter Partes' ? 'type-IP' : 'type-Other';
-    return `<tr class="${inv._id===activeId?'active-row':''}"
+    return `<tr class="${inv._id===activeId?'active-row':''}${laip==='Legal Aid'?' la-row':''}"
         onclick="openDrawer('${esc(inv._id)}')" tabindex="0"
         onkeydown="if(event.key==='Enter')openDrawer('${esc(inv._id)}')">
       <td class="mono">${esc(inv.OrderDetails||'—')}</td>
