@@ -162,7 +162,7 @@ async function fetchAllWIP(token, isAdmin, isFinance, callerEmail) {
   const filter = encodeURIComponent(wipFilter + emailClause);
 
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields($select=${SELECT_FIELDS})&$filter=${filter}&$top=500`;
+               `?$expand=fields($select=${SELECT_FIELDS})&$filter=${filter}&$top=999&$orderby=fields/field_12 desc`;
 
   let url = base;
   let all = [];
