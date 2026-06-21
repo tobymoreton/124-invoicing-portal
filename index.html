@@ -788,7 +788,7 @@ function renderDraftsman() {
             <td>${cell(v.timed)}</td>
             <td><div class="ds-amt">${fc(v.net)}</div></td>
             <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
-            <td><div class="ds-amt">${fc(v.total)}</div></td>
+            <td style="text-align:right"><div class="ds-amt" style="display:inline">${fc(v.total)}</div> <button onclick="event.stopPropagation();toggleBreakdown('${bkdId}',this.closest('tr'))" style="margin-left:10px;background:var(--navy);color:var(--gold);border:none;border-radius:3px;padding:3px 9px;font-size:10px;font-weight:600;letter-spacing:.05em;cursor:pointer;">View breakdown</button></td>
           </tr>
           <tr class="ds-breakdown-row"><td colspan="6">${buildBreakdown(name,v)}</td></tr>`;
         }).join('')}
@@ -803,13 +803,7 @@ function renderDraftsman() {
       </tbody>
     </table>` : '';
 
-  document.getElementById('ds-inner').innerHTML = `
-    <div class="ds-sub-header" onclick="toggleSection('ds-total-body')">
-      Total Invoiced <span class="ds-toggle">▾</span>
-    </div>
-    <div class="ds-sub-body" id="ds-total-body">
-      <div class="ds-table-wrap">${totalHTML}</div>
-    </div>
+  const subSections = _isAdmin ? `
     <div class="ds-sub-header collapsed" onclick="toggleSection('ds-timed-body')">
       Timed Work <span class="ds-toggle">▾</span>
     </div>
@@ -821,7 +815,16 @@ function renderDraftsman() {
     </div>
     <div class="ds-sub-body collapsed" id="ds-draft-body" style="max-height:0">
       <div class="ds-table-wrap">${draftHTML}</div>
-    </div>`;
+    </div>` : '';
+
+  document.getElementById('ds-inner').innerHTML = `
+    <div class="ds-sub-header" onclick="toggleSection('ds-total-body')">
+      Total Invoiced <span class="ds-toggle">▾</span>
+    </div>
+    <div class="ds-sub-body" id="ds-total-body">
+      <div class="ds-table-wrap">${totalHTML}</div>
+    </div>
+    ${subSections}`;
 }
 
 function toggleBreakdown(id, row) {
