@@ -311,19 +311,24 @@ async function load() {
     let callerEmail = null;
     let isAdmin = false;
     try {
-      const authRes = await fetch('/.auth/me');
-      if (authRes.ok) {
-        const authData = await authRes.json();
-        const principal = (authData.clientPrincipal) || {};
-        // userDetails is the most reliable field — always the UPN/email for AAD
-        callerEmail = principal.userDetails ? principal.userDetails.toLowerCase() : null;
-        if (!callerEmail) {
-          const claims = principal.claims || [];
-          const claim = claims.find(c =>
-            c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
-            || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
-          );
-          callerEmail = claim ? claim.val.toLowerCase() : null;
+      // DEV PREVIEW: set window.__PREVIEW_AS = 'email@tmclegal.co.uk' in console then reload
+      if (window.__PREVIEW_AS) {
+        callerEmail = window.__PREVIEW_AS.toLowerCase();
+      } else {
+        const authRes = await fetch('/.auth/me');
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          const principal = (authData.clientPrincipal) || {};
+          // userDetails is the most reliable field — always the UPN/email for AAD
+          callerEmail = principal.userDetails ? principal.userDetails.toLowerCase() : null;
+          if (!callerEmail) {
+            const claims = principal.claims || [];
+            const claim = claims.find(c =>
+              c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+              || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+            );
+            callerEmail = claim ? claim.val.toLowerCase() : null;
+          }
         }
       }
     } catch(e) { /* auth check failed — treat as non-admin */ }
