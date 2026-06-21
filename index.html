@@ -1122,6 +1122,7 @@ function renderWIP() {
           ${esc(item.CaseName || '—')}
           ${item.OurRef ? `<div style="font-size:10px;color:var(--grey-mid);font-family:'IBM Plex Mono',monospace;margin-top:2px;">${esc(item.OurRef)}</div>` : ''}
         </td>
+        <td style="text-align:left;max-width:300px;white-space:normal;">${esc(item.WorkDone || '—')}</td>
         <td>${fd(item.DateCompleted)}</td>
         <td>${item.HoursSpent != null ? item.HoursSpent.toFixed(1) + 'h' : '—'}</td>
         <td>${fc(item.WIPValue)}</td>
@@ -1140,6 +1141,7 @@ function renderWIP() {
           <table class="wip-cases-table">
             <thead><tr>
               <th style="text-align:left;">Case</th>
+              <th style="text-align:left;">Work Done</th>
               <th>Completed</th>
               <th>Hours</th>
               <th>Value</th>
