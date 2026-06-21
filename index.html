@@ -31,6 +31,7 @@
     .nav-jump{font-family:'Spectral',serif;font-weight:600;font-size:18px;color:var(--gold);text-decoration:none;letter-spacing:.04em;transition:all .18s ease;border:2px solid var(--gold);border-radius:4px;padding:6px 16px;}
     .nav-jump:hover{background:var(--gold);color:var(--navy);}
     .ledger{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);display:grid;grid-template-columns:repeat(5,1fr);}
+    .ledger.has-wip{grid-template-columns:repeat(6,1fr);}
     .ledger-cell{padding:18px 28px 20px;position:relative;}
     .ledger-cell+.ledger-cell::before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;background:rgba(201,168,76,.22);}
     .ledger-label{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,168,76,.7);margin-bottom:6px;}
@@ -230,6 +231,11 @@
     <div class="ledger-value is-currency" id="stat-paid-month">—</div>
     <div class="ledger-sub" id="stat-paid-month-sub">&nbsp;</div>
   </div>
+  <div class="ledger-cell" id="stat-wip-cell" style="display:none;">
+    <div class="ledger-label">Total WIP</div>
+    <div class="ledger-value is-currency" id="stat-wip">—</div>
+    <div class="ledger-sub">unbilled work</div>
+  </div>
 </div>
 
 <div class="filters-bar">
@@ -421,11 +427,35 @@ async function load() {
     // Fetch WIP — all three tiers get it; server filters appropriately
     try {
       const wipRes = await fetch(API_WIP, { headers: { Accept: 'application/json' } });
-      if (wipRes.ok) allWIPItems = await wipRes.json();
+      if (wipRes.ok) {
+        const rawWIP = await wipRes.json();
+        // Client-side filter for non-admin/non-finance users: only show own WIP
+        if (!isAdmin && !isFinance) {
+          allWIPItems = rawWIP.filter(item =>
+            (item.Email || '').toLowerCase() === callerEmail
+          );
+        } else {
+          allWIPItems = rawWIP;
+        }
+      }
     } catch(e) { /* WIP load failure non-fatal — section will show empty */ }
 
     renderDraftsman();
     renderWIP();
+    // Admin/finance: populate WIP ledger stat
+    if (isAdmin || isFinance) {
+      const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
+      const wipTotal = allWIPItems
+        .filter(item => item.WIPValue > 0 && !WIP_EXCLUDE.has((item.Email||'').toLowerCase()))
+        .reduce((s, item) => s + (item.WIPValue || 0), 0);
+      const wipCell = document.getElementById('stat-wip-cell');
+      const wipEl   = document.getElementById('stat-wip');
+      if (wipCell && wipEl) {
+        wipEl.textContent = wipTotal.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+        wipCell.style.display = '';
+        document.querySelector('.ledger').classList.add('has-wip');
+      }
+    }
   } catch(e) { renderError(e.message); }
 }
 
