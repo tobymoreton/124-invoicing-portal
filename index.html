@@ -778,6 +778,7 @@ function renderDraftsman() {
         <th>Total (Net)</th>
         <th>VAT</th>
         <th>Total (inc. VAT)</th>
+        <th></th>
       </tr></thead>
       <tbody>
         ${totRows.map(([name,v])=>{
@@ -788,18 +789,20 @@ function renderDraftsman() {
             <td>${cell(v.timed)}</td>
             <td><div class="ds-amt">${fc(v.net)}</div></td>
             <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
-            <td style="text-align:right"><div class="ds-amt" style="display:inline">${fc(v.total)}</div> <button onclick="event.stopPropagation();toggleBreakdown('${bkdId}',this.closest('tr'))" style="margin-left:10px;background:var(--navy);color:var(--gold);border:none;border-radius:3px;padding:3px 9px;font-size:10px;font-weight:600;letter-spacing:.05em;cursor:pointer;">View breakdown</button></td>
+            <td style="text-align:right"><div class="ds-amt">${fc(v.total)}</div></td>
+            <td style="text-align:center;width:130px"><button onclick="event.stopPropagation();toggleBreakdown('${bkdId}',this.closest('tr'))" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:all .18s ease;" onmouseover="this.style.background='var(--gold)';this.style.color='var(--navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--gold)'">View breakdown</button></td>
           </tr>
-          <tr class="ds-breakdown-row"><td colspan="6">${buildBreakdown(name,v)}</td></tr>`;
+          <tr class="ds-breakdown-row"><td colspan="7">${buildBreakdown(name,v)}</td></tr>`;
         }).join('')}
-        <tr class="ds-total-row">
+        ${_isAdmin ? `<tr class="ds-total-row">
           <td class="ds-name">Total</td>
           <td><div class="ds-amt">${fc(tTotDrafting)}</div></td>
           <td><div class="ds-amt">${fc(tTotTimed)}</div></td>
           <td><div class="ds-amt">${fc(tTotNet)}</div></td>
           <td><div class="ds-amt" style="color:var(--grey-mid)">${fc(tTotVat)}</div></td>
           <td><div class="ds-amt">${fc(tTotTotal)}</div></td>
-        </tr>
+          <td></td>
+        </tr>` : ''}
       </tbody>
     </table>` : '';
 
