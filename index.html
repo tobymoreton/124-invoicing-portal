@@ -311,9 +311,11 @@ async function load() {
     let callerEmail = null;
     let isAdmin = false;
     try {
-      // DEV PREVIEW: set window.__PREVIEW_AS = 'email@tmclegal.co.uk' in console then reload
-      if (window.__PREVIEW_AS) {
-        callerEmail = window.__PREVIEW_AS.toLowerCase();
+      // DEV PREVIEW: in console run: sessionStorage.setItem('__PREVIEW_AS','tom@tmclegal.co.uk'); location.reload()
+      // To clear: sessionStorage.removeItem('__PREVIEW_AS'); location.reload()
+      const _preview = sessionStorage.getItem('__PREVIEW_AS');
+      if (_preview) {
+        callerEmail = _preview.toLowerCase();
       } else {
         const authRes = await fetch('/.auth/me');
         if (authRes.ok) {
