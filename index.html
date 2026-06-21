@@ -977,7 +977,7 @@ function printStatement(clientName) {
 
   const groups = {};
   invoices.forEach(inv => {
-    const g = (inv.LAorIP||'').trim() === 'LA' ? 'Legal Aid' : 'Inter Partes';
+    const g = (inv.LAorIP||'').trim() === 'Legal Aid' ? 'Legal Aid' : (inv.LAorIP||'').trim() === 'Inter Partes' ? 'Inter Partes' : 'Other';
     if (!groups[g]) groups[g] = [];
     groups[g].push(inv);
   });
