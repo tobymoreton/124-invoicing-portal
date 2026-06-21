@@ -49,8 +49,12 @@ const SELECT_FIELDS = [
 
 const ADMIN_EMAILS = [
   'toby@tmclegal.co.uk',
-  'lesley@tmclegal.co.uk',
   'danielle@tmclegal.co.uk',
+];
+
+// Finance tier: sees all draftsman billing but not the main invoice ledger/table
+const FINANCE_EMAILS = [
+  'lesley@tmclegal.co.uk',
 ];
 
 // Decode the x-ms-client-principal header injected by Azure SWA
@@ -77,6 +81,7 @@ module.exports = async function (context, req) {
   // Resolve caller identity
   const callerEmail = getCallerEmail(req);
   const isAdmin     = callerEmail && ADMIN_EMAILS.includes(callerEmail);
+  const isFinance   = callerEmail && FINANCE_EMAILS.includes(callerEmail);
 
   // Non-admins must be authenticated
   if (!callerEmail) {
@@ -84,15 +89,15 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, SITE_ID } = process.env;
-  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET || !SITE_ID) {
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
     return;
   }
 
   try {
     const token     = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const lineItems = await fetchAllLineItems(token, SITE_ID, isAdmin, callerEmail);
+    const lineItems = await fetchAllLineItems(token, isAdmin, isFinance, callerEmail);
 
     context.res = {
       status: 200,
@@ -146,10 +151,10 @@ function getToken(tenantId, clientId, clientSecret) {
 }
 
 // ─── FETCH ALL (handles pagination) ──────────────────────
-async function fetchAllLineItems(token, siteId, isAdmin, callerEmail) {
-  // For non-admins, filter by CompletedByEmail server-side (field is indexed)
+async function fetchAllLineItems(token, isAdmin, isFinance, callerEmail) {
+  // Admins + finance get all line items; non-admins filtered by CompletedByEmail server-side
   // BillableYorN filter removed from Graph query — not indexed, filter client-side instead
-  const emailFilter = isAdmin
+  const emailFilter = (isAdmin || isFinance)
     ? ''
     : `fields/CompletedByEmail eq '${callerEmail}'`;
 
