@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Invoice Portal — TMC Legal Limited</title>
@@ -1014,22 +1014,26 @@ function renderWIP() {
   const fc = v => v > 0 ? '\u00a3' + v.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
   const fd = v => { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}); };
 
-  // Group by draftsman name
+  // Group by email (DraftsmanName is unreliable via Graph app-only auth — returns app identity)
+  // Derive display name from email: toby.moreton@tmclegal.co.uk → Toby Moreton
   const byDraftsman = {};
   allWIPItems.forEach(item => {
-    const name = item.DraftsmanName || 'Unassigned';
-    if (!byDraftsman[name]) byDraftsman[name] = { items: [], total: 0 };
-    byDraftsman[name].items.push(item);
-    byDraftsman[name].total += item.WIPValue || 0;
+    const key  = item.Email ? item.Email.toLowerCase() : 'unassigned';
+    const name = item.Email
+      ? item.Email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase())
+      : (item.DraftsmanName || 'Unassigned');
+    if (!byDraftsman[key]) byDraftsman[key] = { name, items: [], total: 0 };
+    byDraftsman[key].items.push(item);
+    byDraftsman[key].total += item.WIPValue || 0;
   });
 
   // Sort draftsmen by total WIP descending
   const draftsmanEntries = Object.entries(byDraftsman)
-    .sort((a, b) => a[0] === 'Unassigned' ? 1 : b[0] === 'Unassigned' ? -1 : b[1].total - a[1].total);
+    .sort((a, b) => a[0] === 'unassigned' ? 1 : b[0] === 'unassigned' ? -1 : b[1].total - a[1].total);
 
   const grandTotal = draftsmanEntries.reduce((s, [, v]) => s + v.total, 0);
 
-  const blocksHTML = draftsmanEntries.map(([name, { items, total }], idx) => {
+  const blocksHTML = draftsmanEntries.map(([key, { name, items, total }], idx) => {
     const blockId = 'wip-block-' + idx;
     const caseRows = items.map(item => `
       <tr>
