@@ -158,6 +158,20 @@
     .ds-sub-header.collapsed .ds-toggle{transform:rotate(-90deg);}
     .ds-sub-body{overflow:hidden;transition:max-height .25s ease;}
     .ds-sub-body.collapsed{max-height:0!important;}
+    /* ── DASHBOARD SNAPSHOT ── */
+    .dash{padding:20px 28px 4px;background:var(--cream);}
+    .dash-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+    .dash-row-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:8px;}
+    .dash-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;flex:1;min-width:140px;cursor:default;transition:box-shadow var(--transition);}
+    .dash-card.clickable{cursor:pointer;}
+    .dash-card.clickable:hover{box-shadow:var(--shadow-lg);border-bottom:2px solid var(--gold);}
+    .dash-card-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;}
+    .dash-card-value{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);line-height:1;}
+    .dash-card-value.is-currency::before{content:'£';font-size:13px;vertical-align:top;margin-top:3px;display:inline-block;margin-right:1px;opacity:.6;}
+    .dash-card-sub{font-size:11px;color:var(--grey-mid);margin-top:3px;}
+    .dash-card.age-warn .dash-card-value{color:var(--partpaid);}
+    .dash-card.age-danger .dash-card-value{color:var(--overdue);}
+    .dash-card.age-ok .dash-card-value{color:var(--paid);}
     /* ── WIP SECTION ── */
     .wip-section{padding:0 28px 32px;}
     .wip-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -236,6 +250,15 @@
     <div class="ledger-value is-currency" id="stat-wip">—</div>
     <div class="ledger-sub">unbilled work</div>
   </div>
+</div>
+
+<div class="dash" id="dash-section" style="display:none;">
+  <div class="dash-row-label">Invoice Age Analysis</div>
+  <div class="dash-row" id="dash-age"></div>
+  <div class="dash-row-label">Top 5 Clients — Outstanding</div>
+  <div class="dash-row" id="dash-clients"></div>
+  <div class="dash-row-label">WIP by Draftsman</div>
+  <div class="dash-row" id="dash-wip"></div>
 </div>
 
 <div class="filters-bar">
@@ -421,6 +444,7 @@ async function load() {
     if (isAdmin) {
       renderStats();
       renderTable();
+      // Dashboard rendered after WIP loads — called below
     }
     // Finance: fetch completed but don't render stats/table (already hidden)
 
@@ -442,6 +466,7 @@ async function load() {
 
     renderDraftsman();
     renderWIP();
+    if (isAdmin) renderDashboard();
     // Admin/finance: populate WIP ledger stat
     if (isAdmin || isFinance) {
       const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
@@ -579,6 +604,13 @@ function closeDrawer() {
 function applyFilters(today) {
   const s = filters.search.toLowerCase().trim();
   return allInvoices.filter(inv => {
+    // Age band filter (set by clicking dashboard age card)
+    if (window._ageFilter) {
+      const invD = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+      if (!invD || isNaN(invD)) return false;
+      const ageDays = Math.floor((today - invD) / 86400000);
+      if (ageDays < window._ageFilter.min || ageDays > window._ageFilter.max) return false;
+    }
     if (s) {
       const hay = [inv.VendorName,inv.Casename,inv.OrderDetails,inv.Ourref].map(v=>(v||'').toLowerCase()).join(' ');
       if (!hay.includes(s)) return false;
@@ -1131,6 +1163,109 @@ function toggleWIPBlock(blockId) {
     block.classList.add('collapsed');
   }
 }
+// ─── DASHBOARD SNAPSHOT ──────────────────────────────────────────────
+function renderDashboard() {
+  const section = document.getElementById('dash-section');
+  if (!section) return;
+  section.style.display = '';
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
+
+  // ── ROW 1: Age bands ──
+  const bands = [
+    { label:'0–90 days',    min:0,   max:90,        cls:'age-ok' },
+    { label:'91–180 days',  min:91,  max:180,       cls:'' },
+    { label:'181–365 days', min:181, max:365,       cls:'age-warn' },
+    { label:'1–2 years',    min:366, max:730,       cls:'age-danger' },
+    { label:'2+ years',     min:731, max:Infinity,   cls:'age-danger' },
+  ];
+  bands.forEach(b => { b.count=0; b.value=0; });
+  allInvoices.forEach(inv => {
+    const status = normalizeStatus(inv, today);
+    if (status === 'Paid') return;
+    const invD = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    if (!invD || isNaN(invD)) return;
+    const ageDays = Math.floor((today - invD) / 86400000);
+    const b = bands.find(b => ageDays >= b.min && ageDays <= b.max);
+    if (b) { b.count++; b.value += parseFloat(inv.AmountOutstanding)||0; }
+  });
+  document.getElementById('dash-age').innerHTML = bands.map(b => `
+    <div class="dash-card ${b.cls}" onclick="filterByAge(${b.min},${b.max})" style="cursor:pointer;" title="Click to filter invoice table">
+      <div class="dash-card-label">${b.label}</div>
+      <div class="dash-card-value is-currency">${b.value.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div class="dash-card-sub">${b.count} invoice${b.count!==1?'s':''}</div>
+    </div>`).join('');
+
+  // ── ROW 2: Top 5 clients outstanding ──
+  const clientMap = {};
+  allInvoices.forEach(inv => {
+    const status = normalizeStatus(inv, today);
+    if (status === 'Paid') return;
+    const name = inv.VendorName || 'Unknown';
+    if (!clientMap[name]) clientMap[name] = { count:0, value:0 };
+    clientMap[name].count++;
+    clientMap[name].value += parseFloat(inv.AmountOutstanding)||0;
+  });
+  const top5 = Object.entries(clientMap)
+    .sort((a,b) => b[1].value - a[1].value)
+    .slice(0,5);
+  document.getElementById('dash-clients').innerHTML = top5.map(([name,{count,value}]) => `
+    <div class="dash-card clickable" onclick="filterByClient('${esc(name)}')" title="Click to filter to ${esc(name)}">
+      <div class="dash-card-label">${esc(name)}</div>
+      <div class="dash-card-value is-currency">${value.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <div class="dash-card-sub">${count} invoice${count!==1?'s':''} outstanding</div>
+    </div>`).join('');
+
+  // ── ROW 3: WIP by draftsman ──
+  const wipMap = {};
+  allWIPItems.forEach(item => {
+    if (!(item.WIPValue > 0)) return;
+    const email = (item.Email||'').toLowerCase();
+    if (WIP_EXCLUDE.has(email)) return;
+    const name = email
+      ? email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase())
+      : (item.DraftsmanName||'Unknown');
+    if (!wipMap[name]) wipMap[name] = { count:0, value:0 };
+    wipMap[name].count++;
+    wipMap[name].value += item.WIPValue||0;
+  });
+  const wipEntries = Object.entries(wipMap).sort((a,b) => b[1].value - a[1].value);
+  document.getElementById('dash-wip').innerHTML = wipEntries.length
+    ? wipEntries.map(([name,{count,value}]) => `
+        <div class="dash-card">
+          <div class="dash-card-label">${esc(name)}</div>
+          <div class="dash-card-value is-currency">${value.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div class="dash-card-sub">${count} item${count!==1?'s':''}</div>
+        </div>`).join('')
+    : '<div style="font-size:13px;color:var(--grey-mid);font-style:italic;">No WIP data.</div>';
+}
+
+function filterByClient(name) {
+  document.getElementById('search').value = name;
+  filters.search = name.toLowerCase();
+  filters.status = 'all';
+  document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector('#status-chips .chip[data-val="all"]').classList.add('active');
+  renderTable();
+  document.querySelector('.main').scrollIntoView({behavior:'smooth'});
+}
+
+function filterByAge(min, max) {
+  filters.search = '';
+  filters.status = 'all';
+  filters.type   = 'all';
+  document.getElementById('search').value = '';
+  document.querySelectorAll('#status-chips .chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector('#status-chips .chip[data-val="all"]').classList.add('active');
+  document.querySelectorAll('#type-chips .chip').forEach(c=>c.classList.remove('active'));
+  document.querySelector('#type-chips .chip[data-val="all"]').classList.add('active');
+  window._ageFilter = { min, max };
+  renderTable();
+  window._ageFilter = null;
+  document.querySelector('.main').scrollIntoView({behavior:'smooth'});
+}
+
 </script>
 </body>
 </html>
