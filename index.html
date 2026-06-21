@@ -342,11 +342,13 @@ async function load() {
     _callerEmail = callerEmail;
     _isAdmin     = isAdmin;
 
-    // Non-admins: hide invoice table, ledger, filters; show personal billing header
+    // Non-admins: hide invoice table, ledger, filters, nav jump; show personal billing header
     if (!isAdmin) {
       document.querySelector('.ledger').style.display    = 'none';
       document.querySelector('.filters-bar').style.display = 'none';
       document.querySelector('.main').style.display      = 'none';
+      const navJump = document.querySelector('.nav-jump');
+      if (navJump) navJump.style.display = 'none';
       const dsTitle = document.querySelector('.ds-title');
       if (dsTitle && callerEmail) {
         const name = callerEmail.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
@@ -731,42 +733,36 @@ function renderDraftsman() {
       .map(r => ({ ...r, total: r.drafting + r.timed + r.vat }))
       .sort((a, b) => b.total - a.total);
 
-    // Unlinked timed work (no OurRef on line item)
     const unlinkedTimed    = timedByRef['__none__'] ? timedByRef['__none__'].timed    : 0;
     const unlinkedTimedVat = timedByRef['__none__'] ? timedByRef['__none__'].timedVat : 0;
 
-    const bRows = rows.map(r => `
-      <tr>
-        <td>${esc(r.casename)}</td>
-        <td>${esc(r.ourref)}</td>
-        <td>${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
-        <td>${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
-        <td>${r.vat      > 0 ? fc(r.vat)      : '—'}</td>
-        <td>${fc(r.total)}</td>
+    // Build inline rows (same columns as parent table) wrapped in a tbody with an id
+    const bkStyle = 'background:var(--cream-dark);font-size:12px;border-bottom:1px solid var(--grey-faint);';
+    const bkCell  = 'padding:6px 16px;text-align:right;font-family:"IBM Plex Mono",monospace;';
+    const bkCellL = 'padding:6px 16px 6px 32px;text-align:left;';
+
+    const dataRows = rows.map(r => `
+      <tr class="ds-bkd-row" style="${bkStyle}display:none">
+        <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}</td>
+        <td style="${bkCell}text-align:left">${esc(r.ourref)}</td>
+        <td style="${bkCell}">${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
+        <td style="${bkCell}">${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
+        <td style="${bkCell}">${r.vat      > 0 ? fc(r.vat)      : '—'}</td>
+        <td style="${bkCell}">${fc(r.total)}</td>
+        <td></td>
       </tr>`).join('');
 
     const unlinkedRow = unlinkedTimed > 0 ? `
-      <tr style="font-style:italic;color:var(--grey-mid);">
-        <td colspan="2">Timed work (no case ref)</td>
-        <td>—</td>
-        <td>${fc(unlinkedTimed)}</td>
-        <td>${fc(unlinkedTimedVat)}</td>
-        <td>${fc(unlinkedTimed + unlinkedTimedVat)}</td>
+      <tr class="ds-bkd-row" style="${bkStyle}display:none;font-style:italic;color:var(--grey-mid)">
+        <td style="${bkCellL}" colspan="2">Timed work (no case ref)</td>
+        <td style="${bkCell}">—</td>
+        <td style="${bkCell}">${fc(unlinkedTimed)}</td>
+        <td style="${bkCell}">${fc(unlinkedTimedVat)}</td>
+        <td style="${bkCell}">${fc(unlinkedTimed + unlinkedTimedVat)}</td>
+        <td></td>
       </tr>` : '';
 
-    return `<div class="ds-breakdown-inner" id="${bkdId}">
-      <table class="ds-breakdown-table">
-        <thead><tr>
-          <th style="text-align:left">Case</th>
-          <th style="text-align:left">Our Ref</th>
-          <th>Drafting</th>
-          <th>Timed</th>
-          <th>VAT</th>
-          <th>Total</th>
-        </tr></thead>
-        <tbody>${bRows}${unlinkedRow}</tbody>
-      </table>
-    </div>`;
+    return { bkdId, rows: dataRows + unlinkedRow };
   };
 
   const totalHTML = totRows.length ? `
@@ -782,17 +778,17 @@ function renderDraftsman() {
       </tr></thead>
       <tbody>
         ${totRows.map(([name,v])=>{
-          const bkdId = 'bkd-' + name.replace(/\s+/g,'-');
-          return `<tr class="ds-row-clickable" onclick="toggleBreakdown('${bkdId}',this)">
+          const { bkdId, rows: bkdRows } = buildBreakdown(name,v);
+          return `<tr class="ds-row-clickable" id="hdr-${bkdId}" onclick="toggleBreakdown('${bkdId}',this)">
             <td class="ds-name">${medalMap[name]?`<span style="margin-right:6px">${medalMap[name]}</span>`:''}${esc(name)}</td>
             <td>${cell(v.drafting)}</td>
             <td>${cell(v.timed)}</td>
             <td><div class="ds-amt">${fc(v.net)}</div></td>
             <td>${v.vat>0?`<div class="ds-amt" style="color:var(--grey-mid)">${fc(v.vat)}</div>`:'<span class="ds-nil">—</span>'}</td>
             <td style="text-align:right"><div class="ds-amt">${fc(v.total)}</div></td>
-            <td style="text-align:center;width:130px"><button onclick="event.stopPropagation();toggleBreakdown('${bkdId}',this.closest('tr'))" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:all .18s ease;" onmouseover="this.style.background='var(--gold)';this.style.color='var(--navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--gold)'">View breakdown</button></td>
+            <td style="text-align:center;width:130px"><button onclick="event.stopPropagation();toggleBreakdown('${bkdId}',document.getElementById('hdr-${bkdId}'))" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:5px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:all .18s ease;" onmouseover="this.style.background='var(--gold)';this.style.color='var(--navy)'" onmouseout="this.style.background='transparent';this.style.color='var(--gold)'">View breakdown</button></td>
           </tr>
-          <tr class="ds-breakdown-row"><td colspan="7">${buildBreakdown(name,v)}</td></tr>`;
+          ${bkdRows}`;
         }).join('')}
         ${_isAdmin ? `<tr class="ds-total-row">
           <td class="ds-name">Total</td>
@@ -830,12 +826,18 @@ function renderDraftsman() {
     ${subSections}`;
 }
 
-function toggleBreakdown(id, row) {
-  const inner = document.getElementById(id);
-  if (!inner) return;
-  const isOpen = inner.classList.contains('open');
-  inner.classList.toggle('open', !isOpen);
-  row.classList.toggle('expanded', !isOpen);
+function toggleBreakdown(id, headerRow) {
+  // Find all breakdown rows that follow the header row until the next non-bkd row
+  const allBkdRows = [];
+  let el = headerRow ? headerRow.nextElementSibling : null;
+  while (el && el.classList.contains('ds-bkd-row')) {
+    allBkdRows.push(el);
+    el = el.nextElementSibling;
+  }
+  if (!allBkdRows.length) return;
+  const isOpen = allBkdRows[0].style.display !== 'none';
+  allBkdRows.forEach(r => r.style.display = isOpen ? 'none' : '');
+  if (headerRow) headerRow.classList.toggle('expanded', !isOpen);
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
