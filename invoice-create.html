@@ -565,28 +565,60 @@ function recalc() {
     el('fig-drafting-line').textContent = '';
   }
 
-  // Timed work
+  // Timed work — collect checked entries
   let timedRaw = 0;
   let timedHrs = 0;
-  const checkedWipIds = [];
+  const checkedWipIds     = [];
+  const checkedWipEntries = []; // full entry objects for Line Items + Schedule
+  const scheduleLines     = []; // for invoice Schedule of Work
+  const unbilled = _allWipEntries.filter(e => !e.Billed);
+
   el('wip-tbody').querySelectorAll('tr[data-idx]').forEach(tr => {
     const chk = tr.querySelector('.wip-check');
     if (chk && chk.checked) {
-      const e = _allWipEntries.filter(x => !x.Billed)[+tr.getAttribute('data-idx')];
+      const e = unbilled[+tr.getAttribute('data-idx')];
       if (e) {
-        const h = parseFloat(e.HoursSpent) || 0;
-        const r = parseFloat(e.Rate) || 0;
+        const h   = parseFloat(e.HoursSpent) || 0;
+        const r   = parseFloat(e.Rate)       || 0;
+        const amt = Math.round(h * r * 100)  / 100;
         timedRaw += h * r;
         timedHrs += h;
+
+        // Capture the (possibly edited) work-done text from the contenteditable cell
+        const editedWorkDone = (tr.querySelector('.wip-edit')?.textContent || '').trim()
+          || e.WorkDone || '';
+
         if (e._id) checkedWipIds.push(e._id);
+
+        // Full entry for Line Items creation (server needs date, hours, rate, etc.)
+        checkedWipEntries.push({
+          _id:           e._id           || '',
+          DateCompleted: e.DateCompleted || null,
+          WorkDone:      editedWorkDone,
+          HoursSpent:    h,
+          Rate:          r,
+          CaseName:      e.CaseName      || selectedCase.fields.Title || '',
+          OurRef:        e.OurRef        || selectedCase.fields.Ourreference_x0028_text_x0029_ || '',
+          Email:         e.Email         || '',
+        });
+
+        // Schedule line (for invoice Schedule of Work page)
+        scheduleLines.push({
+          date:     e.DateCompleted || null,
+          workDone: editedWorkDone,
+          hours:    h,
+          rate:     r,
+          amount:   amt,
+        });
       }
     }
   });
+
   timedRaw = Math.round(timedRaw * 100) / 100;
   timedHrs = Math.round(timedHrs * 100) / 100;
   const timedFee = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
 
-  // Update timed work line placeholder to show live hours
+  // Update timed work line placeholder with live hours
   const twInput = el('inp-timed-work-line');
   const twBase  = twInput.value.replace(/ \| [\d.]+ hrs?$/, '');
   if (timedHrs > 0) {
@@ -633,6 +665,8 @@ function recalc() {
       workDone: (tr.querySelector('.wip-edit')?.textContent || '').trim(),
     })),
     checkedWipIds,
+    checkedWipEntries, // full entry objects for Line Items + Schedule
+    scheduleLines,     // [{date, workDone, hours, rate, amount}] for invoice Schedule of Work
   };
 
   if (!hasSomething && el('figures-content').style.display !== 'none') {
@@ -656,13 +690,33 @@ async function handleCreateDraft() {
   showMsg('issue-status', '', '');
 
   try {
-    // 1. Build the data object for generateInvoiceHTML
     const f = selectedCase.fields;
     const c = selectedCase.computed;
 
+    // 1. Fetch logo and inline as base64 so the HTML is self-contained
+    //    (works when opened from SharePoint directly, not just from the portal)
+    label.textContent = 'Loading logo…';
+    let logoDataUrl = null;
+    try {
+      const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
+      if (logoResp.ok) {
+        const blob   = await logoResp.blob();
+        logoDataUrl  = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload  = () => res(r.result);
+          r.onerror = () => rej(new Error('Logo read failed'));
+          r.readAsDataURL(blob);
+        });
+      }
+    } catch (_) {
+      // Logo fetch failed — generator will fall back to the filename reference
+    }
+
+    // 2. Build the data object for generateInvoiceHTML
+    label.textContent = 'Generating invoice…';
     const invoiceData = {
-      invoiceNumber:  'DRAFT',          // placeholder — real number assigned server-side
-      invoiceDate:    new Date(),
+      invoiceNumber:  'DRAFT',    // placeholder — real number assigned at issue stage
+      invoiceDate:    null,       // null = draft (shows "DRAFT" banner, no date)
       yourRef:        f.ClientCaseReference || '',
       ourRef:         f.Ourreference_x0028_text_x0029_ || '',
       caseName:       f.Title || '',
@@ -676,24 +730,27 @@ async function handleCreateDraft() {
       draftingFeeLine: c.draftingFeeLine,
       timedFee:       c.timedFee,
       timedHours:     c.timedHrs,
-      timedRate:      0,                // multiple rates — timedWorkLine carries the text
+      timedRate:      0,          // multiple rates — timedWorkLine carries the text
       timedWorkLine:  c.timedWorkLine,
       expenses:       (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
       vatOnDrafting:  c.vatOnDrafting,
+      logoDataUrl,                // inline base64 logo (null = fallback to filename)
+      scheduleLines:  c.scheduleLines || [], // appended Schedule of Work page
     };
 
-    // 2. Render invoice HTML into the hidden iframe and capture as PDF blob
-    label.textContent = 'Capturing PDF…';
+    // 3. Render invoice HTML and capture as base64
+    label.textContent = 'Capturing HTML…';
     const pdfBase64 = await captureInvoicePdf(invoiceData);
 
-    // 3. POST to /api/createdraft (draft stage — no number, no Cases/WIP writes)
+    // 4. POST to /api/createdraft
     label.textContent = 'Saving draft…';
 
     const payload = {
       pdfBase64,
-      computed:      c,
-      caseFields:    f,
-      checkedWipIds: c.checkedWipIds || [],
+      computed:           c,
+      caseFields:         f,
+      checkedWipIds:      c.checkedWipIds      || [],
+      checkedWipEntries:  c.checkedWipEntries   || [], // full entry data for Line Items
     };
 
     const r = await fetch('/api/createdraft', {
@@ -710,7 +767,7 @@ async function handleCreateDraft() {
     const result = await r.json();
     const { pdfUrl } = result;
 
-    // 4. Success
+    // 5. Success
     spinner.classList.remove('visible');
     label.textContent = 'Create Draft Invoice';
     btn.disabled = false;
@@ -731,57 +788,18 @@ async function handleCreateDraft() {
 }
 
 // ── PDF capture via hidden iframe ─────────────────────────
-// Writes the invoice HTML into the hidden iframe, waits for images to load,
-// then uses the Print API to produce a PDF blob, base64-encodes it, and returns.
-// Falls back to sending the HTML string if the browser blocks blob capture
-// (Azure SWA serves the page over HTTPS so this should work fine in Chromium).
 function captureInvoicePdf(invoiceData) {
   return new Promise((resolve, reject) => {
     try {
       const html   = generateInvoiceHTML(invoiceData);
-      const iframe = el('pdf-iframe');
-      const doc    = iframe.contentDocument || iframe.contentWindow.document;
-
-      doc.open();
-      doc.write(html);
-      doc.close();
-
-      // Wait for logo image to load (or timeout) before printing
-      const img = doc.querySelector('img');
-      const proceed = () => {
-        try {
-          // Use the browser's print-to-PDF capability via a Blob
-          // We open a new window, print it silently, and close it.
-          // Since we can't intercept the user's print dialog here,
-          // we instead capture the HTML as base64 and let the server
-          // use it to generate the PDF server-side via a headless approach —
-          // BUT for now (no headless renderer on Azure SWA), we send the
-          // HTML as base64 and the function stores the HTML file as .html,
-          // later convertible to PDF.
-          //
-          // ACTUAL APPROACH: use print() and Blob via iframe srcdoc.
-          // Azure SWA runs on HTTPS so iframe can access its own document.
-          // We serialise the HTML to a Blob, base64-encode it, and send.
-          const blob   = new Blob([html], { type: 'text/html' });
-          const reader = new FileReader();
-          reader.onload = () => {
-            // reader.result is a data URL: "data:text/html;base64,..."
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = () => reject(new Error('FileReader failed'));
-          reader.readAsDataURL(blob);
-        } catch (e) { reject(e); }
+      const blob   = new Blob([html], { type: 'text/html' });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
       };
-
-      if (img) {
-        img.onload  = proceed;
-        img.onerror = proceed; // proceed even if logo fails to load
-        // If already loaded (cached)
-        if (img.complete) proceed();
-      } else {
-        proceed();
-      }
+      reader.onerror = () => reject(new Error('FileReader failed'));
+      reader.readAsDataURL(blob);
     } catch (e) { reject(e); }
   });
 }
