@@ -205,6 +205,11 @@
         </div>
 
         <div class="form-row">
+          <span class="form-label">Profit costs (as recovered)</span>
+          <span class="form-value" id="fig-profit-costs-recovered">—</span>
+        </div>
+
+        <div class="form-row">
           <span class="form-label">Drafting fee %</span>
           <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
             <input type="number" class="form-input-num" id="inp-fee-pct" min="0" max="100" step="0.5" />
@@ -431,6 +436,7 @@ async function loadFigures(fields) {
   const ourRef        = fields.Ourreference_x0028_text_x0029_ || '';
   const feePct        = parseFloat(fields.Fee_x0025__x0028_number_x0029_) || 0;
   const profitCosts   = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
+  const profitCostsRecovered = parseFloat(fields.Net_x0020_profit_x0020_costs_x00) || 0;
   const basis         = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
   const vatOnDrafting = fields.VatOnDraftingFee_x003f_ === true;
   const wipLineOverride = fields.TimedWorkLineOverride || '';
@@ -440,7 +446,8 @@ async function loadFigures(fields) {
   sel.value = basis;
   if (sel.value !== basis) sel.value = 'Profit costs as drawn'; // fallback
 
-  el('fig-profit-costs').textContent = profitCosts > 0 ? gbp(profitCosts) : '\u2014';
+  el('fig-profit-costs').textContent = profitCosts > 0 ? gbp(profitCosts) : '—';
+  el('fig-profit-costs-recovered').textContent = profitCostsRecovered > 0 ? gbp(profitCostsRecovered) : '—';
   el('inp-fee-pct').value = feePct;
   el('fig-vat-on-drafting').innerHTML = vatOnDrafting
     ? '<span class="form-badge yes">Yes</span>'
@@ -449,8 +456,9 @@ async function loadFigures(fields) {
   // Timed work line: pre-fill from case override if set
   el('inp-timed-work-line').value = wipLineOverride || '';
 
-  selectedCase._profitCosts   = profitCosts;
-  selectedCase._vatOnDrafting = vatOnDrafting;
+  selectedCase._profitCosts         = profitCosts;
+  selectedCase._profitCostsRecovered = profitCostsRecovered;
+  selectedCase._vatOnDrafting        = vatOnDrafting;
 
   // Fetch WIP
   _allWipEntries = [];
@@ -527,10 +535,12 @@ function initListeners() {
 function recalc() {
   if (!selectedCase) return;
 
-  const profitCosts   = selectedCase._profitCosts || 0;
   const vatOnDrafting = selectedCase._vatOnDrafting || false;
   const feePct        = parseFloat(el('inp-fee-pct').value) || 0;
   const basis         = el('inp-basis').value;
+  const profitCosts   = basis.toLowerCase().includes('recovered')
+    ? (selectedCase._profitCostsRecovered || 0)
+    : (selectedCase._profitCosts || 0);
   const limitTimed    = parseFloat(el('inp-limit-timed').value) || 0;
   const bespokeAmt    = parseFloat(el('inp-bespoke-amount').value) || 0;
   const bespokeExp    = parseFloat(el('inp-bespoke-expenses').value) || 0;
@@ -550,15 +560,31 @@ function recalc() {
 
   // Timed work
   let timedRaw = 0;
+  let timedHrs = 0;
   el('wip-tbody').querySelectorAll('tr[data-idx]').forEach(tr => {
     const chk = tr.querySelector('.wip-check');
     if (chk && chk.checked) {
       const e = _allWipEntries.filter(x => !x.Billed)[+tr.getAttribute('data-idx')];
-      if (e) timedRaw += (parseFloat(e.HoursSpent) || 0) * (parseFloat(e.Rate) || 0);
+      if (e) {
+        const h = parseFloat(e.HoursSpent) || 0;
+        const r = parseFloat(e.Rate) || 0;
+        timedRaw += h * r;
+        timedHrs += h;
+      }
     }
   });
   timedRaw = Math.round(timedRaw * 100) / 100;
+  timedHrs = Math.round(timedHrs * 100) / 100;
   const timedFee = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
+
+  // Update timed work line placeholder to show live hours
+  const twInput = el('inp-timed-work-line');
+  const twBase  = twInput.value.replace(/ \| [\d.]+ hrs?$/, '');
+  if (timedHrs > 0) {
+    twInput.value = twBase + ' | ' + timedHrs + ' hr' + (timedHrs !== 1 ? 's' : '');
+  } else if (twBase) {
+    twInput.value = twBase;
+  }
 
   // VAT
   const vatBase = timedFee + (vatOnDrafting ? draftingFee : 0) + bespokeAmt;
@@ -589,6 +615,7 @@ function recalc() {
     vat, subTotal, grand, vatOnDrafting, feePct, limitTimed, basis,
     draftingFeeLine:    el('fig-drafting-line').textContent,
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
+    timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
   };
 
