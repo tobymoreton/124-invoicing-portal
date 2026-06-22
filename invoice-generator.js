@@ -90,8 +90,8 @@ const INVOICE_CSS = [
   '.footer .firm-details { margin-top:3mm; color:#444; font-size:8.5pt; }',
   /* Schedule of Work styles */
   '.schedule-page { width:210mm; min-height:297mm; margin:0 auto; padding:18mm 20mm 20mm 20mm; display:flex; flex-direction:column; }',
-  '.schedule-header { background:' + BRAND_NAVY + '; padding:14px 20px; margin-bottom:0; }',
-  '.schedule-header h2 { color:#fff; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.02em; }',
+  '.schedule-header { background:' + BRAND_GOLD + '; padding:14px 20px; margin-bottom:0; }',
+  '.schedule-header h2 { color:' + BRAND_NAVY + '; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.02em; }',
   '.schedule-case { padding:14px 20px 0 20px; font-size:12pt; font-weight:bold; color:' + BRAND_NAVY + '; }',
   '.schedule-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:10pt; }',
   '.schedule-table th { background:' + BRAND_NAVY + '; color:#fff; padding:8px 10px; text-align:left; font-weight:600; font-size:9.5pt; }',
