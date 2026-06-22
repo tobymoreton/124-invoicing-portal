@@ -186,19 +186,12 @@ async function consumeInvoiceNumber(token, context) {
   const nextPadded     = String(nextNum).padStart(match[2].length, '0');
   const nextInvoiceNum = prefix + nextPadded;
 
-  // Delete current item
-  await graphDelete(
+  // Patch in place — update counter to N+1 (no delete permission needed)
+  await graphPatch(
     'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-    + '/lists/' + COUNTER_LIST + '/items/' + itemId,
-    token
-  );
-
-  // Write N+1 back
-  await graphPost(
-    'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-    + '/lists/' + COUNTER_LIST + '/items',
+    + '/lists/' + COUNTER_LIST + '/items/' + itemId + '/fields',
     token,
-    { fields: { Title: nextInvoiceNum, InvoiceNumber: nextInvoiceNum } }
+    { Title: nextInvoiceNum, InvoiceNumber: nextInvoiceNum }
   );
 
   return invoiceNumber;
