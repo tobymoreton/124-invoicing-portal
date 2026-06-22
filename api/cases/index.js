@@ -44,6 +44,8 @@ const SELECT_FIELDS = [
   'LAA_x0020_Drafting_x0020_Fee_x00',
   'TimedWorkBillableFromOverride',
   'StatusMirror',
+  'ProfitCostsClaimed_x0028_Ex_x002',
+  'Drafting_x0020_fee_x0020_basis',
 ].join(',');
 
 function getCallerEmail(req) {
