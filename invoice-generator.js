@@ -90,8 +90,9 @@ const INVOICE_CSS = [
   '.footer .firm-details { margin-top:3mm; color:#444; font-size:8.5pt; }',
   /* Schedule of Work styles */
   '.schedule-page { width:210mm; min-height:297mm; margin:0 auto; padding:18mm 20mm 20mm 20mm; display:flex; flex-direction:column; }',
-  '.schedule-header { background:' + BRAND_GOLD + '; padding:14px 20px; margin-bottom:0; }',
-  '.schedule-header h2 { color:' + BRAND_NAVY + '; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.02em; }',
+  '.schedule-header { background:linear-gradient(135deg,' + BRAND_GOLD + ' 0%,#E8D08A 40%,#F5EAB8 55%,#D4B86A 75%,' + BRAND_GOLD + ' 100%); padding:14px 20px; margin-bottom:0; }',
+  '.schedule-header h2 { color:' + BRAND_NAVY + '; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.04em; text-shadow:0 1px 2px rgba(255,255,255,0.4); }',
+  '.schedule-header-sub { font-size:9pt; color:' + BRAND_NAVY + '; opacity:0.7; margin-top:2px; letter-spacing:.06em; font-style:italic; }',
   '.schedule-case { padding:14px 20px 0 20px; font-size:12pt; font-weight:bold; color:' + BRAND_NAVY + '; }',
   '.schedule-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:10pt; }',
   '.schedule-table th { background:' + BRAND_NAVY + '; color:#fff; padding:8px 10px; text-align:left; font-weight:600; font-size:9.5pt; }',
@@ -253,11 +254,15 @@ function generateScheduleHTML(lines, caseName, ourRef) {
   totalHours  = Math.round(totalHours  * 100) / 100;
   totalAmount = Math.round(totalAmount * 100) / 100;
 
-  const heading = ourRef ? _esc(ourRef) : _esc(caseName || '');
+  const nameStr = caseName ? _esc(caseName) : '';
+  const refStr  = ourRef   ? _esc(ourRef)   : '';
 
   return '<div class="schedule-page">'
     + '<div class="schedule-header"><h2>Schedule of Work</h2></div>'
-    + (heading ? '<div class="schedule-case">' + heading + '</div>' : '')
+    + ((nameStr || refStr) ? '<div class="schedule-case">'
+        + (nameStr ? nameStr : '')
+        + (nameStr && refStr ? '<div style="font-size:11pt;font-weight:normal;color:#555;margin-top:3px">' + refStr + '</div>' : refStr)
+        + '</div>' : '')
     + '<table class="schedule-table">'
     + '<thead><tr>'
     + '<th style="min-width:80px">Date</th>'
