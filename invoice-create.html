@@ -37,7 +37,6 @@
     #access-denied p{color:var(--grey-mid);font-size:14px;}
 
     .main{padding:32px 28px;max-width:760px;margin:0 auto;}
-
     .page-heading{margin-bottom:28px;}
     .page-heading h1{font-family:'Spectral',serif;font-weight:300;font-size:26px;color:var(--navy);letter-spacing:.02em;}
     .page-heading p{font-size:13px;color:var(--grey-mid);margin-top:4px;}
@@ -45,7 +44,7 @@
     .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;margin-bottom:20px;}
     .card-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:20px;}
 
-    /* ── Case search ── */
+    /* Case search */
     .search-wrap{position:relative;}
     .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.38;pointer-events:none;}
     .case-search-input{width:100%;padding:11px 14px 11px 38px;border:1.5px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);}
@@ -65,79 +64,72 @@
     .clear-case{background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:18px;line-height:1;padding:2px 4px;transition:color var(--transition);}
     .clear-case:hover{color:var(--navy);}
 
-    /* ── Figures sections ── */
+    /* Figures */
     #figures-section{display:none;}
     #figures-section.visible{display:block;}
     .loading-figures{padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;}
-
-    /* ── Form rows ── */
+    .section-sub{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--gold-pale);}
     .form-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--grey-faint);}
-    .form-row:last-child{border-bottom:none;}
+    .form-row:last-of-type{border-bottom:none;}
     .form-label{font-size:12px;color:var(--grey-mid);font-weight:500;flex:0 0 200px;}
     .form-value{font-size:13px;color:var(--navy);text-align:right;flex:1;}
-    .form-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;text-align:right;width:120px;outline:none;transition:border-color var(--transition);}
-    .form-input:focus{border-color:var(--gold);background:var(--white);}
-    .form-input.wide{width:200px;text-align:left;}
+    .form-select{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;width:220px;outline:none;cursor:pointer;transition:border-color var(--transition);}
+    .form-select:focus{border-color:var(--gold);background:var(--white);}
+    .form-input-num{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;text-align:right;width:100px;outline:none;transition:border-color var(--transition);}
+    .form-input-num:focus{border-color:var(--gold);background:var(--white);}
+    .form-input-text{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;width:280px;outline:none;transition:border-color var(--transition);}
+    .form-input-text:focus{border-color:var(--gold);background:var(--white);}
     .form-badge{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;}
     .form-badge.yes{background:var(--success-bg);color:var(--success);}
     .form-badge.no{background:var(--grey-faint);color:var(--grey-mid);}
 
-    /* ── Section subheader ── */
-    .section-sub{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--gold-pale);}
-
-    /* ── Timed work table ── */
+    /* WIP table */
     .wip-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
     .wip-toggle{font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;}
     .wip-summary{font-size:12px;color:var(--grey-mid);}
     .wip-table{width:100%;border-collapse:collapse;font-size:12px;}
     .wip-table th{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);padding:6px 8px;border-bottom:2px solid var(--grey-light);text-align:left;}
-    .wip-table th.right{text-align:right;}
+    .wip-table th.r{text-align:right;}
     .wip-table td{padding:7px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:top;}
-    .wip-table td.right{text-align:right;font-family:'IBM Plex Mono',monospace;}
-    .wip-table tr.non-billable td{color:var(--grey-mid);}
-    .wip-table tr.non-billable{opacity:.65;}
+    .wip-table td.r{text-align:right;font-family:'IBM Plex Mono',monospace;}
+    .wip-table tr.non-billable{opacity:.6;}
     .wip-table tr.hidden-row{display:none;}
-    .wip-work-done{max-width:280px;white-space:normal;line-height:1.35;}
+    .wip-work-done{max-width:260px;white-space:normal;line-height:1.35;}
     .wip-date{white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);}
-    .wip-check{width:16px;height:16px;cursor:pointer;accent-color:var(--navy);}
+    .wip-check{width:15px;height:15px;cursor:pointer;accent-color:var(--navy);}
     .wip-no-entries{padding:16px;text-align:center;color:var(--grey-mid);font-size:13px;}
 
-    /* ── Limit timed work ── */
-    .limit-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
+    /* Limit row */
+    .limit-row{display:flex;align-items:center;gap:16px;margin-top:12px;padding:10px 14px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
     .limit-label{font-size:12px;color:var(--grey-mid);font-weight:500;flex:1;}
-    .limit-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;text-align:right;width:120px;outline:none;transition:border-color var(--transition);}
-    .limit-input:focus{border-color:var(--gold);background:var(--white);}
-    .limit-hint{font-size:11px;color:var(--grey-mid);margin-top:4px;}
+    .limit-hint{font-size:11px;color:var(--grey-mid);margin-top:3px;}
 
-    /* ── Bespoke section ── */
-    .bespoke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;}
-    .bespoke-cell{display:flex;flex-direction:column;gap:4px;}
+    /* Bespoke */
+    .bespoke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .bespoke-cell{display:flex;flex-direction:column;gap:5px;}
     .bespoke-cell label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
     .bespoke-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:7px 10px;width:100%;outline:none;transition:border-color var(--transition);}
     .bespoke-input:focus{border-color:var(--gold);background:var(--white);}
-    .bespoke-line-wrap{margin-top:4px;}
 
-    /* ── Totals ── */
-    .totals-block{margin-top:20px;border-top:2px solid var(--grey-light);padding-top:16px;}
+    /* Totals */
+    .totals-block{margin-top:20px;border-top:2px solid var(--grey-light);padding-top:14px;}
     .totals-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;}
     .totals-row .t-label{color:var(--grey-mid);}
     .totals-row .t-value{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);}
-    .totals-row.grand{margin-top:8px;padding:14px 16px;background:var(--navy);border-radius:var(--radius);}
+    .totals-row.grand{margin-top:10px;padding:14px 16px;background:var(--navy);border-radius:var(--radius);}
     .totals-row.grand .t-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.7);}
     .totals-row.grand .t-value{font-family:'Spectral',serif;font-weight:300;font-size:28px;color:var(--white);}
 
-    /* ── Create Draft button ── */
+    /* Issue */
     #issue-section{display:none;}
     #issue-section.visible{display:block;}
     .btn-issue{width:100%;padding:15px 24px;background:var(--navy);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--white);cursor:pointer;transition:background var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;}
     .btn-issue:hover:not(:disabled){background:var(--navy-mid);}
     .btn-issue:disabled{opacity:.5;cursor:not-allowed;}
     .issue-note{font-size:12px;color:var(--grey-mid);text-align:center;margin-top:10px;}
-
     .status-msg{display:none;padding:14px 16px;border-radius:var(--radius);font-size:13px;margin-top:16px;}
     .status-msg.success{display:block;background:var(--success-bg);color:var(--success);border:1px solid rgba(6,95,70,.2);}
     .status-msg.error{display:block;background:var(--error-bg);color:var(--error);border:1px solid rgba(153,27,27,.2);}
-
     @keyframes spin{to{transform:rotate(360deg);}}
     .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
     .spinner.visible{display:block;}
@@ -163,7 +155,6 @@
 </div>
 
 <div class="main" id="main-content" style="display:none;">
-
   <div class="page-heading">
     <h1>Create Draft Invoice</h1>
     <p>Search for a case, review and adjust the figures, then create the draft for Lesley to issue.</p>
@@ -197,29 +188,40 @@
 
         <!-- Drafting Fee -->
         <div class="section-sub">Drafting Fee</div>
+
         <div class="form-row">
           <span class="form-label">Drafting basis</span>
-          <span class="form-value" id="fig-basis">—</span>
+          <span class="form-value">
+            <select class="form-select" id="inp-basis">
+              <option value="Profit costs as drawn">Profit costs as drawn</option>
+              <option value="Profit costs as recovered">Profit costs as recovered</option>
+            </select>
+          </span>
         </div>
+
         <div class="form-row">
           <span class="form-label">Profit costs (ex TMC time)</span>
           <span class="form-value" id="fig-profit-costs">—</span>
         </div>
+
         <div class="form-row">
           <span class="form-label">Drafting fee %</span>
-          <span class="form-value">
-            <input type="number" class="form-input" id="inp-fee-pct" min="0" max="100" step="0.5" />
-            <span style="font-size:12px;color:var(--grey-mid);margin-left:4px;">%</span>
+          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+            <input type="number" class="form-input-num" id="inp-fee-pct" min="0" max="100" step="0.5" />
+            <span style="font-size:12px;color:var(--grey-mid);">%</span>
           </span>
         </div>
+
         <div class="form-row">
           <span class="form-label">Computed drafting fee</span>
           <span class="form-value" id="fig-drafting-computed" style="font-weight:600;">£0.00</span>
         </div>
+
         <div class="form-row">
           <span class="form-label">Drafting fee line</span>
-          <span class="form-value" id="fig-drafting-line" style="font-size:12px;color:var(--grey-mid);text-align:right;"></span>
+          <span class="form-value" id="fig-drafting-line" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
+
         <div class="form-row">
           <span class="form-label">VAT on drafting fee?</span>
           <span class="form-value" id="fig-vat-on-drafting"></span>
@@ -227,40 +229,48 @@
 
         <!-- Timed Work -->
         <div class="section-sub">Timed Work</div>
-        <div class="wip-toolbar">
+
+        <div class="form-row">
+          <span class="form-label">Timed work line</span>
+          <span class="form-value">
+            <input type="text" class="form-input-text" id="inp-timed-work-line" placeholder="Work done per attached schedule" />
+          </span>
+        </div>
+
+        <div class="wip-toolbar" style="margin-top:14px;">
           <span class="wip-summary" id="wip-summary"></span>
           <button class="wip-toggle" id="wip-toggle-nonbillable">Show non-billable</button>
         </div>
-        <table class="wip-table" id="wip-table">
+
+        <table class="wip-table">
           <thead>
             <tr>
               <th style="width:28px;"></th>
               <th>Date</th>
               <th>Work Done</th>
-              <th class="right">Hrs</th>
-              <th class="right">Rate</th>
-              <th class="right">Amount</th>
+              <th class="r">Hrs</th>
+              <th class="r">Rate</th>
+              <th class="r">Amount</th>
             </tr>
           </thead>
           <tbody id="wip-tbody">
             <tr><td colspan="6" class="wip-no-entries">Loading…</td></tr>
           </tbody>
         </table>
+
         <div class="limit-row">
           <div>
             <div class="limit-label">Limit timed work (net)</div>
-            <div class="limit-hint">Leave blank to use the computed total above</div>
+            <div class="limit-hint">Leave blank to use the computed total</div>
           </div>
-          <input type="number" class="limit-input" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" />
+          <input type="number" class="form-input-num" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" style="width:120px;" />
         </div>
 
-        <!-- Bespoke Invoice -->
+        <!-- Bespoke -->
         <div class="section-sub">Bespoke Invoice (optional)</div>
-        <div class="bespoke-line-wrap" style="margin-bottom:12px;">
-          <div class="bespoke-cell">
-            <label>Bespoke Invoice Line</label>
-            <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work…" />
-          </div>
+        <div class="bespoke-cell" style="margin-bottom:12px;">
+          <label>Bespoke Invoice Line</label>
+          <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter…" />
         </div>
         <div class="bespoke-grid">
           <div class="bespoke-cell">
@@ -279,34 +289,13 @@
 
         <!-- Totals -->
         <div class="totals-block">
-          <div class="totals-row" id="tot-row-drafting" style="display:none;">
-            <span class="t-label">Drafting fee</span>
-            <span class="t-value" id="tot-drafting">£0.00</span>
-          </div>
-          <div class="totals-row" id="tot-row-timed" style="display:none;">
-            <span class="t-label">Timed work</span>
-            <span class="t-value" id="tot-timed">£0.00</span>
-          </div>
-          <div class="totals-row" id="tot-row-bespoke" style="display:none;">
-            <span class="t-label">Bespoke</span>
-            <span class="t-value" id="tot-bespoke">£0.00</span>
-          </div>
-          <div class="totals-row" id="tot-row-subtotal" style="display:none;">
-            <span class="t-label">Sub Total</span>
-            <span class="t-value" id="tot-subtotal">£0.00</span>
-          </div>
-          <div class="totals-row">
-            <span class="t-label">VAT @ 20%</span>
-            <span class="t-value" id="tot-vat">£0.00</span>
-          </div>
-          <div class="totals-row" id="tot-row-expenses" style="display:none;">
-            <span class="t-label">Expenses</span>
-            <span class="t-value" id="tot-expenses">£0.00</span>
-          </div>
-          <div class="totals-row grand">
-            <span class="t-label">Grand Total</span>
-            <span class="t-value" id="tot-grand">£0.00</span>
-          </div>
+          <div class="totals-row" id="tot-row-drafting" style="display:none;"><span class="t-label">Drafting fee</span><span class="t-value" id="tot-drafting">£0.00</span></div>
+          <div class="totals-row" id="tot-row-timed" style="display:none;"><span class="t-label">Timed work</span><span class="t-value" id="tot-timed">£0.00</span></div>
+          <div class="totals-row" id="tot-row-bespoke" style="display:none;"><span class="t-label">Bespoke</span><span class="t-value" id="tot-bespoke">£0.00</span></div>
+          <div class="totals-row" id="tot-row-subtotal" style="display:none;"><span class="t-label">Sub Total</span><span class="t-value" id="tot-subtotal">£0.00</span></div>
+          <div class="totals-row"><span class="t-label">VAT @ 20%</span><span class="t-value" id="tot-vat">£0.00</span></div>
+          <div class="totals-row" id="tot-row-expenses" style="display:none;"><span class="t-label">Expenses</span><span class="t-value" id="tot-expenses">£0.00</span></div>
+          <div class="totals-row grand"><span class="t-label">Grand Total</span><span class="t-value" id="tot-grand">£0.00</span></div>
         </div>
 
         <div id="figures-status" class="status-msg" style="margin-top:16px;"></div>
@@ -324,15 +313,14 @@
       <div id="issue-status" class="status-msg"></div>
     </div>
   </div>
-
 </div>
 
 <script>
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
-let callerEmail = null;
-let selectedCase = null;
-let _caseCache = [];
-let _allWipEntries = []; // all entries for this case (billable + non-billable)
+let callerEmail    = null;
+let selectedCase   = null;
+let _caseCache     = [];
+let _allWipEntries = [];
 let _showNonBillable = false;
 
 // ── Identity ──────────────────────────────────────────────
@@ -345,31 +333,27 @@ async function getIdentity() {
   } catch { return null; }
 }
 
-function resolveEmail(raw) {
-  return (sessionStorage.getItem('__PREVIEW_AS') || raw || '').toLowerCase();
-}
-
 async function init() {
-  callerEmail = resolveEmail(await getIdentity());
-  el('nav-user').textContent = callerEmail || '';
+  callerEmail = (sessionStorage.getItem('__PREVIEW_AS') || await getIdentity() || '').toLowerCase();
+  el('nav-user').textContent = callerEmail;
   if (!ADMIN_EMAILS.includes(callerEmail)) {
     el('access-denied').style.display = 'block';
     return;
   }
   el('main-content').style.display = 'block';
   initCaseSearch();
-  initInputListeners();
+  initListeners();
 }
 
 // ── Case typeahead ────────────────────────────────────────
-let searchTimeout = null;
+let _searchTO = null;
 
 function initCaseSearch() {
   el('case-search').addEventListener('input', () => {
-    clearTimeout(searchTimeout);
+    clearTimeout(_searchTO);
     const q = el('case-search').value.trim();
     if (q.length < 2) { closeList(); return; }
-    searchTimeout = setTimeout(() => searchCases(q), 280);
+    _searchTO = setTimeout(() => searchCases(q), 280);
   });
   el('case-search').addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeList(); el('case-search').blur(); }
@@ -382,15 +366,14 @@ function initCaseSearch() {
 
 async function searchCases(q) {
   const list = el('typeahead-list');
-  list.innerHTML = '<div class="typeahead-empty">Searching…</div>';
+  list.innerHTML = '<div class="typeahead-empty">Searching\u2026</div>';
   list.classList.add('open');
   try {
     const r = await fetch('/api/cases?q=' + encodeURIComponent(q) + '&top=10');
-    if (!r.ok) throw new Error('Search failed');
-    const data = await r.json();
-    renderList(data.value || []);
+    if (!r.ok) throw new Error();
+    renderList((await r.json()).value || []);
   } catch {
-    list.innerHTML = '<div class="typeahead-empty">Search failed — try again</div>';
+    list.innerHTML = '<div class="typeahead-empty">Search failed \u2014 try again</div>';
   }
 }
 
@@ -401,32 +384,31 @@ function renderList(cases) {
   list.innerHTML = cases.map((c, i) => {
     const f = c.fields || c;
     return '<div class="typeahead-item" data-idx="' + i + '">'
-      + '<div>' + escHtml(f.Title || '—') + '</div>'
-      + '<div class="ref">' + escHtml(f.Ourreference_x0028_text_x0029_ || '') + '</div>'
+      + '<div>' + esc(f.Title || '\u2014') + '</div>'
+      + '<div class="ref">' + esc(f.Ourreference_x0028_text_x0029_ || '') + '</div>'
       + '</div>';
   }).join('');
   list.querySelectorAll('.typeahead-item').forEach(item => {
     item.addEventListener('click', () => {
-      const c = _caseCache[parseInt(item.getAttribute('data-idx'), 10)];
-      if (c) selectCase(c.fields || c, c.id || '');
+      const c = _caseCache[+item.getAttribute('data-idx')];
+      if (c) pickCase(c.fields || c, c.id || '');
     });
   });
   list.classList.add('open');
 }
 
-function selectCase(fields, spId) {
+function pickCase(fields, spId) {
   selectedCase = { id: spId, fields };
   el('case-search').value = '';
-  el('selected-name').textContent = fields.Title || '—';
-  el('selected-ref').textContent = fields.Ourreference_x0028_text_x0029_ || '';
+  el('selected-name').textContent = fields.Title || '\u2014';
+  el('selected-ref').textContent  = fields.Ourreference_x0028_text_x0029_ || '';
   el('selected-case').classList.add('visible');
   closeList();
   loadFigures(fields);
 }
 
 function clearSelection() {
-  selectedCase = null;
-  _allWipEntries = [];
+  selectedCase = null; _allWipEntries = [];
   el('selected-case').classList.remove('visible');
   el('figures-section').classList.remove('visible');
   el('issue-section').classList.remove('visible');
@@ -442,43 +424,42 @@ function closeList() {
 // ── Load figures ──────────────────────────────────────────
 async function loadFigures(fields) {
   el('figures-section').classList.add('visible');
-  el('figures-loading').style.display = 'block';
-  el('figures-content').style.display = 'none';
+  el('figures-loading').style.display  = 'block';
+  el('figures-content').style.display  = 'none';
   el('issue-section').classList.remove('visible');
 
-  const ourRef = fields.Ourreference_x0028_text_x0029_ || '';
-
-  // Populate drafting fields
+  const ourRef        = fields.Ourreference_x0028_text_x0029_ || '';
   const feePct        = parseFloat(fields.Fee_x0025__x0028_number_x0029_) || 0;
   const profitCosts   = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
-  const basis         = fields.Drafting_x0020_fee_x0020_basis || '—';
-  const draftingLine  = fields.Drafting_x0020_fee_x0020_line || '';
+  const basis         = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
   const vatOnDrafting = fields.VatOnDraftingFee_x003f_ === true;
+  const wipLineOverride = fields.TimedWorkLineOverride || '';
 
-  el('fig-basis').textContent       = basis;
-  el('fig-profit-costs').textContent = profitCosts > 0 ? fmtGBP(profitCosts) : '—';
-  el('fig-drafting-line').textContent = draftingLine;
+  // Set dropdown to match case record value (default to drawn if no match)
+  const sel = el('inp-basis');
+  sel.value = basis;
+  if (sel.value !== basis) sel.value = 'Profit costs as drawn'; // fallback
+
+  el('fig-profit-costs').textContent = profitCosts > 0 ? gbp(profitCosts) : '\u2014';
+  el('inp-fee-pct').value = feePct;
   el('fig-vat-on-drafting').innerHTML = vatOnDrafting
     ? '<span class="form-badge yes">Yes</span>'
     : '<span class="form-badge no">No</span>';
 
-  // Set drafting % input
-  el('inp-fee-pct').value = feePct;
+  // Timed work line: pre-fill from case override if set
+  el('inp-timed-work-line').value = wipLineOverride || '';
 
-  // Store on selectedCase for recalculation
   selectedCase._profitCosts   = profitCosts;
   selectedCase._vatOnDrafting = vatOnDrafting;
 
-  // Fetch WIP entries for this case
+  // Fetch WIP
   _allWipEntries = [];
   try {
     const r = await fetch('/api/wip?ref=' + encodeURIComponent(ourRef));
     if (r.ok) {
       const data = await r.json();
-      // Filter to this case by OurRef, include both billable and non-billable
-      _allWipEntries = (Array.isArray(data) ? data : []).filter(e =>
-        (e.OurRef || '').toLowerCase() === ourRef.toLowerCase()
-      );
+      _allWipEntries = (Array.isArray(data) ? data : [])
+        .filter(e => (e.OurRef || '').toLowerCase() === ourRef.toLowerCase());
     }
   } catch (_) {}
 
@@ -486,74 +467,70 @@ async function loadFigures(fields) {
   el('figures-content').style.display = 'block';
 
   renderWipTable();
-  recalcTotals();
-
+  recalc();
   el('issue-section').classList.add('visible');
 }
 
 // ── WIP table ─────────────────────────────────────────────
 function renderWipTable() {
   const tbody = el('wip-tbody');
+  const unbilled = _allWipEntries.filter(e => !e.Billed);
 
-  if (!_allWipEntries.length) {
+  if (!unbilled.length) {
     tbody.innerHTML = '<tr><td colspan="6" class="wip-no-entries">No time entries found for this case</td></tr>';
     el('wip-summary').textContent = '';
     return;
   }
 
-  const billableCount    = _allWipEntries.filter(e => e.Billable && !e.Billed).length;
-  const nonBillableCount = _allWipEntries.filter(e => !e.Billable && !e.Billed).length;
-  el('wip-summary').textContent = billableCount + ' billable' + (nonBillableCount ? ', ' + nonBillableCount + ' non-billable' : '');
+  const billable    = unbilled.filter(e => e.Billable).length;
+  const nonBillable = unbilled.filter(e => !e.Billable).length;
+  el('wip-summary').textContent = billable + ' billable' + (nonBillable ? ', ' + nonBillable + ' non-billable' : '');
   el('wip-toggle-nonbillable').textContent = _showNonBillable ? 'Hide non-billable' : 'Show non-billable';
 
   tbody.innerHTML = '';
-  _allWipEntries.filter(e => !e.Billed).forEach((entry, i) => {
+  unbilled.forEach((entry, i) => {
     const isBillable = entry.Billable;
-    const hrs   = parseFloat(entry.HoursSpent) || 0;
-    const rate  = parseFloat(entry.Rate) || 0;
-    const amt   = Math.round(hrs * rate * 100) / 100;
-    const date  = entry.DateCompleted ? fmtDate(entry.DateCompleted) : '—';
+    const hrs  = parseFloat(entry.HoursSpent) || 0;
+    const rate = parseFloat(entry.Rate) || 0;
+    const amt  = Math.round(hrs * rate * 100) / 100;
 
     const tr = document.createElement('tr');
     tr.className = (isBillable ? '' : 'non-billable') + (!isBillable && !_showNonBillable ? ' hidden-row' : '');
     tr.setAttribute('data-idx', i);
-
-    const chkId = 'wip-chk-' + i;
-    tr.innerHTML = '<td><input type="checkbox" class="wip-check" id="' + chkId + '"' + (isBillable ? ' checked' : '') + '></td>'
-      + '<td class="wip-date">' + escHtml(date) + '</td>'
-      + '<td class="wip-work-done">' + escHtml(entry.WorkDone || '—') + '</td>'
-      + '<td class="right">' + (hrs || '—') + '</td>'
-      + '<td class="right">' + (rate ? fmtGBP(rate) : '—') + '</td>'
-      + '<td class="right">' + (amt ? fmtGBP(amt) : '—') + '</td>';
+    tr.innerHTML = '<td><input type="checkbox" class="wip-check"' + (isBillable ? ' checked' : '') + '></td>'
+      + '<td class="wip-date">' + esc(entry.DateCompleted ? fmtDate(entry.DateCompleted) : '\u2014') + '</td>'
+      + '<td class="wip-work-done">' + esc(entry.WorkDone || '\u2014') + '</td>'
+      + '<td class="r">' + (hrs || '\u2014') + '</td>'
+      + '<td class="r">' + (rate ? gbp(rate) : '\u2014') + '</td>'
+      + '<td class="r">' + (amt ? gbp(amt) : '\u2014') + '</td>';
     tbody.appendChild(tr);
-
-    tr.querySelector('.wip-check').addEventListener('change', () => recalcTotals());
+    tr.querySelector('.wip-check').addEventListener('change', recalc);
   });
 }
 
-el('wip-toggle-nonbillable') && document.getElementById('wip-toggle-nonbillable').addEventListener('click', () => {
-  _showNonBillable = !_showNonBillable;
-  renderWipTable();
-  recalcTotals();
-});
-
-// ── Input listeners (recalc on change) ───────────────────
-function initInputListeners() {
-  ['inp-fee-pct','inp-limit-timed','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat'].forEach(id => {
-    document.getElementById(id).addEventListener('input', recalcTotals);
+// ── Listeners ─────────────────────────────────────────────
+function initListeners() {
+  ['inp-fee-pct','inp-limit-timed','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
+    .forEach(id => el(id).addEventListener('input', recalc));
+  el('inp-basis').addEventListener('change', recalc);
+  el('wip-toggle-nonbillable').addEventListener('click', () => {
+    _showNonBillable = !_showNonBillable;
+    renderWipTable();
+    recalc();
   });
   el('btn-issue').addEventListener('click', () => {
-    showIssueMsg('Issue logic coming in next step.', 'error');
+    showMsg('issue-status', 'Issue logic coming in next step.', 'error');
   });
 }
 
-// ── Recalculate totals ────────────────────────────────────
-function recalcTotals() {
+// ── Recalc ────────────────────────────────────────────────
+function recalc() {
   if (!selectedCase) return;
 
   const profitCosts   = selectedCase._profitCosts || 0;
   const vatOnDrafting = selectedCase._vatOnDrafting || false;
   const feePct        = parseFloat(el('inp-fee-pct').value) || 0;
+  const basis         = el('inp-basis').value;
   const limitTimed    = parseFloat(el('inp-limit-timed').value) || 0;
   const bespokeAmt    = parseFloat(el('inp-bespoke-amount').value) || 0;
   const bespokeExp    = parseFloat(el('inp-bespoke-expenses').value) || 0;
@@ -561,115 +538,74 @@ function recalcTotals() {
 
   // Drafting fee
   const draftingFee = Math.round(profitCosts * feePct / 100 * 100) / 100;
-  el('fig-drafting-computed').textContent = fmtGBP(draftingFee);
+  el('fig-drafting-computed').textContent = gbp(draftingFee);
 
-  // Update drafting fee line display
+  // Drafting fee line
   if (profitCosts > 0 && feePct > 0) {
-    const basis = el('fig-basis').textContent;
-    const basisShort = basis.toLowerCase().includes('drawn') ? 'as drawn' : 'as recovered';
-    el('fig-drafting-line').textContent = 'Preparing Draft Bill of Costs | ' + feePct + '% of ' + fmtGBP(profitCosts) + ' ' + basisShort;
+    const basisShort = basis.toLowerCase().includes('drawn') ? 'As Drawn' : 'As Recovered';
+    el('fig-drafting-line').textContent = 'Preparing Draft Bill of Costs | ' + feePct + '% of ' + gbp(profitCosts) + ' ' + basisShort;
+  } else {
+    el('fig-drafting-line').textContent = '';
   }
 
-  // Timed work — sum checked entries
+  // Timed work
   let timedRaw = 0;
   el('wip-tbody').querySelectorAll('tr[data-idx]').forEach(tr => {
     const chk = tr.querySelector('.wip-check');
     if (chk && chk.checked) {
-      const idx   = parseInt(tr.getAttribute('data-idx'), 10);
-      const entry = _allWipEntries.filter(e => !e.Billed)[idx];
-      if (entry) {
-        const hrs  = parseFloat(entry.HoursSpent) || 0;
-        const rate = parseFloat(entry.Rate) || 0;
-        timedRaw  += hrs * rate;
-      }
+      const e = _allWipEntries.filter(x => !x.Billed)[+tr.getAttribute('data-idx')];
+      if (e) timedRaw += (parseFloat(e.HoursSpent) || 0) * (parseFloat(e.Rate) || 0);
     }
   });
   timedRaw = Math.round(timedRaw * 100) / 100;
-
-  // Apply limit if set
   const timedFee = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
 
-  // VAT base
+  // VAT
   const vatBase = timedFee + (vatOnDrafting ? draftingFee : 0) + bespokeAmt;
   const vat     = Math.round(vatBase * 0.2 * 100) / 100;
+  const subTotal = draftingFee + timedFee + bespokeAmt;
+  const grand    = subTotal + vat + bespokeExp + bespokeExpVat;
 
-  const expenses    = bespokeExp;
-  const expensesVat = bespokeExpVat;
-  const subTotal    = draftingFee + timedFee + bespokeAmt;
-  const grand       = subTotal + vat + expenses + expensesVat;
+  // Rows
+  rowShow('tot-row-drafting',  draftingFee > 0);
+  rowShow('tot-row-timed',     timedFee > 0);
+  rowShow('tot-row-bespoke',   bespokeAmt > 0);
+  rowShow('tot-row-subtotal',  subTotal > 0);
+  rowShow('tot-row-expenses',  bespokeExp > 0 || bespokeExpVat > 0);
 
-  // Show/hide total rows
-  showRow('tot-row-drafting',  draftingFee > 0);
-  showRow('tot-row-timed',     timedFee > 0);
-  showRow('tot-row-bespoke',   bespokeAmt > 0);
-  showRow('tot-row-subtotal',  (draftingFee > 0 || timedFee > 0 || bespokeAmt > 0));
-  showRow('tot-row-expenses',  expenses > 0 || expensesVat > 0);
+  el('tot-drafting').textContent = gbp(draftingFee);
+  el('tot-timed').textContent    = gbp(timedFee);
+  el('tot-bespoke').textContent  = gbp(bespokeAmt);
+  el('tot-subtotal').textContent = gbp(subTotal);
+  el('tot-vat').textContent      = gbp(vat);
+  el('tot-expenses').textContent = gbp(bespokeExp + bespokeExpVat);
+  el('tot-grand').textContent    = gbp(grand);
 
-  el('tot-drafting').textContent = fmtGBP(draftingFee);
-  el('tot-timed').textContent    = fmtGBP(timedFee);
-  el('tot-bespoke').textContent  = fmtGBP(bespokeAmt);
-  el('tot-subtotal').textContent = fmtGBP(subTotal);
-  el('tot-vat').textContent      = fmtGBP(vat);
-  el('tot-expenses').textContent = fmtGBP(expenses + expensesVat);
-  el('tot-grand').textContent    = fmtGBP(grand);
-
-  // Store for issue step
-  selectedCase.computed = {
-    draftingFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
-    vat, expenses, expensesVat, subTotal, grand,
-    vatOnDrafting, feePct, limitTimed,
-    draftingFeeLine: el('fig-drafting-line').textContent,
-    bespokeInvoiceLine: el('inp-bespoke-line').value,
-  };
-
-  // Enable issue button
   const hasSomething = draftingFee > 0 || timedFee > 0 || bespokeAmt > 0;
   el('btn-issue').disabled = !hasSomething;
 
+  selectedCase.computed = {
+    draftingFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
+    vat, subTotal, grand, vatOnDrafting, feePct, limitTimed, basis,
+    draftingFeeLine:    el('fig-drafting-line').textContent,
+    timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
+    bespokeInvoiceLine: el('inp-bespoke-line').value,
+  };
+
   if (!hasSomething && el('figures-content').style.display !== 'none') {
-    showFiguresMsg('No billable amounts. Check figures above.', 'error');
+    showMsg('figures-status', 'No billable amounts. Check figures above.', 'error');
   } else {
-    hideFiguresMsg();
+    el('figures-status').className = 'status-msg';
   }
 }
 
 // ── Helpers ───────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
-
-function showRow(id, show) {
-  el(id).style.display = show ? 'flex' : 'none';
-}
-
-function fmtGBP(n) {
-  return '£' + (parseFloat(n) || 0).toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
-}
-
-function fmtDate(s) {
-  if (!s) return '—';
-  const d = new Date(s);
-  if (isNaN(d)) return s;
-  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
-}
-
-function escHtml(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function showFiguresMsg(msg, type) {
-  const e = el('figures-status');
-  e.textContent = msg;
-  e.className = 'status-msg ' + type;
-}
-
-function hideFiguresMsg() {
-  el('figures-status').className = 'status-msg';
-}
-
-function showIssueMsg(msg, type) {
-  const e = el('issue-status');
-  e.textContent = msg;
-  e.className = 'status-msg ' + type;
-}
+function rowShow(id, show) { el(id).style.display = show ? 'flex' : 'none'; }
+function gbp(n) { return '\u00a3' + (+n || 0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDate(s) { try { return new Date(s).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'}); } catch { return s; } }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showMsg(id, msg, type) { const e = el(id); e.textContent = msg; e.className = 'status-msg ' + type; }
 
 init();
 </script>
