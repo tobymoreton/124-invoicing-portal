@@ -451,6 +451,7 @@ function graphPut(url, token, buffer, contentType) {
         Authorization:    'Bearer ' + token,
         'Content-Type':   contentType,
         'Content-Length': buffer.length,
+        'If-Match':       '*',
       },
     };
     const req = https.request(options, function (res) {
