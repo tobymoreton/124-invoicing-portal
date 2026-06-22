@@ -323,7 +323,7 @@ async function searchCases(q) {
     );
     const select = encodeURIComponent('Title,Ourreference_x0028_text_x0029_,Fee_x0025__x0028_number_x0029_,LAA_x0020_Drafting_x0020_Fee_x00,Net_x0020_Drafting_x0020_Fee,Drafting_x0020_fee_x0020_line,VatOnDraftingFee_x003f_,TimedWorkBillableFromOverride,TimedWorkLineOverride,Firm_x0028_text_x0029_,Address1_x0028_text_x0029_,Address2_x0028_text_x0029_,Address3_x0028_text_x0029_,Address4_x0028_text_x0029_,Address5_x0028_text_x0029_,ClientCaseReference,DraftingYetToBeInvoiced,caseID_text');
 
-    const url = `/api/cases?filter=${filter}&select=${select}&top=10`;
+    const url = `/api/cases?q=${encodeURIComponent(q)}&top=10`;
     const r   = await fetch(url);
     if (!r.ok) throw new Error('Search failed');
     const data = await r.json();
