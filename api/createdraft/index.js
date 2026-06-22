@@ -72,6 +72,33 @@ module.exports = async function (context, req) {
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
+    // ── Duplicate draft check ─────────────────────────────────────────────────
+    // Prevent creating a second draft for the same case while one already exists.
+    // Query Invoice Library for any item where Ourref matches, OrderDetails is
+    // blank (not yet issued), and Cancelled is not true.
+    const caseRef = caseFields.Ourreference_x0028_text_x0029_ || '';
+    if (caseRef) {
+      context.log('Checking for existing draft for ref:', caseRef);
+      const dupCheckUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+        + '/lists/' + INVOICE_LIB + '/items'
+        + '?$expand=fields($select=id,Ourref,OrderDetails,Cancelled)'
+        + '&$filter=fields/Ourref eq \'' + caseRef.replace(/'/g, "''") + '\''
+        + '&$top=50';
+      const dupResult = await graphGet(dupCheckUrl, token);
+      const existingDraft = (dupResult.value || []).find(item => {
+        const f = item.fields || {};
+        return !f.OrderDetails && !f.Cancelled;
+      });
+      if (existingDraft) {
+        context.res = {
+          status: 409,
+          body: 'A draft invoice already exists for this case. Cancel or issue it before creating a new one.',
+        };
+        return;
+      }
+      context.log('No existing draft found — proceeding.');
+    }
+
     const invoiceType = resolveInvoiceType(computed);
 
     // ── Draft filename ────────────────────────────────────────────────────────
