@@ -455,8 +455,8 @@ async function loadFigures(fields) {
     ? '<span class="form-badge yes">Yes</span>'
     : '<span class="form-badge no">No</span>';
 
-  // Timed work line: pre-fill from case override if set
-  el('inp-timed-work-line').value = wipLineOverride || '';
+  // Timed work line: pre-fill from case override or default
+  el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
 
   selectedCase._profitCosts         = profitCosts;
   selectedCase._grossRecovered       = grossRecovered;
