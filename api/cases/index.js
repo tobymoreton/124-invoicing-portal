@@ -45,7 +45,8 @@ const SELECT_FIELDS = [
   'TimedWorkBillableFromOverride',
   'StatusMirror',
   'ProfitCostsClaimed_x0028_Ex_x002',
-  'Net_x0020_profit_x0020_costs_x00',
+  'GrossProfitCostsRecoveredAf',
+  'VAT_x0020__x0025__x0020_Claimed',
   'Drafting_x0020_fee_x0020_basis',
 ].join(',');
 
