@@ -95,6 +95,9 @@
     .wip-table tr.non-billable{opacity:.6;}
     .wip-table tr.hidden-row{display:none;}
     .wip-work-done{max-width:260px;white-space:normal;line-height:1.35;}
+    .wip-edit{padding:3px 5px;border-radius:3px;border:1.5px solid transparent;outline:none;min-width:60px;line-height:1.4;transition:border-color var(--transition),background var(--transition);}
+    .wip-edit:hover{background:var(--cream);border-color:var(--grey-light);}
+    .wip-edit:focus{background:var(--white);border-color:var(--gold);}
     .wip-date{white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);}
     .wip-check{width:15px;height:15px;cursor:pointer;accent-color:var(--navy);}
     .wip-no-entries{padding:16px;text-align:center;color:var(--grey-mid);font-size:13px;}
@@ -511,7 +514,7 @@ function renderWipTable() {
     tr.setAttribute('data-idx', i);
     tr.innerHTML = '<td><input type="checkbox" class="wip-check"' + (isBillable ? ' checked' : '') + '></td>'
       + '<td class="wip-date">' + esc(entry.DateCompleted ? fmtDate(entry.DateCompleted) : '\u2014') + '</td>'
-      + '<td class="wip-work-done">' + esc(entry.WorkDone || '\u2014') + '</td>'
+      + '<td class="wip-work-done"><div contenteditable="true" class="wip-edit" spellcheck="false">' + esc(entry.WorkDone || '\u2014') + '</div></td>'
       + '<td class="r">' + (hrs || '\u2014') + '</td>'
       + '<td class="r">' + (rate ? gbp(rate) : '\u2014') + '</td>'
       + '<td class="r">' + (amt ? gbp(amt) : '\u2014') + '</td>';
@@ -621,6 +624,11 @@ function recalc() {
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
     timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
+    wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
+      idx:     +tr.getAttribute('data-idx'),
+      checked: tr.querySelector('.wip-check')?.checked || false,
+      workDone: (tr.querySelector('.wip-edit')?.textContent || '').trim(),
+    })),
   };
 
   if (!hasSomething && el('figures-content').style.display !== 'none') {
