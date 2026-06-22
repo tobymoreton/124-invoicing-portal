@@ -109,11 +109,11 @@ module.exports = async function (context, req) {
       VAT:                        computed.vat || 0,
       DraftingFeeElement:         computed.draftingFee || 0,
       Expenses:                   (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
-      OrderDetails:               computed.bespokeInvoiceLine || '',
+      OrderDetails:               invoiceNumber,
       Ourref:                     caseFields.Ourreference_x0028_text_x0029_ || '',
       Theirref:                   caseFields.ClientCaseReference || '',
       Case_x0020_ID:              caseFields.caseID_text || '',
-      OData__ExtendedDescription: computed.timedWorkLine || '',
+      _ExtendedDescription:        computed.timedWorkLine || '',
       DueDate:                    dueDateISO,
     };
 
