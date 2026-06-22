@@ -42,6 +42,7 @@ const SELECT_FIELDS = [
   'caseID_text',
   'Fee_x0025__x0028_number_x0029_',
   'LAA_x0020_Drafting_x0020_Fee_x00',
+  'LegalAidOnlyProfitCosts',
   'TimedWorkBillableFromOverride',
   'StatusMirror',
   'ProfitCostsClaimed_x0028_Ex_x002',
