@@ -43,6 +43,7 @@ const SELECT_FIELDS = [
   'Fee_x0025__x0028_number_x0029_',
   'LAA_x0020_Drafting_x0020_Fee_x00',
   'TimedWorkBillableFromOverride',
+  'StatusMirror',
 ].join(',');
 
 function getCallerEmail(req) {
@@ -104,16 +105,24 @@ module.exports = async function (context, req) {
 };
 
 async function searchCases(token, q, top) {
-  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
-            + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
+  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
+           + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
 
-  const page = await graphGet(url, token);
-  const all  = page.value || [];
+  var url = base;
+  var all = [];
+  while (url) {
+    var page = await graphGet(url, token);
+    all = all.concat(page.value || []);
+    url = page['@odata.nextLink'] || null;
+  }
 
   const matches = all.filter(function(item) {
-    var f     = item.fields || {};
-    var title = (f.Title || '').toLowerCase();
-    var ref   = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+    var f      = item.fields || {};
+    var title  = (f.Title || '').toLowerCase();
+    var ref    = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+    var status = (f.StatusMirror || '').toLowerCase();
+    // Exclude closed cases
+    if (status === 'closed') return false;
     return title.indexOf(q) !== -1 || ref.indexOf(q) !== -1;
   });
 
