@@ -317,7 +317,7 @@
         <div class="spinner" id="issue-spinner"></div>
         <span id="btn-issue-label">Create Draft Invoice</span>
       </button>
-      <p class="issue-note">This will assign an invoice number and create a draft for Lesley to review and issue.</p>
+      <p class="issue-note">This creates a draft for Lesley to review and issue. The invoice number is assigned when she issues it.</p>
       <div id="issue-status" class="status-msg"></div>
     </div>
   </div>
@@ -686,20 +686,17 @@ async function handleCreateDraft() {
     label.textContent = 'Capturing PDF…';
     const pdfBase64 = await captureInvoicePdf(invoiceData);
 
-    // 3. POST to /api/createinvoice
-    label.textContent = 'Saving to SharePoint…';
-    const today = new Date().toISOString().split('T')[0];
+    // 3. POST to /api/createdraft (draft stage — no number, no Cases/WIP writes)
+    label.textContent = 'Saving draft…';
 
     const payload = {
       pdfBase64,
-      invoiceDate:  today,
-      computed:     c,
-      caseFields:   f,
-      caseSpId:     selectedCase.id,
+      computed:      c,
+      caseFields:    f,
       checkedWipIds: c.checkedWipIds || [],
     };
 
-    const r = await fetch('/api/createinvoice', {
+    const r = await fetch('/api/createdraft', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
@@ -711,7 +708,7 @@ async function handleCreateDraft() {
     }
 
     const result = await r.json();
-    const { invoiceNumber, pdfUrl } = result;
+    const { pdfUrl } = result;
 
     // 4. Success
     spinner.classList.remove('visible');
@@ -719,10 +716,10 @@ async function handleCreateDraft() {
     btn.disabled = false;
 
     const linkHtml = pdfUrl
-      ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View PDF →</a>'
+      ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft →</a>'
       : '';
     el('issue-status').innerHTML =
-      '✓ Draft invoice ' + esc(invoiceNumber) + ' created successfully.' + linkHtml;
+      '✓ Draft created for Lesley to review and issue.' + linkHtml;
     el('issue-status').className = 'status-msg success';
 
   } catch (err) {
