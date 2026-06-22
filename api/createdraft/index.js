@@ -142,8 +142,7 @@ module.exports = async function (context, req) {
             CaseName: entry.CaseName   || caseFields.Title || '',
             'caseName_x0020__x0001f455_': entry.CaseName || caseFields.Title || '',
             'BillableYorN_x0020__x2753_': true,
-            'InvoiceType@odata.type':    '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
-            InvoiceType: { Value: invoiceType },
+            InvoiceType: invoiceType,               // plain string — Graph app-only
             // InvoiceIDRef intentionally blank (assigned at issue)
             // CompletedBy (Person) — cannot write via Graph app-only; omitted
             // caseID (Lookup)      — cannot reliably write via Graph app-only; omitted
