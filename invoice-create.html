@@ -333,27 +333,37 @@ async function searchCases(q) {
   }
 }
 
+// Cache for case data — avoids inline JSON in HTML attributes
+let _caseCache = [];
+
 function renderList(cases) {
   const list = document.getElementById('typeahead-list');
   if (!cases.length) {
     list.innerHTML = '<div class="typeahead-empty">No cases found</div>';
     return;
   }
+  _caseCache = cases; // store for click lookup
   list.innerHTML = cases.map((c, i) => {
     const fields = c.fields || c;
     const name = fields.Title || '—';
     const ref  = fields.Ourreference_x0028_text_x0029_ || '';
-    return `<div class="typeahead-item" data-idx="${i}" data-id="${c.id || ''}"
-      onclick="selectCase(${JSON.stringify(JSON.stringify(fields))}, '${c.id || ''}')">
+    return `<div class="typeahead-item" data-idx="${i}">
       <div>${escHtml(name)}</div>
       <div class="ref">${escHtml(ref)}</div>
     </div>`;
   }).join('');
+  // Attach click handlers via JS — never inline JSON in HTML attributes
+  list.querySelectorAll('.typeahead-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const idx = parseInt(item.getAttribute('data-idx'), 10);
+      const c = _caseCache[idx];
+      if (c) selectCase(c.fields || c, c.id || '');
+    });
+  });
   list.classList.add('open');
 }
 
-function selectCase(fieldsJson, spId) {
-  const fields = JSON.parse(fieldsJson);
+function selectCase(fields, spId) {
   selectedCase = { id: spId, fields };
 
   document.getElementById('case-search').value   = '';
