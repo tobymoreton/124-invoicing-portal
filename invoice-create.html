@@ -22,7 +22,6 @@
     html{scroll-behavior:smooth;}
     body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
 
-    /* ── Nav (matches index.html exactly) ── */
     .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
     .nav-brand{display:flex;align-items:baseline;gap:14px;}
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
@@ -33,107 +32,112 @@
     .nav-back:hover{color:var(--gold);}
     .nav-back::before{content:'← ';}
 
-    /* ── Access denied ── */
     #access-denied{display:none;padding:80px 28px;text-align:center;}
     #access-denied h2{font-family:'Spectral',serif;font-size:22px;font-weight:300;color:var(--navy);margin-bottom:8px;}
     #access-denied p{color:var(--grey-mid);font-size:14px;}
 
-    /* ── Main layout ── */
-    .main{padding:32px 28px;max-width:720px;margin:0 auto;}
+    .main{padding:32px 28px;max-width:760px;margin:0 auto;}
 
-    /* ── Page heading ── */
     .page-heading{margin-bottom:28px;}
     .page-heading h1{font-family:'Spectral',serif;font-weight:300;font-size:26px;color:var(--navy);letter-spacing:.02em;}
     .page-heading p{font-size:13px;color:var(--grey-mid);margin-top:4px;}
 
-    /* ── Card ── */
     .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;margin-bottom:20px;}
-    .card-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:16px;}
+    .card-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:20px;}
 
     /* ── Case search ── */
     .search-wrap{position:relative;}
     .search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.38;pointer-events:none;}
-    .case-search-input{
-      width:100%;padding:11px 14px 11px 38px;
-      border:1.5px solid var(--grey-light);border-radius:var(--radius);
-      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
-      background:var(--cream);outline:none;transition:border-color var(--transition);
-    }
+    .case-search-input{width:100%;padding:11px 14px 11px 38px;border:1.5px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);}
     .case-search-input:focus{border-color:var(--gold);background:var(--white);}
     .case-search-input::placeholder{color:var(--grey-mid);}
-
-    /* ── Typeahead dropdown ── */
-    .typeahead-list{
-      position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:100;
-      background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
-      box-shadow:var(--shadow-lg);max-height:280px;overflow-y:auto;display:none;
-    }
+    .typeahead-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:100;background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow-lg);max-height:280px;overflow-y:auto;display:none;}
     .typeahead-list.open{display:block;}
-    .typeahead-item{
-      padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--grey-faint);
-      transition:background var(--transition);
-    }
+    .typeahead-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--grey-faint);transition:background var(--transition);}
     .typeahead-item:last-child{border-bottom:none;}
-    .typeahead-item:hover,.typeahead-item.focused{background:var(--cream);}
+    .typeahead-item:hover{background:var(--cream);}
     .typeahead-item .ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);margin-top:2px;}
     .typeahead-empty{padding:14px;font-size:13px;color:var(--grey-mid);text-align:center;}
-
-    /* ── Selected case pill ── */
-    .selected-case{
-      display:none;margin-top:10px;padding:10px 14px;
-      background:var(--gold-pale);border:1px solid rgba(201,168,76,.4);border-radius:var(--radius);
-      font-size:13px;font-weight:500;color:var(--navy);
-      align-items:center;justify-content:space-between;
-    }
+    .selected-case{display:none;margin-top:10px;padding:10px 14px;background:var(--gold-pale);border:1px solid rgba(201,168,76,.4);border-radius:var(--radius);font-size:13px;font-weight:500;color:var(--navy);align-items:center;justify-content:space-between;}
     .selected-case.visible{display:flex;}
-    .selected-case .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);margin-top:2px;}
     .selected-case-info{display:flex;flex-direction:column;}
+    .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);margin-top:2px;}
     .clear-case{background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:18px;line-height:1;padding:2px 4px;transition:color var(--transition);}
     .clear-case:hover{color:var(--navy);}
 
-    /* ── Figures preview ── */
+    /* ── Figures sections ── */
     #figures-section{display:none;}
     #figures-section.visible{display:block;}
-
-    .figures-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
-    .figure-cell{padding:14px 16px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
-    .figure-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:6px;}
-    .figure-value{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--navy);line-height:1;}
-    .figure-value.is-currency::before{content:'£';font-size:14px;vertical-align:top;margin-top:3px;display:inline-block;margin-right:1px;opacity:.7;}
-    .figure-value.zero{color:var(--grey-mid);}
-    .figure-sub{font-size:11px;color:var(--grey-mid);margin-top:4px;}
-
-    .total-row{padding:16px;background:var(--navy);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;}
-    .total-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.7);}
-    .total-value{font-family:'Spectral',serif;font-weight:300;font-size:30px;color:var(--white);line-height:1;}
-    .total-value::before{content:'£';font-size:17px;vertical-align:top;margin-top:5px;display:inline-block;margin-right:2px;opacity:.7;}
-
     .loading-figures{padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;}
 
-    /* ── Issue button ── */
+    /* ── Form rows ── */
+    .form-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--grey-faint);}
+    .form-row:last-child{border-bottom:none;}
+    .form-label{font-size:12px;color:var(--grey-mid);font-weight:500;flex:0 0 200px;}
+    .form-value{font-size:13px;color:var(--navy);text-align:right;flex:1;}
+    .form-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;text-align:right;width:120px;outline:none;transition:border-color var(--transition);}
+    .form-input:focus{border-color:var(--gold);background:var(--white);}
+    .form-input.wide{width:200px;text-align:left;}
+    .form-badge{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;}
+    .form-badge.yes{background:var(--success-bg);color:var(--success);}
+    .form-badge.no{background:var(--grey-faint);color:var(--grey-mid);}
+
+    /* ── Section subheader ── */
+    .section-sub{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--gold-pale);}
+
+    /* ── Timed work table ── */
+    .wip-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .wip-toggle{font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;}
+    .wip-summary{font-size:12px;color:var(--grey-mid);}
+    .wip-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .wip-table th{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);padding:6px 8px;border-bottom:2px solid var(--grey-light);text-align:left;}
+    .wip-table th.right{text-align:right;}
+    .wip-table td{padding:7px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:top;}
+    .wip-table td.right{text-align:right;font-family:'IBM Plex Mono',monospace;}
+    .wip-table tr.non-billable td{color:var(--grey-mid);}
+    .wip-table tr.non-billable{opacity:.65;}
+    .wip-table tr.hidden-row{display:none;}
+    .wip-work-done{max-width:280px;white-space:normal;line-height:1.35;}
+    .wip-date{white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--grey-mid);}
+    .wip-check{width:16px;height:16px;cursor:pointer;accent-color:var(--navy);}
+    .wip-no-entries{padding:16px;text-align:center;color:var(--grey-mid);font-size:13px;}
+
+    /* ── Limit timed work ── */
+    .limit-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 12px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
+    .limit-label{font-size:12px;color:var(--grey-mid);font-weight:500;flex:1;}
+    .limit-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;text-align:right;width:120px;outline:none;transition:border-color var(--transition);}
+    .limit-input:focus{border-color:var(--gold);background:var(--white);}
+    .limit-hint{font-size:11px;color:var(--grey-mid);margin-top:4px;}
+
+    /* ── Bespoke section ── */
+    .bespoke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;}
+    .bespoke-cell{display:flex;flex-direction:column;gap:4px;}
+    .bespoke-cell label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
+    .bespoke-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:7px 10px;width:100%;outline:none;transition:border-color var(--transition);}
+    .bespoke-input:focus{border-color:var(--gold);background:var(--white);}
+    .bespoke-line-wrap{margin-top:4px;}
+
+    /* ── Totals ── */
+    .totals-block{margin-top:20px;border-top:2px solid var(--grey-light);padding-top:16px;}
+    .totals-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;}
+    .totals-row .t-label{color:var(--grey-mid);}
+    .totals-row .t-value{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);}
+    .totals-row.grand{margin-top:8px;padding:14px 16px;background:var(--navy);border-radius:var(--radius);}
+    .totals-row.grand .t-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.7);}
+    .totals-row.grand .t-value{font-family:'Spectral',serif;font-weight:300;font-size:28px;color:var(--white);}
+
+    /* ── Create Draft button ── */
     #issue-section{display:none;}
     #issue-section.visible{display:block;}
-
-    .btn-issue{
-      width:100%;padding:15px 24px;
-      background:var(--navy);border:none;border-radius:var(--radius);
-      font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
-      letter-spacing:.04em;color:var(--white);cursor:pointer;
-      transition:background var(--transition);
-      display:flex;align-items:center;justify-content:center;gap:10px;
-    }
+    .btn-issue{width:100%;padding:15px 24px;background:var(--navy);border:none;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--white);cursor:pointer;transition:background var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;}
     .btn-issue:hover:not(:disabled){background:var(--navy-mid);}
     .btn-issue:disabled{opacity:.5;cursor:not-allowed;}
-    .btn-issue.issuing{background:var(--navy-mid);}
-
     .issue-note{font-size:12px;color:var(--grey-mid);text-align:center;margin-top:10px;}
 
-    /* ── Status messages ── */
     .status-msg{display:none;padding:14px 16px;border-radius:var(--radius);font-size:13px;margin-top:16px;}
     .status-msg.success{display:block;background:var(--success-bg);color:var(--success);border:1px solid rgba(6,95,70,.2);}
     .status-msg.error{display:block;background:var(--error-bg);color:var(--error);border:1px solid rgba(153,27,27,.2);}
 
-    /* ── Spinner ── */
     @keyframes spin{to{transform:rotate(360deg);}}
     .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
     .spinner.visible{display:block;}
@@ -141,7 +145,6 @@
 </head>
 <body>
 
-<!-- Nav -->
 <nav class="nav">
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
@@ -154,34 +157,26 @@
   </div>
 </nav>
 
-<!-- Access denied (shown for non-admin, non-finance) -->
 <div id="access-denied">
   <h2>Access Restricted</h2>
   <p>Invoice creation is available to admins only. Contact Toby if you need access.</p>
 </div>
 
-<!-- Main -->
 <div class="main" id="main-content" style="display:none;">
 
   <div class="page-heading">
     <h1>Create Draft Invoice</h1>
-    <p>Search for a case, review the figures, then create the draft for Lesley to issue.</p>
+    <p>Search for a case, review and adjust the figures, then create the draft for Lesley to issue.</p>
   </div>
 
-  <!-- Step 1: Case selector -->
+  <!-- Step 1 -->
   <div class="card">
     <div class="card-title">Step 1 — Select Case</div>
     <div class="search-wrap">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
-      <input
-        type="text"
-        id="case-search"
-        class="case-search-input"
-        placeholder="Search by case name or reference…"
-        autocomplete="off"
-      />
+      <input type="text" id="case-search" class="case-search-input" placeholder="Search by case name or reference…" autocomplete="off" />
       <div class="typeahead-list" id="typeahead-list"></div>
     </div>
     <div class="selected-case" id="selected-case">
@@ -193,43 +188,132 @@
     </div>
   </div>
 
-  <!-- Step 2: Figures preview -->
+  <!-- Step 2 -->
   <div id="figures-section">
     <div class="card">
-      <div class="card-title">Step 2 — Review Figures</div>
+      <div class="card-title">Step 2 — Review &amp; Adjust Figures</div>
       <div id="figures-loading" class="loading-figures">Loading figures…</div>
       <div id="figures-content" style="display:none;">
-        <div class="figures-grid">
-          <div class="figure-cell">
-            <div class="figure-label">Drafting Fee</div>
-            <div class="figure-value is-currency" id="fig-drafting">0.00</div>
-            <div class="figure-sub" id="fig-drafting-line"></div>
+
+        <!-- Drafting Fee -->
+        <div class="section-sub">Drafting Fee</div>
+        <div class="form-row">
+          <span class="form-label">Drafting basis</span>
+          <span class="form-value" id="fig-basis">—</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Profit costs (ex TMC time)</span>
+          <span class="form-value" id="fig-profit-costs">—</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Drafting fee %</span>
+          <span class="form-value">
+            <input type="number" class="form-input" id="inp-fee-pct" min="0" max="100" step="0.5" />
+            <span style="font-size:12px;color:var(--grey-mid);margin-left:4px;">%</span>
+          </span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Computed drafting fee</span>
+          <span class="form-value" id="fig-drafting-computed" style="font-weight:600;">£0.00</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Drafting fee line</span>
+          <span class="form-value" id="fig-drafting-line" style="font-size:12px;color:var(--grey-mid);text-align:right;"></span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">VAT on drafting fee?</span>
+          <span class="form-value" id="fig-vat-on-drafting"></span>
+        </div>
+
+        <!-- Timed Work -->
+        <div class="section-sub">Timed Work</div>
+        <div class="wip-toolbar">
+          <span class="wip-summary" id="wip-summary"></span>
+          <button class="wip-toggle" id="wip-toggle-nonbillable">Show non-billable</button>
+        </div>
+        <table class="wip-table" id="wip-table">
+          <thead>
+            <tr>
+              <th style="width:28px;"></th>
+              <th>Date</th>
+              <th>Work Done</th>
+              <th class="right">Hrs</th>
+              <th class="right">Rate</th>
+              <th class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="wip-tbody">
+            <tr><td colspan="6" class="wip-no-entries">Loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="limit-row">
+          <div>
+            <div class="limit-label">Limit timed work (net)</div>
+            <div class="limit-hint">Leave blank to use the computed total above</div>
           </div>
-          <div class="figure-cell">
-            <div class="figure-label">Timed Work</div>
-            <div class="figure-value is-currency" id="fig-timed">0.00</div>
-            <div class="figure-sub" id="fig-timed-sub"></div>
-          </div>
-          <div class="figure-cell">
-            <div class="figure-label">VAT @ 20%</div>
-            <div class="figure-value is-currency" id="fig-vat">0.00</div>
-            <div class="figure-sub" id="fig-vat-sub"></div>
-          </div>
-          <div class="figure-cell">
-            <div class="figure-label">Expenses</div>
-            <div class="figure-value is-currency zero" id="fig-expenses">0.00</div>
-            <div class="figure-sub"></div>
+          <input type="number" class="limit-input" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" />
+        </div>
+
+        <!-- Bespoke Invoice -->
+        <div class="section-sub">Bespoke Invoice (optional)</div>
+        <div class="bespoke-line-wrap" style="margin-bottom:12px;">
+          <div class="bespoke-cell">
+            <label>Bespoke Invoice Line</label>
+            <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work…" />
           </div>
         </div>
-        <div class="total-row">
-          <span class="total-label">Grand Total</span>
-          <span class="total-value" id="fig-total">0.00</span>
+        <div class="bespoke-grid">
+          <div class="bespoke-cell">
+            <label>Bespoke Amount (£)</label>
+            <input type="number" class="bespoke-input" id="inp-bespoke-amount" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Expenses (£)</label>
+            <input type="number" class="bespoke-input" id="inp-bespoke-expenses" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Expenses VAT (£)</label>
+            <input type="number" class="bespoke-input" id="inp-bespoke-expenses-vat" min="0" step="0.01" placeholder="0.00" />
+          </div>
         </div>
-        <div id="figures-status" class="status-msg"></div>
+
+        <!-- Totals -->
+        <div class="totals-block">
+          <div class="totals-row" id="tot-row-drafting" style="display:none;">
+            <span class="t-label">Drafting fee</span>
+            <span class="t-value" id="tot-drafting">£0.00</span>
+          </div>
+          <div class="totals-row" id="tot-row-timed" style="display:none;">
+            <span class="t-label">Timed work</span>
+            <span class="t-value" id="tot-timed">£0.00</span>
+          </div>
+          <div class="totals-row" id="tot-row-bespoke" style="display:none;">
+            <span class="t-label">Bespoke</span>
+            <span class="t-value" id="tot-bespoke">£0.00</span>
+          </div>
+          <div class="totals-row" id="tot-row-subtotal" style="display:none;">
+            <span class="t-label">Sub Total</span>
+            <span class="t-value" id="tot-subtotal">£0.00</span>
+          </div>
+          <div class="totals-row">
+            <span class="t-label">VAT @ 20%</span>
+            <span class="t-value" id="tot-vat">£0.00</span>
+          </div>
+          <div class="totals-row" id="tot-row-expenses" style="display:none;">
+            <span class="t-label">Expenses</span>
+            <span class="t-value" id="tot-expenses">£0.00</span>
+          </div>
+          <div class="totals-row grand">
+            <span class="t-label">Grand Total</span>
+            <span class="t-value" id="tot-grand">£0.00</span>
+          </div>
+        </div>
+
+        <div id="figures-status" class="status-msg" style="margin-top:16px;"></div>
       </div>
     </div>
 
-    <!-- Step 3: Issue -->
+    <!-- Step 3 -->
     <div class="card" id="issue-section">
       <div class="card-title">Step 3 — Create Draft</div>
       <button class="btn-issue" id="btn-issue" disabled>
@@ -241,122 +325,89 @@
     </div>
   </div>
 
-</div><!-- /main -->
+</div>
 
 <script>
-// ── Constants ──────────────────────────────────────────────────────────────
-const ADMIN_EMAILS   = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
-const SITE_PATH      = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
-const CASES_GUID     = 'ae420bda-e550-499c-b337-90e4f33617c1';
-const TT2_GUID       = '67db204c-30a5-4f4d-b276-60852d9967e1';
-
-// ── Identity ───────────────────────────────────────────────────────────────
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 let callerEmail = null;
+let selectedCase = null;
+let _caseCache = [];
+let _allWipEntries = []; // all entries for this case (billable + non-billable)
+let _showNonBillable = false;
 
+// ── Identity ──────────────────────────────────────────────
 async function getIdentity() {
   try {
     const r = await fetch('/.auth/me');
     if (!r.ok) return null;
     const data = await r.json();
-    const principal = data?.clientPrincipal;
-    return principal?.userDetails?.toLowerCase() || null;
+    return data?.clientPrincipal?.userDetails?.toLowerCase() || null;
   } catch { return null; }
 }
 
-// ── Dev preview override ───────────────────────────────────────────────────
 function resolveEmail(raw) {
-  const override = sessionStorage.getItem('__PREVIEW_AS');
-  return (override || raw || '').toLowerCase();
+  return (sessionStorage.getItem('__PREVIEW_AS') || raw || '').toLowerCase();
 }
 
-// ── Auth gate ──────────────────────────────────────────────────────────────
 async function init() {
-  const raw = await getIdentity();
-  callerEmail = resolveEmail(raw);
-
-  document.getElementById('nav-user').textContent = callerEmail || '';
-
+  callerEmail = resolveEmail(await getIdentity());
+  el('nav-user').textContent = callerEmail || '';
   if (!ADMIN_EMAILS.includes(callerEmail)) {
-    document.getElementById('access-denied').style.display = 'block';
+    el('access-denied').style.display = 'block';
     return;
   }
-
-  document.getElementById('main-content').style.display = 'block';
+  el('main-content').style.display = 'block';
   initCaseSearch();
+  initInputListeners();
 }
 
-// ── Case typeahead ─────────────────────────────────────────────────────────
+// ── Case typeahead ────────────────────────────────────────
 let searchTimeout = null;
-let selectedCase  = null;
 
 function initCaseSearch() {
-  const input = document.getElementById('case-search');
-  const list  = document.getElementById('typeahead-list');
-
-  input.addEventListener('input', () => {
+  el('case-search').addEventListener('input', () => {
     clearTimeout(searchTimeout);
-    const q = input.value.trim();
+    const q = el('case-search').value.trim();
     if (q.length < 2) { closeList(); return; }
     searchTimeout = setTimeout(() => searchCases(q), 280);
   });
-
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeList(); input.blur(); }
+  el('case-search').addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeList(); el('case-search').blur(); }
   });
-
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-wrap')) closeList();
   });
-
-  document.getElementById('clear-case').addEventListener('click', clearSelection);
+  el('clear-case').addEventListener('click', clearSelection);
 }
 
 async function searchCases(q) {
-  const list = document.getElementById('typeahead-list');
+  const list = el('typeahead-list');
   list.innerHTML = '<div class="typeahead-empty">Searching…</div>';
   list.classList.add('open');
-
   try {
-    // Search by Title (case name) or Ourreference_x0028_text_x0029_ (our ref)
-    const filter = encodeURIComponent(
-      `startswith(fields/Title,'${q.replace(/'/g,"''")}') or startswith(fields/Ourreference_x0028_text_x0029_,'${q.replace(/'/g,"''")}') or contains(fields/Title,'${q.replace(/'/g,"''")}')`
-    );
-    const select = encodeURIComponent('Title,Ourreference_x0028_text_x0029_,Fee_x0025__x0028_number_x0029_,LAA_x0020_Drafting_x0020_Fee_x00,Net_x0020_Drafting_x0020_Fee,Drafting_x0020_fee_x0020_line,VatOnDraftingFee_x003f_,TimedWorkBillableFromOverride,TimedWorkLineOverride,Firm_x0028_text_x0029_,Address1_x0028_text_x0029_,Address2_x0028_text_x0029_,Address3_x0028_text_x0029_,Address4_x0028_text_x0029_,Address5_x0028_text_x0029_,ClientCaseReference,DraftingYetToBeInvoiced,caseID_text');
-
-    const url = `/api/cases?q=${encodeURIComponent(q)}&top=10`;
-    const r   = await fetch(url);
+    const r = await fetch('/api/cases?q=' + encodeURIComponent(q) + '&top=10');
     if (!r.ok) throw new Error('Search failed');
     const data = await r.json();
     renderList(data.value || []);
-  } catch (err) {
+  } catch {
     list.innerHTML = '<div class="typeahead-empty">Search failed — try again</div>';
   }
 }
 
-// Cache for case data — avoids inline JSON in HTML attributes
-let _caseCache = [];
-
 function renderList(cases) {
-  const list = document.getElementById('typeahead-list');
-  if (!cases.length) {
-    list.innerHTML = '<div class="typeahead-empty">No cases found</div>';
-    return;
-  }
-  _caseCache = cases; // store for click lookup
+  const list = el('typeahead-list');
+  if (!cases.length) { list.innerHTML = '<div class="typeahead-empty">No cases found</div>'; return; }
+  _caseCache = cases;
   list.innerHTML = cases.map((c, i) => {
-    const fields = c.fields || c;
-    const name = fields.Title || '—';
-    const ref  = fields.Ourreference_x0028_text_x0029_ || '';
-    return `<div class="typeahead-item" data-idx="${i}">
-      <div>${escHtml(name)}</div>
-      <div class="ref">${escHtml(ref)}</div>
-    </div>`;
+    const f = c.fields || c;
+    return '<div class="typeahead-item" data-idx="' + i + '">'
+      + '<div>' + escHtml(f.Title || '—') + '</div>'
+      + '<div class="ref">' + escHtml(f.Ourreference_x0028_text_x0029_ || '') + '</div>'
+      + '</div>';
   }).join('');
-  // Attach click handlers via JS — never inline JSON in HTML attributes
   list.querySelectorAll('.typeahead-item').forEach(item => {
     item.addEventListener('click', () => {
-      const idx = parseInt(item.getAttribute('data-idx'), 10);
-      const c = _caseCache[idx];
+      const c = _caseCache[parseInt(item.getAttribute('data-idx'), 10)];
       if (c) selectCase(c.fields || c, c.id || '');
     });
   });
@@ -365,128 +416,261 @@ function renderList(cases) {
 
 function selectCase(fields, spId) {
   selectedCase = { id: spId, fields };
-
-  document.getElementById('case-search').value   = '';
-  document.getElementById('selected-name').textContent = fields.Title || '—';
-  document.getElementById('selected-ref').textContent  = fields.Ourreference_x0028_text_x0029_ || '';
-  document.getElementById('selected-case').classList.add('visible');
+  el('case-search').value = '';
+  el('selected-name').textContent = fields.Title || '—';
+  el('selected-ref').textContent = fields.Ourreference_x0028_text_x0029_ || '';
+  el('selected-case').classList.add('visible');
   closeList();
-
   loadFigures(fields);
 }
 
 function clearSelection() {
   selectedCase = null;
-  document.getElementById('selected-case').classList.remove('visible');
-  document.getElementById('figures-section').classList.remove('visible');
-  document.getElementById('issue-section').classList.remove('visible');
-  document.getElementById('case-search').value = '';
-  document.getElementById('case-search').focus();
+  _allWipEntries = [];
+  el('selected-case').classList.remove('visible');
+  el('figures-section').classList.remove('visible');
+  el('issue-section').classList.remove('visible');
+  el('case-search').value = '';
+  el('case-search').focus();
 }
 
 function closeList() {
-  document.getElementById('typeahead-list').classList.remove('open');
-  document.getElementById('typeahead-list').innerHTML = '';
+  el('typeahead-list').classList.remove('open');
+  el('typeahead-list').innerHTML = '';
 }
 
-// ── Figures ────────────────────────────────────────────────────────────────
+// ── Load figures ──────────────────────────────────────────
 async function loadFigures(fields) {
-  document.getElementById('figures-section').classList.add('visible');
-  document.getElementById('figures-loading').style.display = 'block';
-  document.getElementById('figures-content').style.display = 'none';
-  document.getElementById('issue-section').classList.remove('visible');
+  el('figures-section').classList.add('visible');
+  el('figures-loading').style.display = 'block';
+  el('figures-content').style.display = 'none';
+  el('issue-section').classList.remove('visible');
 
-  // Drafting fee — from case record
-  const draftingFee = parseFloat(fields.Net_x0020_Drafting_x0020_Fee) || 0;
-  const draftingLine = fields.Drafting_x0020_fee_x0020_line || '';
+  const ourRef = fields.Ourreference_x0028_text_x0029_ || '';
+
+  // Populate drafting fields
+  const feePct        = parseFloat(fields.Fee_x0025__x0028_number_x0029_) || 0;
+  const profitCosts   = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
+  const basis         = fields.Drafting_x0020_fee_x0020_basis || '—';
+  const draftingLine  = fields.Drafting_x0020_fee_x0020_line || '';
   const vatOnDrafting = fields.VatOnDraftingFee_x003f_ === true;
 
-  // Timed work — live from Time Tracking2
-  let timedFee = 0, timedHours = 0, timedRate = 0, timedEntries = [];
+  el('fig-basis').textContent       = basis;
+  el('fig-profit-costs').textContent = profitCosts > 0 ? fmtGBP(profitCosts) : '—';
+  el('fig-drafting-line').textContent = draftingLine;
+  el('fig-vat-on-drafting').innerHTML = vatOnDrafting
+    ? '<span class="form-badge yes">Yes</span>'
+    : '<span class="form-badge no">No</span>';
+
+  // Set drafting % input
+  el('inp-fee-pct').value = feePct;
+
+  // Store on selectedCase for recalculation
+  selectedCase._profitCosts   = profitCosts;
+  selectedCase._vatOnDrafting = vatOnDrafting;
+
+  // Fetch WIP entries for this case
+  _allWipEntries = [];
   try {
-    const ourRef = fields.Ourreference_x0028_text_x0029_ || '';
-    const r = await fetch(`/api/wip?ref=${encodeURIComponent(ourRef)}`);
+    const r = await fetch('/api/wip?ref=' + encodeURIComponent(ourRef));
     if (r.ok) {
       const data = await r.json();
-      timedEntries = (data.value || []).filter(e => !e.fields?.Billed_x003f_);
-      timedEntries.forEach(e => {
-        const f = e.fields || e;
-        const hrs  = parseFloat(f.TimeSpentMirror) || 0;
-        const rate = parseFloat(f.field_6) || 0;
-        timedHours += hrs;
-        timedFee   += hrs * rate;
-        if (!timedRate && rate) timedRate = rate; // use first found rate
-      });
-      timedFee = Math.round(timedFee * 100) / 100;
+      // Filter to this case by OurRef, include both billable and non-billable
+      _allWipEntries = (Array.isArray(data) ? data : []).filter(e =>
+        (e.OurRef || '').toLowerCase() === ourRef.toLowerCase()
+      );
     }
   } catch (_) {}
 
-  const vatBase  = timedFee + (vatOnDrafting ? draftingFee : 0);
-  const vat      = Math.round(vatBase * 0.2 * 100) / 100;
-  const expenses = 0; // expenses not yet in scope
-  const grand    = Math.round((draftingFee + timedFee + vat + expenses) * 100) / 100;
+  el('figures-loading').style.display = 'none';
+  el('figures-content').style.display = 'block';
 
-  // Render
-  const fmt = n => n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  renderWipTable();
+  recalcTotals();
 
-  el('fig-drafting').textContent = fmt(draftingFee);
-  el('fig-drafting').classList.toggle('zero', draftingFee === 0);
-  el('fig-drafting-line').textContent = draftingLine;
+  el('issue-section').classList.add('visible');
+}
 
-  el('fig-timed').textContent = fmt(timedFee);
-  el('fig-timed').classList.toggle('zero', timedFee === 0);
-  el('fig-timed-sub').textContent = timedHours ? `${Math.round(timedHours * 100)/100} hrs × £${timedRate}/hr` : 'No unbilled time entries';
+// ── WIP table ─────────────────────────────────────────────
+function renderWipTable() {
+  const tbody = el('wip-tbody');
 
-  el('fig-vat').textContent = fmt(vat);
-  el('fig-vat-sub').textContent = vatOnDrafting ? 'On drafting + timed work' : 'On timed work only';
+  if (!_allWipEntries.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="wip-no-entries">No time entries found for this case</td></tr>';
+    el('wip-summary').textContent = '';
+    return;
+  }
 
-  el('fig-expenses').textContent = fmt(expenses);
+  const billableCount    = _allWipEntries.filter(e => e.Billable && !e.Billed).length;
+  const nonBillableCount = _allWipEntries.filter(e => !e.Billable && !e.Billed).length;
+  el('wip-summary').textContent = billableCount + ' billable' + (nonBillableCount ? ', ' + nonBillableCount + ' non-billable' : '');
+  el('wip-toggle-nonbillable').textContent = _showNonBillable ? 'Hide non-billable' : 'Show non-billable';
 
-  el('fig-total').textContent = fmt(grand);
+  tbody.innerHTML = '';
+  _allWipEntries.filter(e => !e.Billed).forEach((entry, i) => {
+    const isBillable = entry.Billable;
+    const hrs   = parseFloat(entry.HoursSpent) || 0;
+    const rate  = parseFloat(entry.Rate) || 0;
+    const amt   = Math.round(hrs * rate * 100) / 100;
+    const date  = entry.DateCompleted ? fmtDate(entry.DateCompleted) : '—';
 
-  document.getElementById('figures-loading').style.display = 'none';
-  document.getElementById('figures-content').style.display = 'block';
+    const tr = document.createElement('tr');
+    tr.className = (isBillable ? '' : 'non-billable') + (!isBillable && !_showNonBillable ? ' hidden-row' : '');
+    tr.setAttribute('data-idx', i);
 
-  // Store computed figures on selectedCase for use at issue time
-  selectedCase.computed = { draftingFee, draftingLine, timedFee, timedHours, timedRate,
-                             vatOnDrafting, vat, expenses, grand, timedEntries };
+    const chkId = 'wip-chk-' + i;
+    tr.innerHTML = '<td><input type="checkbox" class="wip-check" id="' + chkId + '"' + (isBillable ? ' checked' : '') + '></td>'
+      + '<td class="wip-date">' + escHtml(date) + '</td>'
+      + '<td class="wip-work-done">' + escHtml(entry.WorkDone || '—') + '</td>'
+      + '<td class="right">' + (hrs || '—') + '</td>'
+      + '<td class="right">' + (rate ? fmtGBP(rate) : '—') + '</td>'
+      + '<td class="right">' + (amt ? fmtGBP(amt) : '—') + '</td>';
+    tbody.appendChild(tr);
 
-  // Enable issue button only if there's something to bill
-  const hasSomething = draftingFee > 0 || timedFee > 0;
+    tr.querySelector('.wip-check').addEventListener('change', () => recalcTotals());
+  });
+}
+
+el('wip-toggle-nonbillable') && document.getElementById('wip-toggle-nonbillable').addEventListener('click', () => {
+  _showNonBillable = !_showNonBillable;
+  renderWipTable();
+  recalcTotals();
+});
+
+// ── Input listeners (recalc on change) ───────────────────
+function initInputListeners() {
+  ['inp-fee-pct','inp-limit-timed','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat'].forEach(id => {
+    document.getElementById(id).addEventListener('input', recalcTotals);
+  });
+  el('btn-issue').addEventListener('click', () => {
+    showIssueMsg('Issue logic coming in next step.', 'error');
+  });
+}
+
+// ── Recalculate totals ────────────────────────────────────
+function recalcTotals() {
+  if (!selectedCase) return;
+
+  const profitCosts   = selectedCase._profitCosts || 0;
+  const vatOnDrafting = selectedCase._vatOnDrafting || false;
+  const feePct        = parseFloat(el('inp-fee-pct').value) || 0;
+  const limitTimed    = parseFloat(el('inp-limit-timed').value) || 0;
+  const bespokeAmt    = parseFloat(el('inp-bespoke-amount').value) || 0;
+  const bespokeExp    = parseFloat(el('inp-bespoke-expenses').value) || 0;
+  const bespokeExpVat = parseFloat(el('inp-bespoke-expenses-vat').value) || 0;
+
+  // Drafting fee
+  const draftingFee = Math.round(profitCosts * feePct / 100 * 100) / 100;
+  el('fig-drafting-computed').textContent = fmtGBP(draftingFee);
+
+  // Update drafting fee line display
+  if (profitCosts > 0 && feePct > 0) {
+    const basis = el('fig-basis').textContent;
+    const basisShort = basis.toLowerCase().includes('drawn') ? 'as drawn' : 'as recovered';
+    el('fig-drafting-line').textContent = 'Preparing Draft Bill of Costs | ' + feePct + '% of ' + fmtGBP(profitCosts) + ' ' + basisShort;
+  }
+
+  // Timed work — sum checked entries
+  let timedRaw = 0;
+  el('wip-tbody').querySelectorAll('tr[data-idx]').forEach(tr => {
+    const chk = tr.querySelector('.wip-check');
+    if (chk && chk.checked) {
+      const idx   = parseInt(tr.getAttribute('data-idx'), 10);
+      const entry = _allWipEntries.filter(e => !e.Billed)[idx];
+      if (entry) {
+        const hrs  = parseFloat(entry.HoursSpent) || 0;
+        const rate = parseFloat(entry.Rate) || 0;
+        timedRaw  += hrs * rate;
+      }
+    }
+  });
+  timedRaw = Math.round(timedRaw * 100) / 100;
+
+  // Apply limit if set
+  const timedFee = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
+
+  // VAT base
+  const vatBase = timedFee + (vatOnDrafting ? draftingFee : 0) + bespokeAmt;
+  const vat     = Math.round(vatBase * 0.2 * 100) / 100;
+
+  const expenses    = bespokeExp;
+  const expensesVat = bespokeExpVat;
+  const subTotal    = draftingFee + timedFee + bespokeAmt;
+  const grand       = subTotal + vat + expenses + expensesVat;
+
+  // Show/hide total rows
+  showRow('tot-row-drafting',  draftingFee > 0);
+  showRow('tot-row-timed',     timedFee > 0);
+  showRow('tot-row-bespoke',   bespokeAmt > 0);
+  showRow('tot-row-subtotal',  (draftingFee > 0 || timedFee > 0 || bespokeAmt > 0));
+  showRow('tot-row-expenses',  expenses > 0 || expensesVat > 0);
+
+  el('tot-drafting').textContent = fmtGBP(draftingFee);
+  el('tot-timed').textContent    = fmtGBP(timedFee);
+  el('tot-bespoke').textContent  = fmtGBP(bespokeAmt);
+  el('tot-subtotal').textContent = fmtGBP(subTotal);
+  el('tot-vat').textContent      = fmtGBP(vat);
+  el('tot-expenses').textContent = fmtGBP(expenses + expensesVat);
+  el('tot-grand').textContent    = fmtGBP(grand);
+
+  // Store for issue step
+  selectedCase.computed = {
+    draftingFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
+    vat, expenses, expensesVat, subTotal, grand,
+    vatOnDrafting, feePct, limitTimed,
+    draftingFeeLine: el('fig-drafting-line').textContent,
+    bespokeInvoiceLine: el('inp-bespoke-line').value,
+  };
+
+  // Enable issue button
+  const hasSomething = draftingFee > 0 || timedFee > 0 || bespokeAmt > 0;
   el('btn-issue').disabled = !hasSomething;
-  document.getElementById('issue-section').classList.add('visible');
 
-  if (!hasSomething) {
-    showFiguresMsg('No billable amounts found for this case.', 'error');
+  if (!hasSomething && el('figures-content').style.display !== 'none') {
+    showFiguresMsg('No billable amounts. Check figures above.', 'error');
+  } else {
+    hideFiguresMsg();
   }
 }
 
-// ── Issue (stub — wired in next step) ─────────────────────────────────────
-el('btn-issue') && document.getElementById('btn-issue').addEventListener('click', async () => {
-  // TODO: implement in next step
-  showIssueMsg('Issue logic coming in next step.', 'error');
-});
-
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
 
+function showRow(id, show) {
+  el(id).style.display = show ? 'flex' : 'none';
+}
+
+function fmtGBP(n) {
+  return '£' + (parseFloat(n) || 0).toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
 function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function showFiguresMsg(msg, type) {
-  const el = document.getElementById('figures-status');
-  el.textContent = msg;
-  el.className = 'status-msg ' + type;
+  const e = el('figures-status');
+  e.textContent = msg;
+  e.className = 'status-msg ' + type;
+}
+
+function hideFiguresMsg() {
+  el('figures-status').className = 'status-msg';
 }
 
 function showIssueMsg(msg, type) {
-  const el = document.getElementById('issue-status');
-  el.textContent = msg;
-  el.className = 'status-msg ' + type;
+  const e = el('issue-status');
+  e.textContent = msg;
+  e.className = 'status-msg ' + type;
 }
 
-// ── Boot ───────────────────────────────────────────────────────────────────
 init();
 </script>
 </body>
