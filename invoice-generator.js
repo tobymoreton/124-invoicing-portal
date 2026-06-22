@@ -13,14 +13,16 @@
  *   caseName         string
  *   firmName         string
  *   address1-5       string
- *   draftingFee      number       0 if no drafting element
+ *   draftingFee      number       IP drafting fee (0 if none)
  *   draftingFeeLine  string       e.g. 'Preparing Draft Bill of Costs | 5.5% of ...'
+ *   laFee            number       LA-only drafting fee (0 / omit if none)
+ *   laFeeLine        string       e.g. 'Preparing Draft Bill of Costs (LA) | 6% of ...'
  *   timedFee         number       0 if no timed element
  *   timedHours       number
  *   timedRate        number       ignored when timedWorkLine is supplied
  *   timedWorkLine    string|null  override text (already includes hours — don't append again)
  *   expenses         number       default 0
- *   vatOnDrafting    boolean      if true, VAT applies to drafting fee too
+ *   vatOnDrafting    boolean      if true, VAT applies to draftingFee AND laFee
  *   logoDataUrl      string|null  base64 data URL for logo (inline); falls back to filename
  *   scheduleLines    Array|null   [{date, workDone, hours, rate, amount}] — appended as Schedule of Work
  */
@@ -118,28 +120,32 @@ function generateInvoiceHTML(data) {
                    : _addDays(invoiceDate, 30);
 
   const draftingFee = parseFloat(data.draftingFee) || 0;
+  const laFee       = parseFloat(data.laFee)       || 0;
   const timedFee    = parseFloat(data.timedFee)    || 0;
   const expenses    = parseFloat(data.expenses)    || 0;
   const hrs         = parseFloat(data.timedHours)  || 0;
   const rate        = parseFloat(data.timedRate)   || 0;
 
   const hasDrafting = draftingFee > 0;
+  const hasLaFee    = laFee       > 0;
   const hasTimed    = timedFee    > 0;
-  const hasBoth     = hasDrafting && hasTimed;
   const hasExpenses = expenses    > 0;
 
-  const vatBase  = timedFee + (data.vatOnDrafting ? draftingFee : 0);
+  // VAT applies to timed fee always; applies to drafting fees when vatOnDrafting is true
+  const vatBase  = timedFee + (data.vatOnDrafting ? (draftingFee + laFee) : 0);
   const vat      = Math.round(vatBase * 0.2 * 100) / 100;
-  const subTotal = draftingFee + timedFee;
+  const subTotal = draftingFee + laFee + timedFee;
   const grand    = subTotal + vat + expenses;
 
+  // Sub-total row shown when more than one line item is present
+  const lineCount = (hasDrafting ? 1 : 0) + (hasLaFee ? 1 : 0) + (hasTimed ? 1 : 0);
+  const hasBoth   = lineCount > 1;
+
   // Timed work description line — do NOT append hours when timedWorkLine is supplied
-  // (the override already carries them, e.g. "Work done per attached schedule | 43.55 hrs")
   let timedLine = '';
   if (hasTimed) {
     if (data.timedWorkLine) {
       timedLine = _esc(data.timedWorkLine);
-      // Do NOT append " | X hrs" — timedWorkLine already contains it
     } else {
       timedLine = 'Work done per attached schedule | ' + hrs + ' hrs @ ' + _fmtGBP(rate) + ' / hour';
     }
@@ -152,6 +158,9 @@ function generateInvoiceHTML(data) {
   const rows = [];
   if (hasDrafting) {
     rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(data.draftingFeeLine || 'Preparing Draft Bill of Costs') + '</td><td>' + _fmtGBP(draftingFee) + '</td></tr>');
+  }
+  if (hasLaFee) {
+    rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(data.laFeeLine || 'Preparing Draft Bill of Costs (Legal Aid)') + '</td><td>' + _fmtGBP(laFee) + '</td></tr>');
   }
   if (hasTimed) {
     rows.push('<tr><td style="text-align:left;padding-right:8mm">' + timedLine + '</td><td>' + _fmtGBP(timedFee) + '</td></tr>');
