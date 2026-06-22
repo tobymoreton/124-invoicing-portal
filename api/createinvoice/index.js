@@ -106,7 +106,7 @@ module.exports = async function (context, req) {
       AmountDue:                  computed.grand || 0,
       DraftedByEmail:             callerEmail,
       Net:                        computed.subTotal || 0,
-      OData__x0056_AT20:          computed.vat || 0,
+      VAT:                        computed.vat || 0,
       DraftingFeeElement:         computed.draftingFee || 0,
       Expenses:                   (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
       OrderDetails:               computed.bespokeInvoiceLine || '',
