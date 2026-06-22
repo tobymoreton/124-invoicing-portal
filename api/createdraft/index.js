@@ -136,6 +136,7 @@ module.exports = async function (context, req) {
       Expenses:             (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
       Ourref:               caseFields.Ourreference_x0028_text_x0029_ || '',
       Theirref:             caseFields.ClientCaseReference || '',
+      LAorIP:               caseFields.InterPartesorLegalAid || '',
       _ExtendedDescription: computed.timedWorkLine || '',
       DraftedByEmail:       callerEmail,
       VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
