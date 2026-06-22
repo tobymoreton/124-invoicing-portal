@@ -99,6 +99,7 @@ module.exports = async function (context, req) {
       + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '?$expand=driveItem';
     const listItemData = await graphGet(listItemUrl, token);
     const driveItemId  = listItemData.driveItem && listItemData.driveItem.id;
+    const driveItemEtag = (listItemData.driveItem && listItemData.driveItem.eTag) || null;
     if (!driveItemId) throw new Error('Could not get driveItem ID for list item ' + listItemId);
 
     const driveUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
@@ -124,7 +125,7 @@ module.exports = async function (context, req) {
     context.log('Uploading issued HTML…');
     const uploadUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
       + '/items/' + driveItemId + '/content';
-    await graphPut(uploadUrl, token, htmlBuffer, 'text/html');
+    await graphPut(uploadUrl, token, htmlBuffer, 'text/html', driveItemEtag);
     context.log('Issued HTML uploaded.');
 
     // ── 6. Patch Invoice Library item ─────────────────────────────────────────
@@ -440,19 +441,22 @@ function graphPatch(url, token, body) {
   });
 }
 
-function graphPut(url, token, buffer, contentType) {
+// etag param: pass the driveItem eTag to satisfy Graph's concurrency check.
+// If null, omit the If-Match header entirely (Graph accepts new files without it).
+function graphPut(url, token, buffer, contentType, etag) {
   return new Promise(function (resolve, reject) {
     const u = new URL(url);
+    const headers = {
+      Authorization:    'Bearer ' + token,
+      'Content-Type':   contentType,
+      'Content-Length': buffer.length,
+    };
+    if (etag) headers['If-Match'] = etag;
     const options = {
       hostname: u.hostname,
       path:     u.pathname + u.search,
       method:   'PUT',
-      headers: {
-        Authorization:    'Bearer ' + token,
-        'Content-Type':   contentType,
-        'Content-Length': buffer.length,
-        'If-Match':       '*',
-      },
+      headers,
     };
     const req = https.request(options, function (res) {
       let data = '';
