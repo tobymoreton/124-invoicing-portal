@@ -75,6 +75,25 @@ module.exports = async function (context, req) {
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
+    // ── DraftedByEmail safety guard ───────────────────────────────────────────
+    // If the invoice has a drafting fee, DraftedByEmail is required for wage
+    // calculation. Block issue BEFORE consuming the invoice number.
+    context.log('Checking DraftedByEmail safety guard…');
+    const guardUrl    = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+      + '/lists/' + INVOICE_LIB + '/items/' + listItemId
+      + '/fields?$select=DraftedByEmail,DraftingFeeElement';
+    const guardFields = await graphGet(guardUrl, token);
+    const hasDraftingFee = parseFloat(guardFields.DraftingFeeElement) > 0;
+    const draftedByEmail = (guardFields.DraftedByEmail || '').trim();
+    if (hasDraftingFee && !draftedByEmail) {
+      context.res = {
+        status: 400,
+        body: 'Cannot issue — Drafted By is blank. Please set the Drafted By field on this invoice before issuing.',
+      };
+      return;
+    }
+    context.log('DraftedByEmail guard passed.');
+
     // ── 1. Read + increment invoice counter ───────────────────────────────────
     context.log('Reading invoice counter…');
     const counterUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
