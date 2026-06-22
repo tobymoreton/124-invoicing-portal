@@ -435,8 +435,10 @@ async function loadFigures(fields) {
 
   const ourRef        = fields.Ourreference_x0028_text_x0029_ || '';
   const feePct        = parseFloat(fields.Fee_x0025__x0028_number_x0029_) || 0;
-  const profitCosts   = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
-  const profitCostsRecovered = parseFloat(fields.Net_x0020_profit_x0020_costs_x00) || 0;
+  const profitCosts        = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
+  const grossRecovered      = parseFloat(fields.GrossProfitCostsRecoveredAf) || 0;
+  const vatPctClaimed       = parseFloat(fields.VAT_x0020__x0025__x0020_Claimed) || 0;
+  const profitCostsRecovered = vatPctClaimed === 0 ? grossRecovered : Math.round(grossRecovered / 6 * 5 * 100) / 100;
   const basis         = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
   const vatOnDrafting = fields.VatOnDraftingFee_x003f_ === true;
   const wipLineOverride = fields.TimedWorkLineOverride || '';
@@ -457,6 +459,8 @@ async function loadFigures(fields) {
   el('inp-timed-work-line').value = wipLineOverride || '';
 
   selectedCase._profitCosts         = profitCosts;
+  selectedCase._grossRecovered       = grossRecovered;
+  selectedCase._vatPctClaimed        = vatPctClaimed;
   selectedCase._profitCostsRecovered = profitCostsRecovered;
   selectedCase._vatOnDrafting        = vatOnDrafting;
 
