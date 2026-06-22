@@ -82,6 +82,7 @@
     .chip-Overdue{background:var(--overdue-bg);color:var(--overdue);}
     .chip-PartPaid{background:var(--partpaid-bg);color:var(--partpaid);}
     .chip-unknown{background:var(--grey-faint);color:var(--grey-mid);}
+    .chip-Draft{background:var(--gold-pale);color:#92400E;}
     .type-badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
     .type-LA{background:#EFF6FF;color:#1E40AF;}
     .type-IP{background:#F5F3FF;color:#5B21B6;}
@@ -287,6 +288,7 @@
     <button class="chip overdue-chip" data-val="Overdue" onclick="setStatus(this)">Overdue</button>
     <button class="chip" data-val="Part-Paid" onclick="setStatus(this)">Part-paid</button>
     <button class="chip" data-val="Paid" onclick="setStatus(this)">Paid</button>
+    <button class="chip" data-val="Draft" onclick="setStatus(this)">Draft</button>
   </div>
   <div class="chip-group" id="type-chips">
     <span class="chip-label">Type</span>
@@ -421,11 +423,9 @@ async function load() {
     _isAdmin     = isAdmin;
     _isFinance   = isFinance;
 
-    // Finance tier: hide invoice ledger/table/filters — show full draftsman section only
+    // Finance tier: hide ledger + nav jump; show filters bar and invoice table
     if (isFinance) {
-      document.querySelector('.ledger').style.display      = 'none';
-      document.querySelector('.filters-bar').style.display = 'none';
-      document.querySelector('.main').style.display        = 'none';
+      document.querySelector('.ledger').style.display = 'none';
       const navJump = document.querySelector('.nav-jump');
       if (navJump) navJump.style.display = 'none';
     }
@@ -458,7 +458,10 @@ async function load() {
       renderTable();
       // Dashboard rendered after WIP loads — called below
     }
-    // Finance: fetch completed but don't render stats/table (already hidden)
+    // Finance: show table (no stats — ledger hidden)
+    if (isFinance) {
+      renderTable();
+    }
 
     // Fetch WIP — all three tiers get it; server filters appropriately
     try {
@@ -681,6 +684,8 @@ function setPeriod(btn) {
 }
 
 function normalizeStatus(inv, today) {
+  // Drafts have no invoice number and no invoice date
+  if (!inv.OrderDetails && !inv.InvoiceDate) return 'Draft';
   const raw=(inv.Status_Text||inv.Status||'').trim();
   const lo=raw.toLowerCase();
   if (lo==='paid')         return 'Paid';
@@ -692,7 +697,7 @@ function normalizeStatus(inv, today) {
   return 'Outstanding';
 }
 
-function chipClass(s) { return {Paid:'chip-Paid',Outstanding:'chip-Outstanding',Overdue:'chip-Overdue','Part-Paid':'chip-PartPaid'}[s]||'chip-unknown'; }
+function chipClass(s) { return {Paid:'chip-Paid',Outstanding:'chip-Outstanding',Overdue:'chip-Overdue','Part-Paid':'chip-PartPaid',Draft:'chip-Draft'}[s]||'chip-unknown'; }
 function fmt(n)        { return (n||0).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}); }
 function fmtAmt(v)     { const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtAmtFull(v) { const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
