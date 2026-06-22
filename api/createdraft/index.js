@@ -8,31 +8,33 @@
  *   DRAFT (this function)  — admin creates draft. Writes invoice HTML + figures
  *                            to Invoice Library with InvoiceDate BLANK and
  *                            AmountDue = 0, so the calculated Status field reads
- *                            "Draft". NO invoice number consumed. NO Cases patch.
- *                            NO WIP marking.
+ *                            "Draft". Creates one Line Item per checked WIP entry.
+ *                            NO invoice number consumed. NO Cases patch. NO WIP marking.
  *   ISSUE (api/issueinvoice, Lesley) — consumes invoice number, sets InvoiceDate
- *                            + AmountDue (Status flips to "Issued"), marks WIP billed.
- *
- * The Invoice Library "Status" calculated field:
- *   =IF(AND(ISBLANK([Invoice date]),[Amount due]=0),"Draft", ... "Issued" ...)
- * So a draft is simply: Invoice date blank + Amount due 0.
+ *                            + AmountDue (Status flips to "Issued"), marks WIP billed,
+ *                            updates Line Items with real invoice number.
  *
  * POST body (JSON):
- *   pdfBase64    string  — base64-encoded invoice HTML (print-ready)
- *   computed     object  — selectedCase.computed from invoice-create.html
- *   caseFields   object  — selectedCase.fields from invoice-create.html
- *   checkedWipIds string[] — SP item IDs of checked WIP entries (stored for issue stage)
+ *   pdfBase64        string    — base64-encoded invoice HTML (print-ready)
+ *   computed         object    — selectedCase.computed from invoice-create.html
+ *   caseFields       object    — selectedCase.fields from invoice-create.html
+ *   checkedWipIds    string[]  — SP item IDs of checked WIP entries
+ *   checkedWipEntries object[] — full entry data for Line Items creation:
+ *                                [{_id, DateCompleted, WorkDone, HoursSpent, Rate,
+ *                                   CaseName, OurRef, Email}]
  *
  * Returns: { fileName, pdfUrl, status: 'Draft' }
  *
- * Invoice Library GUID: 5c366b19-0da9-4be9-b68f-60e6a0209cdb
+ * Invoice Library GUID:  5c366b19-0da9-4be9-b68f-60e6a0209cdb
+ * Line Items list GUID:  496468a5-e2ed-48db-8826-58cb08844eee
  */
 
 const https   = require('https');
 const { URL } = require('url');
 
-const SITE_PATH   = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
-const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const SITE_PATH    = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const INVOICE_LIB  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const LINE_ITEMS   = '496468a5-e2ed-48db-8826-58cb08844eee';
 
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 
@@ -61,7 +63,7 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { pdfBase64, computed, caseFields, checkedWipIds } = body || {};
+  const { pdfBase64, computed, caseFields, checkedWipIds, checkedWipEntries } = body || {};
   if (!pdfBase64 || !computed || !caseFields) {
     context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields.' };
     return;
@@ -73,8 +75,8 @@ module.exports = async function (context, req) {
     const invoiceType = resolveInvoiceType(computed);
 
     // ── Draft filename ────────────────────────────────────────────────────────
-    // No invoice number yet (assigned at issue stage). Use a readable draft name:
-    //   DRAFT - {caseName} - {YYYY-MM-DD HHmm}.html
+    // No invoice number at draft stage (assigned by Lesley at issue).
+    // Use: DRAFT - {caseName} - {YYYY-MM-DD HHmm}.html
     const now      = new Date();
     const stamp    = now.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');
     const safeName = (caseFields.Title || 'Case').replace(/[\\\/:*?"<>|]/g, '-').slice(0, 80);
@@ -88,40 +90,78 @@ module.exports = async function (context, req) {
     const pdfUrl       = uploadResult.webUrl;
     context.log('Draft uploaded, driveItemId:', driveItemId);
 
-    // ── Patch metadata (figures populated; InvoiceDate blank + AmountDue 0 = Draft)
+    // ── Patch metadata ────────────────────────────────────────────────────────
+    // Figures populated; InvoiceDate intentionally omitted (blank) + AmountDue
+    // intentionally omitted (defaults to 0) → calculated Status field = "Draft"
     const listItemId = await getListItemIdForDriveItem(token, driveItemId);
     context.log('Invoice Library list item ID:', listItemId);
 
-    // Store the checked WIP ids as a CSV in a text field so the issue stage can
-    // mark exactly those entries billed without recomputing. Uses XeroDescription
-    // as a convenient existing text field — repurposed for draft WIP id storage.
-    // (If a dedicated field is added later, switch to it.)
+    // Store checked WIP ids as CSV so the issue stage can mark exactly those billed
     const wipIdsCsv = Array.isArray(checkedWipIds) ? checkedWipIds.join(',') : '';
 
     const metadataFields = {
       Title:                invoiceType + ' draft — ' + (caseFields.Title || ''),
       Casename:             caseFields.Title || '',
       Invoicetype:          invoiceType,
-      LAorIP:               caseFields.LAorIP || '',
-      Net:                  computed.subTotal || 0,
-      VAT:                  computed.vat || 0,
+      Net:                  computed.subTotal  || 0,
+      VAT:                  computed.vat       || 0,
       DraftingFeeElement:   computed.draftingFee || 0,
       Expenses:             (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
       Ourref:               caseFields.Ourreference_x0028_text_x0029_ || '',
       Theirref:             caseFields.ClientCaseReference || '',
-      Case_x0020_ID:        caseFields.caseID_text || '',
       _ExtendedDescription: computed.timedWorkLine || '',
       DraftedByEmail:       callerEmail,
       VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
-      DraftWipIds:          wipIdsCsv,   // stores checked WIP ids for issue stage
-      // DELIBERATELY NOT SET (keeps Status = "Draft"):
-      //   InvoiceDate  — left blank
-      //   AmountDue    — left 0
+      DraftWipIds:          wipIdsCsv,
+      // DELIBERATELY OMITTED to keep Status = "Draft":
+      //   InvoiceDate  — blank
+      //   AmountDue    — 0 / omitted
       //   OrderDetails (invoice number) — assigned at issue
     };
 
     await patchListItem(token, INVOICE_LIB, listItemId, metadataFields);
-    context.log('Draft metadata written. Status will calculate as "Draft".');
+    context.log('Draft metadata written. Calculated Status = "Draft".');
+
+    // ── Create Line Items ─────────────────────────────────────────────────────
+    // One Line Item per checked WIP entry. InvoiceIDRef left blank — the real
+    // invoice number is assigned at issue stage and written back then.
+    // field_7 stores the TT2 source ID as a back-link for the issue stage.
+    const entriesToBill = Array.isArray(checkedWipEntries) ? checkedWipEntries : [];
+    if (entriesToBill.length > 0) {
+      context.log('Creating', entriesToBill.length, 'Line Item(s)…');
+      let liCreated = 0;
+      let liFailed  = 0;
+      for (const entry of entriesToBill) {
+        try {
+          const liFields = {
+            field_1:  entry.WorkDone   || '',       // Work Done (text)
+            field_2:  entry.HoursSpent || 0,        // Time (hours)
+            field_3:  entry.Rate       || 0,        // Rate £/hr
+            field_5:  entry.OurRef     || caseFields.Ourreference_x0028_text_x0029_ || '', // Our Reference
+            field_7:  String(entry._id || ''),      // TT2 source ID (back-link)
+            CaseName: entry.CaseName   || caseFields.Title || '',
+            'caseName_x0020__x0001f455_': entry.CaseName || caseFields.Title || '',
+            'BillableYorN_x0020__x2753_': true,
+            'InvoiceType@odata.type':    '#Microsoft.Azure.Connectors.SharePoint.SPListExpandedReference',
+            InvoiceType: { Value: invoiceType },
+            // InvoiceIDRef intentionally blank (assigned at issue)
+            // CompletedBy (Person) — cannot write via Graph app-only; omitted
+            // caseID (Lookup)      — cannot reliably write via Graph app-only; omitted
+          };
+          // Date: write as ISO string if present
+          if (entry.DateCompleted) {
+            liFields['Completed_x0020_on'] = new Date(entry.DateCompleted).toISOString();
+          }
+          await createListItem(token, LINE_ITEMS, liFields);
+          liCreated++;
+        } catch (liErr) {
+          context.log.error('Line Item creation failed for TT2 id', entry._id, ':', liErr.message);
+          liFailed++;
+          // Don't abort — continue with remaining entries
+        }
+      }
+      context.log('Line Items: created=' + liCreated + ', failed=' + liFailed);
+    }
 
     context.res = {
       status: 200,
@@ -181,6 +221,12 @@ async function patchListItem(token, listGuid, itemId, fields) {
   const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
     + '/lists/' + listGuid + '/items/' + itemId + '/fields';
   await graphPatch(url, token, fields);
+}
+
+async function createListItem(token, listGuid, fields) {
+  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+    + '/lists/' + listGuid + '/items';
+  return await graphPost(url, token, { fields });
 }
 
 // ── Identity ──────────────────────────────────────────────────────────────────
@@ -286,6 +332,38 @@ function graphPatch(url, token, body) {
       res.on('end', () => {
         if (res.statusCode >= 400) {
           reject(new Error('Graph PATCH ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : {}); }
+        catch (e) { resolve({}); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+function graphPost(url, token, body) {
+  return new Promise(function (resolve, reject) {
+    const payload = JSON.stringify(body);
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'POST',
+      headers: {
+        Authorization:    'Bearer ' + token,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph POST ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
           return;
         }
         try { resolve(data ? JSON.parse(data) : {}); }
