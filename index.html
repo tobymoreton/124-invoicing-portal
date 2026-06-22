@@ -205,6 +205,15 @@
     @media(max-width:900px){.ledger{grid-template-columns:repeat(2,1fr);}.main{padding:16px;}.drawer{width:100vw;}}
     @media(max-width:640px){.nav-meta{display:none;}.ledger-value{font-size:22px;}.filters-bar{padding:12px 16px;}}
     @media(prefers-reduced-motion:reduce){.ledger-value.has-overdue{animation:none;}*{transition:none!important;animation:none!important;}}
+    /* ── DRAWER ACTION BUTTONS ── */
+    .drawer-actions{display:flex;gap:10px;padding:18px 24px;border-top:2px solid var(--grey-light);flex-shrink:0;}
+    .btn-issue{flex:1;padding:11px 18px;background:var(--navy);color:var(--gold);border:2px solid var(--navy);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all var(--transition);}
+    .btn-issue:hover:not(:disabled){background:var(--gold);color:var(--navy);border-color:var(--gold);}
+    .btn-issue:disabled{opacity:.4;cursor:not-allowed;}
+    .btn-cancel{flex:1;padding:11px 18px;background:var(--white);color:var(--overdue);border:2px solid var(--overdue);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all var(--transition);}
+    .btn-cancel:hover:not(:disabled){background:var(--overdue);color:var(--white);}
+    .btn-cancel:disabled{opacity:.4;cursor:not-allowed;}
+    .drawer-action-msg{font-size:12px;color:var(--grey-mid);padding:0 24px 14px;text-align:center;}
   </style>
 </head>
 <body>
@@ -568,6 +577,16 @@ function openDrawer(id) {
     const a=parseFloat(inv[`PaymentAmount${i}`]), d=inv[`PaymentDate${i}`];
     return a>0?`<div class="payment-slot"><div class="payment-slot-date">${d?fmtDate(d):'Date not recorded'}</div><div class="payment-slot-amount">£${a.toFixed(2)}</div></div>`:'';
   }).filter(Boolean).join('');
+  // Determine whether to show action buttons for this invoice
+  const isDraft        = !inv.OrderDetails && !inv.InvoiceDate;
+  const canIssue       = isDraft && (_isAdmin || _isFinance);
+  const canCancel      = isDraft && (_isAdmin || _isFinance);
+  const actionsHTML    = (canIssue || canCancel) ? `
+    <div class="drawer-actions">
+      ${canIssue  ? `<button class="btn-issue"  id="btn-issue-${esc(inv._id)}"  onclick="issueInvoice('${esc(inv._id)}',${parseFloat(inv.AmountDue)||0})">Issue Invoice</button>`  : ''}
+      ${canCancel ? `<button class="btn-cancel" id="btn-cancel-${esc(inv._id)}" onclick="cancelInvoice('${esc(inv._id)}','${esc(inv.Casename||'')}')">Cancel Invoice</button>` : ''}
+    </div>` : '';
+
   el('drawer-body', `
     <div class="drawer-section"><div class="drawer-section-title">Amounts</div><div class="dl">
       <dt>Amount Due</dt><dd class="amount">${fmtAmtFull(inv.AmountDue)}</dd>
@@ -591,7 +610,8 @@ function openDrawer(id) {
     </div></div>
     <div class="drawer-section"><div class="drawer-section-title">Payment History</div>
       ${slots||'<p class="no-payments">No payments recorded.</p>'}
-    </div>`);
+    </div>
+    ${actionsHTML}`);
   document.getElementById('drawer').classList.add('open');
   document.getElementById('drawer-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -966,6 +986,63 @@ function toggleBreakdown(id, headerRow) {
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); });
+
+async function issueInvoice(listItemId, grandTotal) {
+  const btn = document.getElementById('btn-issue-' + listItemId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Issuing…'; }
+  try {
+    const res = await fetch('/api/issueinvoice', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ listItemId, grandTotal }),
+    });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || 'Server error ' + res.status);
+    }
+    const data = await res.json();
+    // Update the invoice in allInvoices so the table reflects the change
+    const inv = allInvoices.find(i => i._id === listItemId);
+    if (inv) {
+      inv.OrderDetails = data.invoiceNumber;
+      inv.InvoiceDate  = data.invoiceDate;
+      inv.AmountDue    = grandTotal;
+    }
+    closeDrawer();
+    renderTable();
+    renderStats();
+  } catch (e) {
+    alert('Issue failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Issue Invoice'; }
+  }
+}
+
+async function cancelInvoice(listItemId, caseName) {
+  const label = caseName ? '"' + caseName + '"' : 'this invoice';
+  if (!confirm('Cancel ' + label + '? This will un-bill all WIP entries and cannot be undone.')) return;
+  const btn = document.getElementById('btn-cancel-' + listItemId);
+  if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
+  try {
+    const res = await fetch('/api/cancelinvoice', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ listItemId }),
+    });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || 'Server error ' + res.status);
+    }
+    // Remove from allInvoices (Cancelled=true — already filtered out by load())
+    const idx = allInvoices.findIndex(i => i._id === listItemId);
+    if (idx !== -1) allInvoices.splice(idx, 1);
+    closeDrawer();
+    renderTable();
+    renderStats();
+  } catch (e) {
+    alert('Cancel failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Cancel Invoice'; }
+  }
+}
 
 function printStatement(clientName) {
   const today = new Date(); today.setHours(0,0,0,0);
