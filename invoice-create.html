@@ -730,6 +730,14 @@ async function handleCreateDraft() {
   const spinner = el('issue-spinner');
   const label   = el('btn-issue-label');
 
+  // Validate: bespoke amount requires a description line
+  const _bespokeAmt  = parseFloat(el('inp-bespoke-amount').value) || 0;
+  const _bespokeLine = (el('inp-bespoke-line').value || '').trim();
+  if (_bespokeAmt > 0 && !_bespokeLine) {
+    showMsg('issue-status', 'Please enter a Bespoke Invoice Line description before creating the draft.', 'error');    el('inp-bespoke-line').focus();
+    return;
+  }
+
   btn.disabled    = true;
   spinner.classList.add('visible');
   label.textContent = 'Generating invoice…';
