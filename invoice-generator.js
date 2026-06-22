@@ -21,6 +21,8 @@
  *   timedHours       number
  *   timedRate        number       ignored when timedWorkLine is supplied
  *   timedWorkLine    string|null  override text (already includes hours — don't append again)
+ *   bespokeAmt        number       bespoke invoice amount (0 if none); VAT at 20% applied
+ *   bespokeInvoiceLine string      bespoke line description
  *   expenses         number       default 0
  *   vatOnDrafting    boolean      if true, VAT applies to draftingFee AND laFee
  *   logoDataUrl      string|null  base64 data URL for logo (inline); falls back to filename
@@ -119,26 +121,28 @@ function generateInvoiceHTML(data) {
     : data.dueDate ? ((data.dueDate instanceof Date) ? data.dueDate : new Date(data.dueDate))
                    : _addDays(invoiceDate, 30);
 
-  const draftingFee = parseFloat(data.draftingFee) || 0;
-  const laFee       = parseFloat(data.laFee)       || 0;
-  const timedFee    = parseFloat(data.timedFee)    || 0;
-  const expenses    = parseFloat(data.expenses)    || 0;
-  const hrs         = parseFloat(data.timedHours)  || 0;
-  const rate        = parseFloat(data.timedRate)   || 0;
+  const draftingFee      = parseFloat(data.draftingFee)  || 0;
+  const laFee            = parseFloat(data.laFee)          || 0;
+  const timedFee         = parseFloat(data.timedFee)       || 0;
+  const bespokeAmt       = parseFloat(data.bespokeAmt)     || 0;
+  const expenses         = parseFloat(data.expenses)       || 0;
+  const hrs              = parseFloat(data.timedHours)     || 0;
+  const rate             = parseFloat(data.timedRate)      || 0;
 
   const hasDrafting = draftingFee > 0;
   const hasLaFee    = laFee       > 0;
   const hasTimed    = timedFee    > 0;
+  const hasBespoke  = bespokeAmt  > 0;
   const hasExpenses = expenses    > 0;
 
-  // VAT applies to timed fee always; applies to drafting fees when vatOnDrafting is true
-  const vatBase  = timedFee + (data.vatOnDrafting ? (draftingFee + laFee) : 0);
+  // VAT: timed always; drafting fees when vatOnDrafting true; bespoke always
+  const vatBase  = timedFee + (data.vatOnDrafting ? (draftingFee + laFee) : 0) + bespokeAmt;
   const vat      = Math.round(vatBase * 0.2 * 100) / 100;
-  const subTotal = draftingFee + laFee + timedFee;
+  const subTotal = draftingFee + laFee + timedFee + bespokeAmt;
   const grand    = subTotal + vat + expenses;
 
   // Sub-total row shown when more than one line item is present
-  const lineCount = (hasDrafting ? 1 : 0) + (hasLaFee ? 1 : 0) + (hasTimed ? 1 : 0);
+  const lineCount = (hasDrafting ? 1 : 0) + (hasLaFee ? 1 : 0) + (hasTimed ? 1 : 0) + (hasBespoke ? 1 : 0);
   const hasBoth   = lineCount > 1;
 
   // Timed work description line — do NOT append hours when timedWorkLine is supplied
@@ -164,6 +168,9 @@ function generateInvoiceHTML(data) {
   }
   if (hasTimed) {
     rows.push('<tr><td style="text-align:left;padding-right:8mm">' + timedLine + '</td><td>' + _fmtGBP(timedFee) + '</td></tr>');
+  }
+  if (hasBespoke) {
+    rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(data.bespokeInvoiceLine || 'Additional work') + '</td><td>' + _fmtGBP(bespokeAmt) + '</td></tr>');
   }
   const lineRows = rows.join('');
 
