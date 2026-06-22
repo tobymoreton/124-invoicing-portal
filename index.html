@@ -573,6 +573,7 @@ function openDrawer(id) {
   const today = new Date(); today.setHours(0,0,0,0);
   const status = normalizeStatus(inv, today);
   const isOver = status==='Overdue', isPaid = status==='Paid';
+  const laip   = (inv.LAorIP||'').trim();
   el('d-inv-num', `Invoice ${esc(inv.OrderDetails||'—')}`);
   el('d-client',  esc(inv.VendorName||'Unknown client'));
   el('d-case',    esc(inv.Casename||''));
