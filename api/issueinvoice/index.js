@@ -1,31 +1,27 @@
 /**
  * P124 — Invoicing Portal
- * Azure Function: /api/issueinvoice
+ * Azure Function: /api/cancelinvoice
  *
- * Issues a draft invoice. Finance-only (Lesley).
+ * Cancels a draft or issued invoice. Admin + finance (Toby, Danielle, Lesley).
  *
  * Sequence:
- *   1. Finance-only auth check
- *   2. Read next invoice number from counter list (single item, InvoiceNumber field)
- *   3. Increment counter (patch InvoiceNumber + 1)
- *   4. Overwrite draft HTML file in Invoice Library with issued HTML (real number + date)
- *   5. Patch Invoice Library item: OrderDetails = number, InvoiceDate = today, AmountDue = grandTotal
- *   6. Read DraftWipIds CSV from Invoice Library item
- *   7. Mark each TT2 entry Billed_x003f_ = true
- *   8. Update each Line Item where field_7 in DraftWipIds: set InvoiceIDRef = number
+ *   1. Auth check (admin + finance)
+ *   2. Read DraftWipIds from Invoice Library item
+ *   3. Revert each TT2 entry: Billed_x003f_ = false
+ *   4. Delete each Line Item where field_7 is in DraftWipIds
+ *   5. Patch Invoice Library item: Cancelled = true, AmountDue = 0, Net = 0,
+ *      DraftingFeeElement = 0, Expenses = 0
+ *   6. Send cancellation email to office@tmclegal.co.uk via Graph Mail.Send
  *
  * POST body (JSON):
  *   listItemId   string   — Invoice Library SP list item ID
- *   pdfBase64    string   — issued invoice HTML (base64), real number + date baked in
- *   grandTotal   number   — amount to write to AmountDue
  *
- * Returns: { invoiceNumber, invoiceDate }
+ * Returns: { cancelled: true, invoiceTitle }
  *
  * GUIDs:
  *   Invoice Library:  5c366b19-0da9-4be9-b68f-60e6a0209cdb
  *   Line Items:       496468a5-e2ed-48db-8826-58cb08844eee
  *   Time Tracking2:   67db204c-30a5-4f4d-b276-60852d9967e1
- *   Counter list:     7366b72d-02c4-4db1-a48b-907dfc7a33c7
  */
 
 const https   = require('https');
@@ -35,22 +31,25 @@ const SITE_PATH   = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS  = '496468a5-e2ed-48db-8826-58cb08844eee';
 const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
-const COUNTER     = '7366b72d-02c4-4db1-a48b-907dfc7a33c7';
 
-const FINANCE_EMAILS = ['lesley@tmclegal.co.uk'];
+const CANCEL_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+const NOTIFY_EMAIL  = 'office@tmclegal.co.uk';
+// Graph Mail.Send requires a licensed mailbox to send from.
+// Set MAIL_SENDER in app settings to e.g. 'toby@tmclegal.co.uk'
+// If not set, the email step is skipped and a warning is logged.
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 module.exports = async function (context, req) {
-  context.log('P124 /api/issueinvoice called');
+  context.log('P124 /api/cancelinvoice called');
 
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !FINANCE_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — finance access required.' };
+  if (!callerEmail || !CANCEL_EMAILS.includes(callerEmail)) {
+    context.res = { status: 403, body: 'Forbidden — not authorised to cancel invoices.' };
     return;
   }
 
-  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, MAIL_SENDER } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
     return;
@@ -64,134 +63,112 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { listItemId, pdfBase64, grandTotal } = body || {};
-  if (!listItemId || !pdfBase64 || grandTotal === undefined) {
-    context.res = { status: 400, body: 'Missing required fields: listItemId, pdfBase64, grandTotal.' };
+  const { listItemId } = body || {};
+  if (!listItemId) {
+    context.res = { status: 400, body: 'Missing required field: listItemId.' };
     return;
   }
 
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
-    // ── 1. Read + increment invoice counter ───────────────────────────────────
-    context.log('Reading invoice counter…');
-    const counterUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-      + '/lists/' + COUNTER + '/items?$expand=fields($select=InvoiceNumber,id)&$top=1';
-    const counterResult = await graphGet(counterUrl, token);
-    const counterItem   = counterResult.value && counterResult.value[0];
-    if (!counterItem) throw new Error('Counter list is empty — cannot get invoice number.');
-
-    const counterItemId  = counterItem.id;
-    const invoiceNumber  = counterItem.fields.InvoiceNumber;
-    if (!invoiceNumber) throw new Error('InvoiceNumber field is blank in counter list.');
-
-    context.log('Invoice number:', invoiceNumber);
-
-    // Increment counter immediately to prevent double-use
-    await patchListItem(token, COUNTER, counterItemId, { InvoiceNumber: invoiceNumber + 1 });
-    context.log('Counter incremented to', invoiceNumber + 1);
-
-    // ── 2. Overwrite draft file with issued HTML ───────────────────────────────
-    context.log('Overwriting draft file with issued HTML…');
-    const htmlBuffer = Buffer.from(pdfBase64, 'base64');
-
-    // Get the drive item ID from the list item so we can overwrite the file
-    const listItemUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-      + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '?$expand=driveItem';
-    const listItemData = await graphGet(listItemUrl, token);
-    const driveItemId  = listItemData.driveItem && listItemData.driveItem.id;
-    if (!driveItemId) throw new Error('Could not get driveItem ID for list item ' + listItemId);
-
-    const driveUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-      + '/lists/' + INVOICE_LIB + '/drive';
-    const driveInfo = await graphGet(driveUrl, token);
-    const driveId   = driveInfo.id;
-    if (!driveId) throw new Error('Could not get drive ID for Invoice Library.');
-
-    const uploadUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
-      + '/items/' + driveItemId + '/content';
-    await graphPut(uploadUrl, token, htmlBuffer, 'text/html');
-    context.log('Issued HTML uploaded.');
-
-    // ── 3. Patch Invoice Library item ─────────────────────────────────────────
-    const invoiceDate = new Date().toISOString();
-    context.log('Patching Invoice Library item…');
-    await patchListItem(token, INVOICE_LIB, listItemId, {
-      OrderDetails: String(invoiceNumber),
-      InvoiceDate:  invoiceDate,
-      AmountDue:    grandTotal,
-    });
-    context.log('Invoice Library item patched — Status will flip to Issued.');
-
-    // ── 4. Read DraftWipIds from Invoice Library item ─────────────────────────
-    context.log('Reading DraftWipIds…');
+    // ── 1. Read Invoice Library item fields ───────────────────────────────────
+    context.log('Reading Invoice Library item fields…');
     const fieldsUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
       + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '/fields';
     const itemFields = await graphGet(fieldsUrl, token);
-    const wipIdsCsv  = itemFields.DraftWipIds || '';
-    const wipIds     = wipIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
-    context.log('DraftWipIds:', wipIds);
 
-    // ── 5. Mark TT2 entries as Billed ─────────────────────────────────────────
+    const wipIdsCsv    = itemFields.DraftWipIds  || '';
+    const invoiceTitle = itemFields.Title         || listItemId;
+    const invoiceRef   = itemFields.OrderDetails  || '(draft — no number assigned)';
+    const caseName     = itemFields.Casename      || '';
+    const wipIds       = wipIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
+
+    context.log('DraftWipIds:', wipIds);
+    context.log('Cancelling:', invoiceTitle);
+
+    // ── 2. Revert TT2 entries ─────────────────────────────────────────────────
     if (wipIds.length > 0) {
-      context.log('Marking', wipIds.length, 'TT2 entries as billed…');
+      context.log('Reverting', wipIds.length, 'TT2 entries…');
       let tt2Done = 0, tt2Failed = 0;
       for (const wipId of wipIds) {
         try {
-          await patchListItem(token, TT2, wipId, { 'Billed_x003f_': true });
+          await patchListItem(token, TT2, wipId, { 'Billed_x003f_': false });
           tt2Done++;
         } catch (e) {
-          context.log.error('TT2 patch failed for id', wipId, ':', e.message);
+          context.log.error('TT2 revert failed for id', wipId, ':', e.message);
           tt2Failed++;
         }
       }
-      context.log('TT2: billed=' + tt2Done + ', failed=' + tt2Failed);
+      context.log('TT2 reverted: done=' + tt2Done + ', failed=' + tt2Failed);
     }
 
-    // ── 6. Update Line Items with real invoice number ─────────────────────────
-    // Find Line Items where field_7 (TT2 source ID back-link) is in our wipIds list
+    // ── 3. Delete Line Items where field_7 in DraftWipIds ────────────────────
     if (wipIds.length > 0) {
-      context.log('Updating Line Items with invoice number…');
-
-      // Fetch all Line Items for this invoice via field_7 filter
-      // Graph doesn't support "in" filter — fetch by each ID individually
-      let liDone = 0, liFailed = 0;
+      context.log('Deleting Line Items…');
+      let liDeleted = 0, liFailed = 0;
       for (const wipId of wipIds) {
         try {
-          // Find the Line Item where field_7 = wipId
           const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
             + '/lists/' + LINE_ITEMS + '/items'
-            + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
+            + '?$expand=fields($select=id,field_7)'
             + '&$filter=fields/field_7 eq \'' + wipId + '\'';
           const liResult = await graphGet(liSearchUrl, token);
           const liItems  = liResult.value || [];
 
           for (const liItem of liItems) {
-            await patchListItem(token, LINE_ITEMS, liItem.id, {
-              InvoiceIDRef: String(invoiceNumber),
-            });
-            liDone++;
+            await deleteListItem(token, LINE_ITEMS, liItem.id);
+            liDeleted++;
           }
         } catch (e) {
-          context.log.error('Line Item update failed for wipId', wipId, ':', e.message);
+          context.log.error('Line Item delete failed for wipId', wipId, ':', e.message);
           liFailed++;
         }
       }
-      context.log('Line Items: updated=' + liDone + ', failed=' + liFailed);
+      context.log('Line Items: deleted=' + liDeleted + ', failed=' + liFailed);
+    }
+
+    // ── 4. Patch Invoice Library item — mark Cancelled ────────────────────────
+    context.log('Patching Invoice Library item as cancelled…');
+    await patchListItem(token, INVOICE_LIB, listItemId, {
+      Cancelled:          true,
+      AmountDue:          0,
+      Net:                0,
+      DraftingFeeElement: 0,
+      Expenses:           0,
+    });
+    context.log('Invoice Library item patched — Status will flip to Cancelled.');
+
+    // ── 5. Send cancellation email ────────────────────────────────────────────
+    if (MAIL_SENDER) {
+      try {
+        context.log('Sending cancellation email…');
+        const subject = 'Invoice Cancelled — ' + invoiceRef + (caseName ? ' | ' + caseName : '');
+        const htmlBody = '<p>An invoice has been cancelled in the TMC Legal invoicing portal.</p>'
+          + '<p><strong>Invoice:</strong> ' + invoiceRef + '<br>'
+          + (caseName ? '<strong>Case:</strong> ' + caseName + '<br>' : '')
+          + '<strong>Cancelled by:</strong> ' + callerEmail + '</p>'
+          + '<p>The associated WIP entries have been un-billed and line items deleted.</p>';
+
+        await sendMail(token, MAIL_SENDER, NOTIFY_EMAIL, subject, htmlBody);
+        context.log('Cancellation email sent.');
+      } catch (mailErr) {
+        // Email failure is non-fatal — log and continue
+        context.log.error('Cancellation email failed:', mailErr.message);
+      }
+    } else {
+      context.log('MAIL_SENDER not set — skipping cancellation email.');
     }
 
     // ── Done ──────────────────────────────────────────────────────────────────
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        invoiceNumber: String(invoiceNumber),
-        invoiceDate,
-      }),
+      body: JSON.stringify({ cancelled: true, invoiceTitle }),
     };
 
   } catch (err) {
-    context.log.error('issueinvoice error:', err.message, err.stack);
+    context.log.error('cancelinvoice error:', err.message, err.stack);
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
@@ -311,17 +288,43 @@ function graphPatch(url, token, body) {
   });
 }
 
-function graphPut(url, token, buffer, contentType) {
+function graphDelete(url, token) {
   return new Promise(function (resolve, reject) {
     const u = new URL(url);
     const options = {
       hostname: u.hostname,
       path:     u.pathname + u.search,
-      method:   'PUT',
+      method:   'DELETE',
+      headers: { Authorization: 'Bearer ' + token },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph DELETE ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        resolve({});
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function graphPost(url, token, body) {
+  return new Promise(function (resolve, reject) {
+    const payload = JSON.stringify(body);
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'POST',
       headers: {
         Authorization:    'Bearer ' + token,
-        'Content-Type':   contentType,
-        'Content-Length': buffer.length,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(payload),
       },
     };
     const req = https.request(options, function (res) {
@@ -329,7 +332,7 @@ function graphPut(url, token, buffer, contentType) {
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
         if (res.statusCode >= 400) {
-          reject(new Error('Graph PUT ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          reject(new Error('Graph POST ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
           return;
         }
         try { resolve(data ? JSON.parse(data) : {}); }
@@ -337,7 +340,7 @@ function graphPut(url, token, buffer, contentType) {
       });
     });
     req.on('error', reject);
-    req.write(buffer);
+    req.write(payload);
     req.end();
   });
 }
@@ -346,4 +349,22 @@ async function patchListItem(token, listGuid, itemId, fields) {
   const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
     + '/lists/' + listGuid + '/items/' + itemId + '/fields';
   await graphPatch(url, token, fields);
+}
+
+async function deleteListItem(token, listGuid, itemId) {
+  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+    + '/lists/' + listGuid + '/items/' + itemId;
+  await graphDelete(url, token);
+}
+
+async function sendMail(token, from, to, subject, htmlBody) {
+  const url = 'https://graph.microsoft.com/v1.0/users/' + from + '/sendMail';
+  await graphPost(url, token, {
+    message: {
+      subject,
+      body: { contentType: 'HTML', content: htmlBody },
+      toRecipients: [{ emailAddress: { address: to } }],
+    },
+    saveToSentItems: true,
+  });
 }
