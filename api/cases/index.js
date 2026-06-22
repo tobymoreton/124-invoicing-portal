@@ -49,6 +49,7 @@ const SELECT_FIELDS = [
   'GrossProfitCostsRecoveredAf',
   'VAT_x0020__x0025__x0020_Claimed',
   'Drafting_x0020_fee_x0020_basis',
+  'InterPartesorLegalAid',
 ].join(',');
 
 function getCallerEmail(req) {
