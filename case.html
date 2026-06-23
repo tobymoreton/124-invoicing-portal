@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Case Hub — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A; --navy-mid:#253A60; --gold:#C9A84C; --gold-pale:#F0E6C8;
+      --cream:#F5F2EB; --cream-dark:#ECE8DF; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E5E1D6; --grey-faint:#F0EDE6;
+      --green:#065F46; --green-bg:#ECFDF5;
+      --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
+      --shadow-lg:0 8px 32px rgba(27,42,74,.18);
+      --radius:6px; --transition:.18s ease;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+    .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+    .nav-brand{display:flex;align-items:baseline;gap:14px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
+    .nav-back{font-size:12px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;letter-spacing:.04em;padding:6px 12px;border:1px solid rgba(201,168,76,.35);border-radius:4px;transition:all .18s ease;}
+    .nav-back:hover{border-color:var(--gold);color:var(--gold);}
+    .case-header{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.18);padding:20px 28px;}
+    .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:.1em;margin-bottom:4px;}
+    .case-name{font-family:'Spectral',serif;font-weight:400;font-size:22px;color:var(--white);line-height:1.3;}
+    .case-meta{font-size:12px;color:rgba(245,242,235,.5);margin-top:4px;}
+    .tab-bar{background:var(--white);border-bottom:2px solid var(--grey-light);padding:0 28px;display:flex;gap:0;overflow-x:auto;}
+    .tab-btn{padding:14px 18px;font-size:12px;font-weight:500;letter-spacing:.04em;color:var(--grey-mid);border:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;cursor:pointer;white-space:nowrap;transition:all var(--transition);}
+    .tab-btn:hover{color:var(--navy);}
+    .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:600;}
+    .tab-panel{display:none;padding:28px;}
+    .tab-panel.active{display:block;}
+    .form-section{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
+    .form-section-head{padding:14px 20px;border-bottom:1px solid var(--grey-faint);}
+    .form-section-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+    .form-section-body{padding:20px;}
+    .field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+    .field-grid.three-col{grid-template-columns:1fr 1fr 1fr;}
+    .field{display:flex;flex-direction:column;gap:5px;}
+    .field label{font-size:11px;font-weight:500;letter-spacing:.04em;color:var(--grey-mid);}
+    .field input[type="number"],
+    .field input[type="text"],
+    .field input[type="date"]{padding:8px 10px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;}
+    .field input:focus{border-color:var(--gold);background:var(--white);}
+    .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;padding-top:8px;}
+    .field.checkbox-field label{font-size:12px;color:var(--navy);letter-spacing:0;font-weight:400;}
+    .field.checkbox-field input[type="checkbox"]{width:16px;height:16px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
+    .read-grid{display:grid;grid-template-columns:1fr auto;}
+    .read-row{display:contents;}
+    .read-row dt,.read-row dd{padding:10px 20px;border-bottom:1px solid var(--grey-faint);font-size:13px;}
+    .read-row:last-child dt,.read-row:last-child dd{border-bottom:none;}
+    .read-row dt{color:var(--grey-mid);font-size:12px;}
+    .read-row dd{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
+    .read-row.total dt,.read-row.total dd{font-weight:700;font-size:13px;background:var(--grey-faint);}
+    .read-row.recovery dd{color:var(--green);}
+    .save-bar{display:flex;align-items:center;gap:14px;padding-top:20px;}
+    .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 28px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all var(--transition);}
+    .btn-save:hover{background:var(--navy-mid);}
+    .btn-save:disabled{opacity:.5;cursor:not-allowed;}
+    .save-msg{font-size:12px;color:var(--grey-mid);}
+    .save-msg.ok{color:var(--green);}
+    .save-msg.err{color:#991B1B;}
+    .coming-soon{padding:48px 28px;text-align:center;color:var(--grey-mid);}
+    .coming-soon .icon{font-size:32px;margin-bottom:12px;}
+    .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);margin-bottom:6px;}
+    .coming-soon p{font-size:13px;}
+    .state-block{text-align:center;padding:64px 24px;color:var(--grey-mid);}
+    .state-block .icon{font-size:36px;margin-bottom:12px;}
+    .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);margin-bottom:6px;}
+    .state-block p{font-size:13px;}
+    .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    #app{display:none;}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Case Hub</span>
+  </div>
+  <a href="/" class="nav-back">← All Invoices</a>
+</nav>
+
+<div id="loading">
+  <div class="state-block">
+    <div class="spinner"></div>
+    <h3>Loading case…</h3>
+  </div>
+</div>
+
+<div id="error" style="display:none">
+  <div class="state-block">
+    <div class="icon">⚠️</div>
+    <h3 id="error-title">Case not found</h3>
+    <p id="error-msg">The case reference in the URL could not be found.</p>
+  </div>
+</div>
+
+<div id="app">
+
+  <div class="case-header">
+    <div class="case-ref" id="hdr-ref"></div>
+    <div class="case-name" id="hdr-name"></div>
+    <div class="case-meta" id="hdr-meta"></div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="settlement">Offers &amp; Settlement</button>
+    <button class="tab-btn" data-tab="costs">Costs Claimed</button>
+    <button class="tab-btn" data-tab="interim">Interim Payments</button>
+    <button class="tab-btn" data-tab="interest">Interest</button>
+    <button class="tab-btn" data-tab="expenses">Expenses</button>
+    <button class="tab-btn" data-tab="invoicing">Invoicing</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-settlement">
+
+    <div class="form-section">
+      <div class="form-section-head">
+        <span class="form-section-title">Advised Rates &amp; Offers</span>
+      </div>
+      <div class="form-section-body">
+        <div class="field-grid three-col">
+          <div class="field">
+            <label>PC at Advised Rates</label>
+            <input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label>Bottom Line</label>
+            <input type="number" id="f-BottomLine" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label>Likely Top End</label>
+            <input type="number" id="f-LikelyTopEnd" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label>Paying Party Last Offer (£)</label>
+            <input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label>Settlement Amount (£)</label>
+            <input type="number" id="f-Settlementamount" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label>Date Settled</label>
+            <input type="date" id="f-DateSettled0" />
+          </div>
+        </div>
+        <div class="field-grid" style="margin-top:16px;">
+          <div class="field checkbox-field">
+            <input type="checkbox" id="f-Offerincludescostsofsssessment_x" />
+            <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
+          </div>
+          <div class="field checkbox-field">
+            <input type="checkbox" id="f-Offerincludesinterest_x003f_" />
+            <label for="f-Offerincludesinterest_x003f_">Offer includes interest?</label>
+          </div>
+        </div>
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-settlement">Save</button>
+          <span class="save-msg" id="msg-save-settlement"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-head">
+        <span class="form-section-title">Liabilities (VAT Inclusive)</span>
+      </div>
+      <dl class="read-grid">
+        <div class="read-row"><dt>Disbursements payable inc VAT</dt><dd id="r-Disbursements">—</dd></div>
+        <div class="read-row"><dt>Counsel fees payable</dt><dd id="r-Counselsfeespayable">—</dd></div>
+        <div class="read-row"><dt>Costs of assessment</dt><dd id="r-Costsofassessment">—</dd></div>
+        <div class="read-row"><dt>Other TMC Fees (excl Drafting)</dt><dd id="r-OtherTMC">—</dd></div>
+        <div class="read-row total"><dt>Total Liabilities (excl Drafting)</dt><dd id="r-TotalLiabExDrafting">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-head">
+        <span class="form-section-title">Recovery</span>
+      </div>
+      <dl class="read-grid">
+        <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
+        <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetPCBeforeDrafting">—</dd></div>
+        <div class="read-row recovery"><dt>Net PC Recovery (after Drafting Fee)</dt><dd id="r-NetPCAfterDrafting">—</dd></div>
+        <div class="read-row"><dt>% Recovery of Profit Costs</dt><dd id="r-PctRecoveryPC">—</dd></div>
+        <div class="read-row"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctRecoveryBill">—</dd></div>
+      </dl>
+    </div>
+
+  </div>
+
+  <div class="tab-panel" id="tab-costs">
+    <div class="coming-soon"><div class="icon">📋</div><h3>Costs Claimed</h3><p>Coming soon — bill figures, claimed PC, disbursements, counsel fees.</p></div>
+  </div>
+  <div class="tab-panel" id="tab-interim">
+    <div class="coming-soon"><div class="icon">💳</div><h3>Interim Payments</h3><p>Coming soon — up to 3 interim payments with dates.</p></div>
+  </div>
+  <div class="tab-panel" id="tab-interest">
+    <div class="coming-soon"><div class="icon">📈</div><h3>Interest</h3><p>Coming soon — daily rate, total to date, sum override.</p></div>
+  </div>
+  <div class="tab-panel" id="tab-expenses">
+    <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon — up to 3 expense lines with description, date, amount.</p></div>
+  </div>
+  <div class="tab-panel" id="tab-invoicing">
+    <div class="coming-soon"><div class="icon">💰</div><h3>Invoicing</h3><p>Coming soon — invoices for this case and link to create new draft.</p></div>
+  </div>
+
+</div>
+
+<script>
+let caseItemId = null;
+let caseFields = null;
+
+function fmt(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return '—';
+  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPct(val) {
+  if (val === null || val === undefined) return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return '—';
+  return n.toFixed(2) + '%';
+}
+function toDateInput(isoStr) {
+  if (!isoStr) return '';
+  return isoStr.substring(0, 10);
+}
+function showError(title, msg) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error-title').textContent = title;
+  document.getElementById('error-msg').textContent = msg;
+  document.getElementById('error').style.display = 'block';
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+async function loadCase() {
+  const params = new URLSearchParams(window.location.search);
+  const ref = (params.get('ref') || '').trim();
+  if (!ref) {
+    showError('No case reference', 'Please open this page with a ?ref= parameter, e.g. case.html?ref=1741017');
+    return;
+  }
+  try {
+    const resp = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const match = (data.value || []).find(item => {
+      const f = item.fields || {};
+      return (f['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref;
+    });
+    if (!match) {
+      showError('Case not found', 'No case with reference ' + ref + ' could be found.');
+      return;
+    }
+    caseItemId = match.id;
+    caseFields = match.fields || {};
+    renderHeader();
+    renderSettlementTab();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+  } catch (err) {
+    showError('Error loading case', err.message);
+  }
+}
+
+function renderHeader() {
+  const f = caseFields;
+  const ref = f['Ourreference_x0028_text_x0029_'] || '';
+  const name = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  const firm = f['Firm_x0028_text_x0029_'] || '';
+  const status = f['StatusMirror'] || '';
+  const type = f['InterPartesorLegalAid'] || '';
+  document.getElementById('hdr-ref').textContent = 'Our Ref: ' + ref;
+  document.getElementById('hdr-name').textContent = name;
+  document.getElementById('hdr-meta').textContent = [firm, status, type].filter(Boolean).join(' · ');
+  document.title = name + ' — TMC Legal';
+}
+
+function renderSettlementTab() {
+  const f = caseFields;
+  setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']);
+  setNum('f-BottomLine', f['BottomLine']);
+  setNum('f-LikelyTopEnd', f['LikelyTopEnd']);
+  setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']);
+  setNum('f-Settlementamount', f['Settlementamount']);
+  setDate('f-DateSettled0', f['DateSettled0']);
+  setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
+  setCheck('f-Offerincludesinterest_x003f_', f['Offerincludesinterest_x003f_']);
+
+  const disb    = (parseFloat(f['DisbursementsClaimed']) || 0) + (parseFloat(f['VATonDisbursements']) || 0);
+  const counsel = parseFloat(f['Counselsfeespayable']) || 0;
+  const coa     = parseFloat(f['Costsofassessment']) || 0;
+  const other   = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
+  const total   = disb + counsel + coa + other;
+  document.getElementById('r-Disbursements').textContent       = fmt(disb);
+  document.getElementById('r-Counselsfeespayable').textContent = fmt(counsel);
+  document.getElementById('r-Costsofassessment').textContent   = fmt(coa);
+  document.getElementById('r-OtherTMC').textContent            = fmt(other);
+  document.getElementById('r-TotalLiabExDrafting').textContent = fmt(total);
+
+  const grossPC   = parseFloat(f['GrossProfitCostsRecoveredAf']) || 0;
+  const netBefore = parseFloat(f['NetProfitCostsRecoveredBeforeDra']) || 0;
+  const netAfter  = parseFloat(f['Net_x0020_profit_x0020_costs_x00']) || 0;
+  const claimedPC = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
+  document.getElementById('r-GrossPCRecovery').textContent     = fmt(grossPC);
+  document.getElementById('r-NetPCBeforeDrafting').textContent = fmt(netBefore);
+  document.getElementById('r-NetPCAfterDrafting').textContent  = fmt(netAfter);
+  if (claimedPC > 0)
+    document.getElementById('r-PctRecoveryPC').textContent = fmtPct(netAfter / claimedPC * 100);
+  const billTotal = claimedPC + total;
+  if (billTotal > 0)
+    document.getElementById('r-PctRecoveryBill').textContent = fmtPct(grossPC / billTotal * 100);
+}
+
+function setNum(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : '';
+}
+function setDate(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = toDateInput(val);
+}
+function setCheck(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.checked = val === true || val === 'true' || val === 1;
+}
+
+document.getElementById('btn-save-settlement').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-settlement');
+  const msg = document.getElementById('msg-save-settlement');
+  btn.disabled = true;
+  msg.className = 'save-msg';
+  msg.textContent = 'Saving…';
+  const fields = {};
+  const numFields = {
+    'ProfitCostsatAdvisedRates': 'f-ProfitCostsatAdvisedRates',
+    'BottomLine':                'f-BottomLine',
+    'LikelyTopEnd':              'f-LikelyTopEnd',
+    'PayingPartysLastOffer':     'f-PayingPartysLastOffer',
+    'Settlementamount':          'f-Settlementamount',
+  };
+  for (const [spField, elId] of Object.entries(numFields)) {
+    const val = document.getElementById(elId).value;
+    fields[spField] = val === '' ? null : parseFloat(val);
+  }
+  const dateVal = document.getElementById('f-DateSettled0').value;
+  fields['DateSettled0'] = dateVal ? dateVal + 'T00:00:00Z' : null;
+  fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
+  fields['Offerincludesinterest_x003f_'] = document.getElementById('f-Offerincludesinterest_x003f_').checked;
+  try {
+    const resp = await fetch('/api/caseupdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: caseItemId, fields }),
+    });
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(text || 'HTTP ' + resp.status);
+    }
+    msg.className = 'save-msg ok';
+    msg.textContent = '✓ Saved';
+    Object.assign(caseFields, fields);
+  } catch (err) {
+    msg.className = 'save-msg err';
+    msg.textContent = 'Save failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { if (msg.textContent === '✓ Saved') msg.textContent = ''; }, 3000);
+  }
+});
+
+loadCase();
+</script>
+</body>
+</html>
