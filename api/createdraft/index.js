@@ -84,7 +84,7 @@ module.exports = async function (context, req) {
         + '?$expand=fields($select=id,Ourref,OrderDetails,Cancelled)'
         + '&$filter=fields/Ourref eq \'' + caseRef.replace(/'/g, "''") + '\''
         + '&$top=50';
-      const dupResult = await graphGet(dupCheckUrl, token);
+      const dupResult = await graphGetUnindexed(dupCheckUrl, token);
       const existingDraft = (dupResult.value || []).find(item => {
         const f = item.fields || {};
         return !f.OrderDetails && !f.Cancelled;
@@ -328,6 +328,38 @@ function graphGet(url, token) {
       res.on('end', () => {
         if (res.statusCode >= 400) {
           reject(new Error('Graph GET ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// Like graphGet but adds the Prefer header to allow filtering on non-indexed SP columns.
+// Graph will still work but warns the query may fail randomly on very large lists.
+function graphGetUnindexed(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept:        'application/json',
+        Prefer:        'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph GET (unindexed) ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
           return;
         }
         try { resolve(JSON.parse(data)); }
