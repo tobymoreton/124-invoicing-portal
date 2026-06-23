@@ -108,14 +108,9 @@
     .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
     @keyframes spin{to{transform:rotate(360deg);}}
     #app{display:none;}
-    @media print {
-      body{background:#fff;}
-      .nav,.case-header,.tab-bar,.content,#loading,#error{display:none !important;}
-      #pdf-output{display:block !important;}
-      html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      @page{margin:12mm 14mm;size:A4 portrait;}
-    }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -738,6 +733,9 @@ async function doSave(fields, btn, msg) {
 
 async function generateSettlementPDF() {
   const f = caseFields; const c = computed;
+  const btn = document.getElementById('btn-gen-pdf');
+  btn.disabled = true;
+  btn.querySelector('span') && (btn.querySelector('span').textContent = 'Generating…');
 
   // Populate all fields
   document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
@@ -763,11 +761,11 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-rec-pctpc').textContent     = fmtPct(c.pctPC);
   document.getElementById('pdf-rec-pctbill').textContent   = fmtPct(c.pctBill);
 
-  // Show PDF div first so image can load
+  // Render off-screen so html2canvas can capture it
   const pdfEl = document.getElementById('pdf-output');
-  pdfEl.style.display = 'block';
+  pdfEl.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px;';
 
-  // Fetch logo and wait for it to load before printing
+  // Fetch and inline logo
   const logoEl = document.getElementById('pdf-logo');
   try {
     const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
@@ -779,22 +777,41 @@ async function generateSettlementPDF() {
         r.onerror = () => rej(new Error('Logo read failed'));
         r.readAsDataURL(blob);
       });
-      // Wait for image to fully load before printing
-      await new Promise((res) => {
-        logoEl.onload = res;
-        logoEl.onerror = res; // don't block print if logo fails
-        logoEl.src = b64;
-      });
-    } else {
-      logoEl.style.display = 'none';
-    }
-  } catch (e) {
-    console.error('Logo fetch failed:', e);
-    logoEl.style.display = 'none';
-  }
+      await new Promise((res) => { logoEl.onload = res; logoEl.onerror = res; logoEl.src = b64; });
+    } else { logoEl.style.display = 'none'; }
+  } catch (e) { console.error('Logo fetch failed:', e); logoEl.style.display = 'none'; }
 
-  window.print();
-  setTimeout(() => { pdfEl.style.display = 'none'; }, 500);
+  // Small delay to ensure layout is stable
+  await new Promise(res => setTimeout(res, 150));
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const A4_W = 210, A4_H = 297;
+    const canvas = await html2canvas(pdfEl, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const ratio = A4_W / canvas.width;
+    const renderedH = canvas.height * ratio;
+    if (renderedH <= A4_H) {
+      pdf.addImage(imgData, 'PNG', 0, 0, A4_W, renderedH);
+    } else {
+      pdf.addImage(imgData, 'PNG', 0, 0, A4_W, A4_H);
+    }
+    const ref = (f['Ourreference_x0028_text_x0029_'] || 'Settlement').replace(/[^a-zA-Z0-9-]/g, '-');
+    pdf.save('Settlement-Report-' + ref + '.pdf');
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    alert('PDF generation failed: ' + err.message);
+  } finally {
+    pdfEl.style.cssText = 'display:none;';
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;fill:currentColor;flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6zm4-5h4v1.5h-4V15zm0-3h4v1.5h-4V12zm0-3h2v1.5h-2V9z"/></svg> Generate Settlement Report PDF';
+  }
 }
 
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
