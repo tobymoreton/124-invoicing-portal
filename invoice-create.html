@@ -835,7 +835,22 @@ async function handleCreateDraft() {
     spinner.classList.remove('visible');
     label.textContent = 'Create Draft Invoice';
     btn.disabled = false;
-    showMsg('issue-status', 'Failed: ' + err.message, 'error');
+    // Translate server/Graph errors into clean user-facing messages
+    const raw = err.message || '';
+    let userMsg;
+    if (raw.includes('already exists') || raw.includes('409')) {
+      userMsg = 'A draft already exists for this case. Cancel or issue it before creating a new one.';
+    } else if (raw.includes('Forbidden') || raw.includes('403')) {
+      userMsg = 'You do not have permission to create draft invoices.';
+    } else if (raw.includes('400') || raw.includes('invalidRequest')) {
+      userMsg = 'The request was invalid. Please check all fields and try again.';
+    } else if (raw.includes('500') || raw.includes('Missing required')) {
+      userMsg = 'A server error occurred. Please try again or contact support.';
+    } else {
+      userMsg = 'Something went wrong. Please try again.';
+    }
+    showMsg('issue-status', userMsg, 'error');
+    console.error('Create draft error (full):', raw);
   }
 }
 
