@@ -162,6 +162,7 @@ module.exports = async function (context, req) {
       for (const entry of entriesToBill) {
         try {
           const liFields = {
+            Title:    entry.WorkDone   || entry.CaseName || caseFields.Title || '', // SP required field
             field_1:  entry.WorkDone   || '',       // Work Done (text)
             field_2:  entry.HoursSpent || 0,        // Time (hours)
             field_3:  entry.Rate       || 0,        // Rate £/hr
