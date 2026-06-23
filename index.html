@@ -382,6 +382,22 @@ let _isFinance   = false;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
+  // Apply ?status= URL param if present (used by email links)
+  const urlParams = new URLSearchParams(window.location.search);
+  const statusParam = urlParams.get('status');
+  if (statusParam) {
+    const validStatuses = ['all','Outstanding','Overdue','Part-Paid','Paid','Draft'];
+    const matched = validStatuses.find(s => s.toLowerCase() === statusParam.toLowerCase());
+    if (matched) {
+      filters.status = matched;
+      // Activate the correct chip once DOM is ready
+      setTimeout(() => {
+        document.querySelectorAll('#status-chips .chip').forEach(c => c.classList.remove('active'));
+        const chip = document.querySelector('#status-chips .chip[data-val="' + matched + '"]');
+        if (chip) chip.classList.add('active');
+      }, 0);
+    }
+  }
   load();
 });
 
