@@ -108,19 +108,12 @@
     .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
     @keyframes spin{to{transform:rotate(360deg);}}
     #app{display:none;}
-
-    /* ── Print ── */
     @media print {
-      body{background:#fff;font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}
+      body{background:#fff;}
       .nav,.case-header,.tab-bar,.content,#loading,#error{display:none !important;}
       #pdf-output{display:block !important;}
-      /* Suppress browser-generated URL/date headers and footers */
-      @page{
-        margin:15mm 18mm 15mm 18mm;
-        size:A4 portrait;
-      }
-      /* Force colour printing */
-      html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      @page{margin:12mm 14mm;size:A4 portrait;}
     }
   </style>
 </head>
@@ -129,37 +122,41 @@
 <!-- ── PDF output ─────────────────────────────────────────────────────────── -->
 <div id="pdf-output" style="display:none;">
   <style>
-    /* PDF colours: navy #001B44, gold #B59A6A */
-    #pdf-output{font-family:Arial,sans-serif;font-size:11pt;color:#000;max-width:580px;margin:0 auto;}
-    /* Title + logo side by side */
-    #pdf-output .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;}
-    #pdf-output .pdf-header h1{font-size:22pt;font-weight:bold;color:#001B44;margin:0;line-height:1.2;}
-    #pdf-output .pdf-logo img{height:52px;display:block;}
+    /* Matches existing TMC settlement report: navy #001B44, gold #B59A6A */
+    #pdf-output *{box-sizing:border-box;margin:0;padding:0;}
+    #pdf-output{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:100%;}
+    /* Header row: title right, logo right below */
+    #pdf-output .pdf-top{display:flex;justify-content:flex-end;align-items:flex-start;margin-bottom:5mm;}
+    #pdf-output .pdf-top-right{text-align:right;}
+    #pdf-output .pdf-top-right h1{font-size:18pt;font-weight:bold;color:#000;margin-bottom:3mm;}
+    #pdf-output .pdf-top-right img{height:42px;display:block;margin-left:auto;}
     /* Section headings */
-    #pdf-output h2{font-size:12pt;color:#001B44;font-weight:bold;border-bottom:2.5px solid #B59A6A;padding-bottom:2mm;margin:7mm 0 3mm;page-break-after:avoid;}
-    /* Tables */
-    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:5mm;font-size:10pt;page-break-inside:avoid;}
-    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:2.5mm 3.5mm;color:#000;}
+    #pdf-output h2{font-size:11pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1.5mm;margin:5mm 0 2.5mm;page-break-after:avoid;}
+    /* Tables — compact */
+    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:3.5mm;font-size:8.5pt;page-break-inside:avoid;}
+    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1.5mm 2.5mm;color:#000;}
     /* Settlement details */
-    #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:42%;background:#f0ede6;color:#001B44;}
-    #pdf-output .tbl-details td:last-child{text-align:left;color:#000;}
+    #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:38%;background:#fff;}
+    #pdf-output .tbl-details td:last-child{text-align:left;}
     /* Costs Claimed horizontal */
-    #pdf-output .tbl-horiz th{background:#f0ede6;font-weight:bold;text-align:right;font-size:9.5pt;color:#001B44;}
-    #pdf-output .tbl-horiz td{text-align:right;color:#000;}
-    #pdf-output .tbl-horiz tr.total-row td{font-weight:bold;background:#f0ede6;color:#001B44;}
+    #pdf-output .tbl-horiz th{font-weight:bold;text-align:right;background:#fff;color:#000;}
+    #pdf-output .tbl-horiz td{text-align:right;}
+    #pdf-output .tbl-horiz tr.total-row td{font-weight:bold;}
     /* Vertical tables */
-    #pdf-output .tbl-vert td:first-child{text-align:right;width:68%;color:#000;}
-    #pdf-output .tbl-vert td:last-child{text-align:right;color:#000;}
-    #pdf-output .tbl-vert tr.total-row td{font-weight:bold;background:#f0ede6;color:#001B44;}
+    #pdf-output .tbl-vert td:first-child{text-align:right;width:65%;}
+    #pdf-output .tbl-vert td:last-child{text-align:right;}
+    #pdf-output .tbl-vert tr.total-row td{font-weight:bold;}
     /* Recovery */
-    #pdf-output .tbl-recovery td:first-child{text-align:right;width:68%;color:#000;}
-    #pdf-output .tbl-recovery td:last-child{text-align:right;color:#000;}
-    #pdf-output .tbl-recovery tr.highlight td{font-weight:bold;background:#e8f4ef;color:#065F46;}
+    #pdf-output .tbl-recovery td:first-child{text-align:right;width:65%;}
+    #pdf-output .tbl-recovery td:last-child{text-align:right;}
+    #pdf-output .tbl-recovery tr.highlight td{font-weight:bold;}
   </style>
 
-  <div class="pdf-header">
-    <h1>Settlement Report</h1>
-    <div class="pdf-logo"><img id="pdf-logo" src="" alt="TMC Legal" /></div>
+  <div class="pdf-top">
+    <div class="pdf-top-right">
+      <h1>Settlement Report</h1>
+      <img id="pdf-logo" src="" alt="TMC Legal" />
+    </div>
   </div>
 
   <h2>Settlement Details</h2>
@@ -173,8 +170,12 @@
 
   <h2>Costs Claimed (VAT Inclusive)</h2>
   <table class="tbl-horiz">
-    <thead><tr><th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th></tr></thead>
-    <tbody><tr class="total-row"><td id="pdf-pc"></td><td id="pdf-tmcpc"></td><td id="pdf-disb"></td><td id="pdf-counsel"></td><td id="pdf-totalclaimed"></td></tr></tbody>
+    <thead><tr>
+      <th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th>
+    </tr></thead>
+    <tbody><tr class="total-row">
+      <td id="pdf-pc"></td><td id="pdf-tmcpc"></td><td id="pdf-disb"></td><td id="pdf-counsel"></td><td id="pdf-totalclaimed"></td>
+    </tr></tbody>
   </table>
 
   <h2>Costs Payable (VAT Inclusive)</h2>
@@ -737,6 +738,8 @@ async function doSave(fields, btn, msg) {
 
 async function generateSettlementPDF() {
   const f = caseFields; const c = computed;
+
+  // Populate all fields
   document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
   document.getElementById('pdf-clientref').textContent     = f['ClientCaseReference'] || '—';
   document.getElementById('pdf-tmcref').textContent        = f['Ourreference_x0028_text_x0029_'] || '—';
@@ -759,16 +762,41 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-rec-netafter').textContent  = fmt(c.netAfterDrafting);
   document.getElementById('pdf-rec-pctpc').textContent     = fmtPct(c.pctPC);
   document.getElementById('pdf-rec-pctbill').textContent   = fmtPct(c.pctBill);
+
+  // Show PDF div first so image can load
+  const pdfEl = document.getElementById('pdf-output');
+  pdfEl.style.display = 'block';
+
+  // Fetch logo and wait for it to load before printing
+  const logoEl = document.getElementById('pdf-logo');
   try {
-    const blob = await (await fetch('/New Logo Gold, Silver and Navy.png')).blob();
-    document.getElementById('pdf-logo').src = await new Promise(res => {
-      const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob);
-    });
-  } catch { document.getElementById('pdf-logo').style.display = 'none'; }
-  const el = document.getElementById('pdf-output');
-  el.style.display = 'block'; window.print();
-  setTimeout(() => { el.style.display = 'none'; }, 500);
+    const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
+    if (logoResp.ok) {
+      const blob = await logoResp.blob();
+      const b64  = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload  = () => res(r.result);
+        r.onerror = () => rej(new Error('Logo read failed'));
+        r.readAsDataURL(blob);
+      });
+      // Wait for image to fully load before printing
+      await new Promise((res) => {
+        logoEl.onload = res;
+        logoEl.onerror = res; // don't block print if logo fails
+        logoEl.src = b64;
+      });
+    } else {
+      logoEl.style.display = 'none';
+    }
+  } catch (e) {
+    console.error('Logo fetch failed:', e);
+    logoEl.style.display = 'none';
+  }
+
+  window.print();
+  setTimeout(() => { pdfEl.style.display = 'none'; }, 500);
 }
+
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
 
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
