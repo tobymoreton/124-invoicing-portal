@@ -168,8 +168,9 @@ module.exports = async function (context, req) {
             field_3:  entry.Rate       || 0,        // Rate £/hr
             field_5:  entry.OurRef     || caseFields.Ourreference_x0028_text_x0029_ || '', // Our Reference
             field_7:  String(entry._id || ''),      // TT2 source ID (back-link)
-            CaseName: entry.CaseName   || caseFields.Title || '',
+            CaseName:          entry.CaseName   || caseFields.Title || '',
             'caseName_x0020__x0001f455_': entry.CaseName || caseFields.Title || '',
+            CompletedByEmail:  entry.Email        || '',
             'BillableYorN_x0020__x2753_': true,
             InvoiceType: invoiceType,               // plain string — Graph app-only
             // InvoiceIDRef intentionally blank (assigned at issue)
