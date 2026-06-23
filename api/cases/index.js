@@ -55,6 +55,15 @@ const SELECT_FIELDS = [
   'VAT_x0020__x0025__x0020_Claimed',
   'Drafting_x0020_fee_x0020_basis',
   'InterPartesorLegalAid',
+  // Full case name fields (Fullcasename is calculated — reconstruct from parts)
+  'Fullcasenameoveride',
+  'OurPartyFirstName',
+  'OurPartySurname',
+  'OpponentPartyName',
+  'Morethanonedefendant_x003f_',
+  'Andothers_x003f_',
+  'MultiClaimants',
+  'MultiDefendants',
 ].join(',');
 
 function getCallerEmail(req) {
