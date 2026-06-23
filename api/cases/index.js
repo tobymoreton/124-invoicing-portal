@@ -3,7 +3,7 @@
  * Azure Function: /api/cases
  *
  * Searches the SP Cases list via Graph (app-only client-credentials auth).
- * All authenticated users can search cases.
+ * Admin-only — returns 403 for non-admins.
  *
  * Query params:
  *   q    — free-text search string (matches case name or our ref, client-side)
@@ -24,16 +24,40 @@ const ADMIN_EMAILS = [
   'danielle@tmclegal.co.uk',
 ];
 
+// All authenticated users can search cases (draftsmen need this to create drafts)
 const FINANCE_EMAILS = [
   'lesley@tmclegal.co.uk',
 ];
 
 const SELECT_FIELDS = [
-  // Core identity
   'Title',
   'Ourreference_x0028_text_x0029_',
-  'CaseNameForOpenCases',
+  'Net_x0020_Drafting_x0020_Fee',
+  'Drafting_x0020_fee_x0020_line',
+  'VatOnDraftingFee_x003f_',
+  'TimedWorkLineOverride',
+  'Firm_x0028_text_x0029_',
+  'Address1_x0028_text_x0029_',
+  'Address2_x0028_text_x0029_',
+  'Address3_x0028_text_x0029_',
+  'Address4_x0028_text_x0029_',
+  'Address5_x0028_text_x0029_',
+  'ClientCaseReference',
+  'DraftingYetToBeInvoiced',
+  'caseID_text',
+  'Fee_x0025__x0028_number_x0029_',
+  'LAA_x0020_Drafting_x0020_Fee_x00',
+  'LegalAidOnlyProfitCosts',
+  'TimedWorkBillableFromOverride',
+  'StatusMirror',
+  'ProfitCostsClaimed_x0028_Ex_x002',
+  'GrossProfitCostsRecoveredAf',
+  'VAT_x0020__x0025__x0020_Claimed',
+  'Drafting_x0020_fee_x0020_basis',
+  'InterPartesorLegalAid',
+  // Full case name fields (Fullcasename is calculated — reconstruct from parts)
   'Fullcasenameoveride',
+  'CaseNameForOpenCases',
   'OurPartyFirstName',
   'OurPartySurname',
   'OpponentPartyName',
@@ -41,60 +65,39 @@ const SELECT_FIELDS = [
   'Andothers_x003f_',
   'MultiClaimants',
   'MultiDefendants',
-  // People / firm
-  'Firm_x0028_text_x0029_',
-  'Draftsmanemail',
-  'AssignedToMirror',
-  'assignedToTextValue',
-  // Address
-  'Address1_x0028_text_x0029_',
-  'Address2_x0028_text_x0029_',
-  'Address3_x0028_text_x0029_',
-  'Address4_x0028_text_x0029_',
-  'Address5_x0028_text_x0029_',
-  // Classification
-  'ClientCaseReference',
-  'StatusMirror',
-  'InterPartesorLegalAid',
-  'Drafting_x0020_fee_x0020_basis',
-  // Drafting fee
-  'Net_x0020_Drafting_x0020_Fee',
-  'Drafting_x0020_fee_x0020_line',
-  'VatOnDraftingFee_x003f_',
-  'TimedWorkLineOverride',
-  'Fee_x0025__x0028_number_x0029_',
-  'LAA_x0020_Drafting_x0020_Fee_x00',
-  'DraftingYetToBeInvoiced',
-  'TimedWorkBillableFromOverride',
-  // Costs claimed
-  'ProfitCostsClaimed_x0028_Ex_x002',
-  'DraftingTimeClaimed',
-  'CounselsFeesClaimed',
-  'LegalAidOnlyProfitCosts',
-  'DisbursementsClaimed',
-  'VATonDisbursements',
-  'VAT_x0020__x0025__x0020_Claimed',
-  'Other_x0020_TMC_x0020_PC_x0020__',
-  'OtherTMCInvoices_ex_x0020_bill',
-  // Offers & settlement
-  'FigureForSettlementSheet',
-  'ProfitCostsatAdvisedRates',
-  'BottomLine',
-  'LikelyTopEnd',
-  'PayingPartysLastOffer',
+  // Settlement & offers
   'Settlementamount',
+  'PayingPartysLastOffer',
+  'FigureForSettlementSheet',
   'DateSettled0',
   'Offerincludescostsofsssessment_x',
   'Offerincludesinterest_x003f_',
-  // Liabilities
-  'Counselsfeespayable',
+  'BottomLine',
+  'LikelyTopEnd',
+  'ProfitCostsatAdvisedRates',
+  // Costs claimed
+  'DraftingTimeClaimed',
+  'CounselsFeesClaimed',
+  'DisbursementsClaimed',
+  'VATonDisbursements',
   'Costsofassessment',
-  // Recovery (plain fields — mirror values written by PA)
-  'GrossProfitCostsRecoveredAf',
+  'OtherTMCInvoices_ex_x0020_bill',
+  // Recovery
+  'Counselsfeespayable',
   'NetProfitCostsRecoveredBeforeDra',
-  'Net_x0020_profit_x0020_costs_x00',
-  // caseID
-  'caseID_text',
+  // Interest — plain stored fields only (all calculated fields return null via Graph)
+  'SumForInterestCalculationOverrid',
+  'TotalPreAuthorityPayments',
+  'DateofAuthoritytoAssess',
+  'InterimPayment1',
+  'InterimPayment2',
+  'InterimPayment3',
+  'InterimPaymentDate1',
+  'InterimPaymentDate2',
+  'InterimPaymentDate3',
+  'CostsOfAssessmentForInterestTabO',
+  'TotalInterestToDate_Text',
+  'DailyInterestRate_Text',
 ].join(',');
 
 function getCallerEmail(req) {
@@ -115,6 +118,7 @@ function getCallerEmail(req) {
 module.exports = async function (context, req) {
   context.log('P124 /api/cases called');
 
+  // All authenticated users can search cases
   const callerEmail = getCallerEmail(req);
   if (!callerEmail) {
     context.res = { status: 403, body: 'Forbidden — you must be signed in.' };
@@ -171,6 +175,7 @@ async function searchCases(token, q, top) {
     var title  = (f.Title || '').toLowerCase();
     var ref    = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
     var status = (f.StatusMirror || '').toLowerCase();
+    // Exclude closed cases
     if (status === 'closed') return false;
     return title.indexOf(q) !== -1 || ref.indexOf(q) !== -1;
   });
@@ -228,7 +233,6 @@ function graphGet(url, token) {
       headers: {
         Authorization: 'Bearer ' + token,
         Accept:        'application/json',
-        Prefer:        'HonorNonIndexedQueriesWarningMayFailRandomly',
       },
     };
 
