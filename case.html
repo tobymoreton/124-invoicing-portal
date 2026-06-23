@@ -310,40 +310,7 @@
     <!-- ════════ INTEREST TAB ════════ -->
     <div class="tab-panel" id="tab-interest">
 
-      <div class="card">
-        <div class="card-head"><span class="card-title">Interest Summary</span></div>
-        <div class="interest-hero">
-          <span class="ih-label">Total Sum incl Interest &amp; COA</span>
-          <span class="ih-value" id="i-TotalInclCOA">—</span>
-        </div>
-        <dl class="read-grid" style="margin-top:8px;">
-          <div class="read-row"><dt>Interest Calculated On</dt><dd id="i-InterestOn">—</dd></div>
-          <div class="read-row"><dt>Authority to Assess</dt><dd id="i-AuthToAssess">—</dd></div>
-          <div class="read-row"><dt>Total Pre-Authority Payments</dt><dd id="i-PreAuthTotal">—</dd></div>
-          <div class="read-row"><dt>Total Interim Payments</dt><dd id="i-InterimTotal">—</dd></div>
-          <div class="read-row"><dt>Principal Sum Remaining</dt><dd id="i-PrincipalRemaining">—</dd></div>
-          <div class="read-row"><dt>Current Daily Interest Rate</dt><dd id="i-DailyRate">—</dd></div>
-          <div class="read-row highlight"><dt>Total Interest to Date</dt><dd id="i-TotalInterest">—</dd></div>
-          <div class="read-row"><dt>Total Sum Including Interest</dt><dd id="i-TotalInclInterest">—</dd></div>
-          <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
-        </dl>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="card-title">Period Breakdown</span></div>
-        <div style="overflow-x:auto;">
-          <table class="period-table">
-            <thead><tr><th></th><th>Period 1</th><th>Period 2</th><th>Period 3</th><th>Period 4</th></tr></thead>
-            <tbody>
-              <tr><td>Days</td><td class="mono" id="p-days-1">—</td><td class="mono" id="p-days-2">—</td><td class="mono" id="p-days-3">—</td><td class="mono" id="p-days-4">—</td></tr>
-              <tr><td>Principal Sum</td><td class="mono" id="p-principal-1">—</td><td class="mono" id="p-principal-2">—</td><td class="mono" id="p-principal-3">—</td><td class="mono" id="p-principal-4">—</td></tr>
-              <tr><td>Daily Rate</td><td class="mono" id="p-rate-1">—</td><td class="mono" id="p-rate-2">—</td><td class="mono" id="p-rate-3">—</td><td class="mono" id="p-rate-4">—</td></tr>
-              <tr><td>Interest</td><td class="mono" id="p-interest-1">—</td><td class="mono" id="p-interest-2">—</td><td class="mono" id="p-interest-3">—</td><td class="mono" id="p-interest-4">—</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      <!-- 1. Inputs (at top) -->
       <div class="card">
         <div class="card-head"><span class="card-title">Inputs</span></div>
         <div class="card-body">
@@ -366,10 +333,47 @@
         </div>
       </div>
 
+      <!-- 2. Save & Recalculate -->
       <div class="card" style="margin-bottom:20px;">
         <div class="save-bar">
           <button class="btn-save" id="btn-save-interest">Save &amp; Recalculate</button>
           <span class="save-msg" id="msg-save-interest"></span>
+        </div>
+      </div>
+
+      <!-- 3. Interest Summary -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Interest Summary</span></div>
+        <div class="interest-hero">
+          <span class="ih-label">Total Sum incl Interest &amp; COA</span>
+          <span class="ih-value" id="i-TotalInclCOA">—</span>
+        </div>
+        <dl class="read-grid" style="margin-top:8px;">
+          <div class="read-row"><dt>Interest Calculated On</dt><dd id="i-InterestOn">—</dd></div>
+          <div class="read-row"><dt>Authority to Assess</dt><dd id="i-AuthToAssess">—</dd></div>
+          <div class="read-row"><dt>Total Pre-Authority Payments</dt><dd id="i-PreAuthTotal">—</dd></div>
+          <div class="read-row"><dt>Total Interim Payments</dt><dd id="i-InterimTotal">—</dd></div>
+          <div class="read-row"><dt>Principal Sum Remaining</dt><dd id="i-PrincipalRemaining">—</dd></div>
+          <div class="read-row"><dt>Current Daily Interest Rate</dt><dd id="i-DailyRate">—</dd></div>
+          <div class="read-row highlight"><dt>Total Interest to Date</dt><dd id="i-TotalInterest">—</dd></div>
+          <div class="read-row"><dt>Total Sum Including Interest</dt><dd id="i-TotalInclInterest">—</dd></div>
+          <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
+        </dl>
+      </div>
+
+      <!-- 4. Period Breakdown -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Period Breakdown</span></div>
+        <div style="overflow-x:auto;">
+          <table class="period-table">
+            <thead><tr><th></th><th>Period 1</th><th>Period 2</th><th>Period 3</th><th>Period 4</th></tr></thead>
+            <tbody>
+              <tr><td>Days</td><td class="mono" id="p-days-1">—</td><td class="mono" id="p-days-2">—</td><td class="mono" id="p-days-3">—</td><td class="mono" id="p-days-4">—</td></tr>
+              <tr><td>Principal Sum</td><td class="mono" id="p-principal-1">—</td><td class="mono" id="p-principal-2">—</td><td class="mono" id="p-principal-3">—</td><td class="mono" id="p-principal-4">—</td></tr>
+              <tr><td>Daily Rate</td><td class="mono" id="p-rate-1">—</td><td class="mono" id="p-rate-2">—</td><td class="mono" id="p-rate-3">—</td><td class="mono" id="p-rate-4">—</td></tr>
+              <tr><td>Interest</td><td class="mono" id="p-interest-1">—</td><td class="mono" id="p-interest-2">—</td><td class="mono" id="p-interest-3">—</td><td class="mono" id="p-interest-4">—</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -524,32 +528,23 @@ function computeInterest() {
   const authDate    = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   const coaManual   = parseFloat(f['CostsOfAssessmentForInterestTabO']) || 0;
 
-  // ── KEY FIX: default to totalBill (Calc_TotalInterPartesCosts) if no override set ──
   const interestOn = sumOverride > 0 ? sumOverride : (computed.totalBill || 0);
 
-  // Principal sums per period
   const p1 = interestOn - preAuth;
   const p2 = p1 - ip1;
   const p3 = p2 - ip2;
   const p4 = p3 - ip3;
 
-  // Daily rates (8% p.a.)
   const r1 = p1 * 0.08 / 365;
   const r2 = ipd1 ? p2 * 0.08 / 365 : 0;
   const r3 = ipd2 ? p3 * 0.08 / 365 : 0;
-  const r4 = ipd3 ? p4 * 0.08 / 365
-           : ipd2 ? p3 * 0.08 / 365
-           : ipd1 ? p2 * 0.08 / 365
-           : 0;
+  const r4 = ipd3 ? p4 * 0.08 / 365 : ipd2 ? p3 * 0.08 / 365 : ipd1 ? p2 * 0.08 / 365 : 0;
 
-  // Days per period
   const days1 = authDate ? (ipd1 ? daysBetween(authDate, ipd1) : daysBetween(authDate, today)) : 0;
   const days2 = ipd1 ? (ipd2 ? daysBetween(ipd1, ipd2) : daysBetween(ipd1, today)) : 0;
   const days3 = ipd2 ? (ipd3 ? daysBetween(ipd2, ipd3) : daysBetween(ipd2, today)) : 0;
-  // Period 4 only runs from last payment to today — only active if there are 3+ payments
   const days4 = ipd3 ? daysBetween(ipd3, today) : 0;
 
-  // Interest per period
   const int1 = days1 * r1;
   const int2 = days2 * r2;
   const int3 = days3 * r3;
@@ -559,7 +554,6 @@ function computeInterest() {
   const totalInclInterest = interestOn + totalInterest;
   const totalInclCOA      = interestOn + totalInterest + coaManual;
   const totalInterim      = ip1 + ip2 + ip3;
-
   const principalRemaining = ipd3 ? p4 : ipd2 ? p3 : ipd1 ? p2 : p1;
   const currentDailyRate   = ipd3 ? r4 : ipd2 ? r3 : ipd1 ? r2 : r1;
 
