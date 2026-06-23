@@ -324,7 +324,7 @@ function renderSettlementTab() {
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
-  const vatOnDrafting  = f['VatOnDraftingFee_x003f_'] === true || f['VatOnDraftingFee_x003f_'] === 'true';
+  const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']); // handles true/1/"true"/"1"
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed']) || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
@@ -349,7 +349,7 @@ function renderSettlementTab() {
   // Net PC Recovery (before drafting fee)
   const netBeforeDrafting = (vatPct === 0) ? grossPC : (grossPC / 6) * 5;
 
-  // VatHelper
+  // VatHelper = (VAT% / 100) + 1  e.g. 20% → 1.2
   const vatHelper = (vatPct / 100) + 1;
 
   // Net PC Recovery (after drafting fee)
