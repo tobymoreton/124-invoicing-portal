@@ -68,14 +68,16 @@ const SELECT_FIELDS = [
   'TimedWorkBillableFromOverride',
   // Costs claimed
   'ProfitCostsClaimed_x0028_Ex_x002',
-  'LegalAidOnlyProfitCosts',
+  'DraftingTimeClaimed',
   'CounselsFeesClaimed',
+  'LegalAidOnlyProfitCosts',
   'DisbursementsClaimed',
   'VATonDisbursements',
   'VAT_x0020__x0025__x0020_Claimed',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'OtherTMCInvoices_ex_x0020_bill',
   // Offers & settlement
+  'FigureForSettlementSheet',
   'ProfitCostsatAdvisedRates',
   'BottomLine',
   'LikelyTopEnd',
@@ -87,7 +89,7 @@ const SELECT_FIELDS = [
   // Liabilities
   'Counselsfeespayable',
   'Costsofassessment',
-  // Recovery
+  // Recovery (plain fields — mirror values written by PA)
   'GrossProfitCostsRecoveredAf',
   'NetProfitCostsRecoveredBeforeDra',
   'Net_x0020_profit_x0020_costs_x00',
