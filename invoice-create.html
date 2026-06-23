@@ -154,7 +154,7 @@
 
 <div id="access-denied">
   <h2>Access Restricted</h2>
-  <p>Invoice creation is available to admins only. Contact Toby if you need access.</p>
+  <p>You must be signed in to create draft invoices. Contact Toby if you need access.</p>
 </div>
 
 <div class="main" id="main-content" style="display:none;">
@@ -380,7 +380,10 @@ async function getIdentity() {
 async function init() {
   callerEmail = (sessionStorage.getItem('__PREVIEW_AS') || await getIdentity() || '').toLowerCase();
   el('nav-user').textContent = callerEmail;
-  if (!ADMIN_EMAILS.includes(callerEmail)) {
+  // All authenticated users can access the create page.
+  // Draftsmen create drafts; Lesley issues them; admins do both.
+  // Server-side auth in /api/createdraft enforces per-action rules.
+  if (!callerEmail) {
     el('access-denied').style.display = 'block';
     return;
   }
