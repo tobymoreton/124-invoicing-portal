@@ -19,8 +19,6 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:15px;line-height:1.6;}
-
-    /* ── Nav ── */
     .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
     .nav-brand{display:flex;align-items:baseline;gap:14px;}
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
@@ -28,53 +26,32 @@
     .nav-title{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
     .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;padding:6px 14px;border:1px solid rgba(201,168,76,.35);border-radius:4px;transition:all .18s ease;}
     .nav-back:hover{border-color:var(--gold);color:var(--gold);}
-
-    /* ── Case header ── */
     .case-header{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.18);padding:18px 28px;}
     .case-ref{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);letter-spacing:.1em;margin-bottom:4px;}
     .case-name{font-family:'Spectral',serif;font-weight:400;font-size:24px;color:var(--white);line-height:1.3;}
     .case-meta{font-size:13px;color:rgba(245,242,235,.5);margin-top:4px;}
-
-    /* ── Tab bar ── */
     .tab-bar{background:var(--white);border-bottom:2px solid var(--grey-light);padding:0 28px;display:flex;overflow-x:auto;}
     .tab-btn{padding:14px 20px;font-size:13px;font-weight:500;letter-spacing:.03em;color:var(--grey-mid);border:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;cursor:pointer;white-space:nowrap;transition:all var(--transition);}
     .tab-btn:hover{color:var(--navy);}
     .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:600;}
-
-    /* ── Content wrapper ── */
     .content{max-width:860px;margin:0 auto;padding:24px 28px;}
-
-    /* ── Tab panels ── */
     .tab-panel{display:none;}
     .tab-panel.active{display:block;}
-
-    /* ── Form sections ── */
     .form-section{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
     .form-section-head{padding:12px 20px;border-bottom:1px solid var(--grey-faint);}
     .form-section-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
     .form-section-body{padding:20px;}
-
-    /* ── Field grids ── */
     .field-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-    .field-grid.two-col{grid-template-columns:1fr 1fr;}
     .field-grid.check-row{grid-template-columns:auto auto 1fr;gap:24px;align-items:center;margin-top:16px;}
-
-    /* ── Fields ── */
     .field{display:flex;flex-direction:column;gap:6px;}
     .field label{font-size:12px;font-weight:500;letter-spacing:.03em;color:var(--grey-mid);}
     .field input[type="number"],
     .field input[type="text"],
-    .field input[type="date"]{
-      padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);
-      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
-      background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;
-    }
+    .field input[type="date"]{padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;}
     .field input:focus{border-color:var(--gold);background:var(--white);}
     .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;}
     .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;white-space:nowrap;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
-
-    /* ── Read-only rows ── */
     .read-grid{display:grid;grid-template-columns:1fr auto;}
     .read-row{display:contents;}
     .read-row dt,.read-row dd{padding:10px 20px;border-bottom:1px solid var(--grey-faint);font-size:14px;}
@@ -83,8 +60,6 @@
     .read-row dd{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
     .read-row.total dt,.read-row.total dd{font-weight:700;font-size:14px;background:var(--grey-faint);}
     .read-row.recovery dd{color:var(--green);}
-
-    /* ── Save bar ── */
     .save-bar{display:flex;align-items:center;gap:14px;margin-top:20px;}
     .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 28px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);}
     .btn-save:hover{background:var(--navy-mid);}
@@ -92,14 +67,10 @@
     .save-msg{font-size:13px;color:var(--grey-mid);}
     .save-msg.ok{color:var(--green);}
     .save-msg.err{color:#991B1B;}
-
-    /* ── Placeholder tabs ── */
     .coming-soon{padding:48px 0;text-align:center;color:var(--grey-mid);}
     .coming-soon .icon{font-size:32px;margin-bottom:12px;}
     .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
     .coming-soon p{font-size:14px;}
-
-    /* ── States ── */
     .state-block{text-align:center;padding:64px 24px;color:var(--grey-mid);}
     .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
     .state-block p{font-size:14px;}
@@ -222,6 +193,7 @@
         <dl class="read-grid">
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
           <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetPCBeforeDrafting">—</dd></div>
+          <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
           <div class="read-row recovery"><dt>Net PC Recovery (after Drafting Fee)</dt><dd id="r-NetPCAfterDrafting">—</dd></div>
           <div class="read-row"><dt>% Recovery of Profit Costs</dt><dd id="r-PctRecoveryPC">—</dd></div>
           <div class="read-row"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctRecoveryBill">—</dd></div>
@@ -246,8 +218,8 @@
       <div class="coming-soon"><div class="icon">💰</div><h3>Invoicing</h3><p>Coming soon.</p></div>
     </div>
 
-  </div><!-- /content -->
-</div><!-- /app -->
+  </div>
+</div>
 
 <script>
 let caseItemId = null;
@@ -330,6 +302,8 @@ function renderHeader() {
 
 function renderSettlementTab() {
   const f = caseFields;
+
+  // Editable fields
   setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']);
   setNum('f-BottomLine',                f['BottomLine']);
   setNum('f-LikelyTopEnd',              f['LikelyTopEnd']);
@@ -339,29 +313,67 @@ function renderSettlementTab() {
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
   setCheck('f-Offerincludesinterest_x003f_',     f['Offerincludesinterest_x003f_']);
 
-  const disb    = (parseFloat(f['DisbursementsClaimed']) || 0) + (parseFloat(f['VATonDisbursements']) || 0);
-  const counsel = parseFloat(f['Counselsfeespayable']) || 0;
-  const coa     = parseFloat(f['Costsofassessment']) || 0;
-  const other   = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
-  const total   = disb + counsel + coa + other;
-  document.getElementById('r-Disbursements').textContent       = fmt(disb);
+  // Component fields
+  const figureForSheet = parseFloat(f['FigureForSettlementSheet']) || 0;
+  const settlementAmt  = parseFloat(f['Settlementamount']) || 0;
+  const lastOffer      = parseFloat(f['PayingPartysLastOffer']) || 0;
+  const counsel        = parseFloat(f['Counselsfeespayable']) || 0;
+  const disbursements  = parseFloat(f['DisbursementsClaimed']) || 0;
+  const vatOnDisb      = parseFloat(f['VATonDisbursements']) || 0;
+  const coa            = parseFloat(f['Costsofassessment']) || 0;
+  const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
+  const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
+  const vatOnDrafting  = f['VatOnDraftingFee_x003f_'] === true || f['VatOnDraftingFee_x003f_'] === 'true';
+  const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
+  const draftingTimeIP = parseFloat(f['DraftingTimeClaimed']) || 0;
+  const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+
+  // Liabilities
+  const disbIncVAT = disbursements + vatOnDisb;
+  const totalLiab  = disbIncVAT + counsel + coa + otherTMC;
+  document.getElementById('r-Disbursements').textContent       = fmt(disbIncVAT);
   document.getElementById('r-Counselsfeespayable').textContent = fmt(counsel);
   document.getElementById('r-Costsofassessment').textContent   = fmt(coa);
-  document.getElementById('r-OtherTMC').textContent            = fmt(other);
-  document.getElementById('r-TotalLiabExDrafting').textContent = fmt(total);
+  document.getElementById('r-OtherTMC').textContent            = fmt(otherTMC);
+  document.getElementById('r-TotalLiabExDrafting').textContent = fmt(totalLiab);
 
-  const grossPC   = parseFloat(f['GrossProfitCostsRecoveredAf']) || 0;
-  const netBefore = parseFloat(f['NetProfitCostsRecoveredBeforeDra']) || 0;
-  const netAfter  = parseFloat(f['Net_x0020_profit_x0020_costs_x00']) || 0;
-  const claimedPC = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
+  // OfferOrSettlementFigure
+  const offerOrSettlement = figureForSheet > 0 ? figureForSheet
+                          : settlementAmt  > 0 ? settlementAmt
+                          : lastOffer;
+
+  // Gross PC Recovery
+  const grossPC = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
+
+  // Net PC Recovery (before drafting fee)
+  const netBeforeDrafting = (vatPct === 0) ? grossPC : (grossPC / 6) * 5;
+
+  // VatHelper
+  const vatHelper = (vatPct / 100) + 1;
+
+  // Net PC Recovery (after drafting fee)
+  const netAfterDrafting = vatOnDrafting
+    ? netBeforeDrafting - (netDraftingFee * vatHelper)
+    : netBeforeDrafting - netDraftingFee;
+
+  // % Recovery of PC
+  const pctPC = claimedPC > 0 ? (netAfterDrafting / claimedPC) : 0;
+
+  // % Recovery Against Overall Bill
+  const vatOnPC      = claimedPC      * (vatPct / 100);
+  const vatOnCounsel = counselClaimed * (vatPct / 100);
+  const totalBill    = claimedPC + draftingTimeIP + counselClaimed
+                     + vatOnCounsel + disbursements + vatOnDisb + vatOnPC;
+  const pctBill = totalBill > 0 ? (offerOrSettlement / totalBill) : 0;
+
+  // Render recovery
   document.getElementById('r-GrossPCRecovery').textContent     = fmt(grossPC);
-  document.getElementById('r-NetPCBeforeDrafting').textContent = fmt(netBefore);
-  document.getElementById('r-NetPCAfterDrafting').textContent  = fmt(netAfter);
-  if (claimedPC > 0)
-    document.getElementById('r-PctRecoveryPC').textContent = fmtPct(netAfter / claimedPC * 100);
-  const billTotal = claimedPC + total;
-  if (billTotal > 0)
-    document.getElementById('r-PctRecoveryBill').textContent = fmtPct(grossPC / billTotal * 100);
+  document.getElementById('r-NetPCBeforeDrafting').textContent = fmt(netBeforeDrafting);
+  document.getElementById('r-DraftingFee').textContent         = fmt(netDraftingFee);
+  document.getElementById('r-NetPCAfterDrafting').textContent  = fmt(netAfterDrafting);
+  document.getElementById('r-PctRecoveryPC').textContent       = pctPC  > 0 ? fmtPct(pctPC  * 100) : '—';
+  document.getElementById('r-PctRecoveryBill').textContent     = pctBill > 0 ? fmtPct(pctBill * 100) : '—';
 }
 
 function setNum(id, val) {
@@ -415,6 +427,7 @@ document.getElementById('btn-save-settlement').addEventListener('click', async (
     msg.className = 'save-msg ok';
     msg.textContent = '✓ Saved';
     Object.assign(caseFields, fields);
+    renderSettlementTab();
   } catch (err) {
     msg.className = 'save-msg err';
     msg.textContent = 'Save failed: ' + err.message;
