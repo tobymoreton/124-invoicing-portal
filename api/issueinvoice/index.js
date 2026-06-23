@@ -12,6 +12,7 @@
  *   5. Do server-side find/replace to bake in real number + date (lossless — preserves
  *      schedule, line descriptions, etc. exactly as drafted)
  *   6. Overwrite draft file with issued HTML
+ *   6a. Rename DriveItem to {invoiceNumber}.html
  *   7. Patch Invoice Library item: OrderDetails = number, InvoiceDate = today, AmountDue = grandTotal
  *   8. Read DraftWipIds CSV from Invoice Library item
  *   9. Mark each TT2 entry Billed_x003f_ = true
@@ -146,6 +147,15 @@ module.exports = async function (context, req) {
       + '/items/' + driveItemId + '/content';
     await graphPut(uploadUrl, token, htmlBuffer, 'text/html', driveItemEtag);
     context.log('Issued HTML uploaded.');
+
+    // ── 5a. Rename DriveItem to {invoiceNumber}.html ────────────────────────────
+    // Renames the file from 'DRAFT - ...' to match the convention used by all
+    // other invoices in the library (e.g. '13299.html').
+    context.log('Renaming DriveItem to ' + invoiceNumber + '.html…');
+    const renameUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
+      + '/items/' + driveItemId;
+    await graphPatch(renameUrl, token, { name: String(invoiceNumber) + '.html' });
+    context.log('DriveItem renamed.');
 
     // ── 6. Patch Invoice Library item ─────────────────────────────────────────
     const invoiceDateIso = invoiceDate.toISOString();
