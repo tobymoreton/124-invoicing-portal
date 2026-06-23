@@ -52,29 +52,26 @@
     .card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
     .card-body{padding:22px;}
 
-    /* ── Two-column card layout ── */
+    /* ── Two-column layout ── */
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
     @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
 
-    /* ── Settlement Details header card ── */
+    /* ── Fields ── */
     .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
     @media(max-width:560px){.detail-grid{grid-template-columns:1fr;}}
-
-    /* ── Field ── */
+    .offers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+    @media(max-width:680px){.offers-grid{grid-template-columns:1fr 1fr;}}
     .field{display:flex;flex-direction:column;gap:5px;}
     .field label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
     .field input[type="number"],
     .field input[type="text"],
     .field input[type="date"]{padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;}
     .field input:focus{border-color:var(--gold);background:var(--white);}
+    .field input[readonly]{opacity:.55;cursor:default;}
     .field.full{grid-column:1/-1;}
     .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;}
     .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;text-transform:none;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
-
-    /* ── Offers field grid ── */
-    .offers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-    @media(max-width:680px){.offers-grid{grid-template-columns:1fr 1fr;}}
     .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:16px;}
 
     /* ── Read-only dl ── */
@@ -91,22 +88,35 @@
     /* ── Costs Claimed horizontal table ── */
     .costs-table{width:100%;border-collapse:collapse;font-size:13.5px;}
     .costs-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:10px 16px;text-align:right;border-bottom:2px solid var(--grey-light);white-space:nowrap;}
-    .costs-table td{padding:13px 16px;border-bottom:none;font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;}
-    .costs-table tr.data-row{background:var(--white);}
-    .costs-table tr.total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);}
+    .costs-table td{padding:13px 16px;font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;}
 
-    /* ── Interest card ── */
+    /* ── Interest period table ── */
+    .period-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .period-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:9px 14px;text-align:right;border-bottom:2px solid var(--grey-light);}
+    .period-table th:first-child{text-align:left;}
+    .period-table td{padding:10px 14px;border-bottom:1px solid var(--grey-faint);font-size:13px;text-align:right;}
+    .period-table td:first-child{text-align:left;color:var(--grey-mid);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+    .period-table td.mono{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);}
+    .period-table td.dim{color:var(--grey-light);font-family:'IBM Plex Mono',monospace;}
+    .period-table tr:last-child td{border-bottom:none;}
+
+    /* ── Interest summary rows ── */
     .interest-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
     .interest-row:last-child{border-bottom:none;}
     .interest-row span:first-child{color:var(--grey-mid);}
     .interest-row span:last-child{font-family:'IBM Plex Mono',monospace;font-weight:500;}
 
-    /* ── Recovery highlight box ── */
+    /* ── Recovery hero ── */
     .recovery-highlight{background:var(--green-pale);border:1px solid rgba(6,95,70,.15);border-radius:var(--radius);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;}
     .recovery-highlight .rh-label{font-size:13px;color:var(--green);font-weight:500;}
     .recovery-highlight .rh-value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--green);}
 
-    /* ── Save bar ── */
+    /* ── Interest hero ── */
+    .interest-hero{background:#EFF6FF;border:1px solid rgba(59,130,246,.2);border-radius:var(--radius);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;margin:16px 22px 0;}
+    .interest-hero .ih-label{font-size:13px;color:#1D4ED8;font-weight:500;}
+    .interest-hero .ih-value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#1D4ED8;}
+
+    /* ── Save / PDF bars ── */
     .save-bar{display:flex;align-items:center;gap:14px;padding:18px 22px;border-top:1px solid var(--grey-faint);background:var(--grey-faint);}
     .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);}
     .btn-save:hover{background:var(--navy-mid);}
@@ -114,10 +124,8 @@
     .save-msg{font-size:13px;color:var(--grey-mid);}
     .save-msg.ok{color:var(--green);}
     .save-msg.err{color:#991B1B;}
-
-    /* ── PDF button ── */
     .pdf-bar{margin-top:8px;}
-    .btn-pdf{width:100%;background:var(--navy);color:var(--gold);border:none;padding:14px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.02em;}
+    .btn-pdf{width:100%;background:var(--navy);color:var(--gold);border:none;padding:14px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;}
     .btn-pdf:hover{background:var(--navy-mid);}
     .btn-pdf svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;}
 
@@ -135,7 +143,7 @@
     @keyframes spin{to{transform:rotate(360deg);}}
     #app{display:none;}
 
-    /* ── Print / PDF ── */
+    /* ── Print ── */
     @media print {
       body{background:#fff;font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}
       .nav,.case-header,.tab-bar,.content,#loading,#error{display:none !important;}
@@ -146,7 +154,7 @@
 </head>
 <body>
 
-<!-- ── PDF output (hidden until button clicked) ───────────────────────────── -->
+<!-- ── PDF output ─────────────────────────────────────────────────────────── -->
 <div id="pdf-output" style="display:none;">
   <style>
     #pdf-output{font-family:Arial,sans-serif;font-size:11pt;color:#000;max-width:560px;margin:0 auto;padding:8mm 0;}
@@ -211,7 +219,7 @@
   </table>
 </div>
 
-<!-- ── App shell ──────────────────────────────────────────────────────────── -->
+<!-- ── App ────────────────────────────────────────────────────────────────── -->
 <nav class="nav">
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
@@ -225,7 +233,6 @@
 <div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
 <div id="app">
-
   <div class="case-header">
     <div class="case-ref" id="hdr-ref"></div>
     <div class="case-name" id="hdr-name"></div>
@@ -234,17 +241,15 @@
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="settlement">Settlement</button>
-    <button class="tab-btn" data-tab="interim">Interim Payments</button>
     <button class="tab-btn" data-tab="interest">Interest</button>
+    <button class="tab-btn" data-tab="interim">Interim Payments</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
   </div>
 
   <div class="content">
 
-    <!-- ════════════════════════════════════════════════════════════════════
-         SETTLEMENT TAB
-    ═════════════════════════════════════════════════════════════════════ -->
+    <!-- ════════════ SETTLEMENT TAB ════════════ -->
     <div class="tab-panel active" id="tab-settlement">
 
       <!-- 1. Settlement Details -->
@@ -262,7 +267,7 @@
             </div>
             <div class="field">
               <label>TMC Reference</label>
-              <input type="text" id="f-Ourreference" readonly style="opacity:.6;cursor:default;" />
+              <input type="text" id="f-Ourreference" readonly />
             </div>
             <div class="field">
               <label>Date of Settlement</label>
@@ -276,27 +281,17 @@
         </div>
       </div>
 
-      <!-- 2. Costs Claimed (VAT Inclusive) -->
+      <!-- 2. Costs Claimed -->
       <div class="card">
         <div class="card-head"><span class="card-title">Costs Claimed (VAT Inclusive)</span></div>
         <div style="overflow-x:auto;">
           <table class="costs-table">
             <thead><tr>
-              <th>Profit Costs</th>
-              <th>TMC PC in Bill</th>
-              <th>Disbursements</th>
-              <th>Counsel's Fees</th>
-              <th>Total Claimed</th>
+              <th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th>
             </tr></thead>
-            <tbody>
-              <tr class="data-row">
-                <td id="c-ProfitCosts">—</td>
-                <td id="c-TMCPCinBill">—</td>
-                <td id="c-Disbursements">—</td>
-                <td id="c-CounselFees">—</td>
-                <td id="c-TotalClaimed">—</td>
-              </tr>
-            </tbody>
+            <tbody><tr>
+              <td id="c-ProfitCosts">—</td><td id="c-TMCPCinBill">—</td><td id="c-Disbursements">—</td><td id="c-CounselFees">—</td><td id="c-TotalClaimed">—</td>
+            </tr></tbody>
           </table>
         </div>
       </div>
@@ -327,7 +322,7 @@
               <input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" />
             </div>
           </div>
-          <div class="check-row" style="margin-top:16px;">
+          <div class="check-row">
             <div class="field checkbox-field">
               <input type="checkbox" id="f-Offerincludescostsofsssessment_x" />
               <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
@@ -340,7 +335,7 @@
         </div>
       </div>
 
-      <!-- Save bar -->
+      <!-- Save -->
       <div class="card" style="margin-bottom:20px;">
         <div class="save-bar">
           <button class="btn-save" id="btn-save-settlement">Save Changes</button>
@@ -348,9 +343,8 @@
         </div>
       </div>
 
-      <!-- 4 & 5. Liabilities + Interest side by side -->
+      <!-- 4. Liabilities + Interest summary -->
       <div class="two-col">
-
         <div class="card">
           <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
           <dl class="read-grid">
@@ -363,39 +357,26 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="card-title">Interest</span></div>
-          <div class="card-body" style="padding:0;">
-            <div style="padding:0 22px;">
-              <div class="interest-row">
-                <span>Total Interest to Date</span>
-                <span id="r-TotalInterest">—</span>
-              </div>
-              <div class="interest-row">
-                <span>Daily Interest Rate</span>
-                <span id="r-DailyRate">—</span>
-              </div>
-              <div class="interest-row">
-                <span>Sum for Interest Calculation</span>
-                <span id="r-InterestSum">—</span>
-              </div>
-            </div>
+          <div class="card-head"><span class="card-title">Interest Summary</span></div>
+          <div class="card-body" style="padding:0 22px;">
+            <div class="interest-row"><span>Interest Calculated On</span><span id="r-InterestOn">—</span></div>
+            <div class="interest-row"><span>Authority to Assess</span><span id="r-AuthToAssess">—</span></div>
+            <div class="interest-row"><span>Current Daily Rate</span><span id="r-DailyRate">—</span></div>
+            <div class="interest-row"><span>Total Interest to Date</span><span id="r-TotalInterest">—</span></div>
+            <div class="interest-row"><span>Total incl Interest &amp; COA</span><span id="r-TotalInclCOA">—</span></div>
           </div>
         </div>
-
       </div>
 
-      <!-- 6. Recovery -->
+      <!-- 5. Recovery -->
       <div class="card">
         <div class="card-head"><span class="card-title">Recovery</span></div>
-
-        <!-- Net after Drafting Fee — hero figure -->
         <div style="padding:16px 22px 0;">
           <div class="recovery-highlight">
             <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
             <span class="rh-value" id="r-NetAfterDrafting">—</span>
           </div>
         </div>
-
         <dl class="read-grid" style="margin-top:4px;">
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
           <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
@@ -405,7 +386,7 @@
         </dl>
       </div>
 
-      <!-- 7. Generate PDF -->
+      <!-- 6. PDF button -->
       <div class="pdf-bar">
         <button class="btn-pdf" id="btn-gen-pdf">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6zm4-5h4v1.5h-4V15zm0-3h4v1.5h-4V12zm0-3h2v1.5h-2V9z"/></svg>
@@ -415,12 +396,122 @@
 
     </div><!-- /tab-settlement -->
 
-    <!-- ── Placeholder tabs ──────────────────────────────────────────── -->
+    <!-- ════════════ INTEREST TAB ════════════ -->
+    <div class="tab-panel" id="tab-interest">
+
+      <!-- Summary hero -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Interest Summary</span></div>
+        <div class="interest-hero">
+          <span class="ih-label">Total Sum incl Interest &amp; COA</span>
+          <span class="ih-value" id="i-TotalInclCOA">—</span>
+        </div>
+        <dl class="read-grid" style="margin-top:8px;">
+          <div class="read-row"><dt>Interest Calculated On</dt><dd id="i-InterestOn">—</dd></div>
+          <div class="read-row"><dt>Authority to Assess</dt><dd id="i-AuthToAssess">—</dd></div>
+          <div class="read-row"><dt>Total Pre-Authority Payments</dt><dd id="i-PreAuthTotal">—</dd></div>
+          <div class="read-row"><dt>Total Interim Payments</dt><dd id="i-InterimTotal">—</dd></div>
+          <div class="read-row"><dt>Principal Sum Remaining</dt><dd id="i-PrincipalRemaining">—</dd></div>
+          <div class="read-row"><dt>Current Daily Interest Rate</dt><dd id="i-DailyRate">—</dd></div>
+          <div class="read-row highlight"><dt>Total Interest to Date</dt><dd id="i-TotalInterest">—</dd></div>
+          <div class="read-row"><dt>Total Sum Including Interest</dt><dd id="i-TotalInclInterest">—</dd></div>
+          <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
+        </dl>
+      </div>
+
+      <!-- Period breakdown -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Period Breakdown</span></div>
+        <div style="overflow-x:auto;">
+          <table class="period-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Period 1</th>
+                <th>Period 2</th>
+                <th>Period 3</th>
+                <th>Period 4</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Days</td>
+                <td class="mono" id="p-days-1">—</td>
+                <td class="mono" id="p-days-2">—</td>
+                <td class="mono" id="p-days-3">—</td>
+                <td class="mono" id="p-days-4">—</td>
+              </tr>
+              <tr>
+                <td>Principal Sum</td>
+                <td class="mono" id="p-principal-1">—</td>
+                <td class="mono" id="p-principal-2">—</td>
+                <td class="mono" id="p-principal-3">—</td>
+                <td class="mono" id="p-principal-4">—</td>
+              </tr>
+              <tr>
+                <td>Daily Rate</td>
+                <td class="mono" id="p-rate-1">—</td>
+                <td class="mono" id="p-rate-2">—</td>
+                <td class="mono" id="p-rate-3">—</td>
+                <td class="mono" id="p-rate-4">—</td>
+              </tr>
+              <tr>
+                <td>Interest</td>
+                <td class="mono" id="p-interest-1">—</td>
+                <td class="mono" id="p-interest-2">—</td>
+                <td class="mono" id="p-interest-3">—</td>
+                <td class="mono" id="p-interest-4">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Editable inputs -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Inputs</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field">
+              <label>Override Sum for Interest Calculation (£)</label>
+              <input type="number" id="fi-SumOverride" step="0.01" min="0" />
+            </div>
+            <div class="field">
+              <label>Total Pre-Authority Payments (£)</label>
+              <input type="number" id="fi-PreAuth" step="0.01" min="0" />
+            </div>
+            <div class="field">
+              <label>Costs of Assessment — manual (£)</label>
+              <input type="number" id="fi-CoA" step="0.01" min="0" />
+            </div>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;">Interim Payments</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+              <div class="field"><label>Payment 1 Amount (£)</label><input type="number" id="fi-IP1" step="0.01" min="0" /></div>
+              <div class="field"><label>Payment 2 Amount (£)</label><input type="number" id="fi-IP2" step="0.01" min="0" /></div>
+              <div class="field"><label>Payment 3 Amount (£)</label><input type="number" id="fi-IP3" step="0.01" min="0" /></div>
+              <div class="field"><label>Payment 1 Date</label><input type="date" id="fi-IPD1" /></div>
+              <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" /></div>
+              <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" /></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-interest">Save &amp; Recalculate</button>
+          <span class="save-msg" id="msg-save-interest"></span>
+        </div>
+      </div>
+
+    </div><!-- /tab-interest -->
+
+    <!-- ════════════ PLACEHOLDER TABS ════════════ -->
     <div class="tab-panel" id="tab-interim">
       <div class="coming-soon"><div class="icon">💳</div><h3>Interim Payments</h3><p>Coming soon.</p></div>
-    </div>
-    <div class="tab-panel" id="tab-interest">
-      <div class="coming-soon"><div class="icon">📈</div><h3>Interest</h3><p>Coming soon.</p></div>
     </div>
     <div class="tab-panel" id="tab-expenses">
       <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
@@ -433,16 +524,23 @@
 </div><!-- /app -->
 
 <script>
-let caseItemId  = null;
-let caseFields  = null;
-let computed    = {};
+let caseItemId = null;
+let caseFields = null;
+let computed   = {};
+let interest   = {};
 
-// ── Formatters ───────────────────────────────────────────────────────────────
+// ── Formatters ────────────────────────────────────────────────────────────────
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '—';
   const n = parseFloat(val);
   if (isNaN(n)) return '—';
-  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function fmtN(val, dp) {
+  if (val === null || val === undefined || val === '') return '—';
+  const n = parseFloat(val);
+  if (isNaN(n)) return '—';
+  return n.toLocaleString('en-GB', { minimumFractionDigits: dp||0, maximumFractionDigits: dp||0 });
 }
 function fmtPct(ratio) {
   if (!ratio) return '—';
@@ -453,11 +551,14 @@ function fmtDate(iso) {
   const d = new Date(iso);
   return isNaN(d) ? iso : d.toLocaleDateString('en-GB');
 }
-function toDateInput(iso) {
-  return iso ? iso.substring(0, 10) : '';
+function toDateInput(iso) { return iso ? iso.substring(0, 10) : ''; }
+function daysBetween(a, b) {
+  // a, b are Date objects or ISO strings; returns integer days (b-a)
+  const da = new Date(a), db = new Date(b);
+  return Math.round((db - da) / 86400000);
 }
 
-// ── Error / loading ──────────────────────────────────────────────────────────
+// ── Error / loading ───────────────────────────────────────────────────────────
 function showError(title, msg) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('error-title').textContent = title;
@@ -465,7 +566,7 @@ function showError(title, msg) {
   document.getElementById('error').style.display     = 'block';
 }
 
-// ── Tabs ─────────────────────────────────────────────────────────────────────
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -475,7 +576,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// ── Load case ────────────────────────────────────────────────────────────────
+// ── Load case ─────────────────────────────────────────────────────────────────
 async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
@@ -490,8 +591,10 @@ async function loadCase() {
     caseItemId = match.id;
     caseFields = match.fields || {};
     computeFigures();
+    computeInterest();
     renderHeader();
     renderSettlementTab();
+    renderInterestTab();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
@@ -499,62 +602,134 @@ async function loadCase() {
   }
 }
 
-// ── Shared computation ───────────────────────────────────────────────────────
+// ── Settlement computation ────────────────────────────────────────────────────
 function computeFigures() {
   const f = caseFields;
-
-  const figureForSheet = parseFloat(f['FigureForSettlementSheet'])           || 0;
-  const settlementAmt  = parseFloat(f['Settlementamount'])                   || 0;
-  const lastOffer      = parseFloat(f['PayingPartysLastOffer'])               || 0;
-  const counsel        = parseFloat(f['Counselsfeespayable'])                || 0;
-  const disbursements  = parseFloat(f['DisbursementsClaimed'])               || 0;
-  const vatOnDisb      = parseFloat(f['VATonDisbursements'])                 || 0;
-  const coa            = parseFloat(f['Costsofassessment'])                  || 0;
-  const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])     || 0;
-  const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed'])    || 0; // decimal e.g. 0.2
-  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])       || 0;
+  const figureForSheet = parseFloat(f['FigureForSettlementSheet'])        || 0;
+  const settlementAmt  = parseFloat(f['Settlementamount'])                || 0;
+  const lastOffer      = parseFloat(f['PayingPartysLastOffer'])            || 0;
+  const counsel        = parseFloat(f['Counselsfeespayable'])             || 0;
+  const disbursements  = parseFloat(f['DisbursementsClaimed'])            || 0;
+  const vatOnDisb      = parseFloat(f['VATonDisbursements'])              || 0;
+  const coa            = parseFloat(f['Costsofassessment'])               || 0;
+  const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
+  const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])    || 0;
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
-  const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])   || 0;
-  const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])                || 0;
-  const counselClaimed = parseFloat(f['CounselsFeesClaimed'])                || 0;
-
-  const vatHelper = 1 + vatPct;
+  const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
+  const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
+  const counselClaimed = parseFloat(f['CounselsFeesClaimed'])             || 0;
+  const vatHelper      = 1 + vatPct;
 
   const offerOrSettlement = figureForSheet > 0 ? figureForSheet
                           : settlementAmt  > 0 ? settlementAmt
                           : lastOffer;
 
-  const disbIncVAT    = disbursements + vatOnDisb;
-  const totalPayable  = disbIncVAT + counsel + coa + otherTMC;
-
-  const pcIncVAT      = claimedPC      * vatHelper;
-  const tmcPCIncVAT   = draftingTimeIP * vatHelper;
-  const counselIncVAT = counselClaimed * vatHelper;
-  const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
+  const disbIncVAT   = disbursements + vatOnDisb;
+  const totalPayable = disbIncVAT + counsel + coa + otherTMC;
+  const pcIncVAT     = claimedPC      * vatHelper;
+  const tmcPCIncVAT  = draftingTimeIP * vatHelper;
+  const counselIncVAT= counselClaimed * vatHelper;
+  const totalClaimed = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
 
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const netAfterDrafting  = vatOnDrafting
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
     : netBeforeDrafting - netDraftingFee;
-
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   const vatOnPC      = claimedPC      * vatPct;
   const vatOnCounsel = counselClaimed * vatPct;
   const totalBill    = claimedPC + draftingTimeIP + counselClaimed
                      + vatOnCounsel + disbursements + vatOnDisb + vatOnPC;
-  const pctBill      = totalBill > 0 ? offerOrSettlement / totalBill : 0;
+  const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
 
   computed = {
-    offerOrSettlement,
-    disbIncVAT, counsel, coa, otherTMC, totalPayable,
+    offerOrSettlement, disbIncVAT, counsel, coa, otherTMC, totalPayable,
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill,
   };
 }
 
-// ── Render header ────────────────────────────────────────────────────────────
+// ── Interest computation ──────────────────────────────────────────────────────
+function computeInterest() {
+  const f   = caseFields;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const sumOverride  = parseFloat(f['SumForInterestCalculationOverrid']) || 0;
+  const preAuth      = parseFloat(f['TotalPreAuthorityPayments'])        || 0;
+  const ip1          = parseFloat(f['InterimPayment1'])                  || 0;
+  const ip2          = parseFloat(f['InterimPayment2'])                  || 0;
+  const ip3          = parseFloat(f['InterimPayment3'])                  || 0;
+  const ipd1         = f['InterimPaymentDate1'] ? new Date(f['InterimPaymentDate1']) : null;
+  const ipd2         = f['InterimPaymentDate2'] ? new Date(f['InterimPaymentDate2']) : null;
+  const ipd3         = f['InterimPaymentDate3'] ? new Date(f['InterimPaymentDate3']) : null;
+  const authDate     = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
+  const coaManual    = parseFloat(f['CostsOfAssessmentForInterestTabO']) || 0;
+
+  // Interest calculated on = sumOverride (the principal)
+  const interestOn = sumOverride;
+
+  // Principal sums
+  const p1 = interestOn - preAuth;
+  const p2 = p1 - ip1;
+  const p3 = p2 - ip2;
+  const p4 = p3 - ip3;
+
+  // Daily rates (8% p.a.)
+  const r1 = p1 * 0.08 / 365;
+  const r2 = ipd1 ? p2 * 0.08 / 365 : 0;
+  const r3 = ipd2 ? p3 * 0.08 / 365 : 0;
+  const r4 = ipd3 ? p4 * 0.08 / 365
+           : ipd2 ? p3 * 0.08 / 365
+           : ipd1 ? p2 * 0.08 / 365
+           : 0;
+
+  // Days per period
+  const days1 = authDate ? (ipd1 ? daysBetween(authDate, ipd1) : daysBetween(authDate, today)) : 0;
+  const days2 = ipd1 ? (ipd2 ? daysBetween(ipd1, ipd2) : daysBetween(ipd1, today)) : 0;
+  const days3 = ipd2 ? (ipd3 ? daysBetween(ipd2, ipd3) : (ipd2 ? daysBetween(ipd2, today) : 0)) : 0;
+  const days4 = ipd3 ? daysBetween(ipd3, today)
+              : ipd2 ? daysBetween(ipd2, today)
+              : ipd1 ? daysBetween(ipd1, today)
+              : 0;
+
+  // Interest per period
+  const int1 = days1 * r1;
+  const int2 = days2 * r2;
+  const int3 = days3 * r3;
+  const int4 = ipd3 ? (today - ipd3) / 86400000 * r4
+             : ipd2 ? (today - ipd2) / 86400000 * r4
+             : ipd1 ? (today - ipd1) / 86400000 * r4
+             : 0;
+
+  const totalInterest      = int1 + int2 + int3 + int4;
+  const totalInclInterest  = interestOn + totalInterest;
+  const totalInclCOA       = interestOn + totalInterest + coaManual;
+
+  // Total interim payments
+  const totalInterim = ip1 + ip2 + ip3;
+
+  // Principal remaining = last active principal
+  const principalRemaining = ipd3 ? p4 : ipd2 ? p3 : ipd1 ? p2 : p1;
+  const currentDailyRate   = ipd3 ? r4 : ipd2 ? r3 : ipd1 ? r2 : r1;
+
+  interest = {
+    interestOn, authDate, preAuth, totalInterim,
+    principalRemaining, currentDailyRate,
+    totalInterest, totalInclInterest, totalInclCOA, coaManual,
+    periods: [
+      { days: days1, principal: p1, rate: r1, interest: int1 },
+      { days: days2, principal: p2, rate: r2, interest: int2 },
+      { days: days3, principal: p3, rate: r3, interest: int3 },
+      { days: days4, principal: p4, rate: r4, interest: int4 },
+    ],
+  };
+}
+
+// ── Render header ─────────────────────────────────────────────────────────────
 function renderHeader() {
   const f = caseFields;
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
@@ -565,24 +740,23 @@ function renderHeader() {
   document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
 }
 
-// ── Render Settlement tab ────────────────────────────────────────────────────
+// ── Render Settlement tab ─────────────────────────────────────────────────────
 function renderSettlementTab() {
   const f = caseFields;
   const c = computed;
+  const i = interest;
 
-  // Settlement Details (editable)
-  setTxt('f-CaseNameForOpenCases',  f['CaseNameForOpenCases']);
-  setTxt('f-ClientCaseReference',   f['ClientCaseReference']);
-  setTxt('f-Ourreference',          f['Ourreference_x0028_text_x0029_']);
-  setDate('f-DateSettled0',         f['DateSettled0']);
-  setNum('f-Settlementamount',      f['Settlementamount']);
-
-  // Offers (editable)
-  setNum('f-ProfitCostsatAdvisedRates',  f['ProfitCostsatAdvisedRates']);
-  setNum('f-BottomLine',                 f['BottomLine']);
-  setNum('f-LikelyTopEnd',              f['LikelyTopEnd']);
-  setNum('f-PayingPartysLastOffer',      f['PayingPartysLastOffer']);
-  setNum('f-FigureForSettlementSheet',   f['FigureForSettlementSheet']);
+  // Editable
+  setTxt('f-CaseNameForOpenCases', f['CaseNameForOpenCases']);
+  setTxt('f-ClientCaseReference',  f['ClientCaseReference']);
+  setTxt('f-Ourreference',         f['Ourreference_x0028_text_x0029_']);
+  setDate('f-DateSettled0',        f['DateSettled0']);
+  setNum('f-Settlementamount',     f['Settlementamount']);
+  setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']);
+  setNum('f-BottomLine',           f['BottomLine']);
+  setNum('f-LikelyTopEnd',         f['LikelyTopEnd']);
+  setNum('f-PayingPartysLastOffer',f['PayingPartysLastOffer']);
+  setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
   setCheck('f-Offerincludesinterest_x003f_',     f['Offerincludesinterest_x003f_']);
 
@@ -600,56 +774,136 @@ function renderSettlementTab() {
   setText('r-OtherTMC',      fmt(c.otherTMC));
   setText('r-TotalLiab',     fmt(c.totalPayable));
 
-  // Interest (read from SP plain fields)
-  setText('r-TotalInterest', fmt(f['TotalInterestToDate_Text']));
-  setText('r-DailyRate',     fmt(f['DailyInterestRate_Text']));
-  setText('r-InterestSum',   fmt(f['SumForInterestCalculationOverrid']));
+  // Interest summary (settlement tab)
+  setText('r-InterestOn',    fmt(i.interestOn));
+  setText('r-AuthToAssess',  fmtDate(f['DateofAuthoritytoAssess']));
+  setText('r-DailyRate',     fmt(i.currentDailyRate));
+  setText('r-TotalInterest', fmt(i.totalInterest));
+  setText('r-TotalInclCOA',  fmt(i.totalInclCOA));
 
   // Recovery
-  setText('r-NetAfterDrafting',   fmt(c.netAfterDrafting));
-  setText('r-GrossPCRecovery',    fmt(c.grossPC));
-  setText('r-NetBeforeDrafting',  fmt(c.netBeforeDrafting));
-  setText('r-DraftingFee',        fmt(c.netDraftingFee));
-  setText('r-PctPC',              fmtPct(c.pctPC));
-  setText('r-PctBill',            fmtPct(c.pctBill));
+  setText('r-NetAfterDrafting',  fmt(c.netAfterDrafting));
+  setText('r-GrossPCRecovery',   fmt(c.grossPC));
+  setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
+  setText('r-DraftingFee',       fmt(c.netDraftingFee));
+  setText('r-PctPC',             fmtPct(c.pctPC));
+  setText('r-PctBill',           fmtPct(c.pctBill));
 }
 
-// ── Save ─────────────────────────────────────────────────────────────────────
+// ── Render Interest tab ───────────────────────────────────────────────────────
+function renderInterestTab() {
+  const f = caseFields;
+  const i = interest;
+
+  // Summary
+  setText('i-TotalInclCOA',      fmt(i.totalInclCOA));
+  setText('i-InterestOn',        fmt(i.interestOn));
+  setText('i-AuthToAssess',      fmtDate(f['DateofAuthoritytoAssess']));
+  setText('i-PreAuthTotal',      fmt(i.preAuth));
+  setText('i-InterimTotal',      fmt(i.totalInterim));
+  setText('i-PrincipalRemaining',fmt(i.principalRemaining));
+  setText('i-DailyRate',         fmt(i.currentDailyRate));
+  setText('i-TotalInterest',     fmt(i.totalInterest));
+  setText('i-TotalInclInterest', fmt(i.totalInclInterest));
+  setText('i-CoA',               fmt(i.coaManual));
+
+  // Period breakdown
+  i.periods.forEach((p, idx) => {
+    const n = idx + 1;
+    const active = p.days > 0 || p.interest > 0;
+    const cls = active ? 'mono' : 'dim';
+    const el = (id) => document.getElementById(id);
+    el('p-days-'    + n).textContent = active ? fmtN(p.days, 0)     : '—';
+    el('p-principal-'+n).textContent = active ? fmt(p.principal)     : '—';
+    el('p-rate-'    + n).textContent = active ? fmt(p.rate)          : '—';
+    el('p-interest-'+ n).textContent = active ? fmt(p.interest)      : '—';
+    el('p-days-'    + n).className = cls;
+    el('p-principal-'+n).className = cls;
+    el('p-rate-'    + n).className = cls;
+    el('p-interest-'+ n).className = cls;
+  });
+
+  // Inputs
+  setNum('fi-SumOverride', f['SumForInterestCalculationOverrid']);
+  setNum('fi-PreAuth',     f['TotalPreAuthorityPayments']);
+  setNum('fi-CoA',         f['CostsOfAssessmentForInterestTabO']);
+  setNum('fi-IP1',         f['InterimPayment1']);
+  setNum('fi-IP2',         f['InterimPayment2']);
+  setNum('fi-IP3',         f['InterimPayment3']);
+  setDate('fi-IPD1',       f['InterimPaymentDate1']);
+  setDate('fi-IPD2',       f['InterimPaymentDate2']);
+  setDate('fi-IPD3',       f['InterimPaymentDate3']);
+}
+
+// ── Save — Settlement ─────────────────────────────────────────────────────────
 document.getElementById('btn-save-settlement').addEventListener('click', async () => {
   const btn = document.getElementById('btn-save-settlement');
   const msg = document.getElementById('msg-save-settlement');
-  btn.disabled    = true;
-  msg.className   = 'save-msg';
-  msg.textContent = 'Saving…';
+  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
 
-  const fields = {};
-
-  // Text fields
-  fields['CaseNameForOpenCases'] = document.getElementById('f-CaseNameForOpenCases').value || null;
-  fields['ClientCaseReference']  = document.getElementById('f-ClientCaseReference').value  || null;
-
-  // Date
+  const fields = {
+    CaseNameForOpenCases: document.getElementById('f-CaseNameForOpenCases').value || null,
+    ClientCaseReference:  document.getElementById('f-ClientCaseReference').value  || null,
+  };
   const dv = document.getElementById('f-DateSettled0').value;
   fields['DateSettled0'] = dv ? dv + 'T00:00:00Z' : null;
-
-  // Numbers
-  const numMap = {
+  for (const [sp, el] of Object.entries({
     'Settlementamount':          'f-Settlementamount',
     'ProfitCostsatAdvisedRates': 'f-ProfitCostsatAdvisedRates',
     'BottomLine':                'f-BottomLine',
     'LikelyTopEnd':              'f-LikelyTopEnd',
     'PayingPartysLastOffer':     'f-PayingPartysLastOffer',
     'FigureForSettlementSheet':  'f-FigureForSettlementSheet',
-  };
-  for (const [sp, el] of Object.entries(numMap)) {
+  })) {
     const v = document.getElementById(el).value;
     fields[sp] = v === '' ? null : parseFloat(v);
   }
-
-  // Checkboxes
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
 
+  await doSave(fields, btn, msg);
+  if (msg.className.includes('ok')) {
+    computeFigures(); computeInterest();
+    renderHeader(); renderSettlementTab(); renderInterestTab();
+  }
+});
+
+// ── Save — Interest ───────────────────────────────────────────────────────────
+document.getElementById('btn-save-interest').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-interest');
+  const msg = document.getElementById('msg-save-interest');
+  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+
+  const fields = {};
+  for (const [sp, el] of Object.entries({
+    'SumForInterestCalculationOverrid': 'fi-SumOverride',
+    'TotalPreAuthorityPayments':        'fi-PreAuth',
+    'CostsOfAssessmentForInterestTabO': 'fi-CoA',
+    'InterimPayment1':                  'fi-IP1',
+    'InterimPayment2':                  'fi-IP2',
+    'InterimPayment3':                  'fi-IP3',
+  })) {
+    const v = document.getElementById(el).value;
+    fields[sp] = v === '' ? null : parseFloat(v);
+  }
+  for (const [sp, el] of Object.entries({
+    'InterimPaymentDate1': 'fi-IPD1',
+    'InterimPaymentDate2': 'fi-IPD2',
+    'InterimPaymentDate3': 'fi-IPD3',
+  })) {
+    const v = document.getElementById(el).value;
+    fields[sp] = v ? v + 'T00:00:00Z' : null;
+  }
+
+  await doSave(fields, btn, msg);
+  if (msg.className.includes('ok')) {
+    Object.assign(caseFields, fields);
+    computeInterest();
+    renderSettlementTab(); renderInterestTab();
+  }
+});
+
+async function doSave(fields, btn, msg) {
   try {
     const resp = await fetch('/api/caseupdate', {
       method:  'POST',
@@ -657,79 +911,60 @@ document.getElementById('btn-save-settlement').addEventListener('click', async (
       body:    JSON.stringify({ itemId: caseItemId, fields }),
     });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
-    msg.className   = 'save-msg ok';
-    msg.textContent = '✓ Saved';
     Object.assign(caseFields, fields);
-    computeFigures();
-    renderHeader();
-    renderSettlementTab();
+    msg.className = 'save-msg ok'; msg.textContent = '✓ Saved';
   } catch (err) {
-    msg.className   = 'save-msg err';
-    msg.textContent = 'Save failed: ' + err.message;
+    msg.className = 'save-msg err'; msg.textContent = 'Save failed: ' + err.message;
   } finally {
     btn.disabled = false;
     setTimeout(() => { if (msg.textContent === '✓ Saved') msg.textContent = ''; }, 3000);
   }
-});
+}
 
-// ── PDF generation ────────────────────────────────────────────────────────────
+// ── PDF ───────────────────────────────────────────────────────────────────────
 async function generateSettlementPDF() {
-  const f = caseFields;
-  const c = computed;
-
-  // Settlement details
+  const f = caseFields; const c = computed;
   document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
   document.getElementById('pdf-clientref').textContent     = f['ClientCaseReference'] || '—';
   document.getElementById('pdf-tmcref').textContent        = f['Ourreference_x0028_text_x0029_'] || '—';
   document.getElementById('pdf-datesettled').textContent   = fmtDate(f['DateSettled0']);
   document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0
-    ? c.offerOrSettlement.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })
-    : '—';
-
-  // Costs Claimed
+    ? c.offerOrSettlement.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
   document.getElementById('pdf-pc').textContent           = fmt(c.pcIncVAT);
   document.getElementById('pdf-tmcpc').textContent        = fmt(c.tmcPCIncVAT);
   document.getElementById('pdf-disb').textContent         = fmt(c.disbIncVAT);
   document.getElementById('pdf-counsel').textContent      = fmt(c.counselIncVAT);
   document.getElementById('pdf-totalclaimed').textContent = fmt(c.totalClaimed);
-
-  // Costs Payable
   document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
   document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
   document.getElementById('pdf-pay-coa').textContent     = fmt(c.coa);
   document.getElementById('pdf-pay-other').textContent   = fmt(c.otherTMC);
   document.getElementById('pdf-pay-total').textContent   = fmt(c.totalPayable);
-
-  // Recovery
   document.getElementById('pdf-rec-gross').textContent     = fmt(c.grossPC);
   document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
   document.getElementById('pdf-rec-drafting').textContent  = fmt(c.netDraftingFee);
   document.getElementById('pdf-rec-netafter').textContent  = fmt(c.netAfterDrafting);
   document.getElementById('pdf-rec-pctpc').textContent     = fmtPct(c.pctPC);
   document.getElementById('pdf-rec-pctbill').textContent   = fmtPct(c.pctBill);
-
-  // Logo inline as base64
   try {
     const blob = await (await fetch('/New Logo Gold, Silver and Navy.png')).blob();
     document.getElementById('pdf-logo').src = await new Promise(res => {
       const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob);
     });
   } catch { document.getElementById('pdf-logo').style.display = 'none'; }
-
   const el = document.getElementById('pdf-output');
   el.style.display = 'block';
   window.print();
   setTimeout(() => { el.style.display = 'none'; }, 500);
 }
-
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
 
 // ── Field helpers ─────────────────────────────────────────────────────────────
-function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
-function setTxt(id, val)  { const e = document.getElementById(id); if (e) e.value = val || ''; }
-function setNum(id, val)  { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
-function setDate(id, val) { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
-function setCheck(id, val){ const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
+function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
+function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.value = val || ''; }
+function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
+function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
+function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
 loadCase();
 </script>
