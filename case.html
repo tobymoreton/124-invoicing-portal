@@ -322,9 +322,10 @@ function renderSettlementTab() {
   const vatOnDisb      = parseFloat(f['VATonDisbursements']) || 0;
   const coa            = parseFloat(f['Costsofassessment']) || 0;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
+  // VAT % Claimed is stored as a decimal in SP (e.g. 0.2 for 20%)
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
-  const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']); // handles true/1/"true"/"1"
+  const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed']) || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
@@ -346,28 +347,30 @@ function renderSettlementTab() {
   // Gross PC Recovery
   const grossPC = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
 
-  // Net PC Recovery (before drafting fee)
-  const netBeforeDrafting = (vatPct === 0) ? grossPC : (grossPC / 6) * 5;
+  // VatHelper = 1 + vatPct (vatPct already decimal e.g. 0.2)
+  const vatHelper = 1 + vatPct;
 
-  // VatHelper = (VAT% / 100) + 1  e.g. 20% → 1.2
-  const vatHelper = (vatPct / 100) + 1;
+  // Net PC Recovery (before drafting fee)
+  // SP formula: IF(VAT%=0, gross, (gross/6)*5) — equivalent to gross/(1+vatPct)
+  const netBeforeDrafting = (vatPct === 0) ? grossPC : grossPC / vatHelper;
 
   // Net PC Recovery (after drafting fee)
   const netAfterDrafting = vatOnDrafting
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
     : netBeforeDrafting - netDraftingFee;
 
-  // % Recovery of PC
+  // % Recovery of PC = netAfterDrafting / claimedPC
   const pctPC = claimedPC > 0 ? (netAfterDrafting / claimedPC) : 0;
 
-  // % Recovery Against Overall Bill
-  const vatOnPC      = claimedPC      * (vatPct / 100);
-  const vatOnCounsel = counselClaimed * (vatPct / 100);
+  // % Recovery Against Overall Bill = offerOrSettlement / totalBill
+  // totalBill = claimedPC + draftingTimeIP + counselClaimed + VAT on PC + VAT on counsel + disbursements + vatOnDisb
+  const vatOnPC      = claimedPC      * vatPct;
+  const vatOnCounsel = counselClaimed * vatPct;
   const totalBill    = claimedPC + draftingTimeIP + counselClaimed
                      + vatOnCounsel + disbursements + vatOnDisb + vatOnPC;
   const pctBill = totalBill > 0 ? (offerOrSettlement / totalBill) : 0;
 
-  // Render recovery
+  // Render
   document.getElementById('r-GrossPCRecovery').textContent     = fmt(grossPC);
   document.getElementById('r-NetPCBeforeDrafting').textContent = fmt(netBeforeDrafting);
   document.getElementById('r-DraftingFee').textContent         = fmt(netDraftingFee);
