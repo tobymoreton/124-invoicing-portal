@@ -587,7 +587,7 @@ function openDrawer(id) {
   const canCancel      = isDraft && (_isAdmin || _isFinance);
   const actionsHTML    = (canIssue || canCancel) ? `
     <div class="drawer-actions">
-      ${canIssue  ? `<button class="btn-issue"  id="btn-issue-${esc(inv._id)}"  onclick="issueInvoice('${esc(inv._id)}',${parseFloat(inv.AmountDue)||0})">Issue Invoice</button>`  : ''}
+      ${canIssue  ? `<button class="btn-issue"  id="btn-issue-${esc(inv._id)}"  onclick="issueInvoice('${esc(inv._id)}',${parseFloat(inv.AmountDue) || ((parseFloat(inv.Net)||0) + (parseFloat(inv.VAT)||0))})">Issue Invoice</button>`  : ''}
       ${canCancel ? `<button class="btn-cancel" id="btn-cancel-${esc(inv._id)}" onclick="cancelInvoice('${esc(inv._id)}','${esc(inv.Casename||'')}')">Cancel Invoice</button>` : ''}
     </div>` : '';
 
@@ -996,6 +996,23 @@ document.addEventListener('keydown', e => { if(e.key==='Escape') closeDrawer(); 
 async function issueInvoice(listItemId, grandTotal) {
   const btn = document.getElementById('btn-issue-' + listItemId);
   if (btn) { btn.disabled = true; btn.textContent = 'Issuing…'; }
+  // Re-fetch the invoice to get fresh Net + VAT in case the page
+  // was loaded before this draft existed (grandTotal would be 0).
+  // Only do this if grandTotal looks wrong (0 or very small).
+  if (!grandTotal || grandTotal < 1) {
+    try {
+      const freshRes = await fetch(API, { headers: { Accept: 'application/json' } });
+      if (freshRes.ok) {
+        const freshData = (await freshRes.json()).filter(i => !i.Cancelled);
+        const freshInv  = freshData.find(i => i._id === listItemId);
+        if (freshInv) {
+          grandTotal = parseFloat(freshInv.AmountDue) || ((parseFloat(freshInv.Net)||0) + (parseFloat(freshInv.VAT)||0));
+          // Update allInvoices so the table is also correct
+          allInvoices = freshData;
+        }
+      }
+    } catch(e) { /* non-fatal — proceed with original grandTotal */ }
+  }
   try {
     const res = await fetch('/api/issueinvoice', {
       method:  'POST',
