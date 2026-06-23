@@ -256,7 +256,8 @@ function graphGet(url, token) {
   });
 }
 
-function graphPatch(url, token, body) {
+function graphPatch(url, token, body, retries) {
+  retries = retries === undefined ? 1 : retries;
   return new Promise(function (resolve, reject) {
     const payload = JSON.stringify(body);
     const u = new URL(url);
@@ -274,6 +275,13 @@ function graphPatch(url, token, body) {
       let data = '';
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
+        if (res.statusCode === 409 && retries > 0) {
+          // resourceModified — another process updated the item; retry once after brief delay
+          setTimeout(() => {
+            graphPatch(url, token, body, retries - 1).then(resolve).catch(reject);
+          }, 500);
+          return;
+        }
         if (res.statusCode >= 400) {
           reject(new Error('Graph PATCH ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
           return;
