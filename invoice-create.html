@@ -773,7 +773,7 @@ async function handleCreateDraft() {
       invoiceDate:     null,
       yourRef:         f.ClientCaseReference || '',
       ourRef:          f.Ourreference_x0028_text_x0029_ || '',
-      caseName:        f.Title || '',
+      caseName:        computeFullCaseName(f),
       firmName:        f.Firm_x0028_text_x0029_ || '',
       address1:        f.Address1_x0028_text_x0029_ || '',
       address2:        f.Address2_x0028_text_x0029_ || '',
@@ -881,6 +881,18 @@ function gbp(n) { return '\u00a3' + (+n || 0).toLocaleString('en-GB', {minimumFr
 function fmtDate(s) { try { return new Date(s).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'}); } catch { return s; } }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showMsg(id, msg, type) { const e = el(id); e.textContent = msg; e.className = type ? 'status-msg ' + type : 'status-msg'; }
+
+// Reconstruct Fullcasename from Cases fields (mirrors SP calculated field formula)
+function computeFullCaseName(f) {
+  if (f.Fullcasenameoveride) return f.Fullcasenameoveride;
+  const multiC = !!(f['Andothers_x003f_'] === true || f.MultiClaimants);
+  const multiD = !!(f['Morethanonedefendant_x003f_'] === true || f.MultiDefendants);
+  const claimant  = multiC ? (f.MultiClaimants || '') : ((f.OurPartyFirstName || '') + ' ' + (f.OurPartySurname || '')).trim();
+  const defendant = multiD ? (f.MultiDefendants || '') : (f.OpponentPartyName || '');
+  if (claimant && defendant) return claimant + ' -v- ' + defendant;
+  if (claimant) return claimant;
+  return f.Title || '';
+}
 
 init();
 </script>
