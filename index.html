@@ -583,8 +583,9 @@ function openDrawer(id) {
   }).filter(Boolean).join('');
   // Determine whether to show action buttons for this invoice
   const isDraft        = !inv.OrderDetails && !inv.InvoiceDate;
+  const isIssued       = !!inv.OrderDetails && !inv.Cancelled;
   const canIssue       = isDraft && (_isAdmin || _isFinance);
-  const canCancel      = isDraft && (_isAdmin || _isFinance);
+  const canCancel      = (isDraft || isIssued) && (_isAdmin || _isFinance);
   const actionsHTML    = (canIssue || canCancel) ? `
     <div class="drawer-actions">
       ${canIssue  ? `<button class="btn-issue"  id="btn-issue-${esc(inv._id)}"  onclick="issueInvoice('${esc(inv._id)}',${parseFloat(inv.AmountDue) || ((parseFloat(inv.Net)||0) + (parseFloat(inv.VAT)||0))})">Issue Invoice</button>`  : ''}
