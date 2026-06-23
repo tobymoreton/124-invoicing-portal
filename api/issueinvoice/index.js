@@ -177,6 +177,7 @@ module.exports = async function (context, req) {
     context.log('DraftWipIds:', wipIds);
 
     // ── 8. Mark TT2 entries as Billed ─────────────────────────────────────────
+    const tt2Errors = [];
     if (wipIds.length > 0) {
       context.log('Marking', wipIds.length, 'TT2 entries as billed…');
       let tt2Done = 0, tt2Failed = 0;
@@ -186,6 +187,7 @@ module.exports = async function (context, req) {
           tt2Done++;
         } catch (e) {
           context.log.error('TT2 patch failed for id', wipId, ':', e.message);
+          tt2Errors.push({ wipId, error: e.message });
           tt2Failed++;
         }
       }
@@ -220,12 +222,19 @@ module.exports = async function (context, req) {
     }
 
     // ── Done ──────────────────────────────────────────────────────────────────
+    // Collect TT2 and Line Item errors for diagnostics
+    const liErrors  = [];
+
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         invoiceNumber: String(invoiceNumber),
         invoiceDate:   invoiceDateIso,
+        tt2Done:       wipIds.length - tt2Errors.length,
+        tt2Failed:     tt2Errors.length,
+        tt2Errors,
+        wipIds,
       }),
     };
 
