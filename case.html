@@ -12,13 +12,15 @@
       --navy:#1B2A4A; --navy-mid:#253A60; --gold:#C9A84C; --gold-pale:#F0E6C8;
       --cream:#F5F2EB; --white:#FFFFFF;
       --grey-mid:#6B7280; --grey-light:#E5E1D6; --grey-faint:#F0EDE6;
-      --green:#065F46;
+      --green:#065F46; --green-pale:#ECFDF5;
       --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
       --radius:6px; --transition:.18s ease;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:15px;line-height:1.6;}
+
+    /* ── Nav ── */
     .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
     .nav-brand{display:flex;align-items:baseline;gap:14px;}
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
@@ -26,64 +28,106 @@
     .nav-title{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
     .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;padding:6px 14px;border:1px solid rgba(201,168,76,.35);border-radius:4px;transition:all .18s ease;}
     .nav-back:hover{border-color:var(--gold);color:var(--gold);}
+
+    /* ── Case header ── */
     .case-header{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.18);padding:18px 28px;}
     .case-ref{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);letter-spacing:.1em;margin-bottom:4px;}
     .case-name{font-family:'Spectral',serif;font-weight:400;font-size:24px;color:var(--white);line-height:1.3;}
     .case-meta{font-size:13px;color:rgba(245,242,235,.5);margin-top:4px;}
+
+    /* ── Tabs ── */
     .tab-bar{background:var(--white);border-bottom:2px solid var(--grey-light);padding:0 28px;display:flex;overflow-x:auto;}
     .tab-btn{padding:14px 20px;font-size:13px;font-weight:500;letter-spacing:.03em;color:var(--grey-mid);border:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;cursor:pointer;white-space:nowrap;transition:all var(--transition);}
     .tab-btn:hover{color:var(--navy);}
     .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:600;}
-    .content{max-width:860px;margin:0 auto;padding:24px 28px;}
+
+    /* ── Content ── */
+    .content{max-width:960px;margin:0 auto;padding:28px 28px 48px;}
     .tab-panel{display:none;}
     .tab-panel.active{display:block;}
-    .form-section{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
-    .form-section-head{padding:12px 20px;border-bottom:1px solid var(--grey-faint);}
-    .form-section-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
-    .form-section-body{padding:20px;}
-    .field-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-    .field-grid.check-row{grid-template-columns:auto auto 1fr;gap:24px;align-items:center;margin-top:16px;}
-    .field{display:flex;flex-direction:column;gap:6px;}
-    .field label{font-size:12px;font-weight:500;letter-spacing:.03em;color:var(--grey-mid);}
+
+    /* ── Cards ── */
+    .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
+    .card-head{padding:13px 22px;border-bottom:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:space-between;}
+    .card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+    .card-body{padding:22px;}
+
+    /* ── Two-column card layout ── */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
+
+    /* ── Settlement Details header card ── */
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    @media(max-width:560px){.detail-grid{grid-template-columns:1fr;}}
+
+    /* ── Field ── */
+    .field{display:flex;flex-direction:column;gap:5px;}
+    .field label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
     .field input[type="number"],
     .field input[type="text"],
     .field input[type="date"]{padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;}
     .field input:focus{border-color:var(--gold);background:var(--white);}
+    .field.full{grid-column:1/-1;}
     .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;}
-    .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;white-space:nowrap;}
+    .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;text-transform:none;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
+
+    /* ── Offers field grid ── */
+    .offers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+    @media(max-width:680px){.offers-grid{grid-template-columns:1fr 1fr;}}
+    .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:16px;}
+
+    /* ── Read-only dl ── */
     .read-grid{display:grid;grid-template-columns:1fr auto;}
     .read-row{display:contents;}
-    .read-row dt,.read-row dd{padding:10px 20px;border-bottom:1px solid var(--grey-faint);font-size:14px;}
+    .read-row dt,.read-row dd{padding:9px 22px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
     .read-row:last-child dt,.read-row:last-child dd{border-bottom:none;}
     .read-row dt{color:var(--grey-mid);}
-    .read-row dd{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
-    .read-row.total dt,.read-row.total dd{font-weight:700;font-size:14px;background:var(--grey-faint);}
-    .read-row.recovery dd{color:var(--green);}
-    /* Costs Claimed table */
-    .costs-table{width:100%;border-collapse:collapse;font-size:14px;}
-    .costs-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:10px 16px;text-align:right;border-bottom:2px solid var(--grey-light);}
-    .costs-table th:first-child{text-align:left;}
-    .costs-table td{padding:12px 16px;border-bottom:1px solid var(--grey-faint);font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--navy);text-align:right;}
-    .costs-table td:first-child{text-align:left;font-family:'IBM Plex Sans',sans-serif;font-weight:400;color:var(--grey-mid);}
-    .costs-table tr.total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);border-bottom:none;}
-    /* PDF button */
-    .pdf-bar{display:flex;align-items:center;gap:14px;margin-top:20px;}
-    .btn-pdf{background:var(--navy);color:var(--gold);border:none;padding:10px 28px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;gap:8px;}
-    .btn-pdf:hover{background:var(--navy-mid);}
-    .btn-pdf svg{width:16px;height:16px;fill:currentColor;}
-    /* Save bar */
-    .save-bar{display:flex;align-items:center;gap:14px;margin-top:20px;}
-    .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 28px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);}
+    .read-row dd{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
+    .read-row.total dt,.read-row.total dd{font-weight:700;background:var(--grey-faint);}
+    .read-row.highlight dd{color:var(--green);font-weight:700;}
+    .read-row.pct dd{color:var(--navy-mid);}
+
+    /* ── Costs Claimed horizontal table ── */
+    .costs-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+    .costs-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:10px 16px;text-align:right;border-bottom:2px solid var(--grey-light);white-space:nowrap;}
+    .costs-table td{padding:13px 16px;border-bottom:none;font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;}
+    .costs-table tr.data-row{background:var(--white);}
+    .costs-table tr.total-row td{font-weight:700;background:var(--grey-faint);border-top:2px solid var(--grey-light);}
+
+    /* ── Interest card ── */
+    .interest-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
+    .interest-row:last-child{border-bottom:none;}
+    .interest-row span:first-child{color:var(--grey-mid);}
+    .interest-row span:last-child{font-family:'IBM Plex Mono',monospace;font-weight:500;}
+
+    /* ── Recovery highlight box ── */
+    .recovery-highlight{background:var(--green-pale);border:1px solid rgba(6,95,70,.15);border-radius:var(--radius);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;}
+    .recovery-highlight .rh-label{font-size:13px;color:var(--green);font-weight:500;}
+    .recovery-highlight .rh-value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--green);}
+
+    /* ── Save bar ── */
+    .save-bar{display:flex;align-items:center;gap:14px;padding:18px 22px;border-top:1px solid var(--grey-faint);background:var(--grey-faint);}
+    .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);}
     .btn-save:hover{background:var(--navy-mid);}
     .btn-save:disabled{opacity:.5;cursor:not-allowed;}
     .save-msg{font-size:13px;color:var(--grey-mid);}
     .save-msg.ok{color:var(--green);}
     .save-msg.err{color:#991B1B;}
-    .coming-soon{padding:48px 0;text-align:center;color:var(--grey-mid);}
+
+    /* ── PDF button ── */
+    .pdf-bar{margin-top:8px;}
+    .btn-pdf{width:100%;background:var(--navy);color:var(--gold);border:none;padding:14px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.02em;}
+    .btn-pdf:hover{background:var(--navy-mid);}
+    .btn-pdf svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;}
+
+    /* ── Coming soon ── */
+    .coming-soon{padding:56px 0;text-align:center;color:var(--grey-mid);}
     .coming-soon .icon{font-size:32px;margin-bottom:12px;}
     .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
     .coming-soon p{font-size:14px;}
+
+    /* ── State blocks ── */
     .state-block{text-align:center;padding:64px 24px;color:var(--grey-mid);}
     .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
     .state-block p{font-size:14px;}
@@ -91,44 +135,45 @@
     @keyframes spin{to{transform:rotate(360deg);}}
     #app{display:none;}
 
-    /* ── Print / PDF styles ─────────────────────────────────────────────── */
+    /* ── Print / PDF ── */
     @media print {
-      body { background: #fff; font-family: Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; }
-      .nav, .case-header, .tab-bar, .content, #loading, #error { display: none !important; }
-      #pdf-output { display: block !important; }
-      @page { margin: 18mm 18mm 18mm 18mm; size: A4 portrait; }
+      body{background:#fff;font-family:Arial,sans-serif;font-size:11pt;color:#000;margin:0;}
+      .nav,.case-header,.tab-bar,.content,#loading,#error{display:none !important;}
+      #pdf-output{display:block !important;}
+      @page{margin:18mm;size:A4 portrait;}
     }
   </style>
 </head>
 <body>
 
-<!-- ── Print output (hidden until PDF button clicked) ───────────────────── -->
+<!-- ── PDF output (hidden until button clicked) ───────────────────────────── -->
 <div id="pdf-output" style="display:none;">
   <style>
-    #pdf-output { font-family: Arial, sans-serif; font-size: 11pt; color: #000; max-width: 560px; margin: 0 auto; padding: 10mm 0; }
-    #pdf-output h1 { text-align: right; font-size: 20pt; font-weight: bold; margin-bottom: 8mm; }
-    #pdf-output .pdf-logo { text-align: right; margin-bottom: 6mm; }
-    #pdf-output .pdf-logo img { height: 48px; }
-    #pdf-output h2 { font-size: 13pt; color: #C9633A; font-weight: bold; border-bottom: 2px solid #C9633A; padding-bottom: 2mm; margin: 8mm 0 4mm; }
-    #pdf-output table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; font-size: 10.5pt; }
-    #pdf-output table td, #pdf-output table th { border: 1px solid #ccc; padding: 3mm 4mm; }
-    #pdf-output .details-table td:first-child { font-weight: bold; text-align: right; width: 40%; background: #f5f5f5; }
-    #pdf-output .details-table td:last-child { text-align: left; }
-    #pdf-output .horiz-table th { background: #f5f5f5; font-weight: bold; text-align: right; font-size: 10pt; }
-    #pdf-output .horiz-table td { text-align: right; }
-    #pdf-output .horiz-table tr.total-row td { font-weight: bold; background: #f5f5f5; }
-    #pdf-output .vert-table td:first-child { text-align: right; width: 70%; }
-    #pdf-output .vert-table td:last-child { text-align: right; }
-    #pdf-output .vert-table tr.total-row td { font-weight: bold; background: #f5f5f5; }
-    #pdf-output .recovery-table td:first-child { text-align: right; width: 70%; }
-    #pdf-output .recovery-table td:last-child { text-align: right; }
+    #pdf-output{font-family:Arial,sans-serif;font-size:11pt;color:#000;max-width:560px;margin:0 auto;padding:8mm 0;}
+    #pdf-output h1{text-align:right;font-size:20pt;font-weight:bold;margin-bottom:6mm;}
+    #pdf-output .pdf-logo{text-align:right;margin-bottom:5mm;}
+    #pdf-output .pdf-logo img{height:48px;}
+    #pdf-output h2{font-size:12pt;color:#B45309;font-weight:bold;border-bottom:2px solid #B45309;padding-bottom:1.5mm;margin:7mm 0 3mm;}
+    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:5mm;font-size:10pt;}
+    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:2.5mm 3.5mm;}
+    #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:42%;background:#f5f5f5;}
+    #pdf-output .tbl-details td:last-child{text-align:left;}
+    #pdf-output .tbl-horiz th{background:#f5f5f5;font-weight:bold;text-align:right;font-size:9.5pt;}
+    #pdf-output .tbl-horiz td{text-align:right;}
+    #pdf-output .tbl-horiz tr.total-row td{font-weight:bold;background:#f5f5f5;}
+    #pdf-output .tbl-vert td:first-child{text-align:right;width:68%;}
+    #pdf-output .tbl-vert td:last-child{text-align:right;}
+    #pdf-output .tbl-vert tr.total-row td{font-weight:bold;background:#f5f5f5;}
+    #pdf-output .tbl-recovery td:first-child{text-align:right;width:68%;}
+    #pdf-output .tbl-recovery td:last-child{text-align:right;}
+    #pdf-output .tbl-recovery tr.highlight td{font-weight:bold;background:#f0fdf4;}
   </style>
 
   <h1>Settlement Report</h1>
   <div class="pdf-logo"><img id="pdf-logo" src="" alt="TMC Legal" /></div>
 
   <h2>Settlement Details</h2>
-  <table class="details-table">
+  <table class="tbl-details">
     <tr><td>Case</td><td id="pdf-case"></td></tr>
     <tr><td>Client Reference</td><td id="pdf-clientref"></td></tr>
     <tr><td>TMC Reference</td><td id="pdf-tmcref"></td></tr>
@@ -137,29 +182,17 @@
   </table>
 
   <h2>Costs Claimed (VAT Inclusive)</h2>
-  <table class="horiz-table">
-    <thead>
-      <tr>
-        <th>Profit Costs</th>
-        <th>TMC PC in Bill</th>
-        <th>Disbursements</th>
-        <th>Counsel's Fees</th>
-        <th>Total Claimed</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="total-row">
-        <td id="pdf-pc"></td>
-        <td id="pdf-tmcpc"></td>
-        <td id="pdf-disb"></td>
-        <td id="pdf-counsel"></td>
-        <td id="pdf-totalclaimed"></td>
-      </tr>
-    </tbody>
+  <table class="tbl-horiz">
+    <thead><tr>
+      <th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th>
+    </tr></thead>
+    <tbody><tr class="total-row">
+      <td id="pdf-pc"></td><td id="pdf-tmcpc"></td><td id="pdf-disb"></td><td id="pdf-counsel"></td><td id="pdf-totalclaimed"></td>
+    </tr></tbody>
   </table>
 
   <h2>Costs Payable (VAT Inclusive)</h2>
-  <table class="vert-table">
+  <table class="tbl-vert">
     <tr><td>Disbursements</td><td id="pdf-pay-disb"></td></tr>
     <tr><td>Counsel's Fees</td><td id="pdf-pay-counsel"></td></tr>
     <tr><td>Costs of Assessment</td><td id="pdf-pay-coa"></td></tr>
@@ -168,16 +201,17 @@
   </table>
 
   <h2>Recovery</h2>
-  <table class="recovery-table">
+  <table class="tbl-recovery">
     <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
     <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
     <tr><td>Drafting Fee</td><td id="pdf-rec-drafting"></td></tr>
-    <tr><td>Net Profit Costs Recovery (after Drafting Fee)</td><td id="pdf-rec-netafter"></td></tr>
+    <tr class="highlight"><td>Net Profit Costs Recovery (after Drafting Fee)</td><td id="pdf-rec-netafter"></td></tr>
     <tr><td>% Recovery Against Claimed Profit Costs</td><td id="pdf-rec-pctpc"></td></tr>
     <tr><td>% Recovery Against Overall Bill</td><td id="pdf-rec-pctbill"></td></tr>
   </table>
 </div>
 
+<!-- ── App shell ──────────────────────────────────────────────────────────── -->
 <nav class="nav">
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
@@ -187,19 +221,8 @@
   <a href="/" class="nav-back">← All Invoices</a>
 </nav>
 
-<div id="loading">
-  <div class="state-block">
-    <div class="spinner"></div>
-    <h3>Loading case…</h3>
-  </div>
-</div>
-
-<div id="error" style="display:none">
-  <div class="state-block">
-    <h3 id="error-title">Case not found</h3>
-    <p id="error-msg"></p>
-  </div>
-</div>
+<div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
+<div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
 <div id="app">
 
@@ -210,8 +233,7 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="settlement">Offers &amp; Settlement</button>
-    <button class="tab-btn" data-tab="costs">Costs Claimed</button>
+    <button class="tab-btn active" data-tab="settlement">Settlement</button>
     <button class="tab-btn" data-tab="interim">Interim Payments</button>
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
@@ -220,25 +242,80 @@
 
   <div class="content">
 
-    <!-- ── Offers & Settlement ───────────────────────────────────────── -->
+    <!-- ════════════════════════════════════════════════════════════════════
+         SETTLEMENT TAB
+    ═════════════════════════════════════════════════════════════════════ -->
     <div class="tab-panel active" id="tab-settlement">
 
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Advised Rates &amp; Offers</span>
-        </div>
-        <div class="form-section-body">
-          <div class="field-grid">
+      <!-- 1. Settlement Details -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Settlement Details</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field full">
+              <label>Case Name</label>
+              <input type="text" id="f-CaseNameForOpenCases" />
+            </div>
             <div class="field">
-              <label>PC at Advised Rates</label>
+              <label>Client Reference</label>
+              <input type="text" id="f-ClientCaseReference" />
+            </div>
+            <div class="field">
+              <label>TMC Reference</label>
+              <input type="text" id="f-Ourreference" readonly style="opacity:.6;cursor:default;" />
+            </div>
+            <div class="field">
+              <label>Date of Settlement</label>
+              <input type="date" id="f-DateSettled0" />
+            </div>
+            <div class="field">
+              <label>Total Settlement (£)</label>
+              <input type="number" id="f-Settlementamount" step="0.01" min="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Costs Claimed (VAT Inclusive) -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Costs Claimed (VAT Inclusive)</span></div>
+        <div style="overflow-x:auto;">
+          <table class="costs-table">
+            <thead><tr>
+              <th>Profit Costs</th>
+              <th>TMC PC in Bill</th>
+              <th>Disbursements</th>
+              <th>Counsel's Fees</th>
+              <th>Total Claimed</th>
+            </tr></thead>
+            <tbody>
+              <tr class="data-row">
+                <td id="c-ProfitCosts">—</td>
+                <td id="c-TMCPCinBill">—</td>
+                <td id="c-Disbursements">—</td>
+                <td id="c-CounselFees">—</td>
+                <td id="c-TotalClaimed">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. Offers Made -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Offers Made</span></div>
+        <div class="card-body">
+          <div class="offers-grid">
+            <div class="field">
+              <label>PC at Advised Rates (£)</label>
               <input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" />
             </div>
             <div class="field">
-              <label>Bottom Line</label>
+              <label>Bottom Line (£)</label>
               <input type="number" id="f-BottomLine" step="0.01" min="0" />
             </div>
             <div class="field">
-              <label>Likely Top End</label>
+              <label>Likely Top End (£)</label>
               <input type="number" id="f-LikelyTopEnd" step="0.01" min="0" />
             </div>
             <div class="field">
@@ -246,15 +323,11 @@
               <input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" />
             </div>
             <div class="field">
-              <label>Settlement Amount (£)</label>
-              <input type="number" id="f-Settlementamount" step="0.01" min="0" />
-            </div>
-            <div class="field">
-              <label>Date Settled</label>
-              <input type="date" id="f-DateSettled0" />
+              <label>Figure for Settlement Sheet (£)</label>
+              <input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" />
             </div>
           </div>
-          <div class="field-grid check-row">
+          <div class="check-row" style="margin-top:16px;">
             <div class="field checkbox-field">
               <input type="checkbox" id="f-Offerincludescostsofsssessment_x" />
               <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
@@ -264,105 +337,85 @@
               <label for="f-Offerincludesinterest_x003f_">Offer includes interest?</label>
             </div>
           </div>
-          <div class="save-bar">
-            <button class="btn-save" id="btn-save-settlement">Save</button>
-            <span class="save-msg" id="msg-save-settlement"></span>
+        </div>
+      </div>
+
+      <!-- Save bar -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-settlement">Save Changes</button>
+          <span class="save-msg" id="msg-save-settlement"></span>
+        </div>
+      </div>
+
+      <!-- 4 & 5. Liabilities + Interest side by side -->
+      <div class="two-col">
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>Disbursements inc VAT</dt><dd id="r-Disbursements">—</dd></div>
+            <div class="read-row"><dt>Counsel's Fees payable</dt><dd id="r-Counsel">—</dd></div>
+            <div class="read-row"><dt>Costs of Assessment</dt><dd id="r-CoA">—</dd></div>
+            <div class="read-row"><dt>Other TMC Fees (excl Drafting)</dt><dd id="r-OtherTMC">—</dd></div>
+            <div class="read-row total"><dt>Total Liabilities</dt><dd id="r-TotalLiab">—</dd></div>
+          </dl>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Interest</span></div>
+          <div class="card-body" style="padding:0;">
+            <div style="padding:0 22px;">
+              <div class="interest-row">
+                <span>Total Interest to Date</span>
+                <span id="r-TotalInterest">—</span>
+              </div>
+              <div class="interest-row">
+                <span>Daily Interest Rate</span>
+                <span id="r-DailyRate">—</span>
+              </div>
+              <div class="interest-row">
+                <span>Sum for Interest Calculation</span>
+                <span id="r-InterestSum">—</span>
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
 
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Liabilities (VAT Inclusive)</span>
-        </div>
-        <dl class="read-grid">
-          <div class="read-row"><dt>Disbursements payable inc VAT</dt><dd id="r-Disbursements">—</dd></div>
-          <div class="read-row"><dt>Counsel fees payable</dt><dd id="r-Counselsfeespayable">—</dd></div>
-          <div class="read-row"><dt>Costs of assessment</dt><dd id="r-Costsofassessment">—</dd></div>
-          <div class="read-row"><dt>Other TMC Fees (excl Drafting)</dt><dd id="r-OtherTMC">—</dd></div>
-          <div class="read-row total"><dt>Total Liabilities (excl Drafting)</dt><dd id="r-TotalLiabExDrafting">—</dd></div>
-        </dl>
-      </div>
+      <!-- 6. Recovery -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Recovery</span></div>
 
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Recovery</span>
+        <!-- Net after Drafting Fee — hero figure -->
+        <div style="padding:16px 22px 0;">
+          <div class="recovery-highlight">
+            <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
+            <span class="rh-value" id="r-NetAfterDrafting">—</span>
+          </div>
         </div>
-        <dl class="read-grid">
+
+        <dl class="read-grid" style="margin-top:4px;">
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
-          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetPCBeforeDrafting">—</dd></div>
+          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
           <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
-          <div class="read-row recovery"><dt>Net PC Recovery (after Drafting Fee)</dt><dd id="r-NetPCAfterDrafting">—</dd></div>
-          <div class="read-row"><dt>% Recovery of Profit Costs</dt><dd id="r-PctRecoveryPC">—</dd></div>
-          <div class="read-row"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctRecoveryBill">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="r-PctPC">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctBill">—</dd></div>
         </dl>
       </div>
 
-    </div>
-
-    <!-- ── Costs Claimed ─────────────────────────────────────────────── -->
-    <div class="tab-panel" id="tab-costs">
-
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Costs Claimed (VAT Inclusive)</span>
-        </div>
-        <div class="form-section-body" style="padding:0;overflow-x:auto;">
-          <table class="costs-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;">Item</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Profit Costs (VAT inc)</td><td id="c-ProfitCosts">—</td></tr>
-              <tr><td>TMC PC in Bill (VAT inc)</td><td id="c-TMCPCinBill">—</td></tr>
-              <tr><td>Disbursements (inc VAT)</td><td id="c-Disbursements">—</td></tr>
-              <tr><td>Counsel's Fees (VAT inc)</td><td id="c-CounselFees">—</td></tr>
-              <tr class="total-row"><td>Total Claimed</td><td id="c-TotalClaimed">—</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Costs Payable (VAT Inclusive)</span>
-        </div>
-        <dl class="read-grid">
-          <div class="read-row"><dt>Disbursements</dt><dd id="c-pay-Disbursements">—</dd></div>
-          <div class="read-row"><dt>Counsel's Fees</dt><dd id="c-pay-Counsel">—</dd></div>
-          <div class="read-row"><dt>Costs of Assessment</dt><dd id="c-pay-CoA">—</dd></div>
-          <div class="read-row"><dt>Other TMC Fees (excl Drafting)</dt><dd id="c-pay-Other">—</dd></div>
-          <div class="read-row total"><dt>Total</dt><dd id="c-pay-Total">—</dd></div>
-        </dl>
-      </div>
-
-      <div class="form-section">
-        <div class="form-section-head">
-          <span class="form-section-title">Recovery</span>
-        </div>
-        <dl class="read-grid">
-          <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="c-rec-Gross">—</dd></div>
-          <div class="read-row"><dt>Net Profit Costs Recovery</dt><dd id="c-rec-NetBefore">—</dd></div>
-          <div class="read-row"><dt>Drafting Fee</dt><dd id="c-rec-Drafting">—</dd></div>
-          <div class="read-row recovery"><dt>Net Profit Costs Recovery (after Drafting Fee)</dt><dd id="c-rec-NetAfter">—</dd></div>
-          <div class="read-row"><dt>% Recovery Against Claimed Profit Costs</dt><dd id="c-rec-PctPC">—</dd></div>
-          <div class="read-row"><dt>% Recovery Against Overall Bill</dt><dd id="c-rec-PctBill">—</dd></div>
-        </dl>
-      </div>
-
+      <!-- 7. Generate PDF -->
       <div class="pdf-bar">
         <button class="btn-pdf" id="btn-gen-pdf">
-          <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm4 9a1 1 0 011 1v3a1 1 0 01-2 0v-3a1 1 0 011-1zm0-4a1 1 0 110 2 1 1 0 010-2z"/></svg>
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6zm4-5h4v1.5h-4V15zm0-3h4v1.5h-4V12zm0-3h2v1.5h-2V9z"/></svg>
           Generate Settlement Report PDF
         </button>
       </div>
 
-    </div>
+    </div><!-- /tab-settlement -->
 
-    <!-- ── Remaining tabs ────────────────────────────────────────────── -->
+    <!-- ── Placeholder tabs ──────────────────────────────────────────── -->
     <div class="tab-panel" id="tab-interim">
       <div class="coming-soon"><div class="icon">💳</div><h3>Interim Payments</h3><p>Coming soon.</p></div>
     </div>
@@ -376,43 +429,43 @@
       <div class="coming-soon"><div class="icon">💰</div><h3>Invoicing</h3><p>Coming soon.</p></div>
     </div>
 
-  </div>
-</div>
+  </div><!-- /content -->
+</div><!-- /app -->
 
 <script>
-let caseItemId = null;
-let caseFields = null;
-let computedFigures = {};  // shared between tabs and PDF
+let caseItemId  = null;
+let caseFields  = null;
+let computed    = {};
 
+// ── Formatters ───────────────────────────────────────────────────────────────
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '—';
   const n = parseFloat(val);
   if (isNaN(n)) return '—';
   return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtPct(val) {
-  if (val === null || val === undefined) return '—';
-  const n = parseFloat(val);
-  if (isNaN(n)) return '—';
-  return n.toFixed(2) + '%';
+function fmtPct(ratio) {
+  if (!ratio) return '—';
+  return (ratio * 100).toFixed(2) + '%';
 }
-function fmtDate(isoStr) {
-  if (!isoStr) return '—';
-  const d = new Date(isoStr);
-  if (isNaN(d)) return isoStr;
-  return d.toLocaleDateString('en-GB');
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleDateString('en-GB');
 }
-function toDateInput(isoStr) {
-  if (!isoStr) return '';
-  return isoStr.substring(0, 10);
+function toDateInput(iso) {
+  return iso ? iso.substring(0, 10) : '';
 }
+
+// ── Error / loading ──────────────────────────────────────────────────────────
 function showError(title, msg) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('error-title').textContent = title;
-  document.getElementById('error-msg').textContent = msg;
-  document.getElementById('error').style.display = 'block';
+  document.getElementById('error-msg').textContent   = msg;
+  document.getElementById('error').style.display     = 'block';
 }
 
+// ── Tabs ─────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -422,277 +475,261 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// ── Load case ────────────────────────────────────────────────────────────────
 async function loadCase() {
-  const params = new URLSearchParams(window.location.search);
-  const ref = (params.get('ref') || '').trim();
-  if (!ref) {
-    showError('No case reference', 'Please open this page with a ?ref= parameter.');
-    return;
-  }
+  const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
+  if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
   try {
     const resp = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const match = (data.value || []).find(item => {
-      const f = item.fields || {};
-      return (f['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref;
-    });
-    if (!match) {
-      showError('Case not found', 'No case with reference ' + ref + ' could be found.');
-      return;
-    }
+    const data  = await resp.json();
+    const match = (data.value || []).find(item =>
+      (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
+    );
+    if (!match) { showError('Case not found', 'No case with reference ' + ref + '.'); return; }
     caseItemId = match.id;
     caseFields = match.fields || {};
     computeFigures();
     renderHeader();
     renderSettlementTab();
-    renderCostsTab();
     document.getElementById('loading').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+    document.getElementById('app').style.display     = 'block';
   } catch (err) {
     showError('Error loading case', err.message);
   }
 }
 
-// ── Shared computation — called once on load, again after any save ──────────
+// ── Shared computation ───────────────────────────────────────────────────────
 function computeFigures() {
   const f = caseFields;
 
-  const figureForSheet = parseFloat(f['FigureForSettlementSheet']) || 0;
-  const settlementAmt  = parseFloat(f['Settlementamount']) || 0;
-  const lastOffer      = parseFloat(f['PayingPartysLastOffer']) || 0;
-  const counsel        = parseFloat(f['Counselsfeespayable']) || 0;
-  const disbursements  = parseFloat(f['DisbursementsClaimed']) || 0;
-  const vatOnDisb      = parseFloat(f['VATonDisbursements']) || 0;
-  const coa            = parseFloat(f['Costsofassessment']) || 0;
-  const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
-  // VAT % Claimed stored as decimal e.g. 0.2 for 20% (confirmed S21)
-  const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
+  const figureForSheet = parseFloat(f['FigureForSettlementSheet'])           || 0;
+  const settlementAmt  = parseFloat(f['Settlementamount'])                   || 0;
+  const lastOffer      = parseFloat(f['PayingPartysLastOffer'])               || 0;
+  const counsel        = parseFloat(f['Counselsfeespayable'])                || 0;
+  const disbursements  = parseFloat(f['DisbursementsClaimed'])               || 0;
+  const vatOnDisb      = parseFloat(f['VATonDisbursements'])                 || 0;
+  const coa            = parseFloat(f['Costsofassessment'])                  || 0;
+  const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])     || 0;
+  const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed'])    || 0; // decimal e.g. 0.2
+  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])       || 0;
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
-  const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
-  const draftingTimeIP = parseFloat(f['DraftingTimeClaimed']) || 0;
-  const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+  const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])   || 0;
+  const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])                || 0;
+  const counselClaimed = parseFloat(f['CounselsFeesClaimed'])                || 0;
 
   const vatHelper = 1 + vatPct;
 
-  // Offer / settlement figure (priority order)
   const offerOrSettlement = figureForSheet > 0 ? figureForSheet
                           : settlementAmt  > 0 ? settlementAmt
                           : lastOffer;
 
-  // Liabilities / payable
-  const disbIncVAT   = disbursements + vatOnDisb;
-  const totalPayable = disbIncVAT + counsel + coa + otherTMC;
+  const disbIncVAT    = disbursements + vatOnDisb;
+  const totalPayable  = disbIncVAT + counsel + coa + otherTMC;
 
-  // Costs Claimed (VAT inclusive)
   const pcIncVAT      = claimedPC      * vatHelper;
   const tmcPCIncVAT   = draftingTimeIP * vatHelper;
   const counselIncVAT = counselClaimed * vatHelper;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
 
-  // Recovery
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
-  const netBeforeDrafting = (vatPct === 0) ? grossPC : grossPC / vatHelper;
+  const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const netAfterDrafting  = vatOnDrafting
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
     : netBeforeDrafting - netDraftingFee;
-  const pctPC        = claimedPC > 0 ? (netAfterDrafting / claimedPC) : 0;
+
+  const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   const vatOnPC      = claimedPC      * vatPct;
   const vatOnCounsel = counselClaimed * vatPct;
   const totalBill    = claimedPC + draftingTimeIP + counselClaimed
                      + vatOnCounsel + disbursements + vatOnDisb + vatOnPC;
-  const pctBill = totalBill > 0 ? (offerOrSettlement / totalBill) : 0;
+  const pctBill      = totalBill > 0 ? offerOrSettlement / totalBill : 0;
 
-  computedFigures = {
-    offerOrSettlement, disbIncVAT, counsel, coa, otherTMC, totalPayable,
+  computed = {
+    offerOrSettlement,
+    disbIncVAT, counsel, coa, otherTMC, totalPayable,
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill,
   };
 }
 
+// ── Render header ────────────────────────────────────────────────────────────
 function renderHeader() {
   const f = caseFields;
-  const ref    = f['Ourreference_x0028_text_x0029_'] || '';
-  const name   = f['CaseNameForOpenCases'] || f['Title'] || '—';
-  const firm   = f['Firm_x0028_text_x0029_'] || '';
-  const status = f['StatusMirror'] || '';
-  const type   = f['InterPartesorLegalAid'] || '';
-  document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + ref;
-  document.getElementById('hdr-name').textContent = name;
-  document.getElementById('hdr-meta').textContent = [firm, status, type].filter(Boolean).join(' · ');
-  document.title = name + ' — TMC Legal';
+  document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
+  document.getElementById('hdr-name').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  document.getElementById('hdr-meta').textContent = [
+    f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']
+  ].filter(Boolean).join(' · ');
+  document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
 }
 
+// ── Render Settlement tab ────────────────────────────────────────────────────
 function renderSettlementTab() {
   const f = caseFields;
-  const c = computedFigures;
+  const c = computed;
 
-  setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']);
-  setNum('f-BottomLine',                f['BottomLine']);
+  // Settlement Details (editable)
+  setTxt('f-CaseNameForOpenCases',  f['CaseNameForOpenCases']);
+  setTxt('f-ClientCaseReference',   f['ClientCaseReference']);
+  setTxt('f-Ourreference',          f['Ourreference_x0028_text_x0029_']);
+  setDate('f-DateSettled0',         f['DateSettled0']);
+  setNum('f-Settlementamount',      f['Settlementamount']);
+
+  // Offers (editable)
+  setNum('f-ProfitCostsatAdvisedRates',  f['ProfitCostsatAdvisedRates']);
+  setNum('f-BottomLine',                 f['BottomLine']);
   setNum('f-LikelyTopEnd',              f['LikelyTopEnd']);
-  setNum('f-PayingPartysLastOffer',     f['PayingPartysLastOffer']);
-  setNum('f-Settlementamount',          f['Settlementamount']);
-  setDate('f-DateSettled0',             f['DateSettled0']);
+  setNum('f-PayingPartysLastOffer',      f['PayingPartysLastOffer']);
+  setNum('f-FigureForSettlementSheet',   f['FigureForSettlementSheet']);
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
   setCheck('f-Offerincludesinterest_x003f_',     f['Offerincludesinterest_x003f_']);
 
-  document.getElementById('r-Disbursements').textContent       = fmt(c.disbIncVAT);
-  document.getElementById('r-Counselsfeespayable').textContent = fmt(c.counsel);
-  document.getElementById('r-Costsofassessment').textContent   = fmt(c.coa);
-  document.getElementById('r-OtherTMC').textContent            = fmt(c.otherTMC);
-  document.getElementById('r-TotalLiabExDrafting').textContent = fmt(c.totalPayable);
+  // Costs Claimed
+  setText('c-ProfitCosts',  fmt(c.pcIncVAT));
+  setText('c-TMCPCinBill',  fmt(c.tmcPCIncVAT));
+  setText('c-Disbursements',fmt(c.disbIncVAT));
+  setText('c-CounselFees',  fmt(c.counselIncVAT));
+  setText('c-TotalClaimed', fmt(c.totalClaimed));
 
-  document.getElementById('r-GrossPCRecovery').textContent     = fmt(c.grossPC);
-  document.getElementById('r-NetPCBeforeDrafting').textContent = fmt(c.netBeforeDrafting);
-  document.getElementById('r-DraftingFee').textContent         = fmt(c.netDraftingFee);
-  document.getElementById('r-NetPCAfterDrafting').textContent  = fmt(c.netAfterDrafting);
-  document.getElementById('r-PctRecoveryPC').textContent       = c.pctPC   > 0 ? fmtPct(c.pctPC   * 100) : '—';
-  document.getElementById('r-PctRecoveryBill').textContent     = c.pctBill > 0 ? fmtPct(c.pctBill * 100) : '—';
+  // Liabilities
+  setText('r-Disbursements', fmt(c.disbIncVAT));
+  setText('r-Counsel',       fmt(c.counsel));
+  setText('r-CoA',           fmt(c.coa));
+  setText('r-OtherTMC',      fmt(c.otherTMC));
+  setText('r-TotalLiab',     fmt(c.totalPayable));
+
+  // Interest (read from SP plain fields)
+  setText('r-TotalInterest', fmt(f['TotalInterestToDate_Text']));
+  setText('r-DailyRate',     fmt(f['DailyInterestRate_Text']));
+  setText('r-InterestSum',   fmt(f['SumForInterestCalculationOverrid']));
+
+  // Recovery
+  setText('r-NetAfterDrafting',   fmt(c.netAfterDrafting));
+  setText('r-GrossPCRecovery',    fmt(c.grossPC));
+  setText('r-NetBeforeDrafting',  fmt(c.netBeforeDrafting));
+  setText('r-DraftingFee',        fmt(c.netDraftingFee));
+  setText('r-PctPC',              fmtPct(c.pctPC));
+  setText('r-PctBill',            fmtPct(c.pctBill));
 }
 
-function renderCostsTab() {
-  const c = computedFigures;
-
-  document.getElementById('c-ProfitCosts').textContent   = fmt(c.pcIncVAT);
-  document.getElementById('c-TMCPCinBill').textContent   = fmt(c.tmcPCIncVAT);
-  document.getElementById('c-Disbursements').textContent = fmt(c.disbIncVAT);
-  document.getElementById('c-CounselFees').textContent   = fmt(c.counselIncVAT);
-  document.getElementById('c-TotalClaimed').textContent  = fmt(c.totalClaimed);
-
-  document.getElementById('c-pay-Disbursements').textContent = fmt(c.disbIncVAT);
-  document.getElementById('c-pay-Counsel').textContent       = fmt(c.counsel);
-  document.getElementById('c-pay-CoA').textContent           = fmt(c.coa);
-  document.getElementById('c-pay-Other').textContent         = fmt(c.otherTMC);
-  document.getElementById('c-pay-Total').textContent         = fmt(c.totalPayable);
-
-  document.getElementById('c-rec-Gross').textContent     = fmt(c.grossPC);
-  document.getElementById('c-rec-NetBefore').textContent = fmt(c.netBeforeDrafting);
-  document.getElementById('c-rec-Drafting').textContent  = fmt(c.netDraftingFee);
-  document.getElementById('c-rec-NetAfter').textContent  = fmt(c.netAfterDrafting);
-  document.getElementById('c-rec-PctPC').textContent     = c.pctPC   > 0 ? fmtPct(c.pctPC   * 100) : '—';
-  document.getElementById('c-rec-PctBill').textContent   = c.pctBill > 0 ? fmtPct(c.pctBill * 100) : '—';
-}
-
-// ── PDF generation ───────────────────────────────────────────────────────────
-async function generateSettlementPDF() {
-  const f = caseFields;
-  const c = computedFigures;
-
-  document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
-  document.getElementById('pdf-clientref').textContent     = f['ClientCaseReference'] || '—';
-  document.getElementById('pdf-tmcref').textContent        = f['Ourreference_x0028_text_x0029_'] || '—';
-  document.getElementById('pdf-datesettled').textContent   = fmtDate(f['DateSettled0']);
-  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0
-    ? c.offerOrSettlement.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : '—';
-
-  document.getElementById('pdf-pc').textContent           = fmt(c.pcIncVAT);
-  document.getElementById('pdf-tmcpc').textContent        = fmt(c.tmcPCIncVAT);
-  document.getElementById('pdf-disb').textContent         = fmt(c.disbIncVAT);
-  document.getElementById('pdf-counsel').textContent      = fmt(c.counselIncVAT);
-  document.getElementById('pdf-totalclaimed').textContent = fmt(c.totalClaimed);
-
-  document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
-  document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
-  document.getElementById('pdf-pay-coa').textContent     = fmt(c.coa);
-  document.getElementById('pdf-pay-other').textContent   = fmt(c.otherTMC);
-  document.getElementById('pdf-pay-total').textContent   = fmt(c.totalPayable);
-
-  document.getElementById('pdf-rec-gross').textContent     = fmt(c.grossPC);
-  document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
-  document.getElementById('pdf-rec-drafting').textContent  = fmt(c.netDraftingFee);
-  document.getElementById('pdf-rec-netafter').textContent  = fmt(c.netAfterDrafting);
-  document.getElementById('pdf-rec-pctpc').textContent     = c.pctPC   > 0 ? fmtPct(c.pctPC   * 100) : '—';
-  document.getElementById('pdf-rec-pctbill').textContent   = c.pctBill > 0 ? fmtPct(c.pctBill * 100) : '—';
-
-  // Inline logo as base64 so it renders in print
-  try {
-    const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
-    const blob = await logoResp.blob();
-    const b64  = await new Promise(res => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.readAsDataURL(blob);
-    });
-    document.getElementById('pdf-logo').src = b64;
-  } catch (e) {
-    document.getElementById('pdf-logo').style.display = 'none';
-  }
-
-  const pdfEl = document.getElementById('pdf-output');
-  pdfEl.style.display = 'block';
-  window.print();
-  setTimeout(() => { pdfEl.style.display = 'none'; }, 500);
-}
-
-document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
-
-// ── Field helpers ────────────────────────────────────────────────────────────
-function setNum(id, val) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : '';
-}
-function setDate(id, val) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.value = toDateInput(val);
-}
-function setCheck(id, val) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.checked = val === true || val === 'true' || val === 1;
-}
-
-// ── Save — Settlement tab ────────────────────────────────────────────────────
+// ── Save ─────────────────────────────────────────────────────────────────────
 document.getElementById('btn-save-settlement').addEventListener('click', async () => {
   const btn = document.getElementById('btn-save-settlement');
   const msg = document.getElementById('msg-save-settlement');
-  btn.disabled = true;
-  msg.className = 'save-msg';
+  btn.disabled    = true;
+  msg.className   = 'save-msg';
   msg.textContent = 'Saving…';
+
   const fields = {};
-  const numFields = {
+
+  // Text fields
+  fields['CaseNameForOpenCases'] = document.getElementById('f-CaseNameForOpenCases').value || null;
+  fields['ClientCaseReference']  = document.getElementById('f-ClientCaseReference').value  || null;
+
+  // Date
+  const dv = document.getElementById('f-DateSettled0').value;
+  fields['DateSettled0'] = dv ? dv + 'T00:00:00Z' : null;
+
+  // Numbers
+  const numMap = {
+    'Settlementamount':          'f-Settlementamount',
     'ProfitCostsatAdvisedRates': 'f-ProfitCostsatAdvisedRates',
     'BottomLine':                'f-BottomLine',
     'LikelyTopEnd':              'f-LikelyTopEnd',
     'PayingPartysLastOffer':     'f-PayingPartysLastOffer',
-    'Settlementamount':          'f-Settlementamount',
+    'FigureForSettlementSheet':  'f-FigureForSettlementSheet',
   };
-  for (const [spField, elId] of Object.entries(numFields)) {
-    const val = document.getElementById(elId).value;
-    fields[spField] = val === '' ? null : parseFloat(val);
+  for (const [sp, el] of Object.entries(numMap)) {
+    const v = document.getElementById(el).value;
+    fields[sp] = v === '' ? null : parseFloat(v);
   }
-  const dateVal = document.getElementById('f-DateSettled0').value;
-  fields['DateSettled0'] = dateVal ? dateVal + 'T00:00:00Z' : null;
+
+  // Checkboxes
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
+
   try {
     const resp = await fetch('/api/caseupdate', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: caseItemId, fields }),
+      body:    JSON.stringify({ itemId: caseItemId, fields }),
     });
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(text || 'HTTP ' + resp.status);
-    }
-    msg.className = 'save-msg ok';
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    msg.className   = 'save-msg ok';
     msg.textContent = '✓ Saved';
     Object.assign(caseFields, fields);
     computeFigures();
+    renderHeader();
     renderSettlementTab();
-    renderCostsTab();
   } catch (err) {
-    msg.className = 'save-msg err';
+    msg.className   = 'save-msg err';
     msg.textContent = 'Save failed: ' + err.message;
   } finally {
     btn.disabled = false;
     setTimeout(() => { if (msg.textContent === '✓ Saved') msg.textContent = ''; }, 3000);
   }
 });
+
+// ── PDF generation ────────────────────────────────────────────────────────────
+async function generateSettlementPDF() {
+  const f = caseFields;
+  const c = computed;
+
+  // Settlement details
+  document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  document.getElementById('pdf-clientref').textContent     = f['ClientCaseReference'] || '—';
+  document.getElementById('pdf-tmcref').textContent        = f['Ourreference_x0028_text_x0029_'] || '—';
+  document.getElementById('pdf-datesettled').textContent   = fmtDate(f['DateSettled0']);
+  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0
+    ? c.offerOrSettlement.toLocaleString('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 })
+    : '—';
+
+  // Costs Claimed
+  document.getElementById('pdf-pc').textContent           = fmt(c.pcIncVAT);
+  document.getElementById('pdf-tmcpc').textContent        = fmt(c.tmcPCIncVAT);
+  document.getElementById('pdf-disb').textContent         = fmt(c.disbIncVAT);
+  document.getElementById('pdf-counsel').textContent      = fmt(c.counselIncVAT);
+  document.getElementById('pdf-totalclaimed').textContent = fmt(c.totalClaimed);
+
+  // Costs Payable
+  document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
+  document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
+  document.getElementById('pdf-pay-coa').textContent     = fmt(c.coa);
+  document.getElementById('pdf-pay-other').textContent   = fmt(c.otherTMC);
+  document.getElementById('pdf-pay-total').textContent   = fmt(c.totalPayable);
+
+  // Recovery
+  document.getElementById('pdf-rec-gross').textContent     = fmt(c.grossPC);
+  document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
+  document.getElementById('pdf-rec-drafting').textContent  = fmt(c.netDraftingFee);
+  document.getElementById('pdf-rec-netafter').textContent  = fmt(c.netAfterDrafting);
+  document.getElementById('pdf-rec-pctpc').textContent     = fmtPct(c.pctPC);
+  document.getElementById('pdf-rec-pctbill').textContent   = fmtPct(c.pctBill);
+
+  // Logo inline as base64
+  try {
+    const blob = await (await fetch('/New Logo Gold, Silver and Navy.png')).blob();
+    document.getElementById('pdf-logo').src = await new Promise(res => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob);
+    });
+  } catch { document.getElementById('pdf-logo').style.display = 'none'; }
+
+  const el = document.getElementById('pdf-output');
+  el.style.display = 'block';
+  window.print();
+  setTimeout(() => { el.style.display = 'none'; }, 500);
+}
+
+document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
+
+// ── Field helpers ─────────────────────────────────────────────────────────────
+function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+function setTxt(id, val)  { const e = document.getElementById(id); if (e) e.value = val || ''; }
+function setNum(id, val)  { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
+function setDate(id, val) { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
+function setCheck(id, val){ const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
 loadCase();
 </script>
