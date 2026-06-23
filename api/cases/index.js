@@ -24,6 +24,11 @@ const ADMIN_EMAILS = [
   'danielle@tmclegal.co.uk',
 ];
 
+// All authenticated users can search cases (draftsmen need this to create drafts)
+const FINANCE_EMAILS = [
+  'lesley@tmclegal.co.uk',
+];
+
 const SELECT_FIELDS = [
   'Title',
   'Ourreference_x0028_text_x0029_',
@@ -70,10 +75,10 @@ function getCallerEmail(req) {
 module.exports = async function (context, req) {
   context.log('P124 /api/cases called');
 
-  // Admin only
+  // All authenticated users can search cases
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — admin access required.' };
+  if (!callerEmail) {
+    context.res = { status: 403, body: 'Forbidden — you must be signed in.' };
     return;
   }
 
