@@ -557,11 +557,12 @@ function renderWipTable() {
     tr.innerHTML = '<td><input type="checkbox" class="wip-check"' + (isBillable ? ' checked' : '') + '></td>'
       + '<td class="wip-date">' + esc(entry.DateCompleted ? fmtDate(entry.DateCompleted) : '\u2014') + '</td>'
       + '<td class="wip-work-done"><div contenteditable="true" class="wip-edit" spellcheck="false">' + esc(entry.WorkDone || '\u2014') + '</div></td>'
-      + '<td class="r">' + (hrs || '\u2014') + '</td>'
+      + '<td class="r"><div contenteditable="true" class="wip-edit wip-hrs" spellcheck="false" style="min-width:32px;text-align:right;">' + (hrs || '\u2014') + '</div></td>'
       + '<td class="r">' + (rate ? gbp(rate) : '\u2014') + '</td>'
-      + '<td class="r">' + (amt ? gbp(amt) : '\u2014') + '</td>';
+      + '<td class="r wip-amt">' + (amt ? gbp(amt) : '\u2014') + '</td>';
     tbody.appendChild(tr);
     tr.querySelector('.wip-check').addEventListener('change', recalc);
+    tr.querySelector('.wip-hrs').addEventListener('input', recalc);
   });
 }
 
@@ -627,9 +628,14 @@ function recalc() {
     if (chk && chk.checked) {
       const e = unbilled[+tr.getAttribute('data-idx')];
       if (e) {
-        const h   = parseFloat(e.HoursSpent) || 0;
-        const r   = parseFloat(e.Rate)       || 0;
-        const amt = Math.round(h * r * 100)  / 100;
+        // Read hours from editable cell if present, else fall back to original
+        const hrsCell = tr.querySelector('.wip-hrs');
+        const h   = parseFloat(hrsCell ? hrsCell.textContent : e.HoursSpent) || 0;
+        const r   = parseFloat(e.Rate) || 0;
+        const amt = Math.round(h * r * 100) / 100;
+        // Update Amount cell live
+        const amtCell = tr.querySelector('.wip-amt');
+        if (amtCell) amtCell.textContent = amt ? gbp(amt) : '\u2014';
         timedRaw += h * r;
         timedHrs += h;
 
