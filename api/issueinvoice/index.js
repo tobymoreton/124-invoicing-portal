@@ -202,7 +202,7 @@ module.exports = async function (context, req) {
             + '/lists/' + LINE_ITEMS + '/items'
             + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
             + '&$filter=fields/field_7 eq \'' + wipId + '\'';
-          const liResult = await graphGet(liSearchUrl, token);
+          const liResult = await graphGetUnindexed(liSearchUrl, token);
           const liItems  = liResult.value || [];
 
           for (const liItem of liItems) {
@@ -435,6 +435,37 @@ function graphGetFile(url, token) {
     }
 
     doRequest(url, token);
+  });
+}
+
+// Like graphGet but adds the Prefer header to allow filtering on non-indexed SP columns.
+function graphGetUnindexed(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept:        'application/json',
+        Prefer:        'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph GET (unindexed) ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
   });
 }
 
