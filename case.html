@@ -324,26 +324,51 @@
 
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
+
       <div class="card">
-        <div class="card-head"><span class="card-title">Costs Claimed</span></div>
-        <div style="overflow-x:auto;">
-          <table class="claimed-table">
-            <thead><tr><th>Element</th><th>Net</th><th>VAT</th><th>Inc VAT</th></tr></thead>
-            <tbody>
-              <tr><td>Profit Costs</td><td id="cc-pc-net">—</td><td id="cc-pc-vat">—</td><td id="cc-pc-inc">—</td></tr>
-              <tr><td>TMC PC in Bill</td><td id="cc-tmc-net">—</td><td id="cc-tmc-vat">—</td><td id="cc-tmc-inc">—</td></tr>
-              <tr><td>Disbursements</td><td id="cc-disb-net">—</td><td id="cc-disb-vat">—</td><td id="cc-disb-inc">—</td></tr>
-              <tr><td>Counsel's Fees</td><td id="cc-counsel-net">—</td><td id="cc-counsel-vat">—</td><td id="cc-counsel-inc">—</td></tr>
-              <tr class="total-row"><td>Total Claimed</td><td id="cc-total-net">—</td><td id="cc-total-vat">—</td><td id="cc-total-inc">—</td></tr>
-            </tbody>
-          </table>
+        <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>PC excl ALL TMC Time (£)</label><input type="number" id="fc-PCexTMC" step="0.01" /></div>
+            <div class="field"><label>TMC Drafting Time (£)</label><input type="number" id="fc-TMCDrafting" step="0.01" /></div>
+            <div class="field"><label>Other TMC Profit Costs (£)</label><input type="number" id="fc-OtherTMCPC" step="0.01" /></div>
+            <div class="field"><label>Disbursements Claimed (£)</label><input type="number" id="fc-Disb" step="0.01" /></div>
+            <div class="field"><label>VAT on Disbursements (£)</label><input type="number" id="fc-VatDisb" step="0.01" /></div>
+            <div class="field"><label>Counsel's Fees Claimed (£)</label><input type="number" id="fc-Counsel" step="0.01" /></div>
+            <div class="field"><label>VAT % Claimed (enter as %, e.g. 20)</label><input type="number" id="fc-VatPct" step="0.5" min="0" /></div>
+            <div class="field"><label>Other TMC Fees — excl bill (£)</label><input type="number" id="fc-OtherTMCFees" step="0.01" /></div>
+          </div>
         </div>
       </div>
+
       <div class="card">
-        <div class="card-body" style="font-size:12.5px;color:var(--grey-mid);line-height:1.55;">
-          Figures show the bill as claimed. Disbursements VAT is the recorded VAT-on-disbursements value; VAT on Profit Costs, TMC drafting time and Counsel's fees is calculated at the case VAT rate.
+        <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Legal Aid Only Profit Costs (£)</label><input type="number" id="fc-LAPC" step="0.01" /></div>
+            <div class="field"><label>TMC Drafting Time — LA (£)</label><input type="number" id="fc-TMCDraftingLA" step="0.01" /></div>
+          </div>
         </div>
       </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-costs">Save Changes</button>
+          <span class="save-msg" id="msg-save-costs"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Calculated Totals</span></div>
+        <dl class="read-grid">
+          <div class="read-row"><dt>Total IP Profit Costs</dt><dd id="cc-totalIPPC">—</dd></div>
+          <div class="read-row"><dt>VAT on Profit Costs</dt><dd id="cc-vatPC">—</dd></div>
+          <div class="read-row"><dt>VAT on Counsel's Fees</dt><dd id="cc-vatCounsel">—</dd></div>
+          <div class="read-row"><dt>VAT on Legal Aid Only Profit Costs</dt><dd id="cc-vatLAPC">—</dd></div>
+          <div class="read-row total"><dt>Total Costs Claimed (IP)</dt><dd id="cc-totalClaimed">—</dd></div>
+        </dl>
+      </div>
+
     </div><!-- /tab-costs -->
 
     <!-- ════════ INTEREST TAB ════════ -->
@@ -516,6 +541,9 @@ function computeFigures() {
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed'])             || 0;
+  const otherTMCPC     = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__'])|| 0;
+  const laProfitCosts  = parseFloat(f['LegalAidOnlyProfitCosts'])         || 0;
+  const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
   const offerOrSettlement = figureForSheet > 0 ? figureForSheet
@@ -535,10 +563,15 @@ function computeFigures() {
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
     : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
-  const vatOnPC      = claimedPC      * vatPct;
+  // Total IP Profit Costs = PC excl TMC + TMC drafting time + Other TMC PC (matches SP)
+  const totalIPPC    = claimedPC + draftingTimeIP + otherTMCPC;
+  const vatOnPC      = totalIPPC      * vatPct;
   const vatOnCounsel = counselClaimed * vatPct;
-  const totalBill    = claimedPC + draftingTimeIP + counselClaimed
-                     + vatOnCounsel + disbursements + vatOnDisb + vatOnPC;
+  const vatOnLAPC    = laProfitCosts  * vatPct;
+  // Total Costs Claimed (IP only — LA is separate) = SP Calc_TotalInterPartesCosts.
+  // This is the interest base and the % Recovery Against Overall Bill denominator.
+  const totalCostsClaimed = totalIPPC + vatOnPC + disbursements + vatOnDisb + counselClaimed + vatOnCounsel;
+  const totalBill    = totalCostsClaimed;
   const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
 
   computed = {
@@ -546,13 +579,9 @@ function computeFigures() {
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill, totalBill,
-    // Costs Claimed breakdown (Net / VAT / Inc-VAT)
-    pcNet: claimedPC,            pcVat: claimedPC * vatPct,
-    tmcNet: draftingTimeIP,      tmcVat: draftingTimeIP * vatPct,
-    disbNet: disbursements,      disbVat: vatOnDisb,
-    counselNet: counselClaimed,  counselVat: counselClaimed * vatPct,
-    totalNet: claimedPC + draftingTimeIP + disbursements + counselClaimed,
-    totalVat: (claimedPC * vatPct) + (draftingTimeIP * vatPct) + vatOnDisb + (counselClaimed * vatPct),
+    // Costs Claimed — IP build-up + LA
+    otherTMCPC, laProfitCosts, tmcDraftingLA,
+    totalIPPC, vatOnPC, vatOnCounsel, vatOnLAPC, totalCostsClaimed,
   };
 }
 
@@ -659,12 +688,23 @@ function renderSettlementTab() {
 }
 
 function renderCostsTab() {
-  const c = computed;
-  setText('cc-pc-net',      fmt(c.pcNet));      setText('cc-pc-vat',      fmt(c.pcVat));      setText('cc-pc-inc',      fmt(c.pcIncVAT));
-  setText('cc-tmc-net',     fmt(c.tmcNet));     setText('cc-tmc-vat',     fmt(c.tmcVat));     setText('cc-tmc-inc',     fmt(c.tmcPCIncVAT));
-  setText('cc-disb-net',    fmt(c.disbNet));    setText('cc-disb-vat',    fmt(c.disbVat));    setText('cc-disb-inc',    fmt(c.disbIncVAT));
-  setText('cc-counsel-net', fmt(c.counselNet)); setText('cc-counsel-vat', fmt(c.counselVat)); setText('cc-counsel-inc', fmt(c.counselIncVAT));
-  setText('cc-total-net',   fmt(c.totalNet));   setText('cc-total-vat',   fmt(c.totalVat));   setText('cc-total-inc',   fmt(c.totalClaimed));
+  const f = caseFields; const c = computed;
+  setNum('fc-PCexTMC',       f['ProfitCostsClaimed_x0028_Ex_x002']);
+  setNum('fc-TMCDrafting',   f['DraftingTimeClaimed']);
+  setNum('fc-OtherTMCPC',    f['Other_x0020_TMC_x0020_PC_x0020__']);
+  setNum('fc-Disb',          f['DisbursementsClaimed']);
+  setNum('fc-VatDisb',       f['VATonDisbursements']);
+  setNum('fc-Counsel',       f['CounselsFeesClaimed']);
+  setNum('fc-VatPct',        (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0) * 100);
+  setNum('fc-OtherTMCFees',  f['OtherTMCInvoices_ex_x0020_bill']);
+  setNum('fc-LAPC',          f['LegalAidOnlyProfitCosts']);
+  setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
+
+  setText('cc-totalIPPC',    fmt(c.totalIPPC));
+  setText('cc-vatPC',        fmt(c.vatOnPC));
+  setText('cc-vatCounsel',   fmt(c.vatOnCounsel));
+  setText('cc-vatLAPC',      fmt(c.vatOnLAPC));
+  setText('cc-totalClaimed', fmt(c.totalCostsClaimed));
 }
 
 function renderInterestTab() {
@@ -742,6 +782,25 @@ document.getElementById('btn-save-interest').addEventListener('click', async () 
   })) { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
   await doSave(fields, btn, msg);
   if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); }
+});
+
+document.getElementById('btn-save-costs').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-costs');
+  const msg = document.getElementById('msg-save-costs');
+  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+  const fields = {};
+  for (const [sp, el] of Object.entries({
+    'ProfitCostsClaimed_x0028_Ex_x002':'fc-PCexTMC','DraftingTimeClaimed':'fc-TMCDrafting',
+    'Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
+    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel',
+    'OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
+    'LegalAidOnlyProfitCosts':'fc-LAPC','TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
+  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  // VAT % is stored as a decimal (0.2 = 20%); the input is entered as a percentage.
+  const vp = document.getElementById('fc-VatPct').value;
+  fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+  await doSave(fields, btn, msg);
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); }
 });
 
 async function doSave(fields, btn, msg) {
