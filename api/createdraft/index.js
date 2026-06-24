@@ -2,10 +2,11 @@
  * P124 — Invoicing Portal
  * Azure Function: /api/createdraft
  *
- * Creates a DRAFT invoice. Admin-only.
+ * Creates a DRAFT invoice. Open to all authenticated TMC Legal staff
+ * (draftsmen, finance, and admins). Lesley issues via api/issueinvoice.
  *
  * Two-stage workflow:
- *   DRAFT (this function)  — admin creates draft. Writes invoice HTML + figures
+ *   DRAFT (this function)  — any TMC staff member creates the draft. Writes invoice HTML + figures
  *                            to Invoice Library with InvoiceDate BLANK and
  *                            AmountDue = 0, so the calculated Status field reads
  *                            "Draft". Creates one Line Item per checked WIP entry.
@@ -35,7 +36,12 @@ const { URL } = require('url');
 const SITE_PATH    = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const INVOICE_LIB  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS   = '496468a5-e2ed-48db-8826-58cb08844eee';
+const CASES_LIST   = 'ae420bda-e550-499c-b337-90e4f33617c1';
 
+// Draft creation is open to ALL authenticated TMC Legal staff:
+// draftsmen create drafts; Lesley (finance) and admins can too.
+// The SWA Entra SSO gate already restricts callers to the firm's tenant;
+// the domain check below is defence-in-depth at the API layer.
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -63,7 +69,7 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { pdfBase64, computed, caseFields, checkedWipIds, checkedWipEntries } = body || {};
+  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries } = body || {};
   if (!pdfBase64 || !computed || !caseFields) {
     context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields.' };
     return;
@@ -190,6 +196,21 @@ module.exports = async function (context, req) {
         }
       }
       context.log('Line Items: created=' + liCreated + ', failed=' + liFailed);
+    }
+
+    // ── Write MinimumFee back to the Cases list ──────────────────────────
+    // The portal exposes two minimum-fee ticks (IP £375 / LA £50). The Cases list
+    // has a single Yes/No MinimumFee column, so the two ticks are reduced to one
+    // boolean: Yes if either minimum was applied, else No. Non-fatal — a failed
+    // case write must not roll back a successfully created draft.
+    if (caseItemId) {
+      try {
+        const minimumFee = !!(computed.minimumFeeIp || computed.minimumFeeLa);
+        await patchListItem(token, CASES_LIST, caseItemId, { MinimumFee: minimumFee });
+        context.log('Cases MinimumFee set to ' + minimumFee + ' on item ' + caseItemId);
+      } catch (caseErr) {
+        context.log.error('Cases MinimumFee patch failed for item ' + caseItemId + ':', caseErr.message);
+      }
     }
 
     context.res = {
