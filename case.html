@@ -1088,6 +1088,18 @@ function renderBookingInTab() {
   setCheck('bi-Andothers', f['Andothers_x003f_']);
   document.getElementById('bi-MultiClaimants').value = f['MultiClaimants'] || '';
 
+  // First Name locked when More than one Claimant is ticked
+  function syncFirstName() {
+    const multi = document.getElementById('bi-Andothers').checked;
+    const fnEl  = document.getElementById('bi-FirstName');
+    fnEl.readOnly = multi;
+    fnEl.style.opacity = multi ? '0.4' : '1';
+    fnEl.style.cursor  = multi ? 'not-allowed' : '';
+    if (multi) fnEl.value = '';
+  }
+  syncFirstName();
+  document.getElementById('bi-Andothers').addEventListener('change', syncFirstName);
+
   // Classification selects — use same pattern: set value, add if missing
   function setSelect(id, val) {
     const el = document.getElementById(id);
