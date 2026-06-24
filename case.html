@@ -724,7 +724,11 @@
         <div class="card-head"><span class="card-title">Court</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>Court Name</label><input type="text" id="op-CourtName" /></div>
+            <div class="field"><label>Court Name</label>
+              <select id="op-CourtName" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— loading courts… —</option>
+              </select>
+            </div>
             <div class="field"><label>Division</label><input type="text" id="op-Division" /></div>
             <div class="field"><label>Claim No</label><input type="text" id="op-ClaimNo" /></div>
           </div>
@@ -967,13 +971,43 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+async function loadCourts() {
+  try {
+    const resp = await fetch('/api/courts');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const sel = document.getElementById('op-CourtName');
+    // Rebuild options: blank placeholder + sorted court names
+    const current = sel.value; // preserve any value already set
+    sel.innerHTML = '<option value="">— select court —</option>';
+    (data.courts || []).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+    });
+    // Re-apply current case value if caseFields already loaded
+    if (caseFields) setSelectOp('op-CourtName', caseFields['CourtName_Text']);
+    else if (current) setSelectOp('op-CourtName', current);
+  } catch (err) {
+    console.warn('Courts list failed to load:', err.message);
+    // Leave select as-is; setSelectOp will add the value as a fallback option
+    const sel = document.getElementById('op-CourtName');
+    sel.innerHTML = '<option value="">— court list unavailable —</option>';
+    if (caseFields && caseFields['CourtName_Text']) setSelectOp('op-CourtName', caseFields['CourtName_Text']);
+  }
+}
+
 async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
   try {
-    const resp = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data  = await resp.json();
+    // Fetch case data and courts list in parallel
+    const [caseResp] = await Promise.all([
+      fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
+      loadCourts(),
+    ]);
+    if (!caseResp.ok) throw new Error('HTTP ' + caseResp.status);
+    const data  = await caseResp.json();
     const match = (data.value || []).find(item =>
       (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
     );
@@ -984,7 +1018,7 @@ async function loadCase() {
     computeInterest();
     renderHeader();
     renderBookingInTab();
-    renderOpponentTab();
+    renderOpponentTab(); // CourtName select already populated by loadCourts()
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
@@ -1219,13 +1253,29 @@ function renderBookingInTab() {
   }
 }
 
+// setSelect for opponent tab — adds option if missing, sets value
+function setSelectOp(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!val) { el.value = ''; return; }
+  let found = false;
+  for (const opt of el.options) { if (opt.value === val) { found = true; break; } }
+  if (!found) {
+    const o = document.createElement('option');
+    o.value = val; o.textContent = val;
+    el.appendChild(o);
+  }
+  el.value = val;
+}
+
 function renderOpponentTab() {
   const f = caseFields;
   document.getElementById('op-OpponentPartyName').value  = f['OpponentPartyName']               || '';
   document.getElementById('op-Opponentreference').value  = f['Opponentreference']                || '';
   document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
-  document.getElementById('op-CourtName').value          = f['CourtName_Text']                   || '';
+  // Court name — setSelect handles missing options gracefully
+  setSelectOp('op-CourtName', f['CourtName_Text']);
   document.getElementById('op-Division').value           = f['Division']                         || '';
   document.getElementById('op-ClaimNo').value            = f['ClaimNo']                          || '';
   document.getElementById('op-Addr1').value              = f['Opponent_x0020_Address_x0020_1']   || '';
@@ -1413,7 +1463,7 @@ document.getElementById('btn-save-opponent').addEventListener('click', async () 
     Opponentreference:               document.getElementById('op-Opponentreference').value  || null,
     opponentFirmMirror:              document.getElementById('op-opponentFirmMirror').value || null,
     ServiceEmail:                    document.getElementById('op-ServiceEmail').value       || null,
-    CourtName_Text:                  document.getElementById('op-CourtName').value          || null,
+    CourtName_Text:                  document.getElementById('op-CourtName').value          || null, // select value = court name text
     Division:                        document.getElementById('op-Division').value           || null,
     ClaimNo:                         document.getElementById('op-ClaimNo').value            || null,
     Opponent_x0020_Address_x0020_1:  document.getElementById('op-Addr1').value              || null,
