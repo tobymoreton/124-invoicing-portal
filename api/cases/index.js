@@ -115,6 +115,19 @@ const SELECT_FIELDS = [
   'CaseTrack',
   'Task',
   'Casetype',
+  // Opponent & Court tab
+  'Opponentreference',
+  'opponentFirmMirror',
+  'ServiceEmail',
+  'CourtName_Text',
+  'Division',
+  'ClaimNo',
+  'Litigant_x0020_in_x0020_Person_x',
+  'Opponent_x0020_Address_x0020_1',
+  'Opponent_x0020_Address_x0020_2',
+  'Opponent_x0020_Address_x0020_3',
+  'Opponent_x0020_Address_x0020_4',
+  'Opponent_x0020_Address_x0020_5',
 ].join(',');
 
 function getCallerEmail(req) {
