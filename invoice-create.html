@@ -193,6 +193,22 @@
         <div class="section-sub">Drafting Fee (Inter Partes)</div>
 
         <div class="form-row">
+          <span class="form-label">Drafted by <span id="drafted-by-required" style="color:var(--error);display:none;">*</span></span>
+          <span class="form-value">
+            <select class="form-select" id="inp-drafted-by">
+              <option value="">— select —</option>
+              <option value="joanna@tmclegal.co.uk">Joanna</option>
+              <option value="tracy@tmclegal.co.uk">Tracy</option>
+              <option value="kelly@tmclegal.co.uk">Kelly</option>
+              <option value="tom@tmclegal.co.uk">Tom</option>
+              <option value="julie@tmclegal.co.uk">Julie</option>
+              <option value="daniel@tmclegal.co.uk">Daniel</option>
+              <option value="toby@tmclegal.co.uk">Toby</option>
+            </select>
+          </span>
+        </div>
+
+        <div class="form-row">
           <span class="form-label">Drafting basis</span>
           <span class="form-value">
             <select class="form-select" id="inp-basis">
@@ -530,6 +546,11 @@ async function loadFigures(fields) {
 
   el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
 
+  // Auto-select logged-in user if they're in the draftsmen list
+  const draftedBySelect = el('inp-drafted-by');
+  const draftedByOpts = Array.from(draftedBySelect.options).map(o => o.value);
+  draftedBySelect.value = draftedByOpts.includes(callerEmail) ? callerEmail : '';
+
   // Override / minimum-fee controls for the newly selected case.
   // If the case is flagged MinimumFee=Yes, pre-tick the minimum on whichever
   // drafting section has figures (IP → £375, LA → £50) and pre-fill the override.
@@ -611,6 +632,7 @@ function initListeners() {
   ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
     .forEach(id => el(id).addEventListener('input', recalc));
   el('inp-basis').addEventListener('change', recalc);
+  el('inp-drafted-by').addEventListener('change', recalc);
 
   // Minimum-fee ticks pre-fill the editable override with the floor amount
   // (IP = £375, LA = £50). The box stays editable afterwards; the
@@ -773,7 +795,15 @@ function recalc() {
   el('tot-grand').textContent       = gbp(grand);
 
   const hasSomething = draftingFee > 0 || laFee > 0 || timedFee > 0 || bespokeAmt > 0;
-  el('btn-issue').disabled = !hasSomething;
+  const hasDraftingFee = draftingFee > 0 || laFee > 0;
+  const draftedBy = (el('inp-drafted-by').value || '').trim();
+  const draftedByMissing = hasDraftingFee && !draftedBy;
+
+  // Show required asterisk and red border when drafting fee present but no drafter selected
+  el('drafted-by-required').style.display = hasDraftingFee ? 'inline' : 'none';
+  el('inp-drafted-by').style.borderColor  = draftedByMissing ? 'var(--error)' : '';
+
+  el('btn-issue').disabled = !hasSomething || draftedByMissing;
 
   selectedCase.computed = {
     draftingFee, laFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
@@ -784,6 +814,7 @@ function recalc() {
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
     timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
+    draftedByEmail:     draftedBy,
     wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
       idx:      +tr.getAttribute('data-idx'),
       wipId:    tr.getAttribute('data-wip-id') || '',
@@ -809,6 +840,16 @@ async function handleCreateDraft() {
   const btn     = el('btn-issue');
   const spinner = el('issue-spinner');
   const label   = el('btn-issue-label');
+
+  // Validate: drafted-by required when a drafting fee is charged
+  const _draftedBy   = (el('inp-drafted-by').value || '').trim();
+  const _draftingFee = selectedCase.computed.draftingFee || 0;
+  const _laFee       = selectedCase.computed.laFee || 0;
+  if ((_draftingFee > 0 || _laFee > 0) && !_draftedBy) {
+    showMsg('issue-status', 'Please select who drafted the bill before creating the draft invoice.', 'error');
+    el('inp-drafted-by').focus();
+    return;
+  }
 
   // Validate: bespoke amount requires a description line
   const _bespokeAmt  = parseFloat(el('inp-bespoke-amount').value) || 0;
