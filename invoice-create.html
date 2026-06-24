@@ -226,6 +226,16 @@
         </div>
 
         <div class="form-row">
+          <span class="form-label">Override / minimum fee</span>
+          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" class="wip-check" id="inp-min-fee-ip"> Minimum fee (£375)
+            </label>
+            <input type="number" class="form-input-num" id="inp-drafting-override" min="0" step="0.01" placeholder="No override" />
+          </span>
+        </div>
+
+        <div class="form-row">
           <span class="form-label">Drafting fee line</span>
           <span class="form-value" id="fig-drafting-line" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
@@ -259,6 +269,16 @@
         <div class="form-row">
           <span class="form-label">Computed LA drafting fee</span>
           <span class="form-value" id="fig-la-drafting-computed" style="font-weight:600;">£0.00</span>
+        </div>
+
+        <div class="form-row">
+          <span class="form-label">Override / minimum fee</span>
+          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" class="wip-check" id="inp-min-fee-la"> Minimum fee (£50)
+            </label>
+            <input type="number" class="form-input-num" id="inp-la-drafting-override" min="0" step="0.01" placeholder="No override" />
+          </span>
         </div>
 
         <div class="form-row">
@@ -303,6 +323,14 @@
             <div class="limit-hint">Leave blank to use the computed total</div>
           </div>
           <input type="number" class="form-input-num" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" style="width:120px;" />
+        </div>
+
+        <div class="limit-row">
+          <div>
+            <div class="limit-label">Override timed total (net)</div>
+            <div class="limit-hint">Overrides the computed/limited total when set</div>
+          </div>
+          <input type="number" class="form-input-num" id="inp-timed-override" min="0" step="0.01" placeholder="No override" style="width:120px;" />
         </div>
 
         <!-- Bespoke -->
@@ -502,6 +530,13 @@ async function loadFigures(fields) {
 
   el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
 
+  // Reset override / minimum-fee controls for the newly selected case
+  el('inp-drafting-override').value    = '';
+  el('inp-la-drafting-override').value = '';
+  el('inp-timed-override').value       = '';
+  el('inp-min-fee-ip').checked         = false;
+  el('inp-min-fee-la').checked         = false;
+
   selectedCase._profitCosts          = profitCosts;
   selectedCase._laProfitCosts        = laProfitCosts;
   selectedCase._grossRecovered       = grossRecovered;
@@ -568,9 +603,22 @@ function renderWipTable() {
 
 // ── Listeners ─────────────────────────────────────────────
 function initListeners() {
-  ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
+  ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
     .forEach(id => el(id).addEventListener('input', recalc));
   el('inp-basis').addEventListener('change', recalc);
+
+  // Minimum-fee ticks pre-fill the editable override with the floor amount
+  // (IP = £375, LA = £50). The box stays editable afterwards; the
+  // " | Minimum fee" line suffix is driven by the tick, not the value.
+  el('inp-min-fee-ip').addEventListener('change', () => {
+    el('inp-drafting-override').value = el('inp-min-fee-ip').checked ? '375' : '';
+    recalc();
+  });
+  el('inp-min-fee-la').addEventListener('change', () => {
+    el('inp-la-drafting-override').value = el('inp-min-fee-la').checked ? '50' : '';
+    recalc();
+  });
+
   el('wip-toggle-nonbillable').addEventListener('click', () => {
     _showNonBillable = !_showNonBillable;
     renderWipTable();
@@ -596,24 +644,38 @@ function recalc() {
   const bespokeExp     = parseFloat(el('inp-bespoke-expenses').value) || 0;
   const bespokeExpVat  = parseFloat(el('inp-bespoke-expenses-vat').value) || 0;
 
-  // IP drafting fee
-  const draftingFee = Math.round(profitCosts * feePct / 100 * 100) / 100;
-  el('fig-drafting-computed').textContent = gbp(draftingFee);
+  // IP drafting fee — computed (% of profit costs), with optional override / minimum fee
+  const draftingComputed = Math.round(profitCosts * feePct / 100 * 100) / 100;
+  el('fig-drafting-computed').textContent = gbp(draftingComputed);
+  const ipOverrideRaw = el('inp-drafting-override').value;
+  const ipOverride    = ipOverrideRaw !== '' ? (parseFloat(ipOverrideRaw) || 0) : null;
+  const minFeeIp      = el('inp-min-fee-ip').checked;
+  const draftingFee   = ipOverride !== null ? ipOverride : draftingComputed;
+  let ipLine = '';
   if (profitCosts > 0 && feePct > 0) {
     const basisShort = basis.toLowerCase().includes('drawn') ? 'As Drawn' : 'As Recovered';
-    el('fig-drafting-line').textContent = 'Preparing Draft Bill of Costs | ' + feePct + '% of ' + gbp(profitCosts) + ' ' + basisShort;
-  } else {
-    el('fig-drafting-line').textContent = '';
+    ipLine = 'Preparing Draft Bill of Costs | ' + feePct + '% of ' + gbp(profitCosts) + ' ' + basisShort;
+  } else if (draftingFee > 0) {
+    ipLine = 'Preparing Draft Bill of Costs';
   }
+  if (minFeeIp && ipLine) ipLine += ' | Minimum fee';
+  el('fig-drafting-line').textContent = ipLine;
 
-  // LA drafting fee (always As Drawn)
-  const laFee = Math.round(laProfitCosts * laFeePct / 100 * 100) / 100;
-  el('fig-la-drafting-computed').textContent = gbp(laFee);
+  // LA drafting fee (always As Drawn) — with optional override / minimum fee
+  const laComputed = Math.round(laProfitCosts * laFeePct / 100 * 100) / 100;
+  el('fig-la-drafting-computed').textContent = gbp(laComputed);
+  const laOverrideRaw = el('inp-la-drafting-override').value;
+  const laOverride    = laOverrideRaw !== '' ? (parseFloat(laOverrideRaw) || 0) : null;
+  const minFeeLa      = el('inp-min-fee-la').checked;
+  const laFee         = laOverride !== null ? laOverride : laComputed;
+  let laLine = '';
   if (laProfitCosts > 0 && laFeePct > 0) {
-    el('fig-la-drafting-line').textContent = 'Preparing Draft Bill of Costs (Legal Aid) | ' + laFeePct + '% of ' + gbp(laProfitCosts) + ' As Drawn';
-  } else {
-    el('fig-la-drafting-line').textContent = '';
+    laLine = 'Preparing Draft Bill of Costs (Legal Aid) | ' + laFeePct + '% of ' + gbp(laProfitCosts) + ' As Drawn';
+  } else if (laFee > 0) {
+    laLine = 'Preparing Draft Bill of Costs (Legal Aid)';
   }
+  if (minFeeLa && laLine) laLine += ' | Minimum fee';
+  el('fig-la-drafting-line').textContent = laLine;
 
   // Timed work — collect checked entries
   let timedRaw = 0;
@@ -668,7 +730,10 @@ function recalc() {
 
   timedRaw = Math.round(timedRaw * 100) / 100;
   timedHrs = Math.round(timedHrs * 100) / 100;
-  const timedFee = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
+  const timedOverrideRaw = el('inp-timed-override').value;
+  const timedOverride    = timedOverrideRaw !== '' ? (parseFloat(timedOverrideRaw) || 0) : null;
+  const timedLimited     = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
+  const timedFee         = timedOverride !== null ? timedOverride : timedLimited;
 
   // Update timed work line placeholder with live hours
   const twInput = el('inp-timed-work-line');
@@ -708,6 +773,7 @@ function recalc() {
   selectedCase.computed = {
     draftingFee, laFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
     vat, subTotal, grand, vatOnDrafting, feePct, laFeePct, limitTimed, basis,
+    minimumFeeIp: minFeeIp, minimumFeeLa: minFeeLa,
     draftingFeeLine:    el('fig-drafting-line').textContent,
     laFeeLine:          el('fig-la-drafting-line').textContent,
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
