@@ -792,6 +792,19 @@ async function generateSettlementPDF() {
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
+      onclone: (clonedDoc) => {
+        // html2canvas 1.4.1 cannot parse the CSS oklch() colour function
+        // (library predates it). Strip every stylesheet except the inline
+        // <style> inside #pdf-output, and force the cloned root to plain
+        // black-on-white, so the parser only ever sees hex colours. The
+        // report styles itself entirely within #pdf-output (hex + Arial),
+        // so removing the page/extension CSS does not change its appearance.
+        clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
+          if (!node.closest('#pdf-output')) node.remove();
+        });
+        clonedDoc.documentElement.style.color = '#000';
+        clonedDoc.documentElement.style.background = '#fff';
+      },
     });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
