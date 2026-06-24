@@ -103,6 +103,18 @@ const SELECT_FIELDS = [
   'CostsOfAssessmentForInterestTabO',
   'TotalInterestToDate_Text',
   'DailyInterestRate_Text',
+  // Booking In tab
+  'DateReceived',
+  'Turnaround_x0020__x0001f3af_',
+  'FeeEarner_x0028_fromFM_x0029_',
+  'Work_x0020_In_x0020_Progress',
+  'Add_x0020_To_x0020_Title',
+  'Notes',
+  'Acknowledgmentemail',
+  'PrimaryFundingType',
+  'CaseTrack',
+  'Task',
+  'Casetype',
 ].join(',');
 
 function getCallerEmail(req) {
