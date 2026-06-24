@@ -411,7 +411,8 @@
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="settlement">Settlement</button>
+    <button class="tab-btn active" data-tab="overview">Case Overview</button>
+    <button class="tab-btn" data-tab="settlement">Settlement</button>
     <button class="tab-btn" data-tab="bookingin">Booking In</button>
     <button class="tab-btn" data-tab="opponent">Opponent &amp; Court</button>
     <button class="tab-btn" data-tab="costs">Costs Claimed</button>
@@ -423,8 +424,64 @@
 
   <div class="content">
 
+    <!-- ════════ CASE OVERVIEW TAB ════════ -->
+    <div class="tab-panel active" id="tab-overview">
+
+      <!-- Row 1: Status + Assigned -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Assignment</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>Assigned To</dt><dd id="ov-assigned">—</dd></div>
+            <div class="read-row"><dt>Co-Assigned To</dt><dd id="ov-coassigned">—</dd></div>
+            <div class="read-row"><dt>Status</dt><dd id="ov-status">—</dd></div>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Key Dates</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>📧 Served Informal</dt><dd id="ov-servedinf">—</dd></div>
+            <div class="read-row"><dt>🎱 Part 8 Issued</dt><dd id="ov-part8">—</dd></div>
+            <div class="read-row"><dt>🤵 Served Formal</dt><dd id="ov-servedfml">—</dd></div>
+            <div class="read-row"><dt>📅 PODs Due</dt><dd id="ov-poddue">—</dd></div>
+            <div class="read-row"><dt>🎯 PODs Received</dt><dd id="ov-podrec">—</dd></div>
+            <div class="read-row"><dt>🤝 Date Settled</dt><dd id="ov-settled">—</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Row 2: Current Position -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">➡️ Current Position</span>
+          <span style="font-size:11px;color:var(--grey-mid);" id="ov-cpupdated"></span>
+        </div>
+        <div class="card-body">
+          <div id="ov-currentposition" style="font-size:14px;line-height:1.7;color:var(--navy);white-space:pre-wrap;">—</div>
+        </div>
+      </div>
+
+      <!-- Row 3: Flags + Actions -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><span class="card-title">🚩 Flags</span></div>
+          <div class="card-body">
+            <div id="ov-flags" style="font-size:14px;line-height:1.7;color:var(--navy);white-space:pre-wrap;">—</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Activity</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt style="white-space:nowrap;">🎬 Last Action</dt><dd id="ov-lastaction" style="text-align:left;padding-left:12px;white-space:normal;line-height:1.5;">—</dd></div>
+            <div class="read-row"><dt style="white-space:nowrap;">⏰ Last Reminder</dt><dd id="ov-lastreminder" style="text-align:left;padding-left:12px;white-space:normal;line-height:1.5;">—</dd></div>
+          </dl>
+        </div>
+      </div>
+
+    </div><!-- /tab-overview -->
+
     <!-- ════════ SETTLEMENT TAB ════════ -->
-    <div class="tab-panel active" id="tab-settlement">
+    <div class="tab-panel" id="tab-settlement">
 
       <div class="card">
         <div class="card-head"><span class="card-title">Settlement Details</span></div>
@@ -1017,6 +1074,7 @@ async function loadCase() {
     computeFigures();
     computeInterest();
     renderHeader();
+    renderOverviewTab();
     renderBookingInTab();
     renderOpponentTab(); // CourtName select already populated by loadCourts()
     renderSettlementTab();
@@ -1295,6 +1353,27 @@ function renderHeader() {
     f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']
   ].filter(Boolean).join(' · ');
   document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
+}
+
+function renderOverviewTab() {
+  const f = caseFields;
+  setText('ov-assigned',       f['assignedToTextValue'] || '—');
+  setText('ov-coassigned',     f['AssignedToMirror']    || '—');
+  setText('ov-status',         f['StatusMirror']        || '—');
+  setText('ov-servedinf',      fmtDate(f['DateServedInformally0']));
+  setText('ov-part8',          fmtDate(f['DatePart8Issued']));
+  setText('ov-servedfml',      fmtDate(f['DateServedFormally0']));
+  setText('ov-poddue',         fmtDate(f['PODS_x0020_Due']));
+  setText('ov-podrec',         fmtDate(f['PODS_x0020_Received']));
+  setText('ov-settled',        fmtDate(f['DateSettled0']));
+  setText('ov-currentposition',f['Current_x0020_Position'] || '—');
+  setText('ov-flags',          f['Flags']               || '—');
+  setText('ov-lastaction',     f['LastAction']           || '—');
+  setText('ov-lastreminder',   f['Last_x0020_Reminder']  || '—');
+  // CP Last Updated — stored as a date string, show formatted
+  const cpUpd = f['CP_x0020_Last_x0020_Updated'];
+  const cpEl  = document.getElementById('ov-cpupdated');
+  if (cpEl) cpEl.textContent = cpUpd ? 'Updated ' + fmtDate(cpUpd) : '';
 }
 
 function renderSettlementTab() {
