@@ -170,7 +170,7 @@
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
       </svg>
-      <input type="text" id="case-search" class="case-search-input" placeholder="Search by case name or reference…" autocomplete="off" />
+      <input type="text" id="case-search" class="case-search-input" placeholder="Search by case name or reference&hellip;" autocomplete="off" />
       <div class="typeahead-list" id="typeahead-list"></div>
     </div>
     <div class="selected-case" id="selected-case">
@@ -178,15 +178,15 @@
         <span id="selected-name"></span>
         <span class="case-ref" id="selected-ref"></span>
       </div>
-      <button class="clear-case" id="clear-case" title="Clear">×</button>
+      <button class="clear-case" id="clear-case" title="Clear">&times;</button>
     </div>
   </div>
 
   <!-- Step 2 -->
   <div id="figures-section">
     <div class="card">
-      <div class="card-title">Step 2 — Review &amp; Adjust Figures</div>
-      <div id="figures-loading" class="loading-figures">Loading figures…</div>
+      <div class="card-title">Step 2 &mdash; Review &amp; Adjust Figures</div>
+      <div id="figures-loading" class="loading-figures">Loading figures&hellip;</div>
       <div id="figures-content" style="display:none;">
 
         <!-- Drafting Fee — IP -->
@@ -196,7 +196,7 @@
           <span class="form-label">Drafted by <span id="drafted-by-required" style="color:var(--error);display:none;">*</span></span>
           <span class="form-value">
             <select class="form-select" id="inp-drafted-by">
-              <option value="">— select —</option>
+              <option value="">&mdash; select &mdash;</option>
               <option value="joanna@tmclegal.co.uk">Joanna</option>
               <option value="tracy@tmclegal.co.uk">Tracy</option>
               <option value="kelly@tmclegal.co.uk">Kelly</option>
@@ -220,12 +220,12 @@
 
         <div class="form-row">
           <span class="form-label">Profit costs (ex TMC time)</span>
-          <span class="form-value" id="fig-profit-costs">—</span>
+          <span class="form-value" id="fig-profit-costs">&mdash;</span>
         </div>
 
         <div class="form-row">
           <span class="form-label">Profit costs (as recovered)</span>
-          <span class="form-value" id="fig-profit-costs-recovered">—</span>
+          <span class="form-value" id="fig-profit-costs-recovered">&mdash;</span>
         </div>
 
         <div class="form-row">
@@ -238,14 +238,14 @@
 
         <div class="form-row">
           <span class="form-label">Computed drafting fee</span>
-          <span class="form-value" id="fig-drafting-computed" style="font-weight:600;">£0.00</span>
+          <span class="form-value" id="fig-drafting-computed" style="font-weight:600;">&pound;0.00</span>
         </div>
 
         <div class="form-row">
           <span class="form-label">Override / minimum fee</span>
           <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
             <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
-              <input type="checkbox" class="wip-check" id="inp-min-fee-ip"> Minimum fee (£375)
+              <input type="checkbox" class="wip-check" id="inp-min-fee-ip"> Minimum fee (&pound;375)
             </label>
             <input type="number" class="form-input-num" id="inp-drafting-override" min="0" step="0.01" placeholder="No override" />
           </span>
@@ -266,7 +266,7 @@
 
         <div class="form-row">
           <span class="form-label">LA profit costs</span>
-          <span class="form-value" id="fig-la-profit-costs">—</span>
+          <span class="form-value" id="fig-la-profit-costs">&mdash;</span>
         </div>
 
         <div class="form-row">
@@ -284,14 +284,14 @@
 
         <div class="form-row">
           <span class="form-label">Computed LA drafting fee</span>
-          <span class="form-value" id="fig-la-drafting-computed" style="font-weight:600;">£0.00</span>
+          <span class="form-value" id="fig-la-drafting-computed" style="font-weight:600;">&pound;0.00</span>
         </div>
 
         <div class="form-row">
           <span class="form-label">Override / minimum fee</span>
           <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
             <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
-              <input type="checkbox" class="wip-check" id="inp-min-fee-la"> Minimum fee (£50)
+              <input type="checkbox" class="wip-check" id="inp-min-fee-la"> Minimum fee (&pound;50)
             </label>
             <input type="number" class="form-input-num" id="inp-la-drafting-override" min="0" step="0.01" placeholder="No override" />
           </span>
@@ -329,7 +329,7 @@
             </tr>
           </thead>
           <tbody id="wip-tbody">
-            <tr><td colspan="6" class="wip-no-entries">Loading…</td></tr>
+            <tr><td colspan="6" class="wip-no-entries">Loading&hellip;</td></tr>
           </tbody>
         </table>
 
@@ -353,33 +353,33 @@
         <div class="section-sub">Bespoke Invoice (optional)</div>
         <div class="bespoke-cell" style="margin-bottom:12px;">
           <label>Bespoke Invoice Line</label>
-          <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter…" />
+          <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter&hellip;" />
         </div>
         <div class="bespoke-grid">
           <div class="bespoke-cell">
-            <label>Bespoke Amount (£)</label>
+            <label>Bespoke Amount (&pound;)</label>
             <input type="number" class="bespoke-input" id="inp-bespoke-amount" min="0" step="0.01" placeholder="0.00" />
           </div>
           <div class="bespoke-cell">
-            <label>Bespoke Expenses (£)</label>
+            <label>Bespoke Expenses (&pound;)</label>
             <input type="number" class="bespoke-input" id="inp-bespoke-expenses" min="0" step="0.01" placeholder="0.00" />
           </div>
           <div class="bespoke-cell">
-            <label>Bespoke Expenses VAT (£)</label>
+            <label>Bespoke Expenses VAT (&pound;)</label>
             <input type="number" class="bespoke-input" id="inp-bespoke-expenses-vat" min="0" step="0.01" placeholder="0.00" />
           </div>
         </div>
 
         <!-- Totals -->
         <div class="totals-block">
-          <div class="totals-row" id="tot-row-drafting" style="display:none;"><span class="t-label">Drafting fee (IP)</span><span class="t-value" id="tot-drafting">£0.00</span></div>
-          <div class="totals-row" id="tot-row-la-drafting" style="display:none;"><span class="t-label">Drafting fee (LA)</span><span class="t-value" id="tot-la-drafting">£0.00</span></div>
-          <div class="totals-row" id="tot-row-timed" style="display:none;"><span class="t-label">Timed work</span><span class="t-value" id="tot-timed">£0.00</span></div>
-          <div class="totals-row" id="tot-row-bespoke" style="display:none;"><span class="t-label">Bespoke</span><span class="t-value" id="tot-bespoke">£0.00</span></div>
-          <div class="totals-row" id="tot-row-subtotal" style="display:none;"><span class="t-label">Sub Total</span><span class="t-value" id="tot-subtotal">£0.00</span></div>
-          <div class="totals-row"><span class="t-label">VAT @ 20%</span><span class="t-value" id="tot-vat">£0.00</span></div>
-          <div class="totals-row" id="tot-row-expenses" style="display:none;"><span class="t-label">Expenses</span><span class="t-value" id="tot-expenses">£0.00</span></div>
-          <div class="totals-row grand"><span class="t-label">Grand Total</span><span class="t-value" id="tot-grand">£0.00</span></div>
+          <div class="totals-row" id="tot-row-drafting" style="display:none;"><span class="t-label">Drafting fee (IP)</span><span class="t-value" id="tot-drafting">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-la-drafting" style="display:none;"><span class="t-label">Drafting fee (LA)</span><span class="t-value" id="tot-la-drafting">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-timed" style="display:none;"><span class="t-label">Timed work</span><span class="t-value" id="tot-timed">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-bespoke" style="display:none;"><span class="t-label">Bespoke</span><span class="t-value" id="tot-bespoke">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-subtotal" style="display:none;"><span class="t-label">Sub Total</span><span class="t-value" id="tot-subtotal">&pound;0.00</span></div>
+          <div class="totals-row"><span class="t-label">VAT @ 20%</span><span class="t-value" id="tot-vat">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-expenses" style="display:none;"><span class="t-label">Expenses</span><span class="t-value" id="tot-expenses">&pound;0.00</span></div>
+          <div class="totals-row grand"><span class="t-label">Grand Total</span><span class="t-value" id="tot-grand">&pound;0.00</span></div>
         </div>
 
         <div id="figures-status" class="status-msg" style="margin-top:16px;"></div>
@@ -388,7 +388,7 @@
 
     <!-- Step 3 -->
     <div class="card" id="issue-section">
-      <div class="card-title">Step 3 — Create Draft</div>
+      <div class="card-title">Step 3 &mdash; Create Draft</div>
       <button class="btn-issue" id="btn-issue" disabled>
         <div class="spinner" id="issue-spinner"></div>
         <span id="btn-issue-label">Create Draft Invoice</span>
@@ -470,6 +470,20 @@ function initCaseSearch() {
 
 async function searchCases(q) {
   const list = el('typeahead-list');
+
+  // Use local cache if ready — instant, no API call
+  if (_cacheReady) {
+    const matches = _caseCache.filter(c => {
+      const f    = c.fields || c;
+      const name = (f.Title || '').toLowerCase();
+      const ref  = (f.Ourreference_x0028_text_x0029_ || '').toLowerCase();
+      return name.includes(q) || ref.includes(q);
+    }).slice(0, 10);
+    renderList(matches);
+    return;
+  }
+
+  // Cache not ready yet — fall back to live API
   list.innerHTML = '<div class="typeahead-empty">Searching\u2026</div>';
   list.classList.add('open');
   try {
@@ -548,9 +562,9 @@ async function loadFigures(fields) {
   sel.value = basis;
   if (sel.value !== basis) sel.value = 'Profit costs as drawn';
 
-  el('fig-profit-costs').textContent          = profitCosts > 0 ? gbp(profitCosts) : '—';
-  el('fig-profit-costs-recovered').textContent = profitCostsRecovered > 0 ? gbp(profitCostsRecovered) : '—';
-  el('fig-la-profit-costs').textContent        = laProfitCosts > 0 ? gbp(laProfitCosts) : '—';
+  el('fig-profit-costs').textContent          = profitCosts > 0 ? gbp(profitCosts) : '\u2014';
+  el('fig-profit-costs-recovered').textContent = profitCostsRecovered > 0 ? gbp(profitCostsRecovered) : '\u2014';
+  el('fig-la-profit-costs').textContent        = laProfitCosts > 0 ? gbp(laProfitCosts) : '\u2014';
   el('inp-fee-pct').value    = feePct;
   el('inp-la-fee-pct').value = laFeePct;
   el('fig-vat-on-drafting').innerHTML = vatOnDrafting
@@ -868,13 +882,14 @@ async function handleCreateDraft() {
   const _bespokeAmt  = parseFloat(el('inp-bespoke-amount').value) || 0;
   const _bespokeLine = (el('inp-bespoke-line').value || '').trim();
   if (_bespokeAmt > 0 && !_bespokeLine) {
-    showMsg('issue-status', 'Please enter a Bespoke Invoice Line description before creating the draft.', 'error');    el('inp-bespoke-line').focus();
+    showMsg('issue-status', 'Please enter a Bespoke Invoice Line description before creating the draft.', 'error');
+    el('inp-bespoke-line').focus();
     return;
   }
 
   btn.disabled    = true;
   spinner.classList.add('visible');
-  label.textContent = 'Generating invoice…';
+  label.textContent = 'Generating invoice\u2026';
   showMsg('issue-status', '', '');
 
   try {
@@ -882,7 +897,7 @@ async function handleCreateDraft() {
     const c = selectedCase.computed;
 
     // 1. Fetch logo and inline as base64
-    label.textContent = 'Loading logo…';
+    label.textContent = 'Loading logo\u2026';
     let logoDataUrl = null;
     try {
       const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
@@ -898,7 +913,7 @@ async function handleCreateDraft() {
     } catch (_) {}
 
     // 2. Build invoice data object
-    label.textContent = 'Generating invoice…';
+    label.textContent = 'Generating invoice\u2026';
     const invoiceData = {
       invoiceNumber:   'DRAFT',
       invoiceDate:     null,
@@ -928,11 +943,11 @@ async function handleCreateDraft() {
     };
 
     // 3. Capture as base64
-    label.textContent = 'Capturing HTML…';
+    label.textContent = 'Capturing HTML\u2026';
     const pdfBase64 = await captureInvoicePdf(invoiceData);
 
     // 4. POST to /api/createdraft
-    label.textContent = 'Saving draft…';
+    label.textContent = 'Saving draft\u2026';
     const payload = {
       pdfBase64,
       computed:          c,
@@ -961,9 +976,9 @@ async function handleCreateDraft() {
     btn.disabled = false;
 
     const linkHtml = pdfUrl
-      ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft →</a>'
+      ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft \u2192</a>'
       : '';
-    el('issue-status').innerHTML = '✓ Draft created for Lesley to review and issue.' + linkHtml;
+    el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
     el('issue-status').className = 'status-msg success';
 
   } catch (err) {
