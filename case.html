@@ -459,7 +459,7 @@ async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
   try {
-    const resp = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20');
+    const resp = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data  = await resp.json();
     const match = (data.value || []).find(item =>
