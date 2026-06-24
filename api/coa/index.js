@@ -124,14 +124,13 @@ module.exports = async function (context, req) {
 
 // ─── Fetch TT2 entries for this case ref ─────────────────────────────────────
 // field_16 is Our Reference. Billable_x003f_ is indexed so safe in $filter.
-// Billed_x003f_ is also indexed.
-// PreLimitedBillableAmount is not indexed — selected but not filtered server-side.
+// Billed_x003f_ is NOT indexed — filtered client-side only.
+// Num_BillableAmount_x00a3_ is the confirmed Graph internal name for billable value.
 async function fetchTT2Entries(token, ref, mode) {
-  // Base filter: billable entries for this case ref
-  // field_16 (Our Ref) is NOT indexed — use Prefer: allowthrottleablequeries
+  // Billable_x003f_ is indexed — safe in $filter.
+  // Billed_x003f_ is NOT indexed — must be filtered client-side only.
   const billableFilter = `fields/Billable_x003f_ eq true`;
-  const billedClause   = mode === 'unbilled' ? ` and fields/Billed_x003f_ eq false` : '';
-  const filter = encodeURIComponent(billableFilter + billedClause);
+  const filter = encodeURIComponent(billableFilter);
 
   const selectFields = [
     'field_16',               // Our Reference
@@ -156,9 +155,12 @@ async function fetchTT2Entries(token, ref, mode) {
   }
 
   // Client-side filter by Our Reference (field_16 not indexed)
+  // and by Billed status (Billed_x003f_ not indexed — cannot use in Graph $filter)
   return all.filter(item => {
     const f = item.fields || {};
-    return (f['field_16'] || '').toString().trim() === ref;
+    if ((f['field_16'] || '').toString().trim() !== ref) return false;
+    if (mode === 'unbilled' && f['Billed_x003f_'] === true) return false;
+    return true;
   });
 }
 
