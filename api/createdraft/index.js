@@ -36,7 +36,7 @@ const SITE_PATH    = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const INVOICE_LIB  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS   = '496468a5-e2ed-48db-8826-58cb08844eee';
 
-const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -44,8 +44,8 @@ module.exports = async function (context, req) {
   context.log('P124 /api/createdraft called');
 
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — admin access required.' };
+  if (!callerEmail || !callerEmail.endsWith(ALLOWED_DOMAIN)) {
+    context.res = { status: 403, body: 'Forbidden — TMC Legal sign-in required.' };
     return;
   }
 
