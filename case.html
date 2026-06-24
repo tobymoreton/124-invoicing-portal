@@ -221,7 +221,7 @@
     .costs-entry-table tbody tr.other-row td{border-top:2px solid var(--grey-light);}
     .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-left:12px!important;padding-right:12px!important;min-width:170px;}
     .tbl-input{
-      width:100%;min-width:120px;padding:8px 10px;
+      width:100%;min-width:160px;padding:8px 10px;
       border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
       background:var(--white);outline:none;transition:all .18s ease;text-align:right;
@@ -233,7 +233,7 @@
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
       text-align:right;padding:8px 12px!important;white-space:nowrap;opacity:.8;
     }
-    .col-net{width:160px;}.col-vat,.col-inc{width:100px;}
+    .col-net{width:200px;}.col-vat,.col-inc{width:120px;}
     .vat-pct-row{
       display:flex;align-items:center;gap:10px;padding:12px 12px;
       border-top:2px solid var(--grey-light);
@@ -687,11 +687,8 @@
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
 
-      <div class="two-col" style="align-items:start;">
-
-        <div class="card">
+      <div class="card">
           <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
-          <div style="overflow-x:auto;">
           <table class="costs-entry-table">
             <thead><tr>
               <th class="col-label"></th>
@@ -738,47 +735,43 @@
               </tr>
             </tbody>
           </table>
-          </div><!-- /overflow-x:auto -->
           <div class="vat-pct-row">
             <label for="fc-VatPct">VAT % Claimed</label>
             <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" />
             <span>%</span>
           </div>
+      </div>
+
+      <div class="two-col" style="align-items:start;">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Calculated Totals</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>Total IP Profit Costs</dt><dd id="cc-totalIPPC">—</dd></div>
+            <div class="read-row"><dt>VAT on Profit Costs</dt><dd id="cc-vatPC">—</dd></div>
+            <div class="read-row"><dt>VAT on Counsel's Fees</dt><dd id="cc-vatCounsel">—</dd></div>
+            <div class="read-row"><dt>VAT on LA Profit Costs</dt><dd id="cc-vatLAPC">—</dd></div>
+            <div class="read-row total"><dt>Total Costs Claimed (IP)</dt><dd id="cc-totalClaimed">—</dd></div>
+          </dl>
         </div>
-
-        <div style="display:flex;flex-direction:column;gap:20px;">
-          <div class="card">
-            <div class="card-head"><span class="card-title">Calculated Totals</span></div>
-            <dl class="read-grid">
-              <div class="read-row"><dt>Total IP Profit Costs</dt><dd id="cc-totalIPPC">—</dd></div>
-              <div class="read-row"><dt>VAT on Profit Costs</dt><dd id="cc-vatPC">—</dd></div>
-              <div class="read-row"><dt>VAT on Counsel's Fees</dt><dd id="cc-vatCounsel">—</dd></div>
-              <div class="read-row"><dt>VAT on LA Profit Costs</dt><dd id="cc-vatLAPC">—</dd></div>
-              <div class="read-row total"><dt>Total Costs Claimed (IP)</dt><dd id="cc-totalClaimed">—</dd></div>
-            </dl>
-          </div>
-
-          <div class="card">
-            <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
-            <table class="costs-entry-table">
-              <thead><tr>
-                <th class="col-label"></th>
-                <th class="col-net">Net (£)</th>
-              </tr></thead>
-              <tbody>
-                <tr>
-                  <td class="row-label">LA Only Profit Costs</td>
-                  <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" /></td>
-                </tr>
-                <tr>
-                  <td class="row-label">TMC Drafting Time — LA</td>
-                  <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" /></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
+          <table class="costs-entry-table">
+            <thead><tr>
+              <th class="col-label"></th>
+              <th class="col-net">Net (£)</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="row-label">LA Only Profit Costs</td>
+                <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" /></td>
+              </tr>
+              <tr>
+                <td class="row-label">TMC Drafting Time — LA</td>
+                <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" /></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
       </div><!-- /two-col -->
 
       <div class="card" style="margin-top:4px;">
