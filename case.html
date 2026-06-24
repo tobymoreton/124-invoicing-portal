@@ -102,6 +102,22 @@
     .btn-pdf{width:100%;background:var(--navy);color:var(--gold);border:none;padding:14px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;}
     .btn-pdf:hover{background:var(--navy-mid);}
     .btn-pdf svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;}
+    /* Costs Claimed entry table */
+    .costs-entry-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+    .costs-entry-table thead th{background:var(--grey-faint);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:9px 12px;border-bottom:2px solid var(--grey-light);white-space:nowrap;text-align:right;}
+    .costs-entry-table thead th.col-label{text-align:left;}
+    .costs-entry-table tbody td{padding:8px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
+    .costs-entry-table tbody tr:last-child td{border-bottom:none;}
+    .costs-entry-table tbody tr.other-row td{border-top:1px solid var(--grey-light);}
+    .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-right:12px!important;min-width:160px;}
+    .tbl-input{width:100%;padding:7px 10px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);text-align:right;}
+    .tbl-input:focus{border-color:var(--gold);background:var(--white);}
+    .tbl-computed{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;padding:7px 10px!important;white-space:nowrap;}
+    .col-net,.col-vat,.col-inc{width:90px;}
+    .vat-pct-row{display:flex;align-items:center;gap:10px;padding:12px 12px;border-top:2px solid var(--grey-light);background:var(--grey-faint);}
+    .vat-pct-row label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);flex:1;}
+    .vat-pct-input{width:80px!important;}
+    .vat-pct-row span{font-size:13px;color:var(--grey-mid);font-weight:600;}
     .coming-soon{padding:56px 0;text-align:center;color:var(--grey-mid);}
     .coming-soon .icon{font-size:32px;margin-bottom:12px;}
     .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
@@ -325,48 +341,103 @@
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
 
-      <div class="card">
-        <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
-        <div class="card-body">
-          <div class="detail-grid">
-            <div class="field"><label>PC excl ALL TMC Time (£)</label><input type="number" id="fc-PCexTMC" step="0.01" /></div>
-            <div class="field"><label>TMC Drafting Time (£)</label><input type="number" id="fc-TMCDrafting" step="0.01" /></div>
-            <div class="field"><label>Other TMC Profit Costs (£)</label><input type="number" id="fc-OtherTMCPC" step="0.01" /></div>
-            <div class="field"><label>Disbursements Claimed (£)</label><input type="number" id="fc-Disb" step="0.01" /></div>
-            <div class="field"><label>VAT on Disbursements (£)</label><input type="number" id="fc-VatDisb" step="0.01" /></div>
-            <div class="field"><label>Counsel's Fees Claimed (£)</label><input type="number" id="fc-Counsel" step="0.01" /></div>
-            <div class="field"><label>VAT % Claimed (enter as %, e.g. 20)</label><input type="number" id="fc-VatPct" step="0.5" min="0" /></div>
-            <div class="field"><label>Other TMC Fees — excl bill (£)</label><input type="number" id="fc-OtherTMCFees" step="0.01" /></div>
+      <div class="two-col" style="align-items:start;">
+
+        <div class="card">
+          <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
+          <table class="costs-entry-table">
+            <thead><tr>
+              <th class="col-label"></th>
+              <th class="col-net">Net (£)</th>
+              <th class="col-vat">VAT (£)</th>
+              <th class="col-inc">Inc VAT (£)</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td class="row-label">PC excl ALL TMC Time</td>
+                <td><input type="number" id="fc-PCexTMC" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed" id="cv-vatPC-row">—</td>
+                <td class="tbl-computed" id="cv-pcInc">—</td>
+              </tr>
+              <tr>
+                <td class="row-label">TMC Drafting Time</td>
+                <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed" id="cv-vatTMC-row">—</td>
+                <td class="tbl-computed" id="cv-tmcInc">—</td>
+              </tr>
+              <tr>
+                <td class="row-label">Other TMC Profit Costs</td>
+                <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
+                <td class="tbl-computed" id="cv-otherTMCInc">—</td>
+              </tr>
+              <tr>
+                <td class="row-label">Disbursements Claimed</td>
+                <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed" id="cv-disbInc">—</td>
+              </tr>
+              <tr>
+                <td class="row-label">Counsel's Fees Claimed</td>
+                <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
+                <td class="tbl-computed" id="cv-counselInc">—</td>
+              </tr>
+              <tr class="other-row">
+                <td class="row-label">Other TMC Fees — excl bill</td>
+                <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" /></td>
+                <td class="tbl-computed">—</td>
+                <td class="tbl-computed">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="vat-pct-row">
+            <label for="fc-VatPct">VAT % Claimed</label>
+            <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" />
+            <span>%</span>
           </div>
         </div>
-      </div>
 
-      <div class="card">
-        <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
-        <div class="card-body">
-          <div class="detail-grid">
-            <div class="field"><label>Legal Aid Only Profit Costs (£)</label><input type="number" id="fc-LAPC" step="0.01" /></div>
-            <div class="field"><label>TMC Drafting Time — LA (£)</label><input type="number" id="fc-TMCDraftingLA" step="0.01" /></div>
+        <div style="display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Calculated Totals</span></div>
+            <dl class="read-grid">
+              <div class="read-row"><dt>Total IP Profit Costs</dt><dd id="cc-totalIPPC">—</dd></div>
+              <div class="read-row"><dt>VAT on Profit Costs</dt><dd id="cc-vatPC">—</dd></div>
+              <div class="read-row"><dt>VAT on Counsel's Fees</dt><dd id="cc-vatCounsel">—</dd></div>
+              <div class="read-row"><dt>VAT on LA Profit Costs</dt><dd id="cc-vatLAPC">—</dd></div>
+              <div class="read-row total"><dt>Total Costs Claimed (IP)</dt><dd id="cc-totalClaimed">—</dd></div>
+            </dl>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
+            <table class="costs-entry-table">
+              <thead><tr>
+                <th class="col-label"></th>
+                <th class="col-net">Net (£)</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="row-label">LA Only Profit Costs</td>
+                  <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" /></td>
+                </tr>
+                <tr>
+                  <td class="row-label">TMC Drafting Time — LA</td>
+                  <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" /></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
 
-      <div class="card" style="margin-bottom:20px;">
+      </div><!-- /two-col -->
+
+      <div class="card" style="margin-top:4px;">
         <div class="save-bar">
           <button class="btn-save" id="btn-save-costs">Save Changes</button>
           <span class="save-msg" id="msg-save-costs"></span>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="card-title">Calculated Totals</span></div>
-        <dl class="read-grid">
-          <div class="read-row"><dt>Total IP Profit Costs</dt><dd id="cc-totalIPPC">—</dd></div>
-          <div class="read-row"><dt>VAT on Profit Costs</dt><dd id="cc-vatPC">—</dd></div>
-          <div class="read-row"><dt>VAT on Counsel's Fees</dt><dd id="cc-vatCounsel">—</dd></div>
-          <div class="read-row"><dt>VAT on Legal Aid Only Profit Costs</dt><dd id="cc-vatLAPC">—</dd></div>
-          <div class="read-row total"><dt>Total Costs Claimed (IP)</dt><dd id="cc-totalClaimed">—</dd></div>
-        </dl>
       </div>
 
     </div><!-- /tab-costs -->
@@ -689,17 +760,39 @@ function renderSettlementTab() {
 
 function renderCostsTab() {
   const f = caseFields; const c = computed;
+  const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+
+  // Input fields
   setNum('fc-PCexTMC',       f['ProfitCostsClaimed_x0028_Ex_x002']);
   setNum('fc-TMCDrafting',   f['DraftingTimeClaimed']);
   setNum('fc-OtherTMCPC',    f['Other_x0020_TMC_x0020_PC_x0020__']);
   setNum('fc-Disb',          f['DisbursementsClaimed']);
   setNum('fc-VatDisb',       f['VATonDisbursements']);
   setNum('fc-Counsel',       f['CounselsFeesClaimed']);
-  setNum('fc-VatPct',        (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0) * 100);
+  setNum('fc-VatPct',        vatPct * 100);
   setNum('fc-OtherTMCFees',  f['OtherTMCInvoices_ex_x0020_bill']);
   setNum('fc-LAPC',          f['LegalAidOnlyProfitCosts']);
   setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
 
+  // Per-row VAT and Inc VAT computed cells
+  const pc        = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
+  const tmc       = parseFloat(f['DraftingTimeClaimed'])               || 0;
+  const otherTMC  = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
+  const disb      = parseFloat(f['DisbursementsClaimed'])              || 0;
+  const vatDisb   = parseFloat(f['VATonDisbursements'])                || 0;
+  const counsel   = parseFloat(f['CounselsFeesClaimed'])               || 0;
+
+  setText('cv-vatPC-row',      fmt(pc      * vatPct));
+  setText('cv-pcInc',          fmt(pc      * (1 + vatPct)));
+  setText('cv-vatTMC-row',     fmt(tmc     * vatPct));
+  setText('cv-tmcInc',         fmt(tmc     * (1 + vatPct)));
+  setText('cv-vatOtherTMC-row',fmt(otherTMC * vatPct));
+  setText('cv-otherTMCInc',   fmt(otherTMC * (1 + vatPct)));
+  setText('cv-disbInc',        fmt(disb + vatDisb));
+  setText('cv-vatCounsel-row', fmt(counsel  * vatPct));
+  setText('cv-counselInc',     fmt(counsel  * (1 + vatPct)));
+
+  // Summary totals panel
   setText('cc-totalIPPC',    fmt(c.totalIPPC));
   setText('cc-vatPC',        fmt(c.vatOnPC));
   setText('cc-vatCounsel',   fmt(c.vatOnCounsel));
