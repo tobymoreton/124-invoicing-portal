@@ -382,6 +382,7 @@
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="settlement">Settlement</button>
+    <button class="tab-btn" data-tab="bookingin">Booking In</button>
     <button class="tab-btn" data-tab="costs">Costs Claimed</button>
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="interim">Interim Payments</button>
@@ -512,6 +513,146 @@
       </div>
 
     </div><!-- /tab-settlement -->
+
+    <!-- ════════ BOOKING IN TAB ════════ -->
+    <div class="tab-panel" id="tab-bookingin">
+
+      <!-- Row 1: Date Received / Turnaround / Due Date (computed) / Our Ref -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Case Details</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Date Received</label><input type="date" id="bi-DateReceived" /></div>
+            <div class="field"><label>Turnaround</label>
+              <select id="bi-Turnaround" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option value="1 week">1 week</option>
+                <option value="2 weeks">2 weeks</option>
+                <option value="3 weeks">3 weeks</option>
+                <option value="4 weeks">4 weeks</option>
+              </select>
+            </div>
+            <div class="field"><label>Due Date (calculated)</label><input type="text" id="bi-DueDate" readonly /></div>
+            <div class="field"><label>Our Reference</label><input type="text" id="bi-OurRef" readonly /></div>
+            <div class="field"><label>Client Ref</label><input type="text" id="bi-ClientRef" /></div>
+            <div class="field"><label>Client Work in Progress (hrs)</label><input type="number" id="bi-WIP" step="0.25" min="0" /></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Party names + Fee Earner / Firm -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Parties &amp; Representation</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>First Name</label><input type="text" id="bi-FirstName" /></div>
+            <div class="field"><label>Surname</label><input type="text" id="bi-Surname" /></div>
+            <div class="field"><label>Fee Earner</label><input type="text" id="bi-FeeEarner" /></div>
+            <div class="field"><label>Firm</label><input type="text" id="bi-Firm" /></div>
+            <div class="field checkbox-field" style="margin-top:8px;">
+              <input type="checkbox" id="bi-Andothers" />
+              <label for="bi-Andothers">More than one Claimant?</label>
+            </div>
+            <div class="field"><label>Multi Claimants</label><input type="text" id="bi-MultiClaimants" /></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Classification -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Classification</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Case Type</label>
+              <select id="bi-Casetype" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option>Civil liberties</option>
+                <option>Clinical negligence</option>
+                <option>Costs only</option>
+                <option>Employer's liability</option>
+                <option>Employment</option>
+                <option>Family</option>
+                <option>Housing</option>
+                <option>Immigration</option>
+                <option>Inquests</option>
+                <option>Judicial review</option>
+                <option>Personal injury</option>
+                <option>Professional negligence</option>
+                <option>Public law</option>
+                <option>Road traffic accident</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field"><label>IP or LAA</label>
+              <select id="bi-LAIP" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option>Inter Partes</option>
+                <option>Legal Aid</option>
+                <option>Both</option>
+              </select>
+            </div>
+            <div class="field"><label>Primary Funding</label>
+              <select id="bi-PrimaryFunding" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option>Legal Aid</option>
+                <option>CFA</option>
+                <option>DBA</option>
+                <option>Private</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field"><label>Task</label>
+              <select id="bi-Task" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option>Bill of Costs</option>
+                <option>Points of Dispute</option>
+                <option>Replies</option>
+                <option>Budget</option>
+                <option>Precedent H</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field"><label>Track</label>
+              <select id="bi-Track" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— select —</option>
+                <option>Fast</option>
+                <option>Multi</option>
+                <option>Intermediate</option>
+                <option>Small Claims</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Case name overrides + Notes -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Title &amp; Notes</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Add Suffix to Title</label><input type="text" id="bi-AddSuffix" /></div>
+            <div class="field"><label>Full Case Name Override</label><input type="text" id="bi-FullNameOverride" /></div>
+            <div class="field full"><label>Notes</label><textarea id="bi-Notes" rows="4" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acknowledgment link (read-only) -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Acknowledgment</span></div>
+        <div class="card-body">
+          <div id="bi-AckLink" style="font-size:14px;color:var(--grey-mid);">—</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-bookingin">Save Changes</button>
+          <span class="save-msg" id="msg-save-bookingin"></span>
+        </div>
+      </div>
+
+    </div><!-- /tab-bookingin -->
 
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
@@ -761,6 +902,7 @@ async function loadCase() {
     computeFigures();
     computeInterest();
     renderHeader();
+    renderBookingInTab();
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
@@ -885,6 +1027,95 @@ function computeInterest() {
       { days: days4, principal: p4, rate: r4, interest: int4 },
     ],
   };
+}
+
+function computeDueDate(dateReceivedISO, turnaround) {
+  if (!dateReceivedISO || !turnaround) return null;
+  const days = turnaround === '1 week' ? 7
+             : turnaround === '2 weeks' ? 14
+             : turnaround === '3 weeks' ? 21
+             : turnaround === '4 weeks' ? 28 : 0;
+  if (!days) return null;
+  const d = new Date(dateReceivedISO);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function renderBookingInTab() {
+  const f = caseFields;
+
+  // Dates
+  setDate('bi-DateReceived', f['DateReceived']);
+  document.getElementById('bi-OurRef').value = f['Ourreference_x0028_text_x0029_'] || '';
+  document.getElementById('bi-ClientRef').value = f['ClientCaseReference'] || '';
+
+  // Turnaround select
+  const ta = f['Turnaround_x0020__x0001f3af_'] || '';
+  const taEl = document.getElementById('bi-Turnaround');
+  // Ensure the option exists before setting; if not, add it temporarily
+  let found = false;
+  for (const opt of taEl.options) { if (opt.value === ta) { found = true; break; } }
+  if (!found && ta) {
+    const opt = document.createElement('option');
+    opt.value = ta; opt.textContent = ta;
+    taEl.appendChild(opt);
+  }
+  taEl.value = ta;
+
+  // Computed due date
+  const dueDateObj = computeDueDate(f['DateReceived'], ta);
+  document.getElementById('bi-DueDate').value = dueDateObj ? dueDateObj.toLocaleDateString('en-GB') : '';
+
+  // Live recalc when date or turnaround changes
+  function updateDueDate() {
+    const drVal = document.getElementById('bi-DateReceived').value;
+    const taVal = document.getElementById('bi-Turnaround').value;
+    const dd = computeDueDate(drVal ? drVal + 'T00:00:00Z' : null, taVal);
+    document.getElementById('bi-DueDate').value = dd ? dd.toLocaleDateString('en-GB') : '';
+  }
+  document.getElementById('bi-DateReceived').addEventListener('change', updateDueDate);
+  document.getElementById('bi-Turnaround').addEventListener('change', updateDueDate);
+
+  // WIP
+  const wip = f['Work_x0020_In_x0020_Progress'];
+  document.getElementById('bi-WIP').value = (wip !== null && wip !== undefined && wip !== '') ? parseFloat(wip) : '';
+
+  // Party names
+  document.getElementById('bi-FirstName').value  = f['OurPartyFirstName'] || '';
+  document.getElementById('bi-Surname').value    = f['OurPartySurname']   || '';
+  document.getElementById('bi-FeeEarner').value  = f['FeeEarner_x0028_fromFM_x0029_'] || '';
+  document.getElementById('bi-Firm').value       = f['Firm_x0028_text_x0029_'] || '';
+  setCheck('bi-Andothers', f['Andothers_x003f_']);
+  document.getElementById('bi-MultiClaimants').value = f['MultiClaimants'] || '';
+
+  // Classification selects — use same pattern: set value, add if missing
+  function setSelect(id, val) {
+    const el = document.getElementById(id);
+    if (!val) { el.value = ''; return; }
+    let found = false;
+    for (const opt of el.options) { if (opt.value === val) { found = true; break; } }
+    if (!found) { const o = document.createElement('option'); o.value = val; o.textContent = val; el.appendChild(o); }
+    el.value = val;
+  }
+  setSelect('bi-Casetype',      f['Casetype']);
+  setSelect('bi-LAIP',          f['InterPartesorLegalAid']);
+  setSelect('bi-PrimaryFunding',f['PrimaryFundingType']);
+  setSelect('bi-Task',          f['Task']);
+  setSelect('bi-Track',         f['CaseTrack']);
+
+  // Title overrides + Notes
+  document.getElementById('bi-AddSuffix').value        = f['Add_x0020_To_x0020_Title'] || '';
+  document.getElementById('bi-FullNameOverride').value = f['Fullcasenameoveride']       || '';
+  document.getElementById('bi-Notes').value            = f['Notes']                     || '';
+
+  // Acknowledgment link
+  const ackEl = document.getElementById('bi-AckLink');
+  const ackUrl = f['Acknowledgmentemail'];
+  if (ackUrl) {
+    ackEl.innerHTML = '<a href="' + ackUrl + '" target="_blank" style="color:var(--navy);font-weight:500;">Open Acknowledgment Email Template ↗</a>';
+  } else {
+    ackEl.textContent = 'No acknowledgment link set.';
+  }
 }
 
 function renderHeader() {
@@ -1013,6 +1244,43 @@ function renderInterestTab() {
   setDate('fi-IPD2',       f['InterimPaymentDate2']);
   setDate('fi-IPD3',       f['InterimPaymentDate3']);
 }
+
+document.getElementById('btn-save-bookingin').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-bookingin');
+  const msg = document.getElementById('msg-save-bookingin');
+  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+  const fields = {};
+  // Text fields
+  fields['OurPartyFirstName']              = document.getElementById('bi-FirstName').value      || null;
+  fields['OurPartySurname']               = document.getElementById('bi-Surname').value       || null;
+  fields['ClientCaseReference']           = document.getElementById('bi-ClientRef').value     || null;
+  fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value     || null;
+  fields['Firm_x0028_text_x0029_']        = document.getElementById('bi-Firm').value          || null;
+  fields['MultiClaimants']                = document.getElementById('bi-MultiClaimants').value || null;
+  fields['Add_x0020_To_x0020_Title']      = document.getElementById('bi-AddSuffix').value     || null;
+  fields['Fullcasenameoveride']           = document.getElementById('bi-FullNameOverride').value || null;
+  fields['Notes']                         = document.getElementById('bi-Notes').value         || null;
+  fields['Casetype']                      = document.getElementById('bi-Casetype').value      || null;
+  fields['InterPartesorLegalAid']         = document.getElementById('bi-LAIP').value          || null;
+  fields['PrimaryFundingType']            = document.getElementById('bi-PrimaryFunding').value || null;
+  fields['Task']                          = document.getElementById('bi-Task').value          || null;
+  fields['CaseTrack']                     = document.getElementById('bi-Track').value         || null;
+  fields['Turnaround_x0020__x0001f3af_']  = document.getElementById('bi-Turnaround').value   || null;
+  // Boolean
+  fields['Andothers_x003f_'] = document.getElementById('bi-Andothers').checked;
+  // Number
+  const wipV = document.getElementById('bi-WIP').value;
+  fields['Work_x0020_In_x0020_Progress'] = wipV === '' ? null : parseFloat(wipV);
+  // Date
+  const drV = document.getElementById('bi-DateReceived').value;
+  fields['DateReceived'] = drV ? drV + 'T00:00:00Z' : null;
+  await doSave(fields, btn, msg);
+  if (msg.className.includes('ok')) {
+    // Refresh header (case name override may have changed)
+    renderHeader();
+    renderBookingInTab();
+  }
+});
 
 document.getElementById('btn-save-settlement').addEventListener('click', async () => {
   const btn = document.getElementById('btn-save-settlement');
