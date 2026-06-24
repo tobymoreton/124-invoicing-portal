@@ -83,6 +83,8 @@ const SELECT_FIELDS = [
   'VATonDisbursements',
   'Costsofassessment',
   'OtherTMCInvoices_ex_x0020_bill',
+  'Other_x0020_TMC_x0020_PC_x0020__',
+  'TMC_x0020_drafting_x0020_time_x0',
   // Recovery
   'Counselsfeespayable',
   'NetProfitCostsRecoveredBeforeDra',
