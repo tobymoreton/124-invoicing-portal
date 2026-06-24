@@ -145,7 +145,7 @@ module.exports = async function (context, req) {
     context.log('Uploading issued HTML…');
     const uploadUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
       + '/items/' + driveItemId + '/content';
-    await graphPut(uploadUrl, token, htmlBuffer, 'text/html', driveItemEtag);
+    await graphPut(uploadUrl, token, htmlBuffer, 'text/html', null);
     context.log('Issued HTML uploaded.');
 
     // ── 5a. Rename DriveItem to {invoiceNumber}.html ────────────────────────────
