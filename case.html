@@ -413,6 +413,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="settlement">Settlement</button>
     <button class="tab-btn" data-tab="bookingin">Booking In</button>
+    <button class="tab-btn" data-tab="opponent">Opponent &amp; Court</button>
     <button class="tab-btn" data-tab="costs">Costs Claimed</button>
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="interim">Interim Payments</button>
@@ -683,6 +684,62 @@
 
     </div><!-- /tab-bookingin -->
 
+    <!-- ════════ OPPONENT & COURT TAB ════════ -->
+    <div class="tab-panel" id="tab-opponent">
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Opponent</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field full"><label>Opponent Party Name</label><input type="text" id="op-OpponentPartyName" /></div>
+            <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" /></div>
+            <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" /></div>
+            <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" /></div>
+            <div class="field checkbox-field" style="margin-top:8px;">
+              <input type="checkbox" id="op-MoreThanOneDef" />
+              <label for="op-MoreThanOneDef">More than one Defendant?</label>
+            </div>
+            <div class="field checkbox-field" style="margin-top:8px;">
+              <input type="checkbox" id="op-LitigantInPerson" />
+              <label for="op-LitigantInPerson">Litigant in Person?</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Opponent Address</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Address Line 1</label><input type="text" id="op-Addr1" /></div>
+            <div class="field"><label>Address Line 2</label><input type="text" id="op-Addr2" /></div>
+            <div class="field"><label>Address Line 3</label><input type="text" id="op-Addr3" /></div>
+            <div class="field"><label>Address Line 4</label><input type="text" id="op-Addr4" /></div>
+            <div class="field"><label>Address Line 5</label><input type="text" id="op-Addr5" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Court</span></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Court Name</label><input type="text" id="op-CourtName" /></div>
+            <div class="field"><label>Division</label><input type="text" id="op-Division" /></div>
+            <div class="field"><label>Claim No</label><input type="text" id="op-ClaimNo" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="save-bar">
+          <button class="btn-save" id="btn-save-opponent">Save Changes</button>
+          <span class="save-msg" id="msg-save-opponent"></span>
+        </div>
+      </div>
+
+    </div><!-- /tab-opponent -->
+
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
 
@@ -927,6 +984,7 @@ async function loadCase() {
     computeInterest();
     renderHeader();
     renderBookingInTab();
+    renderOpponentTab();
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
@@ -1161,6 +1219,24 @@ function renderBookingInTab() {
   }
 }
 
+function renderOpponentTab() {
+  const f = caseFields;
+  document.getElementById('op-OpponentPartyName').value  = f['OpponentPartyName']               || '';
+  document.getElementById('op-Opponentreference').value  = f['Opponentreference']                || '';
+  document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
+  document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
+  document.getElementById('op-CourtName').value          = f['CourtName_Text']                   || '';
+  document.getElementById('op-Division').value           = f['Division']                         || '';
+  document.getElementById('op-ClaimNo').value            = f['ClaimNo']                          || '';
+  document.getElementById('op-Addr1').value              = f['Opponent_x0020_Address_x0020_1']   || '';
+  document.getElementById('op-Addr2').value              = f['Opponent_x0020_Address_x0020_2']   || '';
+  document.getElementById('op-Addr3').value              = f['Opponent_x0020_Address_x0020_3']   || '';
+  document.getElementById('op-Addr4').value              = f['Opponent_x0020_Address_x0020_4']   || '';
+  document.getElementById('op-Addr5').value              = f['Opponent_x0020_Address_x0020_5']   || '';
+  setCheck('op-MoreThanOneDef',   f['Morethanonedefendant_x003f_']);
+  setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
+}
+
 function renderHeader() {
   const f = caseFields;
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
@@ -1326,6 +1402,30 @@ document.getElementById('btn-save-bookingin').addEventListener('click', async ()
     renderHeader();
     renderBookingInTab();
   }
+});
+
+document.getElementById('btn-save-opponent').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-opponent');
+  const msg = document.getElementById('msg-save-opponent');
+  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+  const fields = {
+    OpponentPartyName:               document.getElementById('op-OpponentPartyName').value  || null,
+    Opponentreference:               document.getElementById('op-Opponentreference').value  || null,
+    opponentFirmMirror:              document.getElementById('op-opponentFirmMirror').value || null,
+    ServiceEmail:                    document.getElementById('op-ServiceEmail').value       || null,
+    CourtName_Text:                  document.getElementById('op-CourtName').value          || null,
+    Division:                        document.getElementById('op-Division').value           || null,
+    ClaimNo:                         document.getElementById('op-ClaimNo').value            || null,
+    Opponent_x0020_Address_x0020_1:  document.getElementById('op-Addr1').value              || null,
+    Opponent_x0020_Address_x0020_2:  document.getElementById('op-Addr2').value              || null,
+    Opponent_x0020_Address_x0020_3:  document.getElementById('op-Addr3').value              || null,
+    Opponent_x0020_Address_x0020_4:  document.getElementById('op-Addr4').value              || null,
+    Opponent_x0020_Address_x0020_5:  document.getElementById('op-Addr5').value              || null,
+    Morethanonedefendant_x003f_:     document.getElementById('op-MoreThanOneDef').checked,
+    Litigant_x0020_in_x0020_Person_x:document.getElementById('op-LitigantInPerson').checked,
+  };
+  await doSave(fields, btn, msg);
+  if (msg.className.includes('ok')) renderOpponentTab();
 });
 
 document.getElementById('btn-save-settlement').addEventListener('click', async () => {
