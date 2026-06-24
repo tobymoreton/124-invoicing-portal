@@ -55,6 +55,7 @@ const SELECT_FIELDS = [
   'VAT_x0020__x0025__x0020_Claimed',
   'Drafting_x0020_fee_x0020_basis',
   'InterPartesorLegalAid',
+  'MinimumFee',
   // Full case name fields (Fullcasename is calculated — reconstruct from parts)
   'Fullcasenameoveride',
   'CaseNameForOpenCases',
