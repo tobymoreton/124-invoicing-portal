@@ -530,12 +530,17 @@ async function loadFigures(fields) {
 
   el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
 
-  // Reset override / minimum-fee controls for the newly selected case
-  el('inp-drafting-override').value    = '';
-  el('inp-la-drafting-override').value = '';
+  // Override / minimum-fee controls for the newly selected case.
+  // If the case is flagged MinimumFee=Yes, pre-tick the minimum on whichever
+  // drafting section has figures (IP → £375, LA → £50) and pre-fill the override.
+  const caseMinFee   = fields.MinimumFee === true;
+  const ipHasFigures = profitCosts > 0 || profitCostsRecovered > 0;
+  const laHasFigures = laProfitCosts > 0;
+  el('inp-min-fee-ip').checked         = caseMinFee && ipHasFigures;
+  el('inp-drafting-override').value    = (caseMinFee && ipHasFigures) ? '375' : '';
+  el('inp-min-fee-la').checked         = caseMinFee && laHasFigures;
+  el('inp-la-drafting-override').value = (caseMinFee && laHasFigures) ? '50' : '';
   el('inp-timed-override').value       = '';
-  el('inp-min-fee-ip').checked         = false;
-  el('inp-min-fee-la').checked         = false;
 
   selectedCase._profitCosts          = profitCosts;
   selectedCase._laProfitCosts        = laProfitCosts;
@@ -878,6 +883,7 @@ async function handleCreateDraft() {
       pdfBase64,
       computed:          c,
       caseFields:        f,
+      caseItemId:        selectedCase.id || '',
       checkedWipIds:     c.checkedWipIds     || [],
       checkedWipEntries: c.checkedWipEntries || [],
     };
