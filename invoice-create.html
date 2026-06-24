@@ -408,6 +408,7 @@ const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 let callerEmail    = null;
 let selectedCase   = null;
 let _caseCache     = [];
+let _cacheReady    = false;   // true once preload resolves
 let _allWipEntries = [];
 let _showNonBillable = false;
 
@@ -434,6 +435,18 @@ async function init() {
   el('main-content').style.display = 'block';
   initCaseSearch();
   initListeners();
+  preloadCases();  // background — no await
+}
+
+// ── Preload all open cases into cache ────────────────────
+function preloadCases() {
+  fetch('/api/cases?preload=1')
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(data => {
+      _caseCache  = data.value || [];
+      _cacheReady = true;
+    })
+    .catch(() => { /* silent — typeahead falls back to live search */ });
 }
 
 // ── Case typeahead ────────────────────────────────────────
