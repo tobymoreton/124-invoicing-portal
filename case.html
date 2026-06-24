@@ -9,63 +9,113 @@
   <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --navy:#1B2A4A; --navy-mid:#253A60; --gold:#C9A84C; --gold-pale:#F0E6C8;
-      --cream:#F5F2EB; --white:#FFFFFF;
-      --grey-mid:#6B7280; --grey-light:#E5E1D6; --grey-faint:#F0EDE6;
+      --navy:#1B2A4A; --navy-mid:#253A60; --navy-light:#2E4A7A;
+      --gold:#C9A84C; --gold-pale:#F5EDD0; --gold-mid:#B8962E;
+      --cream:#F4F1EA; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E2DDD4; --grey-faint:#F0EDE6;
       --green:#065F46; --green-pale:#ECFDF5;
-      --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
-      --radius:6px; --transition:.18s ease;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --shadow-lg:0 4px 8px rgba(27,42,74,.10),0 16px 40px rgba(27,42,74,.14);
+      --radius:8px; --radius-sm:5px; --transition:.18s ease;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     html{scroll-behavior:smooth;}
     body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:15px;line-height:1.6;}
-    .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
-    .nav-brand{display:flex;align-items:baseline;gap:14px;}
-    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:16px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
-    .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
-    .nav-title{font-size:13px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
-    .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.8);text-decoration:none;padding:6px 14px;border:1px solid rgba(201,168,76,.35);border-radius:4px;transition:all .18s ease;}
-    .nav-back:hover{border-color:var(--gold);color:var(--gold);}
-    .case-header{background:var(--navy-mid);border-bottom:1px solid rgba(201,168,76,.18);padding:18px 28px;}
-    .case-ref{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);letter-spacing:.1em;margin-bottom:4px;}
-    .case-name{font-family:'Spectral',serif;font-weight:400;font-size:24px;color:var(--white);line-height:1.3;}
-    .case-meta{font-size:13px;color:rgba(245,242,235,.5);margin-top:4px;}
-    .tab-bar{background:var(--white);border-bottom:2px solid var(--grey-light);padding:0 28px;display:flex;overflow-x:auto;}
-    .tab-btn{padding:14px 20px;font-size:13px;font-weight:500;letter-spacing:.03em;color:var(--grey-mid);border:none;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;cursor:pointer;white-space:nowrap;transition:all var(--transition);}
-    .tab-btn:hover{color:var(--navy);}
-    .tab-btn.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:600;}
-    .content{max-width:960px;margin:0 auto;padding:28px 28px 48px;}
-    .tab-panel{display:none;}
+
+    /* ── Nav ─────────────────────────────────── */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
+    .nav-back:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* ── Case header ─────────────────────────── */
+    .case-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);border-bottom:1px solid rgba(201,168,76,.15);padding:22px 32px;}
+    .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;opacity:.85;}
+    .case-name{font-family:'Spectral',serif;font-weight:400;font-size:26px;color:var(--white);line-height:1.3;}
+    .case-meta{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:5px;letter-spacing:.02em;}
+
+    /* ── Tab bar ─────────────────────────────── */
+    .tab-bar{background:var(--navy);padding:0 32px;display:flex;overflow-x:auto;gap:2px;}
+    .tab-bar::-webkit-scrollbar{display:none;}
+    .tab-btn{
+      padding:0 24px;height:48px;font-size:13px;font-weight:500;letter-spacing:.04em;
+      color:rgba(245,242,235,.5);border:none;background:none;cursor:pointer;
+      white-space:nowrap;transition:all .2s ease;position:relative;
+      border-bottom:3px solid transparent;
+    }
+    .tab-btn::after{
+      content:'';position:absolute;bottom:0;left:50%;right:50%;
+      height:3px;background:var(--gold);border-radius:2px 2px 0 0;
+      transition:left .2s ease,right .2s ease;
+    }
+    .tab-btn:hover{color:rgba(245,242,235,.8);}
+    .tab-btn.active{color:var(--white);font-weight:600;}
+    .tab-btn.active::after{left:0;right:0;}
+
+    /* ── Content & layout ────────────────────── */
+    .content{max-width:980px;margin:0 auto;padding:28px 28px 56px;}
+    .tab-panel{display:none;animation:fadeIn .18s ease;}
     .tab-panel.active{display:block;}
-    .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden;}
-    .card-head{padding:13px 22px;border-bottom:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:space-between;}
-    .card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
-    .card-body{padding:22px;}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
     @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
-    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
     @media(max-width:560px){.detail-grid{grid-template-columns:1fr;}}
-    .offers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+    .offers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
     @media(max-width:680px){.offers-grid{grid-template-columns:1fr 1fr;}}
-    .field{display:flex;flex-direction:column;gap:5px;}
-    .field label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
-    .field input[type="number"],.field input[type="text"],.field input[type="date"]{padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);width:100%;}
-    .field input:focus{border-color:var(--gold);background:var(--white);}
-    .field input[readonly]{opacity:.55;cursor:default;}
+
+    /* ── Cards ───────────────────────────────── */
+    .card{
+      background:var(--white);border-radius:var(--radius);
+      box-shadow:var(--shadow);margin-bottom:22px;
+      overflow:hidden;border:1px solid rgba(27,42,74,.06);
+      transition:box-shadow .2s ease;
+    }
+    .card:hover{box-shadow:var(--shadow-lg);}
+    .card-head{
+      padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+      background:linear-gradient(90deg,rgba(27,42,74,.03) 0%,transparent 100%);
+      border-bottom:2px solid var(--gold-pale);
+    }
+    .card-title{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-mid);}
+    .card-body{padding:24px;}
+
+    /* ── Form fields ─────────────────────────── */
+    .field{display:flex;flex-direction:column;gap:6px;}
+    .field label{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);}
+    .field input[type="number"],.field input[type="text"],.field input[type="date"]{
+      padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
+      background:var(--cream);outline:none;transition:all .18s ease;width:100%;
+    }
+    .field input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
+    .field input[readonly]{opacity:.5;cursor:default;background:var(--grey-faint);}
     .field.full{grid-column:1/-1;}
     .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;}
     .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;text-transform:none;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
-    .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:16px;}
+    .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;}
+
+    /* ── Read-only grids ─────────────────────── */
     .read-grid{display:grid;grid-template-columns:1fr auto;}
     .read-row{display:contents;}
-    .read-row dt,.read-row dd{padding:9px 22px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
+    .read-row dt,.read-row dd{padding:10px 24px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
     .read-row:last-child dt,.read-row:last-child dd{border-bottom:none;}
     .read-row dt{color:var(--grey-mid);}
     .read-row dd{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
-    .read-row.total dt,.read-row.total dd{font-weight:700;background:var(--grey-faint);}
+    .read-row.total dt,.read-row.total dd{
+      font-weight:700;font-size:14px;
+      background:linear-gradient(90deg,var(--navy) 0%,var(--navy-mid) 100%);
+      color:var(--gold)!important;padding-top:12px;padding-bottom:12px;
+    }
     .read-row.highlight dd{color:var(--green);font-weight:700;}
     .read-row.pct dd{color:var(--navy-mid);}
+
+    /* ── Tables (period, claimed) ────────────── */
     .claimed-table{width:100%;border-collapse:collapse;font-size:13.5px;}
     .claimed-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:10px 16px;text-align:right;border-bottom:2px solid var(--grey-light);white-space:nowrap;}
     .claimed-table th:first-child{text-align:left;}
@@ -74,58 +124,107 @@
     .claimed-table tr.total-row td{font-weight:700;background:var(--grey-faint);border-bottom:none;}
     .claimed-table tr:last-child td{border-bottom:none;}
     .period-table{width:100%;border-collapse:collapse;font-size:13px;}
-    .period-table th{background:var(--grey-faint);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:9px 14px;text-align:right;border-bottom:2px solid var(--grey-light);}
+    .period-table th{background:var(--navy);color:rgba(245,242,235,.7);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:10px 14px;text-align:right;border-bottom:none;}
     .period-table th:first-child{text-align:left;}
-    .period-table td{padding:10px 14px;border-bottom:1px solid var(--grey-faint);font-size:13px;text-align:right;}
-    .period-table td:first-child{text-align:left;color:var(--grey-mid);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+    .period-table td{padding:11px 14px;border-bottom:1px solid var(--grey-faint);font-size:13px;text-align:right;}
+    .period-table td:first-child{text-align:left;color:var(--grey-mid);font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
     .period-table td.mono{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);}
     .period-table td.dim{color:var(--grey-light);font-family:'IBM Plex Mono',monospace;}
     .period-table tr:last-child td{border-bottom:none;}
-    .interest-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
+
+    /* ── Interest rows ───────────────────────── */
+    .interest-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
     .interest-row:last-child{border-bottom:none;}
     .interest-row span:first-child{color:var(--grey-mid);}
     .interest-row span:last-child{font-family:'IBM Plex Mono',monospace;font-weight:500;}
-    .recovery-highlight{background:var(--green-pale);border:1px solid rgba(6,95,70,.15);border-radius:var(--radius);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;margin-bottom:1px;}
+
+    /* ── Highlight panels ────────────────────── */
+    .recovery-highlight{
+      background:linear-gradient(135deg,var(--green-pale) 0%,#d1fae5 100%);
+      border:1px solid rgba(6,95,70,.18);border-radius:var(--radius);
+      padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;
+    }
     .recovery-highlight .rh-label{font-size:13px;color:var(--green);font-weight:500;}
-    .recovery-highlight .rh-value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--green);}
-    .interest-hero{background:#EFF6FF;border:1px solid rgba(59,130,246,.2);border-radius:var(--radius);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;margin:16px 22px 0;}
+    .recovery-highlight .rh-value{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--green);}
+    .interest-hero{
+      background:linear-gradient(135deg,#EFF6FF 0%,#DBEAFE 100%);
+      border:1px solid rgba(59,130,246,.2);border-radius:var(--radius);
+      padding:18px 24px;display:flex;justify-content:space-between;align-items:center;margin:18px 24px 0;
+    }
     .interest-hero .ih-label{font-size:13px;color:#1D4ED8;font-weight:500;}
-    .interest-hero .ih-value{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:#1D4ED8;}
-    .save-bar{display:flex;align-items:center;gap:14px;padding:18px 22px;border-top:1px solid var(--grey-faint);background:var(--grey-faint);}
-    .btn-save{background:var(--navy);color:var(--gold);border:none;padding:10px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--transition);}
-    .btn-save:hover{background:var(--navy-mid);}
-    .btn-save:disabled{opacity:.5;cursor:not-allowed;}
+    .interest-hero .ih-value{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#1D4ED8;}
+
+    /* ── Save bar ────────────────────────────── */
+    .save-bar{display:flex;align-items:center;gap:14px;padding:16px 24px;border-top:1px solid var(--grey-faint);background:var(--grey-faint);}
+    .btn-save{
+      background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);
+      color:var(--gold);border:none;padding:10px 36px;border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
+      cursor:pointer;transition:all .2s ease;
+      box-shadow:0 2px 8px rgba(27,42,74,.25);
+    }
+    .btn-save:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(27,42,74,.35);}
+    .btn-save:active{transform:translateY(0);}
+    .btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
     .save-msg{font-size:13px;color:var(--grey-mid);}
-    .save-msg.ok{color:var(--green);}
+    .save-msg.ok{color:var(--green);font-weight:500;}
     .save-msg.err{color:#991B1B;}
+
+    /* ── PDF button ──────────────────────────── */
     .pdf-bar{margin-top:8px;}
-    .btn-pdf{width:100%;background:var(--navy);color:var(--gold);border:none;padding:14px 32px;border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all var(--transition);display:flex;align-items:center;justify-content:center;gap:10px;}
-    .btn-pdf:hover{background:var(--navy-mid);}
+    .btn-pdf{
+      width:100%;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);
+      color:var(--gold);border:none;padding:15px 32px;border-radius:var(--radius);
+      font-family:'IBM Plex Sans',sans-serif;font-size:15px;font-weight:600;
+      cursor:pointer;transition:all .2s ease;display:flex;align-items:center;
+      justify-content:center;gap:10px;box-shadow:0 3px 10px rgba(27,42,74,.25);
+    }
+    .btn-pdf:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(27,42,74,.35);}
     .btn-pdf svg{width:18px;height:18px;fill:currentColor;flex-shrink:0;}
-    /* Costs Claimed entry table */
+
+    /* ── Costs Claimed entry table ───────────── */
     .costs-entry-table{width:100%;border-collapse:collapse;font-size:13.5px;}
-    .costs-entry-table thead th{background:var(--grey-faint);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);padding:9px 12px;border-bottom:2px solid var(--grey-light);white-space:nowrap;text-align:right;}
+    .costs-entry-table thead th{
+      background:var(--navy);color:rgba(245,242,235,.65);
+      font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+      padding:10px 12px;border-bottom:none;white-space:nowrap;text-align:right;
+    }
     .costs-entry-table thead th.col-label{text-align:left;}
-    .costs-entry-table tbody td{padding:8px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
+    .costs-entry-table tbody tr{transition:background .12s ease;}
+    .costs-entry-table tbody tr:hover{background:rgba(201,168,76,.04);}
+    .costs-entry-table tbody td{padding:9px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
     .costs-entry-table tbody tr:last-child td{border-bottom:none;}
-    .costs-entry-table tbody tr.other-row td{border-top:1px solid var(--grey-light);}
-    .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-right:12px!important;min-width:160px;}
-    .tbl-input{width:100%;padding:7px 10px;border:1px solid var(--grey-light);border-radius:var(--radius);font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);background:var(--cream);outline:none;transition:border-color var(--transition);text-align:right;}
-    .tbl-input:focus{border-color:var(--gold);background:var(--white);}
-    .tbl-computed{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;padding:7px 10px!important;white-space:nowrap;}
-    .col-net,.col-vat,.col-inc{width:90px;}
-    .vat-pct-row{display:flex;align-items:center;gap:10px;padding:12px 12px;border-top:2px solid var(--grey-light);background:var(--grey-faint);}
-    .vat-pct-row label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);flex:1;}
+    .costs-entry-table tbody tr.other-row td{border-top:2px solid var(--grey-light);}
+    .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-left:12px!important;padding-right:12px!important;min-width:170px;}
+    .tbl-input{
+      width:100%;padding:8px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
+      background:var(--cream);outline:none;transition:all .18s ease;text-align:right;
+    }
+    .tbl-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
+    .tbl-computed{
+      font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
+      text-align:right;padding:8px 12px!important;white-space:nowrap;opacity:.8;
+    }
+    .col-net{width:125px;}.col-vat,.col-inc{width:115px;}
+    .vat-pct-row{
+      display:flex;align-items:center;gap:10px;padding:12px 12px;
+      border-top:2px solid var(--grey-light);
+      background:linear-gradient(90deg,rgba(27,42,74,.03) 0%,transparent 100%);
+    }
+    .vat-pct-row label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;padding-left:4px;}
     .vat-pct-input{width:80px!important;}
-    .vat-pct-row span{font-size:13px;color:var(--grey-mid);font-weight:600;}
-    .coming-soon{padding:56px 0;text-align:center;color:var(--grey-mid);}
-    .coming-soon .icon{font-size:32px;margin-bottom:12px;}
-    .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
+    .vat-pct-row span{font-size:13px;color:var(--grey-mid);font-weight:600;padding-right:4px;}
+
+    /* ── Coming soon / states ────────────────── */
+    .coming-soon{padding:72px 0;text-align:center;color:var(--grey-mid);}
+    .coming-soon .icon{font-size:36px;margin-bottom:14px;opacity:.6;}
+    .coming-soon h3{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--navy);margin-bottom:8px;}
     .coming-soon p{font-size:14px;}
-    .state-block{text-align:center;padding:64px 24px;color:var(--grey-mid);}
-    .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:6px;}
+    .state-block{text-align:center;padding:72px 24px;color:var(--grey-mid);}
+    .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--navy);margin-bottom:8px;}
     .state-block p{font-size:14px;}
-    .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 14px;}
+    .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 16px;}
     @keyframes spin{to{transform:rotate(360deg);}}
     #app{display:none;}
   </style>
