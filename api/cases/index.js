@@ -132,6 +132,7 @@ const SELECT_FIELDS = [
   // Case Overview tab
   'assignedToTextValue',
   'AssignedToMirror',
+  'coAssignedMirror',
   'Current_x0020_Position',
   'CP_x0020_Last_x0020_Updated',
   'Flags',
