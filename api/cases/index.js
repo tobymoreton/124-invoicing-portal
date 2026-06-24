@@ -129,6 +129,19 @@ const SELECT_FIELDS = [
   'Opponent_x0020_Address_x0020_3',
   'Opponent_x0020_Address_x0020_4',
   'Opponent_x0020_Address_x0020_5',
+  // Case Overview tab
+  'assignedToTextValue',
+  'AssignedToMirror',
+  'Current_x0020_Position',
+  'CP_x0020_Last_x0020_Updated',
+  'Flags',
+  'LastAction',
+  'Last_x0020_Reminder',
+  'DateServedInformally0',
+  'DatePart8Issued',
+  'DateServedFormally0',
+  'PODS_x0020_Due',
+  'PODS_x0020_Received',
 ].join(',');
 
 function getCallerEmail(req) {
