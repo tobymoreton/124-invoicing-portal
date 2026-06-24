@@ -575,15 +575,14 @@
         <div class="card-head"><span class="card-title">Parties &amp; Representation</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>First Name</label><input type="text" id="bi-FirstName" /></div>
-            <div class="field"><label>Surname</label><input type="text" id="bi-Surname" /></div>
+            <div class="field"><label id="bi-FirstName-label">First Name</label><input type="text" id="bi-FirstName" /></div>
+            <div class="field"><label id="bi-Surname-label">Surname</label><input type="text" id="bi-Surname" /></div>
             <div class="field"><label>Fee Earner</label><input type="text" id="bi-FeeEarner" /></div>
             <div class="field"><label>Firm</label><input type="text" id="bi-Firm" /></div>
             <div class="field checkbox-field" style="margin-top:8px;">
               <input type="checkbox" id="bi-Andothers" />
               <label for="bi-Andothers">More than one Claimant?</label>
             </div>
-            <div class="field"><label>Multi Claimants</label><input type="text" id="bi-MultiClaimants" /></div>
           </div>
         </div>
       </div>
@@ -1105,25 +1104,32 @@ function renderBookingInTab() {
   const wip = f['Work_x0020_In_x0020_Progress'];
   document.getElementById('bi-WIP').value = (wip !== null && wip !== undefined && wip !== '') ? parseFloat(wip) : '';
 
-  // Party names
-  document.getElementById('bi-FirstName').value  = f['OurPartyFirstName'] || '';
-  document.getElementById('bi-Surname').value    = f['OurPartySurname']   || '';
+  // Party names — bi-Surname doubles as Multi Claimants field when checkbox ticked
+  const multi = !!(f['Andothers_x003f_']);
+  document.getElementById('bi-FirstName').value = f['OurPartyFirstName'] || '';
+  // Populate bi-Surname from MultiClaimants if multi, else OurPartySurname
+  document.getElementById('bi-Surname').value = multi
+    ? (f['MultiClaimants'] || '')
+    : (f['OurPartySurname'] || '');
   document.getElementById('bi-FeeEarner').value  = f['FeeEarner_x0028_fromFM_x0029_'] || '';
   document.getElementById('bi-Firm').value       = f['Firm_x0028_text_x0029_'] || '';
   setCheck('bi-Andothers', f['Andothers_x003f_']);
-  document.getElementById('bi-MultiClaimants').value = f['MultiClaimants'] || '';
 
-  // First Name locked when More than one Claimant is ticked
-  function syncFirstName() {
-    const multi = document.getElementById('bi-Andothers').checked;
-    const fnEl  = document.getElementById('bi-FirstName');
-    fnEl.readOnly = multi;
-    fnEl.style.opacity = multi ? '0.4' : '1';
-    fnEl.style.cursor  = multi ? 'not-allowed' : '';
-    if (multi) fnEl.value = '';
+  // Sync label text + First Name lock whenever checkbox changes
+  function syncPartyFields() {
+    const isMulti = document.getElementById('bi-Andothers').checked;
+    // Label swap
+    document.getElementById('bi-Surname-label').textContent  = isMulti ? 'Multi Claimants' : 'Surname';
+    document.getElementById('bi-FirstName-label').textContent = isMulti ? '\u00a0' : 'First Name';
+    // First Name: lock + clear when multi
+    const fnEl = document.getElementById('bi-FirstName');
+    fnEl.readOnly = isMulti;
+    fnEl.style.opacity = isMulti ? '0.4' : '1';
+    fnEl.style.cursor  = isMulti ? 'not-allowed' : '';
+    if (isMulti) fnEl.value = '';
   }
-  syncFirstName();
-  document.getElementById('bi-Andothers').addEventListener('change', syncFirstName);
+  syncPartyFields();
+  document.getElementById('bi-Andothers').addEventListener('change', syncPartyFields);
 
   // Classification selects — use same pattern: set value, add if missing
   function setSelect(id, val) {
@@ -1289,11 +1295,14 @@ document.getElementById('btn-save-bookingin').addEventListener('click', async ()
   const fields = {};
   // Text fields
   fields['OurPartyFirstName']              = document.getElementById('bi-FirstName').value      || null;
-  fields['OurPartySurname']               = document.getElementById('bi-Surname').value       || null;
+  // bi-Surname doubles as Multi Claimants when checkbox is ticked
+  const isMultiSave = document.getElementById('bi-Andothers').checked;
+  const surnameVal  = document.getElementById('bi-Surname').value || null;
+  fields['OurPartySurname']  = isMultiSave ? null : surnameVal;
+  fields['MultiClaimants']   = isMultiSave ? surnameVal : null;
   fields['ClientCaseReference']           = document.getElementById('bi-ClientRef').value     || null;
   fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value     || null;
   fields['Firm_x0028_text_x0029_']        = document.getElementById('bi-Firm').value          || null;
-  fields['MultiClaimants']                = document.getElementById('bi-MultiClaimants').value || null;
   fields['Add_x0020_To_x0020_Title']      = document.getElementById('bi-AddSuffix').value     || null;
   fields['Fullcasenameoveride']           = document.getElementById('bi-FullNameOverride').value || null;
   fields['Notes']                         = document.getElementById('bi-Notes').value         || null;
