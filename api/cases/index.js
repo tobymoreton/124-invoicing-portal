@@ -88,6 +88,8 @@ const SELECT_FIELDS = [
   // Recovery
   'Counselsfeespayable',
   'NetProfitCostsRecoveredBeforeDra',
+  'Limit_x0020_Costs_x0020_of_x0020',
+  'PreLimitedCostsOfAssessment',
   // Interest — plain stored fields only (all calculated fields return null via Graph)
   'SumForInterestCalculationOverrid',
   'TotalPreAuthorityPayments',
