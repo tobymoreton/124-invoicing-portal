@@ -6,8 +6,9 @@
  * Admin-only — returns 403 for non-admins.
  *
  * Query params:
- *   q    — free-text search string (matches case name or our ref, client-side)
- *   top  — max results (default 10, max 20)
+ *   q       — free-text search string (matches case name or our ref, client-side)
+ *   top     — max results (default 10, max 20)
+ *   preload — if '1', returns all non-closed cases with no top cap (used for client-side cache)
  *
  * List: Cases
  * GUID: ae420bda-e550-499c-b337-90e4f33617c1
@@ -164,6 +165,24 @@ module.exports = async function (context, req) {
   const q          = (req.query.q || '').trim().toLowerCase();
   const top        = Math.min(parseInt(req.query.top, 10) || 10, 20);
   const includeAll = req.query.all === '1';
+  const preload    = req.query.preload === '1';
+
+  // Preload mode: return all non-closed cases for client-side cache — no q required
+  if (preload) {
+    try {
+      const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const result = await getAllOpenCases(token);
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=300' },
+        body: JSON.stringify(result),
+      };
+    } catch (err) {
+      context.log.error('Error preloading cases:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
 
   if (!q || q.length < 2) {
     context.res = {
@@ -188,6 +207,30 @@ module.exports = async function (context, req) {
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
+
+async function getAllOpenCases(token) {
+  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
+           + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
+
+  var url = base;
+  var all = [];
+  while (url) {
+    var page = await graphGet(url, token);
+    all = all.concat(page.value || []);
+    url = page['@odata.nextLink'] || null;
+  }
+
+  const open = all.filter(function(item) {
+    var status = ((item.fields || {}).StatusMirror || '').toLowerCase();
+    return status !== 'closed';
+  });
+
+  return {
+    value: open.map(function(item) {
+      return { id: item.id, fields: item.fields || {} };
+    }),
+  };
+}
 
 async function searchCases(token, q, top, includeAll) {
   var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
