@@ -72,31 +72,55 @@
     .card{
       background:var(--white);border-radius:var(--radius);
       box-shadow:var(--shadow);margin-bottom:22px;
-      overflow:hidden;border:1px solid rgba(27,42,74,.06);
-      transition:box-shadow .2s ease;
+      overflow:hidden;
+      border:1px solid rgba(27,42,74,.10);
+      border-top:3px solid var(--gold);
+      transition:box-shadow .2s ease,border-top-color .2s ease;
     }
-    .card:hover{box-shadow:var(--shadow-lg);}
+    .card:hover{box-shadow:var(--shadow-lg);border-top-color:var(--gold-mid);}
     .card-head{
       padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
-      background:linear-gradient(90deg,rgba(27,42,74,.03) 0%,transparent 100%);
-      border-bottom:2px solid var(--gold-pale);
+      background:linear-gradient(90deg,rgba(27,42,74,.05) 0%,rgba(27,42,74,.01) 100%);
+      border-bottom:1px solid rgba(201,168,76,.25);
     }
-    .card-title{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-mid);}
+    .card-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--navy-mid);}
     .card-body{padding:24px;}
 
     /* ── Form fields ─────────────────────────── */
-    .field{display:flex;flex-direction:column;gap:6px;}
-    .field label{font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);}
-    .field input[type="number"],.field input[type="text"],.field input[type="date"]{
-      padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
-      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
-      background:var(--cream);outline:none;transition:all .18s ease;width:100%;
+    .field{display:flex;flex-direction:column;gap:7px;}
+    .field label{
+      font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+      color:var(--navy-mid);display:flex;align-items:center;gap:6px;
     }
-    .field input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
-    .field input[readonly]{opacity:.5;cursor:default;background:var(--grey-faint);}
+    .field label::before{
+      content:'';display:inline-block;width:3px;height:10px;
+      background:var(--gold);border-radius:2px;flex-shrink:0;
+    }
+    .field input[type="number"],.field input[type="text"],.field input[type="date"]{
+      padding:10px 14px;
+      border:1.5px solid rgba(27,42,74,.18);
+      border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);
+      background:var(--white);outline:none;transition:all .18s ease;width:100%;
+      box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
+    }
+    .field input[type="number"]:hover,.field input[type="text"]:hover,.field input[type="date"]:hover{
+      border-color:rgba(27,42,74,.35);
+    }
+    .field input:focus{
+      border-color:var(--gold);background:var(--white);
+      box-shadow:0 0 0 3px rgba(201,168,76,.15),inset 0 1px 2px rgba(27,42,74,.04);
+    }
+    .field input[readonly]{
+      opacity:.6;cursor:default;
+      background:linear-gradient(135deg,var(--grey-faint) 0%,#ebe8e0 100%);
+      border-color:var(--grey-light);color:var(--grey-mid);
+      box-shadow:none;
+    }
     .field.full{grid-column:1/-1;}
     .field.checkbox-field{flex-direction:row;align-items:center;gap:10px;}
-    .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:400;text-transform:none;}
+    .field.checkbox-field label{font-size:13px;color:var(--navy);letter-spacing:0;font-weight:500;text-transform:none;}
+    .field.checkbox-field label::before{display:none;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
     .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;}
 
@@ -197,11 +221,14 @@
     .costs-entry-table tbody tr.other-row td{border-top:2px solid var(--grey-light);}
     .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-left:12px!important;padding-right:12px!important;min-width:170px;}
     .tbl-input{
-      width:100%;min-width:160px;padding:8px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
+      width:100%;min-width:160px;padding:8px 10px;
+      border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
-      background:var(--cream);outline:none;transition:all .18s ease;text-align:right;
+      background:var(--white);outline:none;transition:all .18s ease;text-align:right;
+      box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
     }
-    .tbl-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
+    .tbl-input:hover{border-color:rgba(27,42,74,.35);}
+    .tbl-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
     .tbl-computed{
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
       text-align:right;padding:8px 12px!important;white-space:nowrap;opacity:.8;
@@ -229,11 +256,14 @@
       color:var(--gold)!important;padding-top:12px;padding-bottom:12px;
     }
     .liab-input{
-      width:140px;padding:7px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
+      width:140px;padding:7px 10px;
+      border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
-      background:var(--cream);outline:none;transition:all .18s ease;text-align:right;
+      background:var(--white);outline:none;transition:all .18s ease;text-align:right;
+      box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
     }
-    .liab-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
+    .liab-input:hover{border-color:rgba(27,42,74,.35);}
+    .liab-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
     .liab-static{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;display:block;padding:7px 10px;}
     /* COA calculate button + picker */
     .coa-cell{display:flex;align-items:center;gap:8px;}
