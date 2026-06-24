@@ -206,7 +206,7 @@
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
       text-align:right;padding:8px 12px!important;white-space:nowrap;opacity:.8;
     }
-    .col-net{width:125px;}.col-vat,.col-inc{width:115px;}
+    .col-net{width:155px;}.col-vat,.col-inc{width:120px;}
     .vat-pct-row{
       display:flex;align-items:center;gap:10px;padding:12px 12px;
       border-top:2px solid var(--grey-light);
@@ -215,6 +215,55 @@
     .vat-pct-row label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;padding-left:4px;}
     .vat-pct-input{width:80px!important;}
     .vat-pct-row span{font-size:13px;color:var(--grey-mid);font-weight:600;padding-right:4px;}
+
+    /* ── Liabilities editable fields ───────────── */
+    .liab-grid{display:grid;grid-template-columns:1fr auto;align-items:center;}
+    .liab-row{display:contents;}
+    .liab-row dt,.liab-row dd{padding:8px 16px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
+    .liab-row:last-child dt,.liab-row:last-child dd{border-bottom:none;}
+    .liab-row dt{color:var(--grey-mid);padding-left:24px;}
+    .liab-row dd{padding-right:16px;}
+    .liab-row.total dt,.liab-row.total dd{
+      font-weight:700;font-size:14px;
+      background:linear-gradient(90deg,var(--navy) 0%,var(--navy-mid) 100%);
+      color:var(--gold)!important;padding-top:12px;padding-bottom:12px;
+    }
+    .liab-input{
+      width:140px;padding:7px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);
+      background:var(--cream);outline:none;transition:all .18s ease;text-align:right;
+    }
+    .liab-input:focus{border-color:var(--gold);background:var(--white);box-shadow:0 0 0 3px rgba(201,168,76,.12);}
+    .liab-static{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;display:block;padding:7px 10px;}
+    /* COA calculate button + picker */
+    .coa-cell{display:flex;align-items:center;gap:8px;}
+    .btn-calc{
+      padding:6px 12px;font-size:11.5px;font-weight:600;letter-spacing:.04em;
+      background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius-sm);
+      cursor:pointer;transition:all .18s ease;white-space:nowrap;
+    }
+    .btn-calc:hover{background:var(--navy-mid);}
+    .btn-calc:disabled{opacity:.5;cursor:not-allowed;}
+    .coa-picker{
+      display:none;position:absolute;z-index:100;
+      background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
+      box-shadow:var(--shadow-lg);padding:6px;
+      flex-direction:column;gap:4px;min-width:180px;
+    }
+    .coa-picker.open{display:flex;}
+    .coa-opt{
+      padding:9px 14px;font-size:13px;font-weight:500;color:var(--navy);
+      border-radius:var(--radius-sm);cursor:pointer;border:none;background:none;
+      text-align:left;transition:background .12s;
+    }
+    .coa-opt:hover{background:var(--gold-pale);}
+    .coa-wrapper{position:relative;}
+    .import-btn{
+      padding:6px 12px;font-size:11.5px;font-weight:600;
+      background:transparent;color:var(--gold-mid);border:1.5px solid var(--gold-pale);
+      border-radius:var(--radius-sm);cursor:pointer;transition:all .18s ease;white-space:nowrap;
+    }
+    .import-btn:hover{background:var(--gold-pale);border-color:var(--gold);}
 
     /* ── Coming soon / states ────────────────── */
     .coming-soon{padding:72px 0;text-align:center;color:var(--grey-mid);}
@@ -391,12 +440,39 @@
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
-          <dl class="read-grid">
-            <div class="read-row"><dt>Disbursements inc VAT</dt><dd id="r-Disbursements">—</dd></div>
-            <div class="read-row"><dt>Counsel's Fees payable</dt><dd id="r-Counsel">—</dd></div>
-            <div class="read-row"><dt>Costs of Assessment</dt><dd id="r-CoA">—</dd></div>
-            <div class="read-row"><dt>Other TMC Fees (excl Drafting)</dt><dd id="r-OtherTMC">—</dd></div>
-            <div class="read-row total"><dt>Total Liabilities</dt><dd id="r-TotalLiab">—</dd></div>
+          <dl class="liab-grid">
+            <div class="liab-row">
+              <dt>Disbursements inc VAT</dt>
+              <dd><span class="liab-static" id="r-Disbursements">—</span></dd>
+            </div>
+            <div class="liab-row">
+              <dt>Counsel's Fees payable</dt>
+              <dd class="coa-cell">
+                <input type="number" id="f-Counselsfeespayable" class="liab-input" step="0.01" min="0" />
+                <button class="import-btn" id="btn-import-counsel">↓ From Claimed</button>
+              </dd>
+            </div>
+            <div class="liab-row">
+              <dt>Costs of Assessment</dt>
+              <dd class="coa-cell">
+                <input type="number" id="f-Costsofassessment" class="liab-input" step="0.01" min="0" />
+                <div class="coa-wrapper">
+                  <button class="btn-calc" id="btn-calc-coa">⚡ Calculate</button>
+                  <div class="coa-picker" id="coa-picker">
+                    <button class="coa-opt" data-mode="unbilled">Unbilled actions only</button>
+                    <button class="coa-opt" data-mode="all">All billable actions</button>
+                  </div>
+                </div>
+              </dd>
+            </div>
+            <div class="liab-row">
+              <dt>Other TMC Fees (excl Drafting)</dt>
+              <dd><input type="number" id="f-OtherTMCInvoices" class="liab-input" step="0.01" min="0" /></dd>
+            </div>
+            <div class="liab-row total">
+              <dt>Total Liabilities</dt>
+              <dd><span class="liab-static" id="r-TotalLiab">—</span></dd>
+            </div>
           </dl>
         </div>
         <div class="card">
@@ -838,10 +914,10 @@ function renderSettlementTab() {
   setCheck('f-Offerincludesinterest_x003f_',     f['Offerincludesinterest_x003f_']);
 
   setText('r-Disbursements', fmt(c.disbIncVAT));
-  setText('r-Counsel',       fmt(c.counsel));
-  setText('r-CoA',           fmt(c.coa));
-  setText('r-OtherTMC',      fmt(c.otherTMC));
   setText('r-TotalLiab',     fmt(c.totalPayable));
+  setNum('f-Counselsfeespayable', f['Counselsfeespayable']);
+  setNum('f-Costsofassessment',   f['Costsofassessment']);
+  setNum('f-OtherTMCInvoices',    f['OtherTMCInvoices_ex_x0020_bill']);
 
   setText('r-InterestOn',   fmt(i.interestOn));
   setText('r-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
@@ -952,11 +1028,63 @@ document.getElementById('btn-save-settlement').addEventListener('click', async (
     'Settlementamount':'f-Settlementamount','ProfitCostsatAdvisedRates':'f-ProfitCostsatAdvisedRates',
     'BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
+    'Counselsfeespayable':'f-Counselsfeespayable',
+    'Costsofassessment':'f-Costsofassessment',
+    'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
   await doSave(fields, btn, msg);
   if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); }
+});
+
+// ── Import Counsel's Fees from Costs Claimed ──────────────────────────────
+document.getElementById('btn-import-counsel').addEventListener('click', () => {
+  const f = caseFields;
+  const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+  const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  const counselIncVAT = Math.round(counselClaimed * (1 + vatPct) * 100) / 100;
+  document.getElementById('f-Counselsfeespayable').value = counselIncVAT || '';
+});
+
+// ── COA Calculate button — show/hide picker ───────────────────────────────
+const coaPicker = document.getElementById('coa-picker');
+document.getElementById('btn-calc-coa').addEventListener('click', (e) => {
+  e.stopPropagation();
+  coaPicker.classList.toggle('open');
+});
+document.addEventListener('click', () => coaPicker.classList.remove('open'));
+
+// ── COA mode selected ─────────────────────────────────────────────────────
+document.querySelectorAll('.coa-opt').forEach(btn => {
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    coaPicker.classList.remove('open');
+    const mode = btn.dataset.mode;
+    const calcBtn = document.getElementById('btn-calc-coa');
+    calcBtn.disabled = true;
+    calcBtn.textContent = '…';
+    const ref = (caseFields['Ourreference_x0028_text_x0029_'] || '').trim();
+    try {
+      const resp = await fetch('/api/coa?ref=' + encodeURIComponent(ref) + '&mode=' + mode);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      // Cap logic: if limit set and > 0, use limit; otherwise use sum
+      const vatPct = parseFloat(caseFields['VAT_x0020__x0025__x0020_Claimed']) || 0;
+      const base   = (data.limit && data.limit > 0) ? data.limit : data.sum;
+      const coaIncVAT = Math.round(base * (1 + vatPct) * 100) / 100;
+      document.getElementById('f-Costsofassessment').value = coaIncVAT || '';
+      // Show what was used
+      const modeLabel = mode === 'unbilled' ? 'unbilled' : 'all billable';
+      const limitNote = (data.limit && data.limit > 0) ? ' (capped at £' + data.limit.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')' : '';
+      calcBtn.textContent = '✓ ' + data.count + ' entries' + limitNote;
+      setTimeout(() => { calcBtn.textContent = '⚡ Calculate'; calcBtn.disabled = false; }, 3000);
+    } catch (err) {
+      calcBtn.textContent = '✗ Error';
+      setTimeout(() => { calcBtn.textContent = '⚡ Calculate'; calcBtn.disabled = false; }, 3000);
+      console.error('COA calc error:', err);
+    }
+  });
 });
 
 document.getElementById('btn-save-interest').addEventListener('click', async () => {
