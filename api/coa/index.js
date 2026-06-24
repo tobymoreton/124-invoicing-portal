@@ -21,10 +21,16 @@
  * The cap logic and VAT multiplication are applied client-side in case.html.
  *
  * TT2 field notes:
- *   field_16               — Our Reference (text, used for filtering)
- *   Billable_x003f_        — Billable? (boolean, indexed)
- *   Billed_x003f_          — Billed? (boolean, indexed)
- *   PreLimitedBillableAmount — billable value before any cap (Currency)
+ *   field_16                 — Our Reference (text, used for filtering)
+ *   Billable_x003f_          — Billable? (boolean, indexed)
+ *   Billed_x003f_            — Billed? (boolean, indexed)
+ *   Num_BillableAmount_x00a3_ — billable value £ (confirmed internal name from /api/wip)
+ *   TimeSpentMirror           — hours (fallback if BillableAmount blank)
+ *   field_6                   — rate £/hr (fallback)
+ *
+ * Note: PreLimitedBillableAmount is the PA connector display name — internal SP name
+ * unconfirmed for Graph. Using Num_BillableAmount_x00a3_ instead (confirmed working).
+ * For unbilled entries Num_BillableAmount_x00a3_ may be 0; compute from TimeSpentMirror × field_6.
  *
  * List GUIDs:
  *   TT2:   67db204c-30a5-4f4d-b276-60852d9967e1
@@ -89,10 +95,15 @@ module.exports = async function (context, req) {
       fetchCaseLimit(token, ref),
     ]);
 
-    // Sum PreLimitedBillableAmount across matching entries
+    // Sum billable value — use Num_BillableAmount_x00a3_ if populated,
+    // otherwise compute from TimeSpentMirror × field_6 (same pattern as /api/wip)
     const sum = entries.reduce((acc, entry) => {
-      const val = parseFloat(entry.fields && entry.fields['PreLimitedBillableAmount']);
-      return acc + (isNaN(val) ? 0 : val);
+      const f   = entry.fields || {};
+      const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
+      const val = !isNaN(amt) && amt > 0
+        ? amt
+        : (parseFloat(f['TimeSpentMirror']) || 0) * (parseFloat(f['field_6']) || 0);
+      return acc + val;
     }, 0);
 
     context.res = {
@@ -123,10 +134,12 @@ async function fetchTT2Entries(token, ref, mode) {
   const filter = encodeURIComponent(billableFilter + billedClause);
 
   const selectFields = [
-    'field_16',              // Our Reference
-    'Billable_x003f_',       // Billable?
-    'Billed_x003f_',         // Billed?
-    'PreLimitedBillableAmount', // Value before cap
+    'field_16',               // Our Reference
+    'Billable_x003f_',        // Billable?
+    'Billed_x003f_',          // Billed?
+    'Num_BillableAmount_x00a3_', // Billable value £ (confirmed internal name)
+    'TimeSpentMirror',        // Hours (fallback for unbilled)
+    'field_6',                // Rate £/hr (fallback for unbilled)
   ].join(',');
 
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
@@ -137,12 +150,12 @@ async function fetchTT2Entries(token, ref, mode) {
   let all = [];
 
   while (url) {
-    const page = await graphGet(url, token, true); // allowThrottleable for unindexed field_16
+    const page = await graphGet(url, token, true);
     all = all.concat(page.value || []);
     url = page['@odata.nextLink'] || null;
   }
 
-  // Client-side filter by Our Reference (field_16 is not indexed)
+  // Client-side filter by Our Reference (field_16 not indexed)
   return all.filter(item => {
     const f = item.fields || {};
     return (f['field_16'] || '').toString().trim() === ref;
