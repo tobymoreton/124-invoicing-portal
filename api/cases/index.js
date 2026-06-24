@@ -131,8 +131,9 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const q   = (req.query.q || '').trim().toLowerCase();
-  const top = Math.min(parseInt(req.query.top, 10) || 10, 20);
+  const q          = (req.query.q || '').trim().toLowerCase();
+  const top        = Math.min(parseInt(req.query.top, 10) || 10, 20);
+  const includeAll = req.query.all === '1';
 
   if (!q || q.length < 2) {
     context.res = {
@@ -145,7 +146,7 @@ module.exports = async function (context, req) {
 
   try {
     const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const result = await searchCases(token, q, top);
+    const result = await searchCases(token, q, top, includeAll);
 
     context.res = {
       status: 200,
@@ -158,7 +159,7 @@ module.exports = async function (context, req) {
   }
 };
 
-async function searchCases(token, q, top) {
+async function searchCases(token, q, top, includeAll) {
   var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
            + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
 
@@ -175,8 +176,8 @@ async function searchCases(token, q, top) {
     var title  = (f.Title || '').toLowerCase();
     var ref    = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
     var status = (f.StatusMirror || '').toLowerCase();
-    // Exclude closed cases
-    if (status === 'closed') return false;
+    // Exclude closed cases unless caller requests all (e.g. direct ref lookup from case.html)
+    if (!includeAll && status === 'closed') return false;
     return title.indexOf(q) !== -1 || ref.indexOf(q) !== -1;
   });
 
