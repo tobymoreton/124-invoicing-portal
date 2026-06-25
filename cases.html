@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Cases — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A; --navy-mid:#253A60; --navy-light:#2E4A7A;
+      --gold:#C9A84C; --gold-pale:#F5EDD0; --gold-mid:#B8962E;
+      --cream:#F4F1EA; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E2DDD4; --grey-faint:#F0EDE6;
+      --green:#065F46; --green-pale:#ECFDF5;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px; --radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* ── Nav ── */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
+    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* ── Header strip ── */
+    .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:24px 32px;border-bottom:1px solid rgba(201,168,76,.15);}
+    .page-header-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--white);}
+    .page-sub{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:4px;letter-spacing:.02em;}
+    .user-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,.12);border:1px solid rgba(201,168,76,.25);border-radius:20px;padding:5px 14px;}
+    .user-pill-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(201,168,76,.7);}
+    .user-pill-name{font-size:13px;font-weight:500;color:var(--gold);}
+
+    /* ── Filter bar ── */
+    .filter-bar{background:var(--white);border-bottom:1px solid var(--grey-light);padding:14px 32px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:60px;z-index:100;box-shadow:var(--shadow-sm);}
+    .search-wrap{position:relative;flex:1;min-width:200px;max-width:360px;}
+    .search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;}
+    .search-input{width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;transition:border-color .18s ease;}
+    .search-input:focus{border-color:var(--gold);background:var(--white);}
+    .search-input::placeholder{color:var(--grey-mid);}
+    .chip-group{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+    .chip-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
+    .chip{padding:5px 12px;border-radius:20px;border:1px solid var(--grey-light);font-size:12px;font-weight:500;cursor:pointer;background:var(--white);color:var(--grey-mid);transition:all .18s ease;white-space:nowrap;}
+    .chip:hover{border-color:var(--navy);color:var(--navy);}
+    .chip.active{background:var(--navy);border-color:var(--navy);color:var(--white);}
+    .filter-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+    .show-all-toggle{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--grey-mid);cursor:pointer;user-select:none;}
+    .show-all-toggle input{accent-color:var(--navy);width:15px;height:15px;cursor:pointer;}
+    .result-count{font-size:12px;color:var(--grey-mid);white-space:nowrap;}
+    .result-count strong{color:var(--navy);font-weight:600;}
+
+    /* ── Main content ── */
+    .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
+
+    /* ── State blocks ── */
+    .state-block{text-align:center;padding:80px 24px;color:var(--grey-mid);}
+    .state-block h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:8px;}
+    .state-block p{font-size:13.5px;}
+    .spinner{width:32px;height:32px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* ── Cases table ── */
+    .table-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid rgba(27,42,74,.08);}
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:13.5px;}
+    thead th{
+      background:var(--navy);color:rgba(245,242,235,.65);
+      font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+      padding:11px 16px;text-align:left;white-space:nowrap;border-bottom:none;
+    }
+    thead th:first-child{padding-left:20px;}
+    thead th:last-child{padding-right:20px;}
+    tbody tr{border-bottom:1px solid var(--grey-faint);transition:background .12s ease;cursor:pointer;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:rgba(201,168,76,.05);}
+    tbody tr:hover .open-btn{opacity:1;}
+    td{padding:13px 16px;vertical-align:middle;}
+    td:first-child{padding-left:20px;}
+    td:last-child{padding-right:20px;}
+    .td-case-name{font-weight:600;color:var(--navy);line-height:1.4;}
+    .td-firm{font-size:12.5px;color:var(--grey-mid);margin-top:2px;}
+    .td-ref{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--navy-mid);font-weight:500;}
+    .td-date{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--grey-mid);}
+    .td-assigned{font-size:12.5px;color:var(--navy);}
+    .td-assigned .co{font-size:11.5px;color:var(--grey-mid);margin-top:1px;}
+    .open-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 14px;border-radius:var(--radius-sm);
+      background:var(--navy);color:var(--gold);
+      font-size:12px;font-weight:600;text-decoration:none;
+      transition:all .15s ease;opacity:0;white-space:nowrap;
+      border:none;cursor:pointer;
+    }
+    .open-btn:hover{background:var(--navy-mid);transform:translateY(-1px);}
+
+    /* ── Status chips ── */
+    .status-chip{
+      display:inline-block;padding:3px 10px;border-radius:12px;
+      font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;
+    }
+    .s-pending-assignment{background:#FEF9C3;color:#713F12;}
+    .s-in-billing{background:#DBEAFE;color:#1E40AF;}
+    .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
+    .s-served-client{background:#DCFCE7;color:#14532D;}
+    .s-negotiation{background:#FFF7ED;color:#9A3412;}
+    .s-budgeting{background:#E0F2FE;color:#075985;}
+    .s-assessment{background:#FEF2F2;color:#991B1B;}
+    .s-settled{background:var(--green-pale);color:var(--green);}
+    .s-closed{background:var(--grey-faint);color:var(--grey-mid);}
+    .s-default{background:var(--grey-faint);color:var(--grey-mid);}
+
+    /* ── Task chip ── */
+    .task-chip{
+      display:inline-block;padding:2px 8px;border-radius:10px;
+      font-size:11px;font-weight:500;background:rgba(201,168,76,.12);color:var(--navy-mid);
+      white-space:nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Case Hub</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">&larr; Invoices</a>
+    <a href="/invoice-create.html" class="nav-link">+ New Invoice Draft</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-top">
+    <div>
+      <div class="page-title">My Cases</div>
+      <div class="page-sub" id="page-sub">Loading&hellip;</div>
+    </div>
+    <div class="user-pill">
+      <span class="user-pill-label">Signed in as</span>
+      <span class="user-pill-name" id="user-name">&mdash;</span>
+    </div>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="search-wrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" class="search-input" id="search-input" placeholder="Search case name or ref&hellip;" />
+  </div>
+  <div class="chip-group">
+    <span class="chip-label">Status</span>
+    <button class="chip active" data-status="">All</button>
+    <button class="chip" data-status="active">Active</button>
+    <button class="chip" data-status="negotiation">Negotiating</button>
+    <button class="chip" data-status="settled">Settled</button>
+  </div>
+  <div class="chip-group">
+    <span class="chip-label">Task</span>
+    <button class="chip active" data-task="">All</button>
+    <button class="chip" data-task="Bill of Costs">Bill</button>
+    <button class="chip" data-task="Budget">Budget</button>
+    <button class="chip" data-task="Replies">Replies</button>
+  </div>
+  <div class="filter-right">
+    <label class="show-all-toggle" id="show-all-toggle" style="display:none;">
+      <input type="checkbox" id="show-all-cb" />
+      Show all open cases
+    </label>
+    <span class="result-count" id="result-count"></span>
+  </div>
+</div>
+
+<div class="main">
+  <div id="state-loading" class="state-block"><div class="spinner"></div><h3>Loading your cases&hellip;</h3></div>
+  <div id="state-empty" class="state-block" style="display:none;">
+    <h3>No cases found</h3>
+    <p>Try adjusting your filters, or check &ldquo;Show all open cases&rdquo;.</p>
+  </div>
+  <div id="state-error" class="state-block" style="display:none;">
+    <h3>Error loading cases</h3><p id="error-msg"></p>
+  </div>
+  <div id="table-wrap" class="table-card" style="display:none;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Case</th>
+            <th>Ref</th>
+            <th>Status</th>
+            <th>Task</th>
+            <th>Track</th>
+            <th>Assigned To</th>
+            <th>Received</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cases-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+let allCases    = [];
+let callerEmail = '';
+let callerName  = '';
+let isAdmin     = false;
+
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+
+const NAME_DISPLAY = {
+  'joanna':'Joanna','tracy':'Tracy','kelly':'Kelly','tom':'Tom',
+  'julie':'Julie','daniel':'Daniel','toby':'Toby','danielle':'Danielle','lesley':'Lesley',
+};
+
+let filters  = { q: '', status: '', task: '' };
+let showAll  = false;
+
+async function loadIdentity() {
+  try {
+    const r = await fetch('/.auth/me');
+    if (!r.ok) throw new Error('not signed in');
+    const data = await r.json();
+    const user = data.clientPrincipal || (Array.isArray(data) ? data[0]?.clientPrincipal : null);
+    if (user && user.userDetails) {
+      callerEmail = user.userDetails.toLowerCase();
+      const local = callerEmail.split('@')[0].toLowerCase();
+      callerName  = NAME_DISPLAY[local] || user.userDetails;
+      document.getElementById('user-name').textContent = callerName || callerEmail;
+      isAdmin = ADMIN_EMAILS.includes(callerEmail);
+      if (isAdmin) {
+        document.getElementById('show-all-toggle').style.display = 'flex';
+        document.getElementById('show-all-cb').addEventListener('change', e => {
+          showAll = e.target.checked;
+          renderTable();
+        });
+      }
+    }
+  } catch { /* not signed in */ }
+}
+
+function statusClass(s) {
+  if (!s) return 's-default';
+  const sl = s.toLowerCase();
+  if (sl === 'pending assignment')       return 's-pending-assignment';
+  if (sl === 'in billing')               return 's-in-billing';
+  if (sl === 'awaiting client approval') return 's-awaiting-client';
+  if (sl === 'served by client')         return 's-served-client';
+  if (sl.startsWith('in negotiation'))   return 's-negotiation';
+  if (sl === 'in budgeting')             return 's-budgeting';
+  if (sl.includes('assessment') || sl.includes('detailed')) return 's-assessment';
+  if (sl === 'settled')                  return 's-settled';
+  if (sl === 'closed')                   return 's-closed';
+  return 's-default';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '&mdash;';
+  const d = new Date(iso);
+  return isNaN(d) ? '&mdash;' : d.toLocaleDateString('en-GB');
+}
+
+function matchesAssigned(f) {
+  if (isAdmin && showAll) return true;
+  const assigned   = (f['assignedToTextValue'] || '').toLowerCase();
+  const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
+  const nameL      = callerName.toLowerCase();
+  const emailLocal = callerEmail.split('@')[0].toLowerCase();
+  return assigned.includes(nameL)   || assigned.includes(emailLocal)
+      || coAssigned.includes(nameL) || coAssigned.includes(emailLocal);
+}
+
+function matchesStatusFilter(f) {
+  if (!filters.status) return true;
+  const s = (f['StatusMirror'] || '').toLowerCase();
+  if (filters.status === 'active')      return s !== 'settled' && s !== 'closed' && !s.startsWith('in negotiation');
+  if (filters.status === 'negotiation') return s.startsWith('in negotiation');
+  if (filters.status === 'settled')     return s === 'settled';
+  return true;
+}
+
+function matchesTaskFilter(f) {
+  if (!filters.task) return true;
+  return (f['Task'] || '') === filters.task;
+}
+
+function matchesSearch(f) {
+  if (!filters.q) return true;
+  const q    = filters.q.toLowerCase();
+  const name = (f['CaseNameForOpenCases'] || f['Title'] || '').toLowerCase();
+  const ref  = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+  return name.includes(q) || ref.includes(q);
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTable() {
+  const tbody = document.getElementById('cases-tbody');
+  tbody.innerHTML = '';
+
+  const visible = allCases.filter(c => {
+    const f = c.fields;
+    return matchesAssigned(f) && matchesStatusFilter(f) && matchesTaskFilter(f) && matchesSearch(f);
+  });
+
+  // Sort: settled last, then by date received desc
+  visible.sort((a, b) => {
+    const aS = (a.fields['StatusMirror'] || '').toLowerCase();
+    const bS = (b.fields['StatusMirror'] || '').toLowerCase();
+    const aSettled = aS === 'settled' ? 1 : 0;
+    const bSettled = bS === 'settled' ? 1 : 0;
+    if (aSettled !== bSettled) return aSettled - bSettled;
+    const aD = a.fields['DateReceived'] || '';
+    const bD = b.fields['DateReceived'] || '';
+    return bD.localeCompare(aD);
+  });
+
+  document.getElementById('result-count').innerHTML =
+    '<strong>' + visible.length + '</strong> case' + (visible.length !== 1 ? 's' : '');
+
+  if (visible.length === 0) {
+    document.getElementById('table-wrap').style.display  = 'none';
+    document.getElementById('state-empty').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('state-empty').style.display  = 'none';
+  document.getElementById('table-wrap').style.display   = 'block';
+
+  visible.forEach(c => {
+    const f          = c.fields;
+    const ref        = f['Ourreference_x0028_text_x0029_'] || '';
+    const name       = f['CaseNameForOpenCases'] || f['Title'] || ref;
+    const firm       = f['Firm_x0028_text_x0029_'] || '';
+    const status     = f['StatusMirror'] || '\u2014';
+    const task       = f['Task'] || '';
+    const track      = f['CaseTrack'] || '';
+    const assigned   = f['assignedToTextValue'] || '\u2014';
+    const coAssigned = f['coAssignedMirror'] || '';
+    const dateRec    = fmtDate(f['DateReceived']);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' +
+        '<div class="td-case-name">' + escHtml(name) + '</div>' +
+        (firm ? '<div class="td-firm">' + escHtml(firm) + '</div>' : '') +
+      '</td>' +
+      '<td><span class="td-ref">' + escHtml(ref) + '</span></td>' +
+      '<td><span class="status-chip ' + statusClass(status) + '">' + escHtml(status) + '</span></td>' +
+      '<td>' + (task ? '<span class="task-chip">' + escHtml(task) + '</span>' : '\u2014') + '</td>' +
+      '<td><span style="font-size:12.5px;color:var(--grey-mid);">' + escHtml(track || '\u2014') + '</span></td>' +
+      '<td>' +
+        '<div class="td-assigned">' + escHtml(assigned) + '</div>' +
+        (coAssigned ? '<div class="td-assigned co">+ ' + escHtml(coAssigned) + '</div>' : '') +
+      '</td>' +
+      '<td><span class="td-date">' + dateRec + '</span></td>' +
+      '<td><a href="case.html?ref=' + encodeURIComponent(ref) + '" class="open-btn">Open &rarr;</a></td>';
+
+    tr.addEventListener('click', function(e) {
+      if (e.target.tagName !== 'A') {
+        window.location.href = 'case.html?ref=' + encodeURIComponent(ref);
+      }
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+async function init() {
+  await loadIdentity();
+
+  try {
+    const r = await fetch('/api/cases?preload=1');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    allCases = data.value || [];
+
+    const myCount = allCases.filter(c => matchesAssigned(c.fields)).length;
+    document.getElementById('page-sub').textContent =
+      myCount + ' open case' + (myCount !== 1 ? 's' : '') + ' assigned to you';
+
+    document.getElementById('state-loading').style.display = 'none';
+    renderTable();
+  } catch (err) {
+    document.getElementById('state-loading').style.display = 'none';
+    document.getElementById('state-error').style.display   = 'block';
+    document.getElementById('error-msg').textContent       = err.message;
+  }
+}
+
+// Search
+document.getElementById('search-input').addEventListener('input', function(e) {
+  filters.q = e.target.value.trim();
+  renderTable();
+});
+
+// Status chips
+document.querySelectorAll('[data-status]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-status]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    filters.status = btn.dataset.status;
+    renderTable();
+  });
+});
+
+// Task chips
+document.querySelectorAll('[data-task]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-task]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    filters.task = btn.dataset.task;
+    renderTable();
+  });
+});
+
+init();
+</script>
+</body>
+</html>
