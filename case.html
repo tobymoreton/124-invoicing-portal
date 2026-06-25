@@ -1366,10 +1366,10 @@ function renderOverviewTab() {
   setText('ov-poddue',         fmtDate(f['PODS_x0020_Due']));
   setText('ov-podrec',         fmtDate(f['PODS_x0020_Received']));
   setText('ov-settled',        fmtDate(f['DateSettled0']));
-  setText('ov-currentposition',f['Current_x0020_Position'] || '—');
-  setText('ov-flags',          f['Flags']               || '—');
+  setText('ov-currentposition',stripHtml(f['Current_x0020_Position']) || '—');
+  setText('ov-flags',          stripHtml(f['Flags'])               || '—');
   setText('ov-lastaction',     f['LastAction']           || '—');
-  setText('ov-lastreminder',   f['Last_x0020_Reminder']  || '—');
+  setText('ov-lastreminder',   stripHtml(f['Last_x0020_Reminder'])  || '—');
   // CP Last Updated — stored as a date string, show formatted
   const cpUpd = f['CP_x0020_Last_x0020_Updated'];
   const cpEl  = document.getElementById('ov-cpupdated');
@@ -1781,6 +1781,7 @@ async function generateSettlementPDF() {
 
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
 
+function stripHtml(s) { return (s || '').replace(/<[^>]*>/g, '').trim(); }
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
 function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.value = val || ''; }
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
