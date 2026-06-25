@@ -1591,12 +1591,11 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
     ['ov-settled-input',   'DateSettled0'],
   ];
 
-  const fields = {
-    assignedToTextValue: assignedVal || null,
-    AssignedToMirror:    assignedVal || null,
-    coAssignedMirror:    coVal      || null,
-    StatusMirror:        statusVal  || null,
-  };
+  // Only include select fields if the user made a selection — empty string = not changed, skip to avoid overwriting existing SP values
+  const fields = {};
+  if (assignedVal) { fields.assignedToTextValue = assignedVal; fields.AssignedToMirror = assignedVal; }
+  if (coVal)      fields.coAssignedMirror = coVal;
+  if (statusVal)  fields.StatusMirror = statusVal;
   dateFields.forEach(([inputId, spField]) => {
     const v = document.getElementById(inputId)?.value;
     fields[spField] = v ? v + 'T00:00:00Z' : null;
