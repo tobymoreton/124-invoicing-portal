@@ -57,7 +57,7 @@
     .tab-btn.active::after{left:0;right:0;}
 
     /* ── Content & layout ────────────────────── */
-    .content{max-width:980px;margin:0 auto;padding:28px 28px 56px;}
+    .content{max-width:1200px;margin:0 auto;padding:28px 28px 56px;}
     .tab-panel{display:none;animation:fadeIn .18s ease;}
     .tab-panel.active{display:block;}
     @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
@@ -295,6 +295,52 @@
     }
     .import-btn:hover{background:var(--gold-pale);border-color:var(--gold);}
 
+    /* ── Edit/Save bar ──────────────────────── */
+    .edit-bar{display:flex;align-items:center;gap:10px;padding:14px 0 4px;}
+    .btn-edit{
+      background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);
+      color:var(--gold);border:none;padding:9px 28px;border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:600;
+      cursor:pointer;transition:all .2s ease;box-shadow:0 2px 8px rgba(27,42,74,.20);
+      letter-spacing:.03em;
+    }
+    .btn-edit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(27,42,74,.30);}
+    .btn-edit-save{
+      background:linear-gradient(135deg,var(--green) 0%,#047857 100%);
+      color:#fff;border:none;padding:9px 28px;border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:600;
+      cursor:pointer;transition:all .2s ease;box-shadow:0 2px 8px rgba(6,95,70,.25);
+      display:none;
+    }
+    .btn-edit-save:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(6,95,70,.35);}
+    .btn-edit-cancel{
+      background:transparent;color:var(--grey-mid);border:1.5px solid var(--grey-light);
+      padding:8px 20px;border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:500;
+      cursor:pointer;transition:all .18s ease;display:none;
+    }
+    .btn-edit-cancel:hover{border-color:var(--grey-mid);color:var(--navy);}
+    .edit-msg{font-size:13px;color:var(--grey-mid);}
+    .edit-msg.ok{color:var(--green);font-weight:500;}
+    .edit-msg.err{color:#991B1B;}
+    /* Overview edit-mode field styles */
+    .ov-select{
+      padding:7px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);
+      background:var(--white);outline:none;transition:all .18s ease;width:100%;
+      box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
+    }
+    .ov-select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
+    .ov-date{
+      padding:7px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);
+      background:var(--white);outline:none;transition:all .18s ease;width:100%;
+      box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
+    }
+    .ov-date:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
+    /* read-row dd in edit mode */
+    .edit-mode .ov-editable{padding:6px 8px!important;}
+
     /* ── Coming soon / states ────────────────── */
     .coming-soon{padding:72px 0;text-align:center;color:var(--grey-mid);}
     .coming-soon .icon{font-size:36px;margin-bottom:14px;opacity:.6;}
@@ -427,25 +473,42 @@
     <!-- ════════ CASE OVERVIEW TAB ════════ -->
     <div class="tab-panel active" id="tab-overview">
 
-      <!-- Row 1: Status + Assigned -->
+      <!-- Edit / Save / Cancel bar -->
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-ov-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-ov-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-ov-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-ov"></span>
+      </div>
+
+      <!-- Row 1: Assignment + Key Dates side by side -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Assignment</span></div>
           <dl class="read-grid">
-            <div class="read-row"><dt>Assigned To</dt><dd id="ov-assigned">—</dd></div>
-            <div class="read-row"><dt>Co-Assigned To</dt><dd id="ov-coassigned">—</dd></div>
-            <div class="read-row"><dt>Status</dt><dd id="ov-status">—</dd></div>
+            <div class="read-row">
+              <dt>Assigned To</dt>
+              <dd class="ov-editable" id="ov-assigned">—</dd>
+            </div>
+            <div class="read-row">
+              <dt>Co-Assigned To</dt>
+              <dd class="ov-editable" id="ov-coassigned">—</dd>
+            </div>
+            <div class="read-row">
+              <dt>Status</dt>
+              <dd class="ov-editable" id="ov-status">—</dd>
+            </div>
           </dl>
         </div>
         <div class="card">
           <div class="card-head"><span class="card-title">Key Dates</span></div>
           <dl class="read-grid">
-            <div class="read-row"><dt>📧 Served Informal</dt><dd id="ov-servedinf">—</dd></div>
-            <div class="read-row"><dt>🎱 Part 8 Issued</dt><dd id="ov-part8">—</dd></div>
-            <div class="read-row"><dt>🤵 Served Formal</dt><dd id="ov-servedfml">—</dd></div>
-            <div class="read-row"><dt>📅 PODs Due</dt><dd id="ov-poddue">—</dd></div>
-            <div class="read-row"><dt>🎯 PODs Received</dt><dd id="ov-podrec">—</dd></div>
-            <div class="read-row"><dt>🤝 Date Settled</dt><dd id="ov-settled">—</dd></div>
+            <div class="read-row"><dt>📧 Served Informal</dt><dd class="ov-editable" id="ov-servedinf">—</dd></div>
+            <div class="read-row"><dt>🎱 Part 8 Issued</dt><dd class="ov-editable" id="ov-part8">—</dd></div>
+            <div class="read-row"><dt>🤵 Served Formal</dt><dd class="ov-editable" id="ov-servedfml">—</dd></div>
+            <div class="read-row"><dt>📅 PODs Due</dt><dd class="ov-editable" id="ov-poddue">—</dd></div>
+            <div class="read-row"><dt>🎯 PODs Received</dt><dd class="ov-editable" id="ov-podrec">—</dd></div>
+            <div class="read-row"><dt>🤝 Date Settled</dt><dd class="ov-editable" id="ov-settled">—</dd></div>
           </dl>
         </div>
       </div>
@@ -461,7 +524,7 @@
         </div>
       </div>
 
-      <!-- Row 3: Flags + Actions -->
+      <!-- Row 3: Flags + Activity -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">🚩 Flags</span></div>
@@ -1355,8 +1418,18 @@ function renderHeader() {
   document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
 }
 
+const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
+const STATUS_VALUES = [
+  'Pending assignment','In billing','Awaiting client approval','Served by client',
+  'In negotiation (served informally)','In negotiation (served formally)',
+  'In negotiation (points of dispute received)','In negotiation (replies served)',
+  'In budgeting','Awaiting provisional assessment','Pending detailed assessment',
+  'Settled','Closed'
+];
+
 function renderOverviewTab() {
   const f = caseFields;
+  // Always render read-only text first (edit mode swaps these out)
   setText('ov-assigned',       f['assignedToTextValue'] || '—');
   setText('ov-coassigned',     f['coAssignedMirror']    || '—');
   setText('ov-status',         f['StatusMirror']        || '—');
@@ -1370,11 +1443,134 @@ function renderOverviewTab() {
   setText('ov-flags',          stripHtml(f['Flags'])               || '—');
   setText('ov-lastaction',     f['LastAction']           || '—');
   setText('ov-lastreminder',   stripHtml(f['Last_x0020_Reminder'])  || '—');
-  // CP Last Updated — stored as a date string, show formatted
   const cpUpd = f['CP_x0020_Last_x0020_Updated'];
   const cpEl  = document.getElementById('ov-cpupdated');
   if (cpEl) cpEl.textContent = cpUpd ? 'Updated ' + fmtDate(cpUpd) : '';
+  // Make sure we're in read mode after a re-render
+  ovSetReadMode();
 }
+
+function makeSelect(id, options, currentVal) {
+  const sel = document.createElement('select');
+  sel.className = 'ov-select'; sel.id = id + '-input';
+  const blank = document.createElement('option');
+  blank.value = ''; blank.textContent = '— select —';
+  sel.appendChild(blank);
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    if (o === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function makeDateInput(id, isoVal) {
+  const inp = document.createElement('input');
+  inp.type = 'date'; inp.className = 'ov-date'; inp.id = id + '-input';
+  inp.value = toDateInput(isoVal);
+  return inp;
+}
+
+function ovSetEditMode() {
+  const f = caseFields;
+  document.getElementById('btn-ov-edit').style.display   = 'none';
+  document.getElementById('btn-ov-save').style.display   = 'inline-flex';
+  document.getElementById('btn-ov-cancel').style.display = 'inline-flex';
+
+  // Assignment dropdowns
+  const assignedEl = document.getElementById('ov-assigned');
+  assignedEl.innerHTML = '';
+  assignedEl.appendChild(makeSelect('ov-assigned', TEAM_MEMBERS, f['assignedToTextValue']));
+
+  const coEl = document.getElementById('ov-coassigned');
+  coEl.innerHTML = '';
+  const coSel = makeSelect('ov-coassigned', TEAM_MEMBERS, f['coAssignedMirror']);
+  // Replace blank option with — none —
+  coSel.children[0].textContent = '— none —';
+  if (!f['coAssignedMirror']) coSel.value = '';
+  coEl.appendChild(coSel);
+
+  const statusEl = document.getElementById('ov-status');
+  statusEl.innerHTML = '';
+  statusEl.appendChild(makeSelect('ov-status', STATUS_VALUES, f['StatusMirror']));
+
+  // Date inputs
+  const dateMap = [
+    ['ov-servedinf', f['DateServedInformally0']],
+    ['ov-part8',     f['DatePart8Issued']],
+    ['ov-servedfml', f['DateServedFormally0']],
+    ['ov-poddue',    f['PODS_x0020_Due']],
+    ['ov-podrec',    f['PODS_x0020_Received']],
+    ['ov-settled',   f['DateSettled0']],
+  ];
+  dateMap.forEach(([elId, isoVal]) => {
+    const dd = document.getElementById(elId);
+    dd.innerHTML = '';
+    dd.appendChild(makeDateInput(elId, isoVal));
+  });
+}
+
+function ovSetReadMode() {
+  document.getElementById('btn-ov-edit').style.display   = 'inline-flex';
+  document.getElementById('btn-ov-save').style.display   = 'none';
+  document.getElementById('btn-ov-cancel').style.display = 'none';
+  document.getElementById('msg-ov').textContent = '';
+  document.getElementById('msg-ov').className = 'edit-msg';
+}
+
+document.getElementById('btn-ov-edit').addEventListener('click', ovSetEditMode);
+
+document.getElementById('btn-ov-cancel').addEventListener('click', () => {
+  renderOverviewTab(); // re-renders read-only and calls ovSetReadMode
+});
+
+document.getElementById('btn-ov-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-ov-save');
+  const msg = document.getElementById('msg-ov');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+
+  const assignedVal = document.getElementById('ov-assigned-input')?.value  || null;
+  const coVal       = document.getElementById('ov-coassigned-input')?.value || null;
+  const statusVal   = document.getElementById('ov-status-input')?.value     || null;
+
+  const dateFields = [
+    ['ov-servedinf-input', 'DateServedInformally0'],
+    ['ov-part8-input',     'DatePart8Issued'],
+    ['ov-servedfml-input', 'DateServedFormally0'],
+    ['ov-poddue-input',    'PODS_x0020_Due'],
+    ['ov-podrec-input',    'PODS_x0020_Received'],
+    ['ov-settled-input',   'DateSettled0'],
+  ];
+
+  const fields = {
+    assignedToTextValue: assignedVal || null,
+    AssignedToMirror:    assignedVal || null,
+    coAssignedMirror:    coVal      || null,
+    StatusMirror:        statusVal  || null,
+  };
+  dateFields.forEach(([inputId, spField]) => {
+    const v = document.getElementById(inputId)?.value;
+    fields[spField] = v ? v + 'T00:00:00Z' : null;
+  });
+
+  try {
+    const resp = await fetch('/api/caseupdate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ itemId: caseItemId, fields }),
+    });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    Object.assign(caseFields, fields);
+    msg.className = 'edit-msg ok'; msg.textContent = '✓ Saved';
+    renderHeader();
+    renderOverviewTab();
+    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
+  } catch (err) {
+    msg.className = 'edit-msg err'; msg.textContent = 'Save failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
