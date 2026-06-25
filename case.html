@@ -2166,7 +2166,17 @@ document.addEventListener('click', () => {
 
 initSwitcher();
 
-function stripHtml(s) { return (s || '').replace(/<[^>]*>/g, '').trim(); }
+function stripHtml(s) {
+  return (s || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+    .replace(/&quot;/g, '"')
+    .trim();
+}
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
 function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.value = val || ''; }
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
