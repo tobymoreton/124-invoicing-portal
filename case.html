@@ -387,7 +387,29 @@
     .state-block p{font-size:14px;}
     .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 16px;}
     @keyframes spin{to{transform:rotate(360deg);}}
-    #app{display:none;}
+    /* ── Case Actions table ──────────────────── */
+    .ca-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .ca-table thead th{background:var(--navy);color:rgba(245,242,235,.7);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:10px 12px;text-align:left;white-space:nowrap;}
+    .ca-row{border-bottom:1px solid var(--grey-faint);transition:background .12s;}
+    .ca-row:hover{background:rgba(201,168,76,.04);}
+    .ca-billed{opacity:.65;}
+    .ca-cell{padding:9px 12px;vertical-align:top;font-size:13px;color:var(--navy);}
+    .ca-cell-wd{max-width:320px;word-break:break-word;line-height:1.5;}
+    .ca-mono{font-family:'IBM Plex Mono',monospace;font-weight:500;white-space:nowrap;}
+    .ca-center{text-align:center;}
+    .ca-billed-badge{font-size:10px;font-weight:700;letter-spacing:.06em;background:var(--green-pale);color:var(--green);padding:2px 7px;border-radius:10px;white-space:nowrap;}
+    .ca-actions{white-space:nowrap;}
+    .ca-btn-edit,.ca-btn-save,.ca-btn-cancel{
+      border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm);
+      font-size:13px;transition:background .12s;
+    }
+    .ca-btn-edit:hover{background:var(--gold-pale);}
+    .ca-btn-save{color:var(--green);font-weight:700;}
+    .ca-btn-save:hover{background:var(--green-pale);}
+    .ca-btn-cancel{color:#991B1B;}
+    .ca-btn-cancel:hover{background:#FEF2F2;}
+    .ca-edit-wd{width:100%;min-width:200px;padding:6px 8px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);resize:vertical;}
+    .ca-edit-hrs,.ca-edit-rate{width:70px;padding:6px 8px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -513,6 +535,7 @@
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="interim">Interim Payments</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
+    <button class="tab-btn" data-tab="caseactions">Case Actions</button>
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
   </div>
 
@@ -1086,6 +1109,101 @@
     <div class="tab-panel" id="tab-expenses">
       <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
     </div>
+
+    <!-- ════════ CASE ACTIONS TAB ════════ -->
+    <div class="tab-panel" id="tab-caseactions">
+      <div style="display:flex;gap:22px;align-items:flex-start;">
+
+        <!-- Left: actions table -->
+        <div style="flex:1;min-width:0;">
+          <div class="card">
+            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+              <span class="card-title">Case Actions</span>
+              <span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="ca-table" id="ca-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>By</th>
+                    <th style="min-width:260px;">Work Done</th>
+                    <th>Hrs</th>
+                    <th>Rate</th>
+                    <th>Amount</th>
+                    <th>Billable</th>
+                    <th>Billed</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="ca-tbody"></tbody>
+              </table>
+            </div>
+            <div id="ca-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading actions…</div>
+            <div id="ca-empty"  style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No actions found for this case.</div>
+          </div>
+        </div>
+
+        <!-- Right: Add Action panel -->
+        <div style="width:320px;flex-shrink:0;">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Add Action</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div class="field">
+                <label>Date Entered</label>
+                <input type="date" id="ca-add-dateentered" />
+              </div>
+              <div class="field">
+                <label>Date Work Done</label>
+                <input type="date" id="ca-add-dateworkdone" />
+              </div>
+              <div class="field">
+                <label>Brief</label>
+                <select id="ca-add-brief" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
+                  <option value="Preparation/Perusal">Preparation/Perusal</option>
+                  <option value="Attendance">Attendance</option>
+                  <option value="Drafting">Drafting</option>
+                  <option value="Checking">Checking</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Completed By</label>
+                <select id="ca-add-completedby" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
+                  <option value="">-- select --</option>
+                  <option>Joanna</option><option>Tracy</option><option>Kelly</option>
+                  <option>Tom</option><option>Julie</option><option>Daniel</option><option>Toby</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Rate (£/hr)</label>
+                <input type="number" id="ca-add-rate" step="0.01" min="0" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;" />
+              </div>
+              <div class="field">
+                <label>Time Spent (hrs)</label>
+                <input type="number" id="ca-add-timespent" step="0.25" min="0" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;" />
+              </div>
+              <div class="field">
+                <label>Work Done</label>
+                <textarea id="ca-add-workdone" rows="5" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;resize:vertical;"></textarea>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <label style="font-size:13px;font-weight:500;color:var(--navy);">Billable?</label>
+                <input type="checkbox" id="ca-add-billable" checked style="width:17px;height:17px;accent-color:var(--navy);cursor:pointer;" />
+                <span id="ca-add-billable-label" style="font-size:13px;color:var(--grey-mid);">Yes</span>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn-edit-save" id="ca-add-submit" style="display:inline-flex;">+ Add Action</button>
+                <span class="edit-msg" id="ca-add-msg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /tab-caseactions -->
+
     <div class="tab-panel" id="tab-invoicing">
       <div class="coming-soon"><div class="icon">💰</div><h3>Invoicing</h3><p>Coming soon.</p></div>
     </div>
@@ -2184,6 +2302,230 @@ function setDate(id, val)  { const e = document.getElementById(id); if (e) e.val
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
 loadCase();
+
+// ── Case Actions tab ────────────────────────────────────────────────────────
+let caActions    = [];
+let caEditingId  = null;
+let caLoaded     = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'caseactions') {
+    btn.addEventListener('click', () => {
+      if (!caLoaded) { caLoaded = true; loadCaseActions(); }
+    });
+  }
+});
+
+async function loadCaseActions() {
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  if (!ref) return;
+  document.getElementById('ca-loading').style.display = 'block';
+  document.getElementById('ca-empty').style.display   = 'none';
+  document.getElementById('ca-tbody').innerHTML = '';
+  try {
+    const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    caActions = data.value || [];
+    renderCaTable();
+    initAddActionPanel();
+  } catch (err) {
+    document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message;
+  }
+}
+
+function renderCaTable() {
+  const tbody   = document.getElementById('ca-tbody');
+  const loading = document.getElementById('ca-loading');
+  const empty   = document.getElementById('ca-empty');
+  const summary = document.getElementById('ca-summary');
+
+  loading.style.display = 'none';
+  tbody.innerHTML = '';
+
+  if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; return; }
+  empty.style.display = 'none';
+
+  const totalHrs = caActions.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
+  const totalAmt = caActions.reduce((s, a) => {
+    const f   = a.fields || {};
+    const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
+    const val = !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0);
+    return s + val;
+  }, 0);
+  summary.textContent = caActions.length + ' actions · ' + fmtN(totalHrs, 2) + ' hrs · ' + fmt(totalAmt);
+
+  caActions.forEach(action => {
+    const f      = action.fields || {};
+    const id     = action.id;
+    const hrs    = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+    const rate   = parseFloat(f['field_6']) || 0;
+    const amt    = (() => { const a = parseFloat(f['Num_BillableAmount_x00a3_']); return (!isNaN(a) && a > 0) ? a : hrs * rate; })();
+    const billed   = !!(f['Billed_x003f_']);
+    const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
+    const dateStr  = fmtDate(f['field_12'] || f['field_1']);
+    const byName   = f['Completedby_x0028_text_x0029_'] || f['field_18'] || '';
+    const workDone = f['field_2'] || '';
+    const isEditing = caEditingId === id;
+
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+    tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
+
+    if (isEditing) {
+      tr.innerHTML = `
+        <td class="ca-cell">${escHtml(dateStr)}</td>
+        <td class="ca-cell">${escHtml(byName)}</td>
+        <td class="ca-cell ca-cell-wd">
+          <textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea>
+        </td>
+        <td class="ca-cell">
+          <input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" />
+        </td>
+        <td class="ca-cell">
+          <input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" />
+        </td>
+        <td class="ca-cell ca-mono">${fmt(amt)}</td>
+        <td class="ca-cell ca-center">${billable ? '✔' : '−'}</td>
+        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+        <td class="ca-cell ca-actions">
+          <button class="ca-btn-save" data-id="${id}">✓</button>
+          <button class="ca-btn-cancel" data-id="${id}">×</button>
+        </td>`;
+    } else {
+      tr.innerHTML = `
+        <td class="ca-cell">${escHtml(dateStr)}</td>
+        <td class="ca-cell">${escHtml(byName)}</td>
+        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 120 ? workDone.slice(0, 120) + '…' : workDone)}</td>
+        <td class="ca-cell ca-mono">${fmtN(hrs, 2)}</td>
+        <td class="ca-cell ca-mono">${rate ? '£' + fmtN(rate, 2) : '−'}</td>
+        <td class="ca-cell ca-mono">${amt ? fmt(amt) : '−'}</td>
+        <td class="ca-cell ca-center">${billable ? '✔' : '−'}</td>
+        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+        <td class="ca-cell ca-actions">
+          ${!billed ? '<button class="ca-btn-edit" data-id="' + id + '">✏️</button>' : ''}
+        </td>`;
+    }
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); });
+  });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => {
+    btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); });
+  });
+  tbody.querySelectorAll('.ca-btn-save').forEach(btn => {
+    btn.addEventListener('click', () => saveCaRow(btn.dataset.id));
+  });
+}
+
+async function saveCaRow(id) {
+  const wd   = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim()  || '';
+  const hrs  = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value)  || 0;
+  const rate = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const saveBtn   = document.querySelector(`.ca-btn-save[data-id="${id}"]`);
+  const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  if (saveBtn)   saveBtn.disabled   = true;
+  if (cancelBtn) cancelBtn.disabled = true;
+  try {
+    const resp = await fetch('/api/caseactions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const idx = caActions.findIndex(a => a.id === id);
+    if (idx !== -1) {
+      const f = caActions[idx].fields || {};
+      f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs;
+      f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate;
+    }
+    caEditingId = null;
+    renderCaTable();
+  } catch (err) {
+    if (saveBtn)   saveBtn.disabled   = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    alert('Save failed: ' + err.message);
+  }
+}
+
+function initAddActionPanel() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('ca-add-dateentered').value  = today;
+  document.getElementById('ca-add-dateworkdone').value = today;
+  const caseRate = parseFloat(caseFields?.['RateForCase']) || '';
+  document.getElementById('ca-add-rate').value = caseRate;
+  const nameEl = document.getElementById('ca-add-completedby');
+  if (switcherCallerName) {
+    for (const opt of nameEl.options) {
+      if (opt.value === switcherCallerName) { nameEl.value = switcherCallerName; break; }
+    }
+  }
+  const billEl    = document.getElementById('ca-add-billable');
+  const billLabel = document.getElementById('ca-add-billable-label');
+  billEl.addEventListener('change', () => { billLabel.textContent = billEl.checked ? 'Yes' : 'No'; });
+  const submitBtn = document.getElementById('ca-add-submit');
+  const newBtn = submitBtn.cloneNode(true);
+  submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+  newBtn.addEventListener('click', submitAddAction);
+}
+
+async function submitAddAction() {
+  const msg      = document.getElementById('ca-add-msg');
+  const btn      = document.querySelector('#tab-caseactions .btn-edit-save');
+  const ref      = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const workDone  = document.getElementById('ca-add-workdone').value.trim();
+  const timeSpent = parseFloat(document.getElementById('ca-add-timespent').value);
+  const rate      = parseFloat(document.getElementById('ca-add-rate').value) || 0;
+  const brief     = document.getElementById('ca-add-brief').value;
+  const completedBy = document.getElementById('ca-add-completedby').value;
+  const billable  = document.getElementById('ca-add-billable').checked;
+  const dateEntered  = document.getElementById('ca-add-dateentered').value;
+  const dateWorkDone = document.getElementById('ca-add-dateworkdone').value;
+
+  if (!workDone)   { msg.className = 'edit-msg err'; msg.textContent = 'Work Done is required.'; return; }
+  if (!timeSpent || isNaN(timeSpent) || timeSpent <= 0) { msg.className = 'edit-msg err'; msg.textContent = 'Time Spent must be > 0.'; return; }
+  if (!completedBy){ msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
+
+  if (btn) btn.disabled = true;
+  msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  try {
+    const resp = await fetch('/api/caseactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref, caseName: caseFields?.['CaseNameForOpenCases'] || '',
+        dateEntered:  dateEntered  ? dateEntered  + 'T00:00:00Z' : new Date().toISOString(),
+        dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(),
+        brief, completedBy, email: switcherCallerEmail || '',
+        rate, timeSpent, workDone, billable,
+      }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
+    const created = await resp.json();
+    caActions.unshift({ id: created.id, fields: {
+      field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent,
+      field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z',
+      field_16: ref, field_18: switcherCallerEmail || '',
+      Completedby_x0028_text_x0029_: completedBy,
+      'Billable_x003f_': billable, 'Billed_x003f_': false,
+      TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate,
+    }});
+    document.getElementById('ca-add-workdone').value  = '';
+    document.getElementById('ca-add-timespent').value = '';
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('ca-add-dateentered').value  = today;
+    document.getElementById('ca-add-dateworkdone').value = today;
+    msg.className = 'edit-msg ok'; msg.textContent = '✓ Added';
+    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
+    renderCaTable();
+  } catch (err) {
+    msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>
