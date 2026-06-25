@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Case Hub — TMC Legal Limited</title>
@@ -546,15 +546,22 @@
     <!-- ════════ SETTLEMENT TAB ════════ -->
     <div class="tab-panel" id="tab-settlement">
 
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-sett-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-sett-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-sett-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-sett"></span>
+      </div>
+
       <div class="card">
         <div class="card-head"><span class="card-title">Settlement Details</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field full"><label>Case Name</label><input type="text" id="f-CaseNameForOpenCases" /></div>
-            <div class="field"><label>Client Reference</label><input type="text" id="f-ClientCaseReference" /></div>
+            <div class="field full"><label>Case Name</label><input type="text" id="f-CaseNameForOpenCases" disabled /></div>
+            <div class="field"><label>Client Reference</label><input type="text" id="f-ClientCaseReference" disabled /></div>
             <div class="field"><label>TMC Reference</label><input type="text" id="f-Ourreference" readonly /></div>
-            <div class="field"><label>Date of Settlement</label><input type="date" id="f-DateSettled0" /></div>
-            <div class="field"><label>Total Settlement (£)</label><input type="number" id="f-Settlementamount" step="0.01" min="0" /></div>
+            <div class="field"><label>Date of Settlement</label><input type="date" id="f-DateSettled0" disabled /></div>
+            <div class="field"><label>Total Settlement (£)</label><input type="number" id="f-Settlementamount" step="0.01" min="0" disabled /></div>
           </div>
         </div>
       </div>
@@ -563,29 +570,22 @@
         <div class="card-head"><span class="card-title">Offers Made</span></div>
         <div class="card-body">
           <div class="offers-grid">
-            <div class="field"><label>PC at Advised Rates (£)</label><input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" /></div>
-            <div class="field"><label>Bottom Line (£)</label><input type="number" id="f-BottomLine" step="0.01" min="0" /></div>
-            <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" /></div>
-            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" /></div>
-            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" /></div>
+            <div class="field"><label>PC at Advised Rates (£)</label><input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Bottom Line (£)</label><input type="number" id="f-BottomLine" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" disabled /></div>
           </div>
           <div class="check-row">
             <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludescostsofsssessment_x" />
+              <input type="checkbox" id="f-Offerincludescostsofsssessment_x" disabled />
               <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
             </div>
             <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludesinterest_x003f_" />
+              <input type="checkbox" id="f-Offerincludesinterest_x003f_" disabled />
               <label for="f-Offerincludesinterest_x003f_">Offer includes interest?</label>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:20px;">
-        <div class="save-bar">
-          <button class="btn-save" id="btn-save-settlement">Save Changes</button>
-          <span class="save-msg" id="msg-save-settlement"></span>
         </div>
       </div>
 
@@ -600,16 +600,16 @@
             <div class="liab-row">
               <dt>Counsel's Fees payable</dt>
               <dd class="coa-cell">
-                <input type="number" id="f-Counselsfeespayable" class="liab-input" step="0.01" min="0" />
-                <button class="import-btn" id="btn-import-counsel">↓ From Claimed</button>
+                <input type="number" id="f-Counselsfeespayable" class="liab-input" step="0.01" min="0" disabled />
+                <button class="import-btn" id="btn-import-counsel" disabled>↓ From Claimed</button>
               </dd>
             </div>
             <div class="liab-row">
               <dt>Costs of Assessment</dt>
               <dd class="coa-cell">
-                <input type="number" id="f-Costsofassessment" class="liab-input" step="0.01" min="0" />
+                <input type="number" id="f-Costsofassessment" class="liab-input" step="0.01" min="0" disabled />
                 <div class="coa-wrapper">
-                  <button class="btn-calc" id="btn-calc-coa">⚡ Calculate</button>
+                  <button class="btn-calc" id="btn-calc-coa" disabled>⚡ Calculate</button>
                   <div class="coa-picker" id="coa-picker">
                     <button class="coa-opt" data-mode="unbilled">Unbilled actions only</button>
                     <button class="coa-opt" data-mode="all">All billable actions</button>
@@ -619,7 +619,7 @@
             </div>
             <div class="liab-row">
               <dt>Other TMC Fees (excl Drafting)</dt>
-              <dd><input type="number" id="f-OtherTMCInvoices" class="liab-input" step="0.01" min="0" /></dd>
+              <dd><input type="number" id="f-OtherTMCInvoices" class="liab-input" step="0.01" min="0" disabled /></dd>
             </div>
             <div class="liab-row total">
               <dt>Total Liabilities</dt>
@@ -668,14 +668,21 @@
     <!-- ════════ BOOKING IN TAB ════════ -->
     <div class="tab-panel" id="tab-bookingin">
 
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-bi-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-bi-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-bi-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-bi"></span>
+      </div>
+
       <!-- Row 1: Date Received / Turnaround / Due Date (computed) / Our Ref -->
       <div class="card">
         <div class="card-head"><span class="card-title">Case Details</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>Date Received</label><input type="date" id="bi-DateReceived" /></div>
+            <div class="field"><label>Date Received</label><input type="date" id="bi-DateReceived" disabled /></div>
             <div class="field"><label>Turnaround</label>
-              <select id="bi-Turnaround" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-Turnaround" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option value="1 week">1 week</option>
                 <option value="2 weeks">2 weeks</option>
@@ -685,8 +692,8 @@
             </div>
             <div class="field"><label>Due Date (calculated)</label><input type="text" id="bi-DueDate" readonly /></div>
             <div class="field"><label>Our Reference</label><input type="text" id="bi-OurRef" readonly /></div>
-            <div class="field"><label>Client Ref</label><input type="text" id="bi-ClientRef" /></div>
-            <div class="field"><label>Client Work in Progress (hrs)</label><input type="number" id="bi-WIP" step="0.25" min="0" /></div>
+            <div class="field"><label>Client Ref</label><input type="text" id="bi-ClientRef" disabled /></div>
+            <div class="field"><label>Client Work in Progress (hrs)</label><input type="number" id="bi-WIP" step="0.25" min="0" disabled /></div>
           </div>
         </div>
       </div>
@@ -696,12 +703,12 @@
         <div class="card-head"><span class="card-title">Parties &amp; Representation</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label id="bi-FirstName-label">First Name</label><input type="text" id="bi-FirstName" /></div>
-            <div class="field"><label id="bi-Surname-label">Surname</label><input type="text" id="bi-Surname" /></div>
-            <div class="field"><label>Fee Earner</label><input type="text" id="bi-FeeEarner" /></div>
-            <div class="field"><label>Firm</label><input type="text" id="bi-Firm" /></div>
+            <div class="field"><label id="bi-FirstName-label">First Name</label><input type="text" id="bi-FirstName" disabled /></div>
+            <div class="field"><label id="bi-Surname-label">Surname</label><input type="text" id="bi-Surname" disabled /></div>
+            <div class="field"><label>Fee Earner</label><input type="text" id="bi-FeeEarner" disabled /></div>
+            <div class="field"><label>Firm</label><input type="text" id="bi-Firm" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;">
-              <input type="checkbox" id="bi-Andothers" />
+              <input type="checkbox" id="bi-Andothers" disabled />
               <label for="bi-Andothers">More than one Claimant?</label>
             </div>
           </div>
@@ -714,7 +721,7 @@
         <div class="card-body">
           <div class="detail-grid">
             <div class="field"><label>Case Type</label>
-              <select id="bi-Casetype" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-Casetype" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option>Civil liberties</option>
                 <option>Clinical negligence</option>
@@ -734,7 +741,7 @@
               </select>
             </div>
             <div class="field"><label>IP or LAA</label>
-              <select id="bi-LAIP" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-LAIP" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option>Inter Partes</option>
                 <option>Legal Aid</option>
@@ -742,7 +749,7 @@
               </select>
             </div>
             <div class="field"><label>Primary Funding</label>
-              <select id="bi-PrimaryFunding" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-PrimaryFunding" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option>Legal Aid</option>
                 <option>CFA</option>
@@ -752,7 +759,7 @@
               </select>
             </div>
             <div class="field"><label>Task</label>
-              <select id="bi-Task" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-Task" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option>Bill of Costs</option>
                 <option>Points of Dispute</option>
@@ -763,7 +770,7 @@
               </select>
             </div>
             <div class="field"><label>Track</label>
-              <select id="bi-Track" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
+              <select id="bi-Track" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
                 <option>Fast</option>
                 <option>Multi</option>
@@ -780,9 +787,9 @@
         <div class="card-head"><span class="card-title">Title &amp; Notes</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>Add Suffix to Title</label><input type="text" id="bi-AddSuffix" /></div>
-            <div class="field"><label>Full Case Name Override</label><input type="text" id="bi-FullNameOverride" /></div>
-            <div class="field full"><label>Notes</label><textarea id="bi-Notes" rows="4" style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea></div>
+            <div class="field"><label>Add Suffix to Title</label><input type="text" id="bi-AddSuffix" disabled /></div>
+            <div class="field"><label>Full Case Name Override</label><input type="text" id="bi-FullNameOverride" disabled /></div>
+            <div class="field full"><label>Notes</label><textarea id="bi-Notes" rows="4" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea></div>
           </div>
         </div>
       </div>
@@ -795,32 +802,32 @@
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:20px;">
-        <div class="save-bar">
-          <button class="btn-save" id="btn-save-bookingin">Save Changes</button>
-          <span class="save-msg" id="msg-save-bookingin"></span>
-        </div>
-      </div>
-
     </div><!-- /tab-bookingin -->
 
     <!-- ════════ OPPONENT & COURT TAB ════════ -->
     <div class="tab-panel" id="tab-opponent">
 
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-op-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-op-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-op-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-op"></span>
+      </div>
+
       <div class="card">
         <div class="card-head"><span class="card-title">Opponent</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field full"><label>Opponent Party Name</label><input type="text" id="op-OpponentPartyName" /></div>
-            <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" /></div>
-            <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" /></div>
-            <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" /></div>
+            <div class="field full"><label>Opponent Party Name</label><input type="text" id="op-OpponentPartyName" disabled /></div>
+            <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" disabled /></div>
+            <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" disabled /></div>
+            <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;">
-              <input type="checkbox" id="op-MoreThanOneDef" />
+              <input type="checkbox" id="op-MoreThanOneDef" disabled />
               <label for="op-MoreThanOneDef">More than one Defendant?</label>
             </div>
             <div class="field checkbox-field" style="margin-top:8px;">
-              <input type="checkbox" id="op-LitigantInPerson" />
+              <input type="checkbox" id="op-LitigantInPerson" disabled />
               <label for="op-LitigantInPerson">Litigant in Person?</label>
             </div>
           </div>
@@ -831,11 +838,11 @@
         <div class="card-head"><span class="card-title">Opponent Address</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>Address Line 1</label><input type="text" id="op-Addr1" /></div>
-            <div class="field"><label>Address Line 2</label><input type="text" id="op-Addr2" /></div>
-            <div class="field"><label>Address Line 3</label><input type="text" id="op-Addr3" /></div>
-            <div class="field"><label>Address Line 4</label><input type="text" id="op-Addr4" /></div>
-            <div class="field"><label>Address Line 5</label><input type="text" id="op-Addr5" /></div>
+            <div class="field"><label>Address Line 1</label><input type="text" id="op-Addr1" disabled /></div>
+            <div class="field"><label>Address Line 2</label><input type="text" id="op-Addr2" disabled /></div>
+            <div class="field"><label>Address Line 3</label><input type="text" id="op-Addr3" disabled /></div>
+            <div class="field"><label>Address Line 4</label><input type="text" id="op-Addr4" disabled /></div>
+            <div class="field"><label>Address Line 5</label><input type="text" id="op-Addr5" disabled /></div>
           </div>
         </div>
       </div>
@@ -845,20 +852,13 @@
         <div class="card-body">
           <div class="detail-grid">
             <div class="field"><label>Court Name</label>
-              <select id="op-CourtName" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
+              <select id="op-CourtName" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— loading courts… —</option>
               </select>
             </div>
-            <div class="field"><label>Division</label><input type="text" id="op-Division" /></div>
-            <div class="field"><label>Claim No</label><input type="text" id="op-ClaimNo" /></div>
+            <div class="field"><label>Division</label><input type="text" id="op-Division" disabled /></div>
+            <div class="field"><label>Claim No</label><input type="text" id="op-ClaimNo" disabled /></div>
           </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:20px;">
-        <div class="save-bar">
-          <button class="btn-save" id="btn-save-opponent">Save Changes</button>
-          <span class="save-msg" id="msg-save-opponent"></span>
         </div>
       </div>
 
@@ -866,6 +866,13 @@
 
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
+
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-costs-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-costs-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-costs-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-costs"></span>
+      </div>
 
       <div class="card">
           <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
@@ -879,37 +886,37 @@
             <tbody>
               <tr>
                 <td class="row-label">PC excl ALL TMC Time</td>
-                <td><input type="number" id="fc-PCexTMC" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-PCexTMC" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatPC-row">—</td>
                 <td class="tbl-computed" id="cv-pcInc">—</td>
               </tr>
               <tr>
                 <td class="row-label">TMC Drafting Time</td>
-                <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatTMC-row">—</td>
                 <td class="tbl-computed" id="cv-tmcInc">—</td>
               </tr>
               <tr>
                 <td class="row-label">Other TMC Profit Costs</td>
-                <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
                 <td class="tbl-computed" id="cv-otherTMCInc">—</td>
               </tr>
               <tr>
                 <td class="row-label">Disbursements Claimed</td>
-                <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" /></td>
-                <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" disabled /></td>
+                <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-disbInc">—</td>
               </tr>
               <tr>
                 <td class="row-label">Counsel's Fees Claimed</td>
-                <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
                 <td class="tbl-computed" id="cv-counselInc">—</td>
               </tr>
               <tr class="other-row">
                 <td class="row-label">Other TMC Fees — excl bill</td>
-                <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed">—</td>
                 <td class="tbl-computed">—</td>
               </tr>
@@ -917,7 +924,7 @@
           </table>
           <div class="vat-pct-row">
             <label for="fc-VatPct">VAT % Claimed</label>
-            <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" />
+            <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" disabled />
             <span>%</span>
           </div>
       </div>
@@ -943,55 +950,48 @@
             <tbody>
               <tr>
                 <td class="row-label">LA Only Profit Costs</td>
-                <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" disabled /></td>
               </tr>
               <tr>
                 <td class="row-label">TMC Drafting Time — LA</td>
-                <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" /></td>
+                <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" disabled /></td>
               </tr>
             </tbody>
           </table>
         </div>
       </div><!-- /two-col -->
 
-      <div class="card" style="margin-top:4px;">
-        <div class="save-bar">
-          <button class="btn-save" id="btn-save-costs">Save Changes</button>
-          <span class="save-msg" id="msg-save-costs"></span>
-        </div>
-      </div>
-
     </div><!-- /tab-costs -->
 
     <!-- ════════ INTEREST TAB ════════ -->
     <div class="tab-panel" id="tab-interest">
 
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-int-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-int-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-int-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-int"></span>
+      </div>
+
       <div class="card">
         <div class="card-head"><span class="card-title">Inputs</span></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field"><label>Override Sum for Interest Calculation (£)</label><input type="number" id="fi-SumOverride" step="0.01" min="0" /></div>
-            <div class="field"><label>Total Pre-Authority Payments (£)</label><input type="number" id="fi-PreAuth" step="0.01" min="0" /></div>
-            <div class="field"><label>Costs of Assessment — manual (£)</label><input type="number" id="fi-CoA" step="0.01" min="0" /></div>
+            <div class="field"><label>Override Sum for Interest Calculation (£)</label><input type="number" id="fi-SumOverride" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Total Pre-Authority Payments (£)</label><input type="number" id="fi-PreAuth" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Costs of Assessment — manual (£)</label><input type="number" id="fi-CoA" step="0.01" min="0" disabled /></div>
           </div>
           <div style="margin-top:20px;">
             <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;">Interim Payments</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-              <div class="field"><label>Payment 1 Amount (£)</label><input type="number" id="fi-IP1" step="0.01" min="0" /></div>
-              <div class="field"><label>Payment 2 Amount (£)</label><input type="number" id="fi-IP2" step="0.01" min="0" /></div>
-              <div class="field"><label>Payment 3 Amount (£)</label><input type="number" id="fi-IP3" step="0.01" min="0" /></div>
-              <div class="field"><label>Payment 1 Date</label><input type="date" id="fi-IPD1" /></div>
-              <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" /></div>
-              <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" /></div>
+              <div class="field"><label>Payment 1 Amount (£)</label><input type="number" id="fi-IP1" step="0.01" min="0" disabled /></div>
+              <div class="field"><label>Payment 2 Amount (£)</label><input type="number" id="fi-IP2" step="0.01" min="0" disabled /></div>
+              <div class="field"><label>Payment 3 Amount (£)</label><input type="number" id="fi-IP3" step="0.01" min="0" disabled /></div>
+              <div class="field"><label>Payment 1 Date</label><input type="date" id="fi-IPD1" disabled /></div>
+              <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" disabled /></div>
+              <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" disabled /></div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:20px;">
-        <div class="save-bar">
-          <button class="btn-save" id="btn-save-interest">Save &amp; Recalculate</button>
-          <span class="save-msg" id="msg-save-interest"></span>
         </div>
       </div>
 
@@ -1689,74 +1689,44 @@ function renderInterestTab() {
   setDate('fi-IPD3',       f['InterimPaymentDate3']);
 }
 
-document.getElementById('btn-save-bookingin').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-bookingin');
-  const msg = document.getElementById('msg-save-bookingin');
-  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
-  const fields = {};
-  // Text fields
-  fields['OurPartyFirstName']              = document.getElementById('bi-FirstName').value      || null;
-  // bi-Surname doubles as Multi Claimants when checkbox is ticked
-  const isMultiSave = document.getElementById('bi-Andothers').checked;
-  const surnameVal  = document.getElementById('bi-Surname').value || null;
-  fields['OurPartySurname']  = isMultiSave ? null : surnameVal;
-  fields['MultiClaimants']   = isMultiSave ? surnameVal : null;
-  fields['ClientCaseReference']           = document.getElementById('bi-ClientRef').value     || null;
-  fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value     || null;
-  fields['Firm_x0028_text_x0029_']        = document.getElementById('bi-Firm').value          || null;
-  fields['Add_x0020_To_x0020_Title']      = document.getElementById('bi-AddSuffix').value     || null;
-  fields['Fullcasenameoveride']           = document.getElementById('bi-FullNameOverride').value || null;
-  fields['Notes']                         = document.getElementById('bi-Notes').value         || null;
-  fields['Casetype']                      = document.getElementById('bi-Casetype').value      || null;
-  fields['InterPartesorLegalAid']         = document.getElementById('bi-LAIP').value          || null;
-  fields['PrimaryFundingType']            = document.getElementById('bi-PrimaryFunding').value || null;
-  fields['Task']                          = document.getElementById('bi-Task').value          || null;
-  fields['CaseTrack']                     = document.getElementById('bi-Track').value         || null;
-  fields['Turnaround_x0020__x0001f3af_']  = document.getElementById('bi-Turnaround').value   || null;
-  // Boolean
-  fields['Andothers_x003f_'] = document.getElementById('bi-Andothers').checked;
-  // Number
-  const wipV = document.getElementById('bi-WIP').value;
-  fields['Work_x0020_In_x0020_Progress'] = wipV === '' ? null : parseFloat(wipV);
-  // Date
-  const drV = document.getElementById('bi-DateReceived').value;
-  fields['DateReceived'] = drV ? drV + 'T00:00:00Z' : null;
-  await doSave(fields, btn, msg);
-  if (msg.className.includes('ok')) {
-    // Refresh header (case name override may have changed)
-    renderHeader();
-    renderBookingInTab();
-  }
-});
+// ── Generic tab edit/save/cancel wiring ──────────────────────────────
+// Returns the list of editable field selectors for a given tab panel
+const TAB_FIELDS = {
+  'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox]',
+  'tab-bookingin':  '#tab-bookingin input:not([readonly]), #tab-bookingin select, #tab-bookingin textarea, #tab-bookingin input[type=checkbox]',
+  'tab-opponent':   '#tab-opponent input:not([readonly]), #tab-opponent select, #tab-opponent textarea, #tab-opponent input[type=checkbox]',
+  'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select',
+  'tab-interest':   '#tab-interest input:not([readonly]), #tab-interest select',
+};
 
-document.getElementById('btn-save-opponent').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-opponent');
-  const msg = document.getElementById('msg-save-opponent');
-  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
-  const fields = {
-    OpponentPartyName:               document.getElementById('op-OpponentPartyName').value  || null,
-    Opponentreference:               document.getElementById('op-Opponentreference').value  || null,
-    opponentFirmMirror:              document.getElementById('op-opponentFirmMirror').value || null,
-    ServiceEmail:                    document.getElementById('op-ServiceEmail').value       || null,
-    CourtName_Text:                  document.getElementById('op-CourtName').value          || null, // select value = court name text
-    Division:                        document.getElementById('op-Division').value           || null,
-    ClaimNo:                         document.getElementById('op-ClaimNo').value            || null,
-    Opponent_x0020_Address_x0020_1:  document.getElementById('op-Addr1').value              || null,
-    Opponent_x0020_Address_x0020_2:  document.getElementById('op-Addr2').value              || null,
-    Opponent_x0020_Address_x0020_3:  document.getElementById('op-Addr3').value              || null,
-    Opponent_x0020_Address_x0020_4:  document.getElementById('op-Addr4').value              || null,
-    Opponent_x0020_Address_x0020_5:  document.getElementById('op-Addr5').value              || null,
-    Morethanonedefendant_x003f_:     document.getElementById('op-MoreThanOneDef').checked,
-    Litigant_x0020_in_x0020_Person_x:document.getElementById('op-LitigantInPerson').checked,
-  };
-  await doSave(fields, btn, msg);
-  if (msg.className.includes('ok')) renderOpponentTab();
-});
+function tabEnableFields(tabId) {
+  document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => el.disabled = false);
+}
+function tabDisableFields(tabId) {
+  document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => { if (!el.readOnly) el.disabled = true; });
+}
+function tabSetEditMode(prefix, tabId) {
+  document.getElementById('btn-' + prefix + '-edit').style.display   = 'none';
+  document.getElementById('btn-' + prefix + '-save').style.display   = 'inline-flex';
+  document.getElementById('btn-' + prefix + '-cancel').style.display = 'inline-flex';
+  tabEnableFields(tabId);
+}
+function tabSetReadMode(prefix, tabId) {
+  document.getElementById('btn-' + prefix + '-edit').style.display   = 'inline-flex';
+  document.getElementById('btn-' + prefix + '-save').style.display   = 'none';
+  document.getElementById('btn-' + prefix + '-cancel').style.display = 'none';
+  document.getElementById('msg-' + prefix).textContent = '';
+  document.getElementById('msg-' + prefix).className = 'edit-msg';
+  tabDisableFields(tabId);
+}
 
-document.getElementById('btn-save-settlement').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-settlement');
-  const msg = document.getElementById('msg-save-settlement');
-  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+// Settlement
+document.getElementById('btn-sett-edit').addEventListener('click',   () => tabSetEditMode('sett','tab-settlement'));
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { renderSettlementTab(); tabSetReadMode('sett','tab-settlement'); });
+document.getElementById('btn-sett-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-sett-save');
+  const msg = document.getElementById('msg-sett');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
   const fields = {
     CaseNameForOpenCases: document.getElementById('f-CaseNameForOpenCases').value || null,
     ClientCaseReference:  document.getElementById('f-ClientCaseReference').value  || null,
@@ -1767,14 +1737,77 @@ document.getElementById('btn-save-settlement').addEventListener('click', async (
     'Settlementamount':'f-Settlementamount','ProfitCostsatAdvisedRates':'f-ProfitCostsatAdvisedRates',
     'BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
-    'Counselsfeespayable':'f-Counselsfeespayable',
-    'Costsofassessment':'f-Costsofassessment',
+    'Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
     'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
-  await doSave(fields, btn, msg);
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); }
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); }
+  else btn.disabled = false;
+});
+
+// Booking In
+document.getElementById('btn-bi-edit').addEventListener('click',   () => tabSetEditMode('bi','tab-bookingin'));
+document.getElementById('btn-bi-cancel').addEventListener('click', () => { renderBookingInTab(); tabSetReadMode('bi','tab-bookingin'); });
+document.getElementById('btn-bi-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-bi-save');
+  const msg = document.getElementById('msg-bi');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const fields = {};
+  fields['OurPartyFirstName'] = document.getElementById('bi-FirstName').value || null;
+  const isMultiSave = document.getElementById('bi-Andothers').checked;
+  const surnameVal  = document.getElementById('bi-Surname').value || null;
+  fields['OurPartySurname']  = isMultiSave ? null : surnameVal;
+  fields['MultiClaimants']   = isMultiSave ? surnameVal : null;
+  fields['ClientCaseReference']           = document.getElementById('bi-ClientRef').value || null;
+  fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value || null;
+  fields['Firm_x0028_text_x0029_']        = document.getElementById('bi-Firm').value || null;
+  fields['Add_x0020_To_x0020_Title']      = document.getElementById('bi-AddSuffix').value || null;
+  fields['Fullcasenameoveride']           = document.getElementById('bi-FullNameOverride').value || null;
+  fields['Notes']                         = document.getElementById('bi-Notes').value || null;
+  fields['Casetype']                      = document.getElementById('bi-Casetype').value || null;
+  fields['InterPartesorLegalAid']         = document.getElementById('bi-LAIP').value || null;
+  fields['PrimaryFundingType']            = document.getElementById('bi-PrimaryFunding').value || null;
+  fields['Task']                          = document.getElementById('bi-Task').value || null;
+  fields['CaseTrack']                     = document.getElementById('bi-Track').value || null;
+  fields['Turnaround_x0020__x0001f3af_']  = document.getElementById('bi-Turnaround').value || null;
+  fields['Andothers_x003f_'] = document.getElementById('bi-Andothers').checked;
+  const wipV = document.getElementById('bi-WIP').value;
+  fields['Work_x0020_In_x0020_Progress'] = wipV === '' ? null : parseFloat(wipV);
+  const drV = document.getElementById('bi-DateReceived').value;
+  fields['DateReceived'] = drV ? drV + 'T00:00:00Z' : null;
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { renderHeader(); renderBookingInTab(); tabSetReadMode('bi','tab-bookingin'); }
+  else btn.disabled = false;
+});
+
+// Opponent & Court
+document.getElementById('btn-op-edit').addEventListener('click',   () => tabSetEditMode('op','tab-opponent'));
+document.getElementById('btn-op-cancel').addEventListener('click', () => { renderOpponentTab(); tabSetReadMode('op','tab-opponent'); });
+document.getElementById('btn-op-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-op-save');
+  const msg = document.getElementById('msg-op');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const fields = {
+    OpponentPartyName:               document.getElementById('op-OpponentPartyName').value  || null,
+    Opponentreference:               document.getElementById('op-Opponentreference').value  || null,
+    opponentFirmMirror:              document.getElementById('op-opponentFirmMirror').value || null,
+    ServiceEmail:                    document.getElementById('op-ServiceEmail').value       || null,
+    CourtName_Text:                  document.getElementById('op-CourtName').value          || null,
+    Division:                        document.getElementById('op-Division').value           || null,
+    ClaimNo:                         document.getElementById('op-ClaimNo').value            || null,
+    Opponent_x0020_Address_x0020_1:  document.getElementById('op-Addr1').value              || null,
+    Opponent_x0020_Address_x0020_2:  document.getElementById('op-Addr2').value              || null,
+    Opponent_x0020_Address_x0020_3:  document.getElementById('op-Addr3').value              || null,
+    Opponent_x0020_Address_x0020_4:  document.getElementById('op-Addr4').value              || null,
+    Opponent_x0020_Address_x0020_5:  document.getElementById('op-Addr5').value              || null,
+    Morethanonedefendant_x003f_:     document.getElementById('op-MoreThanOneDef').checked,
+    Litigant_x0020_in_x0020_Person_x:document.getElementById('op-LitigantInPerson').checked,
+  };
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { renderOpponentTab(); tabSetReadMode('op','tab-opponent'); }
+  else btn.disabled = false;
 });
 
 // ── Import Counsel's Fees from Costs Claimed ──────────────────────────────
@@ -1826,10 +1859,35 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
   });
 });
 
-document.getElementById('btn-save-interest').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-interest');
-  const msg = document.getElementById('msg-save-interest');
-  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
+// Costs Claimed
+document.getElementById('btn-costs-edit').addEventListener('click',   () => tabSetEditMode('costs','tab-costs'));
+document.getElementById('btn-costs-cancel').addEventListener('click', () => { renderCostsTab(); tabSetReadMode('costs','tab-costs'); });
+document.getElementById('btn-costs-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-costs-save');
+  const msg = document.getElementById('msg-costs');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const fields = {};
+  for (const [sp, el] of Object.entries({
+    'ProfitCostsClaimed_x0028_Ex_x002':'fc-PCexTMC','DraftingTimeClaimed':'fc-TMCDrafting',
+    'Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
+    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel',
+    'OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
+    'LegalAidOnlyProfitCosts':'fc-LAPC','TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
+  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  const vp = document.getElementById('fc-VatPct').value;
+  fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('costs','tab-costs'); }
+  else btn.disabled = false;
+});
+
+// Interest
+document.getElementById('btn-int-edit').addEventListener('click',   () => tabSetEditMode('int','tab-interest'));
+document.getElementById('btn-int-cancel').addEventListener('click', () => { renderInterestTab(); tabSetReadMode('int','tab-interest'); });
+document.getElementById('btn-int-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-int-save');
+  const msg = document.getElementById('msg-int');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
   const fields = {};
   for (const [sp, el] of Object.entries({
     'SumForInterestCalculationOverrid':'fi-SumOverride','TotalPreAuthorityPayments':'fi-PreAuth',
@@ -1839,30 +1897,13 @@ document.getElementById('btn-save-interest').addEventListener('click', async () 
   for (const [sp, el] of Object.entries({
     'InterimPaymentDate1':'fi-IPD1','InterimPaymentDate2':'fi-IPD2','InterimPaymentDate3':'fi-IPD3',
   })) { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
-  await doSave(fields, btn, msg);
-  if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); }
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); tabSetReadMode('int','tab-interest'); }
+  else btn.disabled = false;
 });
 
-document.getElementById('btn-save-costs').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-costs');
-  const msg = document.getElementById('msg-save-costs');
-  btn.disabled = true; msg.className = 'save-msg'; msg.textContent = 'Saving…';
-  const fields = {};
-  for (const [sp, el] of Object.entries({
-    'ProfitCostsClaimed_x0028_Ex_x002':'fc-PCexTMC','DraftingTimeClaimed':'fc-TMCDrafting',
-    'Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
-    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel',
-    'OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
-    'LegalAidOnlyProfitCosts':'fc-LAPC','TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
-  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
-  // VAT % is stored as a decimal (0.2 = 20%); the input is entered as a percentage.
-  const vp = document.getElementById('fc-VatPct').value;
-  fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
-  await doSave(fields, btn, msg);
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); }
-});
-
-async function doSave(fields, btn, msg) {
+async function doSave(fields, btn, msg, msgClass) {
+  const cls = msgClass || 'save-msg';
   try {
     const resp = await fetch('/api/caseupdate', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1870,12 +1911,11 @@ async function doSave(fields, btn, msg) {
     });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     Object.assign(caseFields, fields);
-    msg.className = 'save-msg ok'; msg.textContent = '✓ Saved';
+    msg.className = cls + ' ok'; msg.textContent = '✓ Saved';
+    setTimeout(() => { if (msg.textContent === '✓ Saved') { msg.textContent = ''; msg.className = cls; } }, 3000);
   } catch (err) {
-    msg.className = 'save-msg err'; msg.textContent = 'Save failed: ' + err.message;
-  } finally {
+    msg.className = cls + ' err'; msg.textContent = 'Save failed: ' + err.message;
     btn.disabled = false;
-    setTimeout(() => { if (msg.textContent === '✓ Saved') msg.textContent = ''; }, 3000);
   }
 }
 
