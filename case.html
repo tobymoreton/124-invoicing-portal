@@ -31,6 +31,42 @@
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
     .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
     .nav-back:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    /* ── Case switcher ───────────────────── */
+    .nav-right{display:flex;align-items:center;gap:12px;}
+    .case-switcher{position:relative;}
+    .case-switcher-btn{
+      display:flex;align-items:center;gap:8px;
+      font-size:13px;font-weight:500;color:rgba(201,168,76,.85);
+      background:none;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);
+      padding:7px 14px;cursor:pointer;transition:all .18s ease;white-space:nowrap;
+    }
+    .case-switcher-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    .case-switcher-btn svg{width:12px;height:12px;fill:currentColor;opacity:.7;transition:transform .18s ease;}
+    .case-switcher-btn.open svg{transform:rotate(180deg);}
+    .switcher-dropdown{
+      display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:500;
+      background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
+      box-shadow:var(--shadow-lg);width:340px;overflow:hidden;
+    }
+    .switcher-dropdown.open{display:block;}
+    .switcher-search{
+      width:100%;padding:10px 14px;border:none;border-bottom:1px solid var(--grey-light);
+      font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);
+      background:var(--grey-faint);outline:none;
+    }
+    .switcher-search::placeholder{color:var(--grey-mid);}
+    .switcher-list{max-height:280px;overflow-y:auto;}
+    .switcher-item{
+      display:flex;flex-direction:column;gap:2px;
+      padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--grey-faint);
+      transition:background .12s ease;
+    }
+    .switcher-item:last-child{border-bottom:none;}
+    .switcher-item:hover{background:var(--gold-pale);}
+    .switcher-item.current{background:rgba(201,168,76,.08);pointer-events:none;}
+    .switcher-item-name{font-size:13px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .switcher-item-meta{font-size:11px;color:var(--grey-mid);font-family:'IBM Plex Mono',monospace;}
+    .switcher-empty{padding:18px 14px;font-size:13px;color:var(--grey-mid);text-align:center;}
 
     /* ── Case header ─────────────────────────── */
     .case-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);border-bottom:1px solid rgba(201,168,76,.15);padding:22px 32px;}
@@ -443,7 +479,19 @@
     <span class="nav-divider"></span>
     <span class="nav-title">Case Hub</span>
   </div>
-  <a href="/" class="nav-back">← All Invoices</a>
+  <div class="nav-right">
+    <a href="/cases.html" class="nav-back">← My Cases</a>
+    <div class="case-switcher" id="case-switcher">
+      <button class="case-switcher-btn" id="switcher-btn" aria-haspopup="listbox">
+        Switch case
+        <svg viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg"><path d="M0 0l5 6 5-6z"/></svg>
+      </button>
+      <div class="switcher-dropdown" id="switcher-dropdown" role="listbox">
+        <input type="text" class="switcher-search" id="switcher-search" placeholder="Search cases…" autocomplete="off" />
+        <div class="switcher-list" id="switcher-list"><div class="switcher-empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
 </nav>
 
 <div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
@@ -2016,6 +2064,108 @@ async function generateSettlementPDF() {
 }
 
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
+
+// ── Case switcher ────────────────────────────────────────────────────────
+let switcherCases = [];
+let switcherCallerEmail = '';
+let switcherCallerName  = '';
+
+async function initSwitcher() {
+  // Fetch identity + cases in parallel
+  const [identityResp, casesResp] = await Promise.allSettled([
+    fetch('/.auth/me'),
+    fetch('/api/cases?preload=1'),
+  ]);
+
+  // Resolve identity
+  try {
+    const data = identityResp.status === 'fulfilled' ? await identityResp.value.json() : null;
+    const user = data && (data.clientPrincipal || (Array.isArray(data) ? data[0]?.clientPrincipal : null));
+    if (user && user.userDetails) {
+      switcherCallerEmail = user.userDetails.toLowerCase();
+      const local = switcherCallerEmail.split('@')[0].toLowerCase();
+      const NAME_MAP = {joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley'};
+      switcherCallerName = NAME_MAP[local] || local;
+    }
+  } catch(e) { /* identity unavailable */ }
+
+  // Resolve cases
+  try {
+    const data = casesResp.status === 'fulfilled' ? await casesResp.value.json() : { value: [] };
+    const all = data.value || [];
+    const nameL  = switcherCallerName.toLowerCase();
+    const emailL = switcherCallerEmail.split('@')[0].toLowerCase();
+    // Filter to current user's open cases
+    switcherCases = all.filter(c => {
+      const f = c.fields || {};
+      const assigned   = (f['assignedToTextValue'] || '').toLowerCase();
+      const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
+      return (nameL  && (assigned.includes(nameL)   || coAssigned.includes(nameL)))
+          || (emailL && (assigned.includes(emailL)  || coAssigned.includes(emailL)));
+    });
+    renderSwitcherList('');
+  } catch(e) { document.getElementById('switcher-list').innerHTML = '<div class="switcher-empty">Could not load cases</div>'; }
+}
+
+function renderSwitcherList(q) {
+  const currentRef = (new URLSearchParams(window.location.search).get('ref') || '').trim();
+  const list = document.getElementById('switcher-list');
+  const filtered = q
+    ? switcherCases.filter(c => {
+        const f = c.fields || {};
+        const name = (f['CaseNameForOpenCases'] || f['Title'] || '').toLowerCase();
+        const ref  = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+        return name.includes(q.toLowerCase()) || ref.includes(q.toLowerCase());
+      })
+    : switcherCases;
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="switcher-empty">No cases found</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  filtered.forEach(c => {
+    const f   = c.fields || {};
+    const ref = f['Ourreference_x0028_text_x0029_'] || '';
+    const name = f['CaseNameForOpenCases'] || f['Title'] || ref;
+    const firm = f['Firm_x0028_text_x0029_'] || '';
+    const div = document.createElement('div');
+    div.className = 'switcher-item' + (ref === currentRef ? ' current' : '');
+    div.setAttribute('role', 'option');
+    div.innerHTML =
+      '<span class="switcher-item-name">' + escHtml(name) + '</span>' +
+      '<span class="switcher-item-meta">' + escHtml(ref) + (firm ? ' · ' + escHtml(firm) : '') + '</span>';
+    if (ref !== currentRef) {
+      div.addEventListener('click', () => {
+        window.location.href = 'case.html?ref=' + encodeURIComponent(ref);
+      });
+    }
+    list.appendChild(div);
+  });
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Wire up switcher toggle + search
+document.getElementById('switcher-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  const dd  = document.getElementById('switcher-dropdown');
+  const btn = document.getElementById('switcher-btn');
+  const open = dd.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  if (open) { document.getElementById('switcher-search').focus(); };
+});
+document.getElementById('switcher-search').addEventListener('input', e => {
+  renderSwitcherList(e.target.value.trim());
+});
+document.getElementById('switcher-search').addEventListener('click', e => e.stopPropagation());
+document.addEventListener('click', () => {
+  document.getElementById('switcher-dropdown').classList.remove('open');
+  document.getElementById('switcher-btn').classList.remove('open');
+});
+
+initSwitcher();
 
 function stripHtml(s) { return (s || '').replace(/<[^>]*>/g, '').trim(); }
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
