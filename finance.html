@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Financial Dashboard — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A; --navy-mid:#253A60; --navy-light:#2E4A7A;
+      --gold:#C9A84C; --gold-pale:#F5EDD0;
+      --cream:#F4F1EA; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E2DDD4; --grey-faint:#F0EDE6;
+      --green:#065F46; --green-pale:#ECFDF5;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px; --radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* ── Nav ── */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
+    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    .nav-link.active{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.12);}
+
+    /* ── Page header ── */
+    .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:24px 32px;border-bottom:1px solid rgba(201,168,76,.15);}
+    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--white);}
+    .page-sub{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:4px;}
+
+    /* ── Main ── */
+    .main{padding:32px;max-width:1200px;margin:0 auto;}
+
+    /* ── Access denied ── */
+    .access-denied{text-align:center;padding:80px 24px;color:var(--grey-mid);}
+    .access-denied h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:8px;}
+
+    /* ── Cards ── */
+    .section-title{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);margin-bottom:16px;}
+    .cards-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px;}
+
+    /* ── Balance card ── */
+    .balance-card{
+      background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);
+      padding:28px 32px;flex:0 0 auto;min-width:320px;
+      border-top:3px solid var(--gold);
+      position:relative;
+    }
+    .balance-card-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;}
+    .balance-account{font-size:13px;color:var(--grey-mid);margin-bottom:6px;}
+    .balance-figure{font-family:'Spectral',serif;font-weight:300;font-size:44px;color:var(--navy);line-height:1;margin-bottom:10px;}
+    .balance-figure.loading{color:var(--grey-light);animation:pulse .9s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+    .balance-figure.stale{color:var(--grey-mid);}
+    .balance-meta{font-size:11.5px;color:var(--grey-mid);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .balance-stale-badge{background:#FEF9C3;color:#713F12;font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:10px;text-transform:uppercase;}
+    .balance-error{font-size:13px;color:#991B1B;margin-top:8px;}
+    .refresh-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      margin-top:16px;padding:8px 18px;
+      background:transparent;border:1.5px solid var(--gold);border-radius:var(--radius-sm);
+      color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;
+      letter-spacing:.04em;cursor:pointer;transition:all .18s ease;
+    }
+    .refresh-btn:hover:not(:disabled){background:var(--gold);color:var(--navy);}
+    .refresh-btn:disabled{opacity:.5;cursor:not-allowed;}
+    .refresh-btn.spinning .refresh-icon{display:inline-block;animation:spin .6s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* ── Placeholder sections ── */
+    .placeholder-card{
+      background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);
+      padding:28px 32px;flex:1;min-width:260px;
+      border:2px dashed var(--grey-light);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;gap:8px;min-height:140px;
+    }
+    .placeholder-card-icon{font-size:28px;opacity:.3;}
+    .placeholder-card-label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
+    .placeholder-card-sub{font-size:11.5px;color:var(--grey-light);}
+
+    @media(max-width:700px){.main{padding:20px 16px;}.balance-figure{font-size:34px;}}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Financial Dashboard</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link">Invoices</a>
+    <a href="/cases.html" class="nav-link">My Cases</a>
+    <a href="/finance.html" class="nav-link active">Finance</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-title">Financial Dashboard</div>
+  <div class="page-sub">Live bank balance and financial overview — TMC Legal Limited</div>
+</div>
+
+<div class="main" id="main-content" style="display:none;">
+
+  <div class="section-title">Bank Balance</div>
+  <div class="cards-row">
+
+    <!-- Live balance card -->
+    <div class="balance-card">
+      <div class="balance-card-label">TMC Legal Limited</div>
+      <div class="balance-account">Barclays Business · Current Account</div>
+      <div class="balance-figure loading" id="balance-figure">£—</div>
+      <div class="balance-meta" id="balance-meta">
+        <span id="balance-as-of">Loading…</span>
+        <span class="balance-stale-badge" id="stale-badge" style="display:none;">Stale</span>
+      </div>
+      <div class="balance-error" id="balance-error" style="display:none;"></div>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadBalance(true)">
+        <span class="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+
+    <!-- Phase 2 placeholder -->
+    <div class="placeholder-card">
+      <div class="placeholder-card-icon">📈</div>
+      <div class="placeholder-card-label">Recent Transactions</div>
+      <div class="placeholder-card-sub">Coming in Phase 2</div>
+    </div>
+
+  </div>
+
+  <div class="section-title">Coming Soon</div>
+  <div class="cards-row">
+    <div class="placeholder-card">
+      <div class="placeholder-card-icon">🔗</div>
+      <div class="placeholder-card-label">Invoice Reconciliation</div>
+      <div class="placeholder-card-sub">Match payments to invoices automatically</div>
+    </div>
+    <div class="placeholder-card">
+      <div class="placeholder-card-icon">📊</div>
+      <div class="placeholder-card-label">Balance History</div>
+      <div class="placeholder-card-sub">Balance snapshots over time</div>
+    </div>
+    <div class="placeholder-card">
+      <div class="placeholder-card-icon">📤</div>
+      <div class="placeholder-card-label">Xero Export</div>
+      <div class="placeholder-card-sub">Export invoices in Xero CSV format</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Access denied state -->
+<div class="access-denied" id="access-denied" style="display:none;">
+  <h3>Access restricted</h3>
+  <p>The Financial Dashboard is available to admin users only.</p>
+</div>
+
+<script>
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+
+async function getCallerEmail() {
+  try {
+    const r = await fetch('/.auth/me');
+    if (!r.ok) return null;
+    const data = await r.json();
+    const principal = data.clientPrincipal || (Array.isArray(data) ? data[0]?.clientPrincipal : null);
+    if (!principal) return null;
+    if (principal.userDetails) return principal.userDetails.toLowerCase();
+    const claim = (principal.claims || []).find(c =>
+      c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+      || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    );
+    return claim ? claim.val.toLowerCase() : null;
+  } catch { return null; }
+}
+
+function fmtAsOf(iso) {
+  if (!iso) return 'Unknown time';
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return 'Updated ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    + ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadBalance(forceRefresh) {
+  const fig    = document.getElementById('balance-figure');
+  const meta   = document.getElementById('balance-as-of');
+  const stale  = document.getElementById('stale-badge');
+  const errEl  = document.getElementById('balance-error');
+  const btn    = document.getElementById('refresh-btn');
+
+  fig.className = 'balance-figure loading';
+  fig.textContent = '£—';
+  meta.textContent = 'Loading…';
+  stale.style.display = 'none';
+  errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.classList.add('spinning'); }
+
+  try {
+    const url = '/api/aureli?action=balance' + (forceRefresh ? '&t=' + Date.now() : '');
+    const r   = await fetch(url, { headers: { Accept: 'application/json' } });
+
+    if (!r.ok) {
+      const msg = await r.text();
+      throw new Error(msg || 'HTTP ' + r.status);
+    }
+
+    const data = await r.json();
+
+    fig.textContent = data.formatted || ('£' + (data.balance || 0).toFixed(2));
+    fig.className   = 'balance-figure' + (data.stale ? ' stale' : '');
+    meta.textContent = fmtAsOf(data.asOf);
+    if (data.stale) stale.style.display = '';
+
+  } catch (err) {
+    fig.textContent = '£—';
+    fig.className   = 'balance-figure stale';
+    meta.textContent = 'Could not load balance';
+    errEl.textContent = err.message;
+    errEl.style.display = '';
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('spinning'); }
+  }
+}
+
+async function init() {
+  const email   = await getCallerEmail();
+  const isAdmin = email && ADMIN_EMAILS.includes(email);
+
+  if (!isAdmin) {
+    document.getElementById('access-denied').style.display = '';
+    return;
+  }
+
+  document.getElementById('main-content').style.display = '';
+  loadBalance(false);
+}
+
+init();
+</script>
+</body>
+</html>
