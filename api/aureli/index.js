@@ -23,7 +23,9 @@ const { URL } = require('url');
 const PORTAL_CONFIG_GUID = '6661b8ba-3f10-436b-b4de-88b370e8160b';
 const SITE_PATH          = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN     = '@tmclegal.co.uk';
-const FINANCE_ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+const FINANCE_ADMIN_EMAILS   = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+const WRITE_ADMIN_EMAILS     = ['toby@tmclegal.co.uk']; // balance writes: Toby only
+const AURELI_BALANCE_ITEM_ID = '1'; // PortalConfig AureliBalance item ID (verified 2026-06-26)
 
 // Module-level cache — valid for the lifetime of this function instance
 let _cache = null; // { balance, formatted, asOf, cachedAt }
@@ -123,7 +125,43 @@ module.exports = async function (context, req) {
     return;
   }
 
-  context.res = { status: 400, body: 'Unknown action. Supported: action=balance' };
+  // ── POST set balance ────────────────────────────────────────────────────
+  if (req.method === 'POST') {
+    if (!WRITE_ADMIN_EMAILS.includes(callerEmail)) {
+      context.res = { status: 403, body: 'Forbidden — balance writes restricted to admin.' };
+      return;
+    }
+    let body;
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch {
+      context.res = { status: 400, body: 'Invalid JSON body.' };
+      return;
+    }
+    const numBalance = parseFloat(body && body.balance);
+    if (isNaN(numBalance) || numBalance < 0) {
+      context.res = { status: 400, body: 'Invalid balance value.' };      return;
+    }
+    try {
+      const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const patchUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${PORTAL_CONFIG_GUID}/items/${AURELI_BALANCE_ITEM_ID}/fields`;
+      await graphPatch(patchUrl, token, { Value: numBalance.toFixed(2) });
+      _cache = null;
+      const formatted = '£' + numBalance.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const asOf      = new Date().toISOString();
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: numBalance, formatted, asOf, stale: false }),
+      };
+    } catch (err) {
+      context.log.error('Error in /api/aureli POST:', err.message);
+      context.res = { status: 500, body: 'Error updating balance: ' + err.message };
+    }
+    return;
+  }
+
+  context.res = { status: 400, body: 'Unknown action.' };
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -185,6 +223,37 @@ function graphGet(url, token) {
       });
     });
     req.on('error', reject);
+    req.end();
+  });
+}
+
+function graphPatch(url, token, fields) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(fields);
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'PATCH',
+      headers: {
+        Authorization:    `Bearer ${token}`,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    }, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error(`Graph PATCH ${res.statusCode}: ${data.slice(0, 300)}`));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : {}); }
+        catch { resolve({}); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
     req.end();
   });
 }
