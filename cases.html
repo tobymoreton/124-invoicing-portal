@@ -135,7 +135,7 @@
     <span class="nav-divider"></span>
     <span class="nav-title">Case Hub</span>
   </div>
-  <div class="nav-links">
+  <div class="nav-links" id="nav-links">
     <a href="/" class="nav-link">&larr; Invoices</a>
     <a href="/invoice-create.html" class="nav-link">+ New Invoice Draft</a>
   </div>
@@ -241,6 +241,13 @@ async function loadIdentity() {
       document.getElementById('user-name').textContent = callerName || callerEmail;
       isAdmin = ADMIN_EMAILS.includes(callerEmail);
       if (isAdmin) {
+        // Add Finance nav link for admins
+        const navLinks = document.getElementById('nav-links');
+        if (navLinks && !navLinks.querySelector('[href="/finance.html"]')) {
+          const a = document.createElement('a');
+          a.href = '/finance.html'; a.className = 'nav-link'; a.textContent = 'Finance';
+          navLinks.appendChild(a);
+        }
         document.getElementById('show-all-toggle').style.display = 'flex';
         document.getElementById('show-all-cb').addEventListener('change', e => {
           showAll = e.target.checked;
