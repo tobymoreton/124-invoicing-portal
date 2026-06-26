@@ -438,6 +438,7 @@
     /* Costs Claimed horizontal */
     #pdf-output .tbl-horiz th{font-weight:bold;text-align:right;background:#fff;color:#000;}
     #pdf-output .tbl-horiz td{text-align:right;}
+    #pdf-output .tbl-horiz td.row-label{text-align:left;}
     #pdf-output .tbl-horiz tr.total-row td{font-weight:bold;}
     /* Vertical tables */
     #pdf-output .tbl-vert td:first-child{text-align:right;width:65%;}
@@ -465,14 +466,21 @@
     <tr><td>Total Settlement</td><td id="pdf-totalsettlement"></td></tr>
   </table>
 
-  <h2>Costs Claimed (VAT Inclusive)</h2>
+  <h2>Costs Claimed</h2>
   <table class="tbl-horiz">
     <thead><tr>
-      <th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th>
+      <th></th><th>Profit Costs</th><th>TMC PC in Bill</th><th>Disbursements</th><th>Counsel's Fees</th><th>Total Claimed</th>
     </tr></thead>
-    <tbody><tr class="total-row">
+    <tbody>
+    <tr>
+      <td class="row-label">Net</td>
+      <td id="pdf-pc-net"></td><td id="pdf-tmcpc-net"></td><td id="pdf-disb-net"></td><td id="pdf-counsel-net"></td><td id="pdf-totalclaimed-net"></td>
+    </tr>
+    <tr class="total-row">
+      <td class="row-label">VAT Inclusive</td>
       <td id="pdf-pc"></td><td id="pdf-tmcpc"></td><td id="pdf-disb"></td><td id="pdf-counsel"></td><td id="pdf-totalclaimed"></td>
-    </tr></tbody>
+    </tr>
+    </tbody>
   </table>
 
   <h2>Costs Payable (VAT Inclusive)</h2>
@@ -1368,6 +1376,8 @@ function computeFigures() {
   computed = {
     offerOrSettlement, disbIncVAT, counsel, coa, otherTMC, totalPayable,
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
+    claimedPC, draftingTimeIP, disbursements, counselClaimed,
+    netTotalClaimed: claimedPC + draftingTimeIP + disbursements + counselClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill, totalBill,
     // Costs Claimed — IP build-up + LA
@@ -2097,11 +2107,16 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-datesettled').textContent   = fmtDate(f['DateSettled0']);
   document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0
     ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-  document.getElementById('pdf-pc').textContent           = fmt(c.pcIncVAT);
-  document.getElementById('pdf-tmcpc').textContent        = fmt(c.tmcPCIncVAT);
-  document.getElementById('pdf-disb').textContent         = fmt(c.disbIncVAT);
-  document.getElementById('pdf-counsel').textContent      = fmt(c.counselIncVAT);
-  document.getElementById('pdf-totalclaimed').textContent = fmt(c.totalClaimed);
+  document.getElementById('pdf-pc-net').textContent           = fmt(c.claimedPC);
+  document.getElementById('pdf-tmcpc-net').textContent        = fmt(c.draftingTimeIP);
+  document.getElementById('pdf-disb-net').textContent         = fmt(c.disbursements);
+  document.getElementById('pdf-counsel-net').textContent      = fmt(c.counselClaimed);
+  document.getElementById('pdf-totalclaimed-net').textContent = fmt(c.netTotalClaimed);
+  document.getElementById('pdf-pc').textContent               = fmt(c.pcIncVAT);
+  document.getElementById('pdf-tmcpc').textContent            = fmt(c.tmcPCIncVAT);
+  document.getElementById('pdf-disb').textContent             = fmt(c.disbIncVAT);
+  document.getElementById('pdf-counsel').textContent          = fmt(c.counselIncVAT);
+  document.getElementById('pdf-totalclaimed').textContent     = fmt(c.totalClaimed);
   document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
   document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
   document.getElementById('pdf-pay-coa').textContent     = fmt(c.coa);
