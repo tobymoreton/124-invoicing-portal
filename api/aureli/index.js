@@ -80,11 +80,10 @@ module.exports = async function (context, req) {
       // Fetch PortalConfig items, filter to AureliBalance
       const url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${PORTAL_CONFIG_GUID}/items`
                 + `?$expand=fields($select=Title,Value)`
-                + `&$filter=fields/Title eq 'AureliBalance'`
-                + `&$top=5`;
+                + `&$top=50`;
 
       const result = await graphGet(url, token);
-      const items  = result.value || [];
+      const items  = (result.value || []).filter(i => i.fields?.Title === 'AureliBalance');
 
       if (!items.length) {
         context.res = { status: 404, body: 'AureliBalance config item not found in PortalConfig list.' };
