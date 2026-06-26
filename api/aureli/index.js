@@ -23,7 +23,7 @@ const { URL } = require('url');
 const PORTAL_CONFIG_GUID = '6661b8ba-3f10-436b-b4de-88b370e8160b';
 const SITE_PATH          = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN     = '@tmclegal.co.uk';
-const ADMIN_EMAILS       = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+const FINANCE_ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 
 // Module-level cache — valid for the lifetime of this function instance
 let _cache = null; // { balance, formatted, asOf, cachedAt }
@@ -49,8 +49,8 @@ module.exports = async function (context, req) {
 
   // ── Auth ────────────────────────────────────────────────────────────────
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !callerEmail.endsWith(ALLOWED_DOMAIN)) {
-    context.res = { status: 403, body: 'Forbidden — TMC Legal staff only.' };
+  if (!callerEmail || !FINANCE_ADMIN_EMAILS.includes(callerEmail)) {
+    context.res = { status: 403, body: 'Forbidden — restricted to authorised users only.' };
     return;
   }
 
