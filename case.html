@@ -603,6 +603,22 @@
         </div>
       </div>
 
+      <!-- Row 2b: Billing Info -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">💷 Billing Info</span></div>
+        <dl class="read-grid">
+          <div class="read-row"><dt>Fee Basis</dt><dd class="ov-editable" id="ov-feebasis">—</dd></div>
+          <div class="read-row"><dt>IP Fee %</dt><dd class="ov-editable" id="ov-ipfee">—</dd></div>
+          <div class="read-row"><dt>LA Fee %</dt><dd class="ov-editable" id="ov-lafee">—</dd></div>
+          <div class="read-row"><dt>Min Fee %</dt><dd class="ov-editable" id="ov-minfee">—</dd></div>
+          <div class="read-row"><dt>Hourly Rate (£)</dt><dd class="ov-editable" id="ov-rate">—</dd></div>
+          <div class="read-row"><dt>Minimum Fee Applied</dt><dd class="ov-editable" id="ov-minfeeapplied">—</dd></div>
+          <div class="read-row"><dt>VAT on Drafting Fee</dt><dd class="ov-editable" id="ov-vatondrafting">—</dd></div>
+          <div class="read-row"><dt>Provisional Drafting Fee (£)</dt><dd id="ov-provdrafting">—</dd></div>
+          <div class="read-row"><dt>Provisional Min Fee (£)</dt><dd id="ov-provminfee">—</dd></div>
+        </dl>
+      </div>
+
       <!-- Row 3: Flags + Activity -->
       <div class="two-col">
         <div class="card">
@@ -1619,6 +1635,22 @@ function renderOverviewTab() {
   setText('ov-flags',          stripHtml(f['Flags'])               || '—');
   setText('ov-lastaction',     f['LastAction']           || '—');
   setText('ov-lastreminder',   stripHtml(f['Last_x0020_Reminder'])  || '—');
+  // Billing Info (read-only display)
+  setText('ov-feebasis',      f['Drafting_x0020_fee_x0020_basis'] || '—');
+  const ipFee  = parseFloat(f['Fee_x0025__x0028_number_x0029_']);
+  const laFee  = parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00']);
+  const minFee = parseFloat(f['Minfee_x0025__x0028_number_x0029']);
+  const rate   = parseFloat(f['RateForCase']);
+  const provDF = parseFloat(f['ProvisionalDraftingFee']);
+  const provMF = parseFloat(f['ProvisionalMinDraftingFee']);
+  setText('ov-ipfee',         !isNaN(ipFee)  ? ipFee  + '%' : '—');
+  setText('ov-lafee',         !isNaN(laFee)  ? laFee  + '%' : '—');
+  setText('ov-minfee',        !isNaN(minFee) ? minFee + '%' : '—');
+  setText('ov-rate',          !isNaN(rate)   ? '£' + rate.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
+  setText('ov-minfeeapplied', f['MinimumFee'] ? 'Yes' : 'No');
+  setText('ov-vatondrafting', f['VatOnDraftingFee_x003f_'] ? 'Yes' : 'No');
+  setText('ov-provdrafting',  !isNaN(provDF) && provDF > 0 ? '£' + provDF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
+  setText('ov-provminfee',    !isNaN(provMF) && provMF > 0 ? '£' + provMF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
   const cpUpd = f['CP_x0020_Last_x0020_Updated'];
   const cpEl  = document.getElementById('ov-cpupdated');
   if (cpEl) cpEl.textContent = cpUpd ? 'Updated ' + fmtDate(cpUpd) : '';
@@ -1653,6 +1685,46 @@ function ovSetEditMode() {
   document.getElementById('btn-ov-edit').style.display   = 'none';
   document.getElementById('btn-ov-save').style.display   = 'inline-flex';
   document.getElementById('btn-ov-cancel').style.display = 'inline-flex';
+
+  // Billing Info inputs
+  const feeBasisEl = document.getElementById('ov-feebasis');
+  feeBasisEl.innerHTML = '';
+  feeBasisEl.appendChild(makeSelect('ov-feebasis', [
+    '% of Profit Costs', 'As Drawn', 'As Recovered', 'Fixed Fee', 'Hourly Rate', 'Other'
+  ], f['Drafting_x0020_fee_x0020_basis']));
+
+  const biNumFields = [
+    ['ov-ipfee',  parseFloat(f['Fee_x0025__x0028_number_x0029_']) || ''],
+    ['ov-lafee',  parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00']) || ''],
+    ['ov-minfee', parseFloat(f['Minfee_x0025__x0028_number_x0029']) || ''],
+    ['ov-rate',   parseFloat(f['RateForCase']) || ''],
+  ];
+  biNumFields.forEach(([elId, val]) => {
+    const dd = document.getElementById(elId);
+    dd.innerHTML = '';
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.className = 'ov-date'; inp.id = elId + '-input';
+    inp.step = '0.01'; inp.min = '0'; inp.value = val;
+    dd.appendChild(inp);
+  });
+
+  const biToggleFields = [
+    ['ov-minfeeapplied', !!(f['MinimumFee'])],
+    ['ov-vatondrafting', !!(f['VatOnDraftingFee_x003f_'])],
+  ];
+  biToggleFields.forEach(([elId, val]) => {
+    const dd = document.getElementById(elId);
+    dd.innerHTML = '';
+    const sel = document.createElement('select');
+    sel.className = 'ov-select'; sel.id = elId + '-input';
+    ['Yes','No'].forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o; opt.textContent = o;
+      if ((val && o === 'Yes') || (!val && o === 'No')) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    dd.appendChild(sel);
+  });
 
   // Assignment dropdowns
   const assignedEl = document.getElementById('ov-assigned');
@@ -1728,6 +1800,22 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
     const v = document.getElementById(inputId)?.value;
     fields[spField] = v ? v + 'T00:00:00Z' : null;
   });
+
+  // Billing Info
+  const feeBasisVal = document.getElementById('ov-feebasis-input')?.value;
+  if (feeBasisVal) fields['Drafting_x0020_fee_x0020_basis'] = feeBasisVal;
+  const ipFeeVal  = document.getElementById('ov-ipfee-input')?.value;
+  const laFeeVal  = document.getElementById('ov-lafee-input')?.value;
+  const minFeeVal = document.getElementById('ov-minfee-input')?.value;
+  const rateVal   = document.getElementById('ov-rate-input')?.value;
+  if (ipFeeVal  !== '' && ipFeeVal  != null) fields['Fee_x0025__x0028_number_x0029_']  = parseFloat(ipFeeVal);
+  if (laFeeVal  !== '' && laFeeVal  != null) fields['LAA_x0020_Drafting_x0020_Fee_x00'] = parseFloat(laFeeVal);
+  if (minFeeVal !== '' && minFeeVal != null) fields['Minfee_x0025__x0028_number_x0029'] = parseFloat(minFeeVal);
+  if (rateVal   !== '' && rateVal   != null) fields['RateForCase']                       = parseFloat(rateVal);
+  const minFeeAppliedVal  = document.getElementById('ov-minfeeapplied-input')?.value;
+  const vatOnDraftingVal  = document.getElementById('ov-vatondrafting-input')?.value;
+  if (minFeeAppliedVal != null) fields['MinimumFee']              = minFeeAppliedVal === 'Yes';
+  if (vatOnDraftingVal != null) fields['VatOnDraftingFee_x003f_'] = vatOnDraftingVal === 'Yes';
 
   try {
     const resp = await fetch('/api/caseupdate', {
