@@ -35,13 +35,9 @@ const TT2_GUID      = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const SITE_PATH     = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
-const SELECT_FIELDS = [
-  'field_1','field_2','field_3','field_6','field_9','field_12','field_16','field_18',
-  'Completedby_x0028_text_x0029_',
-  'Billable_x003f_','Billed_x003f_',
-  'Num_BillableAmount_x00a3_','TimeSpentMirror',
-  'Casename_x0028_text_x0029_',
-].join(',');
+// No $select on fields expand — boolean fields (Billable_x003f_, Billed_x003f_) are
+// not reliably returned when named in $select via Graph. Fetching all fields ensures
+// booleans come through. Per-case TT2 item count is small so no perf concern.
 
 function getCallerEmail(req) {
   try {
@@ -82,7 +78,7 @@ module.exports = async function (context, req) {
       if (!ref) { context.res = { status: 400, body: 'Missing required param: ref' }; return; }
 
       const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
-                 + `?$expand=fields($select=${encodeURIComponent(SELECT_FIELDS)})`
+                 + `?$expand=fields`
                  + `&$top=999`;
 
       let url = base;
