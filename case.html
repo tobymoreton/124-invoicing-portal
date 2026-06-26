@@ -2386,7 +2386,7 @@ function renderCaTable() {
           <input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" />
         </td>
         <td class="ca-cell ca-mono">${fmt(amt)}</td>
-        <td class="ca-cell ca-center">${billable ? '✔' : '−'}</td>
+        <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
         <td class="ca-cell ca-actions">
           <button class="ca-btn-save" data-id="${id}">✓</button>
@@ -2400,7 +2400,7 @@ function renderCaTable() {
         <td class="ca-cell ca-mono">${fmtN(hrs, 2)}</td>
         <td class="ca-cell ca-mono">${rate ? '£' + fmtN(rate, 2) : '−'}</td>
         <td class="ca-cell ca-mono">${amt ? fmt(amt) : '−'}</td>
-        <td class="ca-cell ca-center">${billable ? '✔' : '−'}</td>
+        <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
         <td class="ca-cell ca-actions">
           ${!billed ? '<button class="ca-btn-edit" data-id="' + id + '">✏️</button>' : ''}
