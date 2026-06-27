@@ -108,10 +108,18 @@ module.exports = async function (context, req) {
         url = data['@odata.nextLink'] || null;
       }
 
+      // If ?open=1, filter to incomplete only.
+      // Completed_x003f_ is boolean — Graph omits the field entirely when false,
+      // returns true when completed. So true === completed; absent === incomplete.
+      const openOnly = req.query.open === '1';
+      const filtered = openOnly
+        ? items.filter(item => item.fields?.['Completed_x003f_'] !== true)
+        : items;
+
       // Sort: incomplete by due date asc, completed last
-      items.sort((a, b) => {
-        const ac = !!(a.fields?.['Completed_x003f_']);
-        const bc = !!(b.fields?.['Completed_x003f_']);
+      filtered.sort((a, b) => {
+        const ac = a.fields?.['Completed_x003f_'] === true;
+        const bc = b.fields?.['Completed_x003f_'] === true;
         if (ac !== bc) return ac ? 1 : -1;
         const ad = a.fields?.['Duedate'] || '';
         const bd = b.fields?.['Duedate'] || '';
@@ -121,7 +129,7 @@ module.exports = async function (context, req) {
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: items }),
+        body: JSON.stringify({ value: filtered }),
       };
       return;
     }
