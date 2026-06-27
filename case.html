@@ -2531,7 +2531,53 @@ async function loadReminders() {
   }
 }
 
-const REM_EVENTS     = ['General reminder','Chase Client','Chase Other Side for response','Chase Chambers','Review','Invoice','Relay offer to Client','Start Precedent R'];
+const REM_EVENTS = [
+  'Approve Bill',
+  'CCMC',
+  'Chase Chambers',
+  'Chase Client',
+  'Chase HJA – Emailed 7 days ago',
+  'Chase Other Side for Interim',
+  'Chase Other Side for Interim & Offer',
+  'Chase Other Side for Offer',
+  'Chase Other Side for response',
+  'Detailed Assessment',
+  'Finalise Bill',
+  'Finalise Replies',
+  'Finalise Budget',
+  'General reminder',
+  'Get Counsel reduction',
+  'Important reminder',
+  'Invoice',
+  'Issue Invoice - Draft done',
+  'Issue Part 8',
+  'Lodge completed bill',
+  'Make Offer',
+  'Mediation',
+  'Meeting',
+  'Points of Dispute due',
+  'Prepare for CCMC',
+  'Prepare for Detailed Assessment',
+  'Prepare for Mediation',
+  'Prepare for Without Prejudice call',
+  'Relay offer to Client',
+  'Replies due',
+  'Request Detailed Assessment',
+  'Request Provisional Assessment',
+  'Review',
+  'Send Bill to Client',
+  'Send Budget to Client',
+  'Send Replies to Client',
+  'Serve formally',
+  'Serve informally',
+  'Serve Precedent H',
+  'Serve Precedent R',
+  'Start Bill',
+  'Start Budget',
+  'Start Precedent R',
+  'Start Replies',
+  'Without Prejudice call',
+];
 const REM_PRIORITIES = ['High','Medium','Low'];
 
 function renderRemTable() {
@@ -2793,7 +2839,7 @@ function renderCaTable() {
           <input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" />
         </td>
         <td class="ca-cell ca-mono ca-right">${fmt(amt)}</td>
-        <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
+        <td class="ca-cell ca-center"><input type="checkbox" class="ca-edit-bill" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
         <td class="ca-cell ca-actions">
@@ -2835,9 +2881,11 @@ function renderCaTable() {
 }
 
 async function saveCaRow(id) {
-  const wd   = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim()  || '';
-  const hrs  = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value)  || 0;
-  const rate = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const wd       = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim()  || '';
+  const hrs      = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value)  || 0;
+  const rate     = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const billEl   = document.querySelector(`.ca-edit-bill[data-id="${id}"]`);
+  const billable = billEl ? billEl.checked : undefined;
   const saveBtn   = document.querySelector(`.ca-btn-save[data-id="${id}"]`);
   const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
   if (saveBtn)   saveBtn.disabled   = true;
@@ -2846,7 +2894,7 @@ async function saveCaRow(id) {
     const resp = await fetch('/api/caseactions', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate }),
+      body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, billable }),
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = caActions.findIndex(a => a.id === id);
@@ -2854,6 +2902,7 @@ async function saveCaRow(id) {
       const f = caActions[idx].fields || {};
       f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs;
       f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate;
+      if (billable !== undefined) f['Billable_x003f_'] = billable;
     }
     caEditingId = null;
     renderCaTable();
