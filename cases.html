@@ -467,7 +467,13 @@ function renderStagePanel(){
 
   const el=document.getElementById('stage-list');
   if(!sorted.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases</div>';return;}
-  el.innerHTML='';
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 18px 6px;border-bottom:1px solid var(--grey-light);">'+
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;">Stage</span>'+
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);min-width:120px;"></span>'+
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);min-width:20px;text-align:right;">Cases</span>'+
+      '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);min-width:70px;text-align:right;">Total Costs</span>'+
+    '</div>';
   sorted.forEach(([stage,count])=>{
     const costs=stageCosts[stage];
     const pct=Math.round((count/maxCount)*100);
@@ -479,7 +485,7 @@ function renderStagePanel(){
       '</div>'+
       '<div class="stage-bar-wrap"><div class="stage-bar" style="width:'+pct+'%"></div></div>'+
       '<span class="stage-count">'+count+'</span>'+
-      '<span class="stage-costs">'+fmt(costs)+'</span>';
+      '<span class="stage-costs">'+(costs>0?fmt(costs):'—')+'</span>';
     row.addEventListener('click',()=>showCaseList({stage},stage,count+' case'+(count!==1?'s':'')));
     el.appendChild(row);
   });
