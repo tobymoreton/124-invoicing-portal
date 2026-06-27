@@ -83,6 +83,8 @@
       white-space:nowrap;transition:all .2s ease;position:relative;
       border-bottom:3px solid transparent;
     }
+    .tab-btn:nth-child(odd){background:rgba(255,255,255,.05);}
+    .tab-btn:nth-child(even){background:rgba(0,0,0,.12);}
     .tab-btn::after{
       content:'';position:absolute;bottom:0;left:50%;right:50%;
       height:3px;background:var(--gold);border-radius:2px 2px 0 0;
@@ -388,28 +390,31 @@
     .spinner{width:36px;height:36px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 16px;}
     @keyframes spin{to{transform:rotate(360deg);}}
     /* ── Case Actions table ──────────────────── */
-    .ca-table{width:100%;border-collapse:collapse;font-size:13px;}
-    .ca-table thead th{background:var(--navy);color:rgba(245,242,235,.7);font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:10px 12px;text-align:left;white-space:nowrap;}
+    .ca-table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+    .ca-table thead th{background:var(--navy);color:rgba(245,242,235,.7);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:8px 5px;text-align:left;overflow:hidden;}
+    .ca-col-date{width:80px;}.ca-col-by{width:56px;}.ca-col-hrs{width:44px;}.ca-col-rate{width:62px;}.ca-col-amt{width:68px;}.ca-col-bil{width:42px;}.ca-col-bld{width:50px;}.ca-col-sched{width:52px;}.ca-col-act{width:30px;}
     .ca-row{border-bottom:1px solid var(--grey-faint);transition:background .12s;}
     .ca-row:hover{background:rgba(201,168,76,.04);}
-    .ca-billed{opacity:.65;}
-    .ca-cell{padding:9px 12px;vertical-align:top;font-size:13px;color:var(--navy);}
-    .ca-cell-wd{max-width:320px;word-break:break-word;line-height:1.5;}
+    .ca-billed{opacity:.7;}
+    .ca-cell{padding:6px 5px;vertical-align:top;font-size:12.5px;color:var(--navy);overflow:hidden;}
+    .ca-cell-wd{word-break:break-word;line-height:1.45;white-space:normal;}
     .ca-mono{font-family:'IBM Plex Mono',monospace;font-weight:500;white-space:nowrap;}
+    .ca-right{text-align:right;}
     .ca-center{text-align:center;}
-    .ca-billed-badge{font-size:10px;font-weight:700;letter-spacing:.06em;background:var(--green-pale);color:var(--green);padding:2px 7px;border-radius:10px;white-space:nowrap;}
-    .ca-actions{white-space:nowrap;}
+    .ca-billed-badge{font-size:10px;font-weight:700;letter-spacing:.06em;background:var(--green-pale);color:var(--green);padding:2px 5px;border-radius:10px;white-space:nowrap;}
+    .ca-actions{text-align:center;}
     .ca-btn-edit,.ca-btn-save,.ca-btn-cancel{
-      border:none;background:none;cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm);
-      font-size:13px;transition:background .12s;
+      border:none;background:none;cursor:pointer;padding:3px 4px;border-radius:var(--radius-sm);
+      font-size:12px;transition:background .12s;
     }
     .ca-btn-edit:hover{background:var(--gold-pale);}
     .ca-btn-save{color:var(--green);font-weight:700;}
     .ca-btn-save:hover{background:var(--green-pale);}
     .ca-btn-cancel{color:#991B1B;}
     .ca-btn-cancel:hover{background:#FEF2F2;}
-    .ca-edit-wd{width:100%;min-width:200px;padding:6px 8px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);resize:vertical;}
-    .ca-edit-hrs,.ca-edit-rate{width:70px;padding:6px 8px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;}
+    .ca-edit-wd{width:100%;padding:5px 5px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--navy);resize:vertical;}
+    .ca-edit-hrs,.ca-edit-rate{width:100%;padding:4px 4px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--navy);text-align:right;}
+    .ca-sched-check{width:15px;height:15px;accent-color:var(--navy);cursor:pointer;display:block;margin:0 auto;}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1145,19 +1150,27 @@
               <span class="card-title">Case Actions</span>
               <span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span>
             </div>
-            <div style="overflow-x:auto;">
+            <div>
               <table class="ca-table" id="ca-table">
+                <colgroup>
+                  <col class="ca-col-date"/><col class="ca-col-by"/>
+                  <col/>
+                  <col class="ca-col-hrs"/><col class="ca-col-rate"/><col class="ca-col-amt"/>
+                  <col class="ca-col-bil"/><col class="ca-col-bld"/>
+                  <col class="ca-col-sched"/><col class="ca-col-act"/>
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Date</th>
                     <th>By</th>
-                    <th style="min-width:260px;">Work Done</th>
-                    <th>Hrs</th>
-                    <th>Rate</th>
-                    <th>Amount</th>
-                    <th>Billable</th>
-                    <th>Billed</th>
-                    <th style="width:60px;"></th>
+                    <th>Work Done</th>
+                    <th class="ca-right">Hrs</th>
+                    <th class="ca-right">Rate</th>
+                    <th class="ca-right">Amt</th>
+                    <th class="ca-center">Bill.</th>
+                    <th class="ca-center">Billed</th>
+                    <th class="ca-center">Sched.</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody id="ca-tbody"></tbody>
@@ -2423,6 +2436,7 @@ loadCase();
 let caActions    = [];
 let caEditingId  = null;
 let caLoaded     = false;
+let caSchedule   = new Set();
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') {
@@ -2491,19 +2505,20 @@ function renderCaTable() {
     if (isEditing) {
       tr.innerHTML = `
         <td class="ca-cell">${escHtml(dateStr)}</td>
-        <td class="ca-cell">${escHtml(byName)}</td>
+        <td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
         <td class="ca-cell ca-cell-wd">
           <textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea>
         </td>
-        <td class="ca-cell">
+        <td class="ca-cell ca-right">
           <input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" />
         </td>
-        <td class="ca-cell">
+        <td class="ca-cell ca-right">
           <input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" />
         </td>
-        <td class="ca-cell ca-mono">${fmt(amt)}</td>
+        <td class="ca-cell ca-mono ca-right">${fmt(amt)}</td>
         <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
         <td class="ca-cell ca-actions">
           <button class="ca-btn-save" data-id="${id}">✓</button>
           <button class="ca-btn-cancel" data-id="${id}">×</button>
@@ -2511,15 +2526,16 @@ function renderCaTable() {
     } else {
       tr.innerHTML = `
         <td class="ca-cell">${escHtml(dateStr)}</td>
-        <td class="ca-cell">${escHtml(byName)}</td>
-        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 120 ? workDone.slice(0, 120) + '…' : workDone)}</td>
-        <td class="ca-cell ca-mono">${fmtN(hrs, 2)}</td>
-        <td class="ca-cell ca-mono">${rate ? '£' + fmtN(rate, 2) : '−'}</td>
-        <td class="ca-cell ca-mono">${amt ? fmt(amt) : '−'}</td>
+        <td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
+        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '…' : workDone)}</td>
+        <td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>
+        <td class="ca-cell ca-mono ca-right">${rate ? '£' + fmtN(rate, 2) : '−'}</td>
+        <td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '−'}</td>
         <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
         <td class="ca-cell ca-actions">
-          ${!billed ? '<button class="ca-btn-edit" data-id="' + id + '">✏️</button>' : ''}
+          <button class="ca-btn-edit" data-id="${id}">✏️</button>
         </td>`;
     }
     tbody.appendChild(tr);
@@ -2533,6 +2549,11 @@ function renderCaTable() {
   });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => {
     btn.addEventListener('click', () => saveCaRow(btn.dataset.id));
+  });
+  tbody.querySelectorAll('.ca-sched-check').forEach(chk => {
+    chk.addEventListener('change', () => {
+      if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id);
+    });
   });
 }
 
