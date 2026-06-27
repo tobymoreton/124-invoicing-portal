@@ -406,7 +406,7 @@ async function loadReminders(cases){
   if(!refs.length){allReminders=[];return;}
   // Fetch all reminders in parallel, one call per case ref
   const results=await Promise.allSettled(
-    refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref))
+    refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1')
       .then(r=>r.ok?r.json():{value:[]})
       .then(data=>{
         const caseName=(cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
