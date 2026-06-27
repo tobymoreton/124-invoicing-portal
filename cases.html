@@ -93,6 +93,7 @@
     .td-date{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--grey-mid);}
     .td-assigned{font-size:12.5px;color:var(--navy);}
     .td-assigned .co{font-size:11.5px;color:var(--grey-mid);margin-top:1px;}
+    .td-reminder{font-size:12px;color:var(--grey-mid);line-height:1.4;}
     .open-btn{
       display:inline-flex;align-items:center;gap:6px;
       padding:6px 14px;border-radius:var(--radius-sm);
@@ -197,12 +198,12 @@
         <thead>
           <tr>
             <th>Case</th>
-            <th>Ref</th>
-            <th>Status</th>
+            <th>Client</th>
+            <th>Stage</th>
             <th>Task</th>
-            <th>Track</th>
-            <th>Assigned To</th>
-            <th>Received</th>
+            <th>Fee Earner</th>
+            <th>Total Costs</th>
+            <th>Last Reminder</th>
             <th></th>
           </tr>
         </thead>
@@ -315,6 +316,25 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function computeTotalCosts(f) {
+  const pc        = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
+  const tmc       = parseFloat(f['DraftingTimeClaimed'])               || 0;
+  const otherTMC  = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
+  const disb      = parseFloat(f['DisbursementsClaimed'])              || 0;
+  const vatOnDisb = parseFloat(f['VATonDisbursements'])                || 0;
+  const counsel   = parseFloat(f['CounselsFeesClaimed'])               || 0;
+  const vatPct    = parseFloat(f['VAT_x0020__x0025__x0020_Claimed'])   || 0;
+  return (pc + tmc + otherTMC) * (1 + vatPct) + disb + vatOnDisb + counsel * (1 + vatPct);
+}
+
+function stripHtml(s) {
+  return (s || '')
+    .replace(/<[^>]*>/g, ' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>').replace(/&nbsp;/g,' ')
+    .replace(/&#(\d+);/g, (_,n) => String.fromCharCode(n))
+    .replace(/\s+/g,' ').trim();
+}
+
 function renderTable() {
   const tbody = document.getElementById('cases-tbody');
   tbody.innerHTML = '';
@@ -349,33 +369,33 @@ function renderTable() {
   document.getElementById('table-wrap').style.display   = 'block';
 
   visible.forEach(c => {
-    const f          = c.fields;
-    const ref        = f['Ourreference_x0028_text_x0029_'] || '';
-    const name       = f['CaseNameForOpenCases'] || f['Title'] || ref;
-    const firm       = f['Firm_x0028_text_x0029_'] || '';
-    const status     = f['StatusMirror'] || '\u2014';
-    const task       = f['Task'] || '';
-    const track      = f['CaseTrack'] || '';
-    const assigned   = f['assignedToTextValue'] || '\u2014';
-    const coAssigned = f['coAssignedMirror'] || '';
-    const dateRec    = fmtDate(f['DateReceived']);
+    const f            = c.fields;
+    const ref          = f['Ourreference_x0028_text_x0029_'] || '';
+    const name         = f['CaseNameForOpenCases'] || f['Title'] || ref;
+    const firm         = f['Firm_x0028_text_x0029_'] || '';
+    const status       = f['StatusMirror'] || '\u2014';
+    const task         = f['Task'] || '';
+    const feeEarner    = f['FeeEarner_x0028_fromFM_x0029_'] || '\u2014';
+    const lastRem      = stripHtml(f['Last_x0020_Reminder'] || '');
+    const lastRemShort = lastRem.length > 90 ? lastRem.slice(0, 90) + '\u2026' : lastRem;
+    const totalCosts   = computeTotalCosts(f);
+    const costsFmt     = totalCosts > 0
+      ? '\u00a3' + totalCosts.toLocaleString('en-GB', {minimumFractionDigits:0,maximumFractionDigits:0})
+      : '\u2014';
 
     const tr = document.createElement('tr');
     tr.innerHTML =
       '<td>' +
         '<div class="td-case-name">' + escHtml(name) + '</div>' +
-        (firm ? '<div class="td-firm">' + escHtml(firm) + '</div>' : '') +
+        '<div class="td-ref" style="margin-top:2px;">' + escHtml(ref) + '</div>' +
       '</td>' +
-      '<td><span class="td-ref">' + escHtml(ref) + '</span></td>' +
+      '<td><span style="font-size:12.5px;color:var(--navy);">' + escHtml(firm || '\u2014') + '</span></td>' +
       '<td><span class="status-chip ' + statusClass(status) + '">' + escHtml(status) + '</span></td>' +
       '<td>' + (task ? '<span class="task-chip">' + escHtml(task) + '</span>' : '\u2014') + '</td>' +
-      '<td><span style="font-size:12.5px;color:var(--grey-mid);">' + escHtml(track || '\u2014') + '</span></td>' +
-      '<td>' +
-        '<div class="td-assigned">' + escHtml(assigned) + '</div>' +
-        (coAssigned ? '<div class="td-assigned co">+ ' + escHtml(coAssigned) + '</div>' : '') +
-      '</td>' +
-      '<td><span class="td-date">' + dateRec + '</span></td>' +
-      '<td><a href="case.html?ref=' + encodeURIComponent(ref) + '" class="open-btn">Open &rarr;</a></td>';
+      '<td><span style="font-size:12.5px;color:var(--grey-mid);">' + escHtml(feeEarner) + '</span></td>' +
+      '<td><span class="td-ref">' + escHtml(costsFmt) + '</span></td>' +
+      '<td>' + (lastRemShort ? '<span class="td-reminder" title="' + escHtml(lastRem) + '">' + escHtml(lastRemShort) + '</span>' : '<span style="color:var(--grey-light);">\u2014</span>') + '</td>' +
+      '<td><a href="case.html?ref=' + encodeURIComponent(ref) + '" class="open-btn">Open \u2192</a></td>';
 
     tr.addEventListener('click', function(e) {
       if (e.target.tagName !== 'A') {
