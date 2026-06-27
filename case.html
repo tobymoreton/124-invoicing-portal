@@ -415,6 +415,7 @@
     .ca-edit-wd{width:100%;padding:5px 5px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--navy);resize:vertical;}
     .ca-edit-hrs,.ca-edit-rate{width:100%;padding:4px 4px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--navy);text-align:right;}
     .ca-sched-check{width:15px;height:15px;accent-color:var(--navy);cursor:pointer;display:block;margin:0 auto;}
+    .rem-overdue .ca-cell:first-child{color:#991B1B;font-weight:700;}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -548,6 +549,7 @@
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="interim">Interim Payments</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
+    <button class="tab-btn" data-tab="reminders">Reminders</button>
     <button class="tab-btn" data-tab="caseactions">Case Actions</button>
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
   </div>
@@ -1140,6 +1142,78 @@
     </div>
 
     <!-- ════════ CASE ACTIONS TAB ════════ -->
+    <!-- ════════ REMINDERS TAB ════════ -->
+    <div class="tab-panel" id="tab-reminders">
+      <div style="display:flex;gap:22px;align-items:flex-start;">
+        <div style="flex:1;min-width:0;">
+          <div class="card">
+            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+              <span class="card-title">Reminders</span>
+              <span id="rem-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+            </div>
+            <div>
+              <table class="ca-table" id="rem-table">
+                <colgroup>
+                  <col style="width:80px;"/><col style="width:130px;"/>
+                  <col/>
+                  <col style="width:46px;"/><col style="width:42px;"/><col style="width:36px;"/>
+                  <col style="width:30px;"/>
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>Due</th><th>Event</th><th>Detail</th>
+                    <th class="ca-center">Pri.</th>
+                    <th class="ca-center">Done</th>
+                    <th class="ca-center">Adm.</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="rem-tbody"></tbody>
+              </table>
+            </div>
+            <div id="rem-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading reminders…</div>
+            <div id="rem-empty"   style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No reminders for this case.</div>
+          </div>
+        </div>
+        <div style="width:290px;flex-shrink:0;">
+          <div class="card">
+            <div class="card-head"><span class="card-title">Add Reminder</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div class="field"><label>Due Date</label><input type="date" id="rem-add-duedate" /></div>
+              <div class="field"><label>Event</label>
+                <select id="rem-add-event" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
+                  <option>General reminder</option><option>Chase Client</option>
+                  <option>Chase Other Side for response</option><option>Chase Chambers</option>
+                  <option>Review</option><option>Invoice</option>
+                  <option>Relay offer to Client</option><option>Start Precedent R</option>
+                </select>
+              </div>
+              <div class="field"><label>Priority</label>
+                <select id="rem-add-priority" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
+                  <option>High</option><option selected>Medium</option><option>Low</option>
+                </select>
+              </div>
+              <div class="field"><label>Detail</label>
+                <textarea id="rem-add-detail" rows="4" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;resize:vertical;"></textarea>
+              </div>
+              <div style="display:flex;gap:16px;align-items:center;">
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--navy);cursor:pointer;">
+                  <input type="checkbox" id="rem-add-admin" style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Admin?
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--navy);cursor:pointer;">
+                  <input type="checkbox" id="rem-add-email" style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Email?
+                </label>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <button class="btn-edit-save" id="rem-add-submit" style="display:inline-flex;">+ Add Reminder</button>
+                <span class="edit-msg" id="rem-add-msg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-reminders -->
+
     <div class="tab-panel" id="tab-caseactions">
       <div style="display:flex;gap:22px;align-items:flex-start;">
 
@@ -1346,9 +1420,11 @@ async function loadCase() {
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
-    // Pre-load case actions in background so they're ready when the tab is clicked
+    // Pre-load case actions and reminders in background so they're ready when tabs are clicked
     caLoaded = true;
     loadCaseActions();
+    remLoaded = true;
+    loadReminders();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
@@ -2433,6 +2509,202 @@ function setCheck(id, val) { const e = document.getElementById(id); if (e) e.che
 loadCase();
 
 // ── Case Actions tab ────────────────────────────────────────────────────────
+let remActions   = [];
+let remEditingId = null;
+let remLoaded    = false;
+
+async function loadReminders() {
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  if (!ref) return;
+  document.getElementById('rem-loading').style.display = 'block';
+  document.getElementById('rem-empty').style.display   = 'none';
+  document.getElementById('rem-tbody').innerHTML = '';
+  try {
+    const resp = await fetch('/api/reminders?ref=' + encodeURIComponent(ref));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    remActions = data.value || [];
+    renderRemTable();
+    initAddRemPanel();
+  } catch (err) {
+    document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message;
+  }
+}
+
+const REM_EVENTS     = ['General reminder','Chase Client','Chase Other Side for response','Chase Chambers','Review','Invoice','Relay offer to Client','Start Precedent R'];
+const REM_PRIORITIES = ['High','Medium','Low'];
+
+function renderRemTable() {
+  const tbody   = document.getElementById('rem-tbody');
+  const loading = document.getElementById('rem-loading');
+  const empty   = document.getElementById('rem-empty');
+  const summary = document.getElementById('rem-summary');
+  loading.style.display = 'none';
+  tbody.innerHTML = '';
+  if (!remActions.length) { empty.style.display = 'block'; summary.textContent = ''; return; }
+  empty.style.display = 'none';
+  const open = remActions.filter(r => !r.fields?.['Completed_x003f_']).length;
+  summary.textContent = remActions.length + ' reminder' + (remActions.length !== 1 ? 's' : '') + ' \u00b7 ' + open + ' open';
+  const today = new Date(); today.setHours(0,0,0,0);
+  remActions.forEach(action => {
+    const f         = action.fields || {};
+    const id        = action.id;
+    const dueDate   = f['Duedate']   || '';
+    const event     = f['Event']     || '';
+    const detail    = f['Brief']     || '';
+    const priority  = f['Priority']  || '';
+    const completed = !!(f['Completed_x003f_']);
+    const admin     = !!(f['Admin_x003f_']);
+    const isEditing = remEditingId === id;
+    const dueObj    = dueDate ? new Date(dueDate) : null;
+    const overdue   = !completed && dueObj && dueObj < today;
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+    tr.className = 'ca-row' + (completed ? ' ca-billed' : '') + (overdue ? ' rem-overdue' : '');
+    if (isEditing) {
+      tr.innerHTML = `
+        <td class="ca-cell"><input type="date" class="ca-edit-rate" style="width:100%;" id="rem-edit-due-${id}" value="${toDateInput(dueDate)}" /></td>
+        <td class="ca-cell"><select class="ca-edit-rate" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-event-${id}">
+          ${REM_EVENTS.map(v => `<option${v===event?' selected':''}>${escHtml(v)}</option>`).join('')}
+        </select></td>
+        <td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" id="rem-edit-detail-${id}" rows="3">${escHtml(detail)}</textarea></td>
+        <td class="ca-cell ca-center"><select class="ca-edit-rate" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-priority-${id}">
+          ${REM_PRIORITIES.map(v => `<option${v===priority?' selected':''}>${v}</option>`).join('')}
+        </select></td>
+        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-done-${id}" ${completed?'checked':''} /></td>
+        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-admin-${id}" ${admin?'checked':''} /></td>
+        <td class="ca-cell ca-actions">
+          <button class="ca-btn-save" data-id="${id}">\u2713</button>
+          <button class="ca-btn-cancel" data-id="${id}">\u00d7</button>
+        </td>`;
+    } else {
+      const priBadge = priority === 'High'
+        ? '<span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#991B1B;padding:2px 4px;border-radius:8px;">H</span>'
+        : priority === 'Low'
+        ? '<span style="font-size:10px;font-weight:600;color:var(--grey-mid);">L</span>'
+        : '<span style="font-size:10px;font-weight:600;color:var(--navy-mid);">M</span>';
+      tr.innerHTML = `
+        <td class="ca-cell ca-mono" style="font-size:12px;${overdue?'color:#991B1B;font-weight:700;':''}">` + escHtml(fmtDate(dueDate)) + `</td>
+        <td class="ca-cell" style="font-size:11.5px;">` + escHtml(event) + `</td>
+        <td class="ca-cell ca-cell-wd" title="` + escHtml(detail) + `">` + escHtml(detail.length>100?detail.slice(0,100)+'…':detail) + `</td>
+        <td class="ca-cell ca-center">` + priBadge + `</td>
+        <td class="ca-cell ca-center">` + (completed?'<span style="color:var(--green);font-weight:700;font-size:14px;">✓</span>':'<span style="color:var(--grey-light);">&#9675;</span>') + `</td>
+        <td class="ca-cell ca-center">` + (admin?'<span style="font-size:11px;font-weight:700;color:var(--navy-mid);">A</span>':'−') + `</td>
+        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="` + id + `">✏️</button></td>`;
+    }
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => {
+    btn.addEventListener('click', () => { remEditingId = btn.dataset.id; renderRemTable(); });
+  });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => {
+    btn.addEventListener('click', () => { remEditingId = null; renderRemTable(); });
+  });
+  tbody.querySelectorAll('.ca-btn-save').forEach(btn => {
+    btn.addEventListener('click', () => saveRemRow(btn.dataset.id));
+  });
+}
+
+async function saveRemRow(id) {
+  const due      = document.getElementById(`rem-edit-due-${id}`)?.value;
+  const event    = document.getElementById(`rem-edit-event-${id}`)?.value;
+  const detail   = document.getElementById(`rem-edit-detail-${id}`)?.value.trim();
+  const priority = document.getElementById(`rem-edit-priority-${id}`)?.value;
+  const done     = document.getElementById(`rem-edit-done-${id}`)?.checked;
+  const admin    = document.getElementById(`rem-edit-admin-${id}`)?.checked;
+  const saveBtn   = document.querySelector(`.ca-btn-save[data-id="${id}"]`);
+  const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  if (saveBtn)   saveBtn.disabled   = true;
+  if (cancelBtn) cancelBtn.disabled = true;
+  try {
+    const resp = await fetch('/api/reminders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemId: id,
+        fields: {
+          Duedate:              due ? due + 'T00:00:00Z' : null,
+          Event:                event || null,
+          Brief:                detail || null,
+          Priority:             priority || null,
+          'Completed_x003f_':   done,
+          'Admin_x003f_':       admin,
+        },
+      }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const idx = remActions.findIndex(a => a.id === id);
+    if (idx !== -1) {
+      const f = remActions[idx].fields || {};
+      f['Duedate']          = due ? due + 'T00:00:00Z' : null;
+      f['Event']            = event;
+      f['Brief']            = detail;
+      f['Priority']         = priority;
+      f['Completed_x003f_'] = done;
+      f['Admin_x003f_']     = admin;
+    }
+    remEditingId = null;
+    renderRemTable();
+  } catch (err) {
+    if (saveBtn)   saveBtn.disabled   = false;
+    if (cancelBtn) cancelBtn.disabled = false;
+    alert('Save failed: ' + err.message);
+  }
+}
+
+function initAddRemPanel() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('rem-add-duedate').value = today;
+  const btn = document.getElementById('rem-add-submit');
+  const newBtn = btn.cloneNode(true);
+  btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', submitAddReminder);
+}
+
+async function submitAddReminder() {
+  const msg      = document.getElementById('rem-add-msg');
+  const btn      = document.getElementById('rem-add-submit');
+  const ref      = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const duedate  = document.getElementById('rem-add-duedate').value;
+  const event    = document.getElementById('rem-add-event').value;
+  const priority = document.getElementById('rem-add-priority').value;
+  const detail   = document.getElementById('rem-add-detail').value.trim();
+  const admin    = document.getElementById('rem-add-admin').checked;
+  const email    = document.getElementById('rem-add-email').checked;
+  if (!duedate) { msg.className = 'edit-msg err'; msg.textContent = 'Due date required.'; return; }
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  try {
+    const resp = await fetch('/api/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref,
+        title: (caseFields?.['CaseNameForOpenCases'] || ref) + '-' + ref,
+        duedate: duedate + 'T00:00:00Z',
+        event, priority, detail, admin,
+        emailReminder: email, completed: false,
+      }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
+    const created = await resp.json();
+    remActions.unshift({ id: created.id, fields: {
+      Duedate: duedate + 'T00:00:00Z', Event: event,
+      Brief: detail, Priority: priority,
+      'Completed_x003f_': false, 'Admin_x003f_': admin,
+      Ourreference_x0028_text_x0029_: ref,
+    }});
+    document.getElementById('rem-add-detail').value  = '';
+    document.getElementById('rem-add-admin').checked = false;
+    document.getElementById('rem-add-email').checked = false;
+    document.getElementById('rem-add-duedate').value = new Date().toISOString().slice(0,10);
+    msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Added';
+    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
+    renderRemTable();
+  } catch (err) {
+    msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message;
+  } finally { btn.disabled = false; }
+}
+
 let caActions    = [];
 let caEditingId  = null;
 let caLoaded     = false;
@@ -2442,6 +2714,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') {
     btn.addEventListener('click', () => {
       if (!caLoaded) { caLoaded = true; loadCaseActions(); }
+    });
+  }
+  if (btn.dataset.tab === 'reminders') {
+    btn.addEventListener('click', () => {
+      if (!remLoaded) { remLoaded = true; loadReminders(); }
     });
   }
 });
