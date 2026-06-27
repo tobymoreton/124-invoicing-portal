@@ -1333,6 +1333,9 @@ async function loadCase() {
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
+    // Pre-load case actions in background so they're ready when the tab is clicked
+    caLoaded = true;
+    loadCaseActions();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
