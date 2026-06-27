@@ -162,6 +162,7 @@ module.exports = async function (context, req) {
       if (b.workDone  !== undefined) fields['field_2'] = b.workDone;
       if (b.timeSpent !== undefined) fields['field_3'] = parseFloat(b.timeSpent) || 0;
       if (b.rate      !== undefined) fields['field_6'] = parseFloat(b.rate)      || 0;
+      if (b.billable  !== undefined) fields['Billable_x003f_'] = !!b.billable;
 
       if (Object.keys(fields).length === 0) {
         context.res = { status: 400, body: 'No editable fields provided' };
