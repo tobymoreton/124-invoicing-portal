@@ -99,14 +99,12 @@ module.exports = async function (context, req) {
 
       const openOnly = req.query.open === '1';
 
-      // Server-side filter for open-only: Graph boolean $filter uses 0/1 not true/false.
-      // Completed_x003f_ is boolean — filter out completed items at source.
-      // Fall back to fetching all + client-side filter if Graph rejects the $filter.
-      const baseUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items?$expand=fields&$top=999`
-        + (openOnly ? `&$filter=fields/Completed_x003f_ ne true` : '');
-
+      // Fetch all items for this case ref, filter client-side.
+      // Completed_x003f_ boolean: Graph silently omits when false; returns true when completed.
+      // Server-side $filter on this field requires SP index on Completed_x003f_.
+      // Once indexed, re-enable server-side filter for performance.
       const items = [];
-      let url = baseUrl;
+      let url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items?$expand=fields&$top=999`;
       while (url) {
         const data = await graphGet(url, token);
         (data.value || []).forEach(item => {
@@ -116,7 +114,9 @@ module.exports = async function (context, req) {
         url = data['@odata.nextLink'] || null;
       }
 
-      // Belt-and-braces client-side filter — catches any items Graph let through.
+      // Client-side completed filter.
+      // Completed=true is returned by Graph; Completed=false is silently omitted (field absent).
+      // So: field present AND === true => completed. Absent or any other value => open.
       const filtered = openOnly
         ? items.filter(item => item.fields?.['Completed_x003f_'] !== true)
         : items;
