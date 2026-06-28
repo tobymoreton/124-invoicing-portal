@@ -115,10 +115,10 @@ module.exports = async function (context, req) {
       }
 
       // Client-side completed filter.
-      // Completed=true is returned by Graph; Completed=false is silently omitted (field absent).
-      // So: field present AND === true => completed. Absent or any other value => open.
+      // Completed_x003f_ boolean is silently dropped by Graph for both true and false — unreliable.
+      // CompletedMirror (plain text) is used instead: 'Yes' = completed, absent/other = open.
       const filtered = openOnly
-        ? items.filter(item => item.fields?.['Completed_x003f_'] !== true)
+        ? items.filter(item => (item.fields?.['CompletedMirror'] || '') !== 'Yes')
         : items;
 
       // Sort: incomplete by due date asc, completed last
@@ -153,6 +153,7 @@ module.exports = async function (context, req) {
         Priority:                          body.priority || 'Medium',
         Brief:                             body.detail || null,
         'Completed_x003f_':                body.completed === true,
+        CompletedMirror:                   body.completed === true ? 'Yes' : 'No',
         'Admin_x003f_':                    body.admin === true,
         'EmailReminder_x003f_':            body.emailReminder === true,
       };
