@@ -726,17 +726,27 @@ async function init(){
         .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
     }
 
-    // Compute invoiced this month for this draftsman
+    // Invoiced this month — derive draftsman from Ourref → Cases.Draftsmanemail
+    // (DraftedByEmail is blank on pre-portal invoices)
     if(invResp&&invResp.ok){
       const invData=await invResp.json();
+      // Build a ref → draftsmanemail map from all cases
+      const refEmailMap={};
+      allCases.forEach(c=>{
+        const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').trim();
+        const email=(c.fields['Draftsmanemail']||'').toLowerCase();
+        if(ref&&email) refEmailMap[ref]=email;
+      });
       const now=new Date();
       const yr=now.getFullYear(); const mo=now.getMonth();
       invoicedThisMonth=(invData.value||[]).filter(inv=>{
-        if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
-        if(!inv.InvoiceDate) return false;
         if(inv.Cancelled) return false;
+        if(!inv.InvoiceDate) return false;
         const d=new Date(inv.InvoiceDate);
-        return d.getFullYear()===yr && d.getMonth()===mo;
+        if(d.getFullYear()!==yr||d.getMonth()!==mo) return false;
+        // Match by DraftedByEmail first, fall back to Ourref lookup
+        const draftEmail=(inv.DraftedByEmail||'').toLowerCase()||refEmailMap[(inv.Ourref||'').trim()]||'';
+        return draftEmail===callerEmail;
       }).reduce((s,inv)=>s+(inv.Net||0),0);
     }
 
