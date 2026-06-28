@@ -224,7 +224,7 @@ async function loadIdentity(){
     const user = data.clientPrincipal||(Array.isArray(data)?data[0]?.clientPrincipal:null);
     if(user&&user.userDetails){
       const email = user.userDetails.toLowerCase();
-      isAdmin = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'].includes(email);
+      isAdmin = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'].includes(email);
     }
   }catch{}
 }
