@@ -137,6 +137,7 @@ const SELECT_FIELDS = [
   'assignedToTextValue',
   'AssignedToMirror',
   'coAssignedMirror',
+  'Draftsmanemail',
   'Current_x0020_Position',
   'CP_x0020_Last_x0020_Updated',
   'Flags',
