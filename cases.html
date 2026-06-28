@@ -223,15 +223,15 @@
       </div>
       <div class="stat-card" id="card-wip">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">Total WIP Value</div>
+        <div class="stat-card-label">My WIP Value</div>
         <div class="stat-card-value" id="stat-wip" style="font-size:28px;margin-top:4px;">&mdash;</div>
-        <div class="stat-card-sub">across all open cases</div>
+        <div class="stat-card-sub">unbilled hours × rate</div>
       </div>
-      <div class="stat-card danger" id="card-overdue" data-filter="overdue">
+      <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">Overdue Reminders</div>
-        <div class="stat-card-value" id="stat-overdue">0</div>
-        <div class="stat-card-sub" id="stat-overdue-sub">loading&hellip;</div>
+        <div class="stat-card-label">Invoiced This Month</div>
+        <div class="stat-card-value" id="stat-invoiced" style="font-size:28px;margin-top:4px;">&mdash;</div>
+        <div class="stat-card-sub">net, current calendar month</div>
       </div>
       <div class="stat-card" id="card-no-reminder" data-filter="no-reminder">
         <div class="stat-card-accent"></div>
@@ -305,6 +305,8 @@
 let allCases     = [];
 let myCases      = [];
 let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
+let wipTotal     = 0;    // draftsman's unbilled WIP value
+let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
 let callerEmail  = '';
 let callerName   = '';
 let isAdmin      = false;
@@ -430,23 +432,14 @@ function renderStats(){
     .map(([t,n])=>n+' '+t).join(' \u00b7 ');
   document.getElementById('stat-total-sub').textContent=topTasks||'';
 
-  // WIP
-  const totalWip=myCases.reduce((s,c)=>s+computeTotalCosts(c.fields),0);
-  document.getElementById('stat-wip').textContent=totalWip>0?fmt(totalWip):'\u2014';
+  // WIP — set from wipTotal loaded in init
+  document.getElementById('stat-wip').textContent=wipTotal>0?fmt(wipTotal):'\u2014';
 
-  // Overdue reminders
-  const openRem=allReminders.filter(r=>!r.fields?.['Completed_x003f_']);
-  const overdueRem=openRem.filter(r=>{
-    const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;
-    return d&&d<today;
-  });
-  document.getElementById('stat-overdue').textContent=overdueRem.length;
-  document.getElementById('stat-overdue-sub').textContent=
-    overdueRem.length===0?'all up to date'
-    :overdueRem.length===1?'1 reminder past due date'
-    :overdueRem.length+' reminders past due date';
+  // Invoiced this month — set from invoicedThisMonth loaded in init
+  document.getElementById('stat-invoiced').textContent=invoicedThisMonth>0?fmt(invoicedThisMonth):'\u2014';
 
   // Cases with no open reminder
+  const openRem=allReminders.filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes');
   const refsWithOpenRem=new Set(openRem.map(r=>r._caseRef));
   const noRemCases=myCases.filter(c=>!refsWithOpenRem.has(c.fields['Ourreference_x0028_text_x0029_']));
   document.getElementById('stat-no-rem').textContent=noRemCases.length;
@@ -699,11 +692,6 @@ function wireCards(){
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
   });
-  document.getElementById('card-overdue').addEventListener('click',()=>{
-    if(activeFilter==='overdue'){hideCaseList();return;}
-    const n=parseInt(document.getElementById('stat-overdue').textContent)||0;
-    showCaseList('overdue','Cases with Overdue Reminders',n+' case'+(n!==1?'s':''));
-  });
   document.getElementById('card-no-reminder').addEventListener('click',()=>{
     if(activeFilter==='no-reminder'){hideCaseList();return;}
     const n=parseInt(document.getElementById('stat-no-rem').textContent)||0;
@@ -716,16 +704,44 @@ function wireCards(){
 async function init(){
   await loadIdentity();
   try{
-    const r=await fetch('/api/cases?preload=1');
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const data=await r.json();
+    // Load cases, WIP, invoices and reminders in parallel
+    const [casesResp, wipResp, invResp] = await Promise.all([
+      fetch('/api/cases?preload=1'),
+      fetch('/api/wip').catch(()=>null),
+      fetch('/api/invoices').catch(()=>null),
+    ]);
+    if(!casesResp.ok) throw new Error('HTTP '+casesResp.status);
+    const data=await casesResp.json();
     allCases=data.value||[];
     myCases=allCases.filter(c=>matchesAssigned(c.fields));
+
+    // Compute WIP for this draftsman
+    if(wipResp&&wipResp.ok){
+      const wipData=await wipResp.json();
+      wipTotal=(wipData.value||[]).filter(w=>{
+        const email=(w.Email||'').toLowerCase();
+        return email===callerEmail && !w.Billed;
+      }).reduce((s,w)=>s+(w.WIPValue||0),0);
+    }
+
+    // Compute invoiced this month for this draftsman
+    if(invResp&&invResp.ok){
+      const invData=await invResp.json();
+      const now=new Date();
+      const yr=now.getFullYear(); const mo=now.getMonth();
+      invoicedThisMonth=(invData.value||[]).filter(inv=>{
+        if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
+        if(!inv.InvoiceDate) return false;
+        if(inv.Cancelled) return false;
+        const d=new Date(inv.InvoiceDate);
+        return d.getFullYear()===yr && d.getMonth()===mo;
+      }).reduce((s,inv)=>s+(inv.Net||0),0);
+    }
 
     document.getElementById('page-sub').textContent=
       myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
 
-    // Load reminders for all my cases, then render everything
+    // Load reminders for all my cases
     await loadReminders(myCases);
 
     document.getElementById('state-loading').style.display='none';
