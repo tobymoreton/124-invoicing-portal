@@ -6,7 +6,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const SITE_PATH     = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const CLIENTS_GUID  = '901e8cbd-8760-4051-9eb0-0d5c0db1c06d';
 
-const ADMIN_EMAILS  = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+const ADMIN_EMAILS  = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
 
 async function getToken(tenantId, clientId, clientSecret) {
   return new Promise((resolve, reject) => {
