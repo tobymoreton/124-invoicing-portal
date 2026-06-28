@@ -2674,6 +2674,7 @@ async function saveRemRow(id) {
           Brief:                detail || null,
           Priority:             priority || null,
           'Completed_x003f_':   done,
+          CompletedMirror:      done ? 'Yes' : 'No',
           'Admin_x003f_':       admin,
         },
       }),
