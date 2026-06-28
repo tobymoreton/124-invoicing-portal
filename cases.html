@@ -491,11 +491,30 @@ function renderStagePanel(){
   });
 }
 
+// ── Mark reminder done ─────────────────────────────────────────────────
+async function markRemDone(remId, rowEl){
+  rowEl.style.opacity='0.4';rowEl.style.pointerEvents='none';
+  try{
+    const r=await fetch('/api/reminders',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:remId,fields:{'Completed_x003f_':true,CompletedMirror:'Yes'}}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    allReminders=allReminders.filter(x=>x.id!==remId);
+    renderRemPanel();
+    renderStats();
+  }catch(err){
+    rowEl.style.opacity='';rowEl.style.pointerEvents='';
+    alert('Failed to mark done: '+err.message);
+  }
+}
+
 // ── Render reminders panel ─────────────────────────────────────────────────
 function renderRemPanel(){
   const today=new Date(); today.setHours(0,0,0,0);
   const open=allReminders
-    .filter(r=>!r.fields?.['Completed_x003f_'])
+    .filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes')
     .sort((a,b)=>{
       const da=a.fields?.['Duedate']?new Date(a.fields['Duedate']):new Date('9999');
       const db=b.fields?.['Duedate']?new Date(b.fields['Duedate']):new Date('9999');
@@ -529,7 +548,12 @@ function renderRemPanel(){
         '<div class="rem-case">'+escHtml(r._caseName||r._caseRef)+'</div>'+
         (detail?'<div class="rem-detail">'+escHtml(detail.length>80?detail.slice(0,80)+'\u2026':detail)+'</div>':'')+
       '</div>'+
-      priBadge;
+      priBadge+
+      '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ Done</button>';
+    row.querySelector('.rem-done-btn').addEventListener('click',e=>{
+      e.stopPropagation();
+      markRemDone(r.id,row);
+    });
     row.addEventListener('click',()=>{
       window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';
     });
@@ -552,7 +576,7 @@ function showCaseList(filter, title, meta){
   document.getElementById('case-list-section').classList.add('visible');
 
   const today=new Date(); today.setHours(0,0,0,0);
-  const openRem=allReminders.filter(r=>!r.fields?.['Completed_x003f_']);
+  const openRem=allReminders.filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes');
   const overdueRefs=new Set(
     openRem.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d<today;})
            .map(r=>r._caseRef)
