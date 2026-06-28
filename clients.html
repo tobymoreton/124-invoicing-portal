@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client Firms — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A; --navy-mid:#253A60; --navy-light:#2E4A7A;
+      --gold:#C9A84C; --gold-pale:#F5EDD0;
+      --cream:#F4F1EA; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E2DDD4; --grey-faint:#F0EDE6;
+      --green:#065F46; --red:#991B1B; --red-pale:#FEF2F2;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px; --radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* Nav */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
+    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* Page header */
+    .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:22px 32px 26px;border-bottom:1px solid rgba(201,168,76,.15);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--white);}
+    .page-sub{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:4px;}
+
+    /* Main */
+    .main{padding:24px 32px 56px;max-width:1200px;margin:0 auto;}
+
+    /* Search + add bar */
+    .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+    .search-wrap{position:relative;flex:1;min-width:200px;}
+    .search-wrap input{width:100%;padding:9px 14px 9px 36px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);background:var(--white);outline:none;transition:border-color .18s ease;}
+    .search-wrap input:focus{border-color:var(--gold);}
+    .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--grey-mid);pointer-events:none;font-size:14px;}
+    .btn-primary{padding:9px 20px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s ease;white-space:nowrap;}
+    .btn-primary:hover{background:var(--navy-mid);}
+    .btn-secondary{padding:8px 16px;background:transparent;color:var(--navy);border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s ease;}
+    .btn-secondary:hover{border-color:var(--navy);}
+    .btn-danger{padding:8px 16px;background:transparent;color:var(--red);border:1.5px solid var(--red);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;}
+
+    /* Spinner */
+    .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .state-msg{text-align:center;padding:60px 24px;color:var(--grey-mid);font-size:13.5px;}
+
+    /* Firms grid */
+    .firms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
+
+    /* Firm card */
+    .firm-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid rgba(27,42,74,.07);overflow:hidden;transition:box-shadow .18s ease,transform .15s ease;}
+    .firm-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);}
+    .firm-card-head{background:var(--navy);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .firm-name{font-family:'Spectral',serif;font-weight:400;font-size:15px;color:var(--white);line-height:1.3;}
+    .firm-cases{font-size:11px;font-weight:600;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+    .firm-body{padding:14px 16px;}
+    .firm-row{display:flex;gap:8px;font-size:12.5px;margin-bottom:6px;line-height:1.4;}
+    .firm-row:last-child{margin-bottom:0;}
+    .firm-label{color:var(--grey-mid);min-width:80px;flex-shrink:0;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding-top:1px;}
+    .firm-value{color:var(--navy);word-break:break-word;}
+    .firm-fee-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(201,168,76,.12);color:var(--navy-mid);}
+    .firm-footer{padding:10px 16px;border-top:1px solid var(--grey-faint);display:flex;gap:8px;}
+
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.45);z-index:400;align-items:center;justify-content:center;padding:20px;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--white);border-radius:var(--radius);box-shadow:0 8px 32px rgba(27,42,74,.25);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+    .modal-head{background:var(--navy);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;}
+    .modal-title{font-family:'Spectral',serif;font-weight:300;font-size:18px;color:var(--white);}
+    .modal-close{background:none;border:none;color:rgba(245,242,235,.6);font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;}
+    .modal-close:hover{color:var(--white);}
+    .modal-body{padding:24px;}
+    .modal-footer{padding:16px 20px;border-top:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+    .form-section{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:20px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--grey-faint);}
+    .form-section:first-child{margin-top:0;}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .form-grid .full{grid-column:1/-1;}
+    .field{display:flex;flex-direction:column;gap:5px;}
+    .field label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--navy-mid);}
+    .field input,.field select{padding:9px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);background:var(--white);outline:none;transition:border-color .18s ease;width:100%;}
+    .field input:focus,.field select:focus{border-color:var(--gold);}
+    .save-msg{font-size:12.5px;margin-right:auto;}
+    .save-msg.ok{color:var(--green);}
+    .save-msg.err{color:var(--red);}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Client Firms</span>
+  </div>
+  <div class="nav-links">
+    <a href="/cases.html" class="nav-link">&larr; My Cases</a>
+    <a href="/" class="nav-link">Invoices</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Client Firms</div>
+    <div class="page-sub" id="page-sub">Loading&hellip;</div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading client firms&hellip;</div>
+
+  <div id="content" style="display:none;">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">&#128269;</span>
+        <input type="text" id="search" placeholder="Search firms&hellip;" autocomplete="off" />
+      </div>
+      <button class="btn-primary" id="btn-add-firm">+ Add Firm</button>
+    </div>
+    <div class="firms-grid" id="firms-grid"></div>
+    <div id="no-results" class="state-msg" style="display:none;">No firms match your search.</div>
+  </div>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title">Add Firm</span>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">Firm Details</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Firm Name *</label>
+          <input type="text" id="f-name" placeholder="e.g. Bhatt Murphy Solicitors" />
+        </div>
+        <div class="field">
+          <label>Billing Contact Email</label>
+          <input type="text" id="f-billingEmail" placeholder="billing@firm.com" />
+        </div>
+        <div class="field">
+          <label>Website</label>
+          <input type="text" id="f-website" placeholder="https://..." />
+        </div>
+        <div class="field">
+          <label>VAT Number</label>
+          <input type="text" id="f-vatNumber" />
+        </div>
+        <div class="field">
+          <label>Default Hourly Rate</label>
+          <input type="text" id="f-hourlyRate" placeholder="e.g. 150" />
+        </div>
+      </div>
+
+      <div class="form-section">Address</div>
+      <div class="form-grid">
+        <div class="field full"><label>Line 1</label><input type="text" id="f-address1" /></div>
+        <div class="field full"><label>Line 2</label><input type="text" id="f-address2" /></div>
+        <div class="field"><label>Line 3</label><input type="text" id="f-address3" /></div>
+        <div class="field"><label>Line 4</label><input type="text" id="f-address4" /></div>
+        <div class="field"><label>Line 5 (Postcode)</label><input type="text" id="f-address5" /></div>
+      </div>
+
+      <div class="form-section">Charging Arrangements</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Drafting Fee Basis</label>
+          <select id="f-feeBasis">
+            <option value="">— not set —</option>
+            <option>Profit costs as drawn</option>
+            <option>Profit costs as recovered</option>
+            <option>Fixed fee</option>
+            <option>Hourly rate</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Drafting Fee %</label>
+          <input type="text" id="f-feePercent" placeholder="e.g. 10" />
+        </div>
+        <div class="field">
+          <label>Minimum Drafting Fee %</label>
+          <input type="text" id="f-minFee" placeholder="e.g. 5" />
+        </div>
+        <div class="field">
+          <label>LAA Drafting Fee %</label>
+          <input type="text" id="f-laaFee" placeholder="e.g. 10" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span class="save-msg" id="modal-msg"></span>
+      <button class="btn-secondary" id="modal-cancel">Cancel</button>
+      <button class="btn-primary" id="modal-save">Save Firm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let allFirms = [];
+let editingId = null;
+let isAdmin = false;
+
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Identity ──────────────────────────────────────────────────────────────
+async function loadIdentity(){
+  try{
+    const r = await fetch('/.auth/me');
+    if(!r.ok) return;
+    const data = await r.json();
+    const user = data.clientPrincipal||(Array.isArray(data)?data[0]?.clientPrincipal:null);
+    if(user&&user.userDetails){
+      const email = user.userDetails.toLowerCase();
+      isAdmin = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'].includes(email);
+    }
+  }catch{}
+}
+
+// ── Load firms ────────────────────────────────────────────────────────────
+async function loadFirms(){
+  try{
+    const r = await fetch('/api/clients');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    allFirms = data.value || [];
+    document.getElementById('page-sub').textContent = allFirms.length + ' firm' + (allFirms.length!==1?'s':'');
+    document.getElementById('state-loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    renderFirms('');
+  }catch(err){
+    document.getElementById('state-loading').innerHTML = '<p style="color:#991B1B;">Failed to load: '+escHtml(err.message)+'</p>';
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function renderFirms(q){
+  const grid = document.getElementById('firms-grid');
+  const none = document.getElementById('no-results');
+  const filtered = q
+    ? allFirms.filter(f=>(f.fields.Title||'').toLowerCase().includes(q.toLowerCase()))
+    : allFirms;
+
+  grid.innerHTML = '';
+  if(!filtered.length){ none.style.display='block'; return; }
+  none.style.display = 'none';
+
+  filtered.forEach(firm=>{
+    const f = firm.fields;
+    const name      = f.Title||'';
+    const addr      = [f.AddressLine1,f.AddressLine2,f.AddressLine3,f.AddressLine4,f['Address_x0020_Line_x0020_5']].filter(Boolean).join(', ');
+    const feeBasis  = f.Draftingfeebasis||'';
+    const feePct    = f['Draftingfee_x0025_']!=null ? f['Draftingfee_x0025_']+'%' : '';
+    const laa       = f['LAA_x0020_Drafting_x0020_fee_x00']||'';
+    const vatNum    = f.VATNumber||'';
+    const billing   = f.Billingcontactemail||'';
+    const openCount = f.OpenCasesCount||0;
+
+    const card = document.createElement('div');
+    card.className = 'firm-card';
+    card.innerHTML =
+      '<div class="firm-card-head">'+
+        '<span class="firm-name">'+escHtml(name)+'</span>'+
+        (openCount?'<span class="firm-cases">'+openCount+' case'+(openCount!==1?'s':'')+'</span>':'')+
+      '</div>'+
+      '<div class="firm-body">'+
+        (addr?'<div class="firm-row"><span class="firm-label">Address</span><span class="firm-value">'+escHtml(addr)+'</span></div>':'')+
+        (billing?'<div class="firm-row"><span class="firm-label">Billing</span><span class="firm-value"><a href="mailto:'+escHtml(billing)+'" style="color:var(--navy);">'+escHtml(billing)+'</a></span></div>':'')+
+        (vatNum?'<div class="firm-row"><span class="firm-label">VAT No.</span><span class="firm-value">'+escHtml(vatNum)+'</span></div>':'')+
+        (feeBasis||feePct?'<div class="firm-row"><span class="firm-label">Fee Basis</span><span class="firm-value">'+
+          (feeBasis?'<span class="firm-fee-badge">'+escHtml(feeBasis)+'</span> ':'')+
+          (feePct?escHtml(feePct):'')+
+          (laa?' &middot; LAA '+escHtml(laa):'')+'</span></div>':'')+
+      '</div>'+
+      (isAdmin?
+        '<div class="firm-footer">'+
+          '<button class="btn-secondary" data-id="'+firm.id+'" data-action="edit" style="font-size:12px;padding:6px 12px;">&#9998; Edit</button>'+
+        '</div>':
+      '');
+
+    if(isAdmin){
+      card.querySelector('[data-action="edit"]').addEventListener('click', ()=>openEdit(firm));
+    }
+    grid.appendChild(card);
+  });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────
+function openAdd(){
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Firm';
+  clearForm();
+  document.getElementById('modal-msg').textContent = '';
+  document.getElementById('modal-msg').className = 'save-msg';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openEdit(firm){
+  editingId = firm.id;
+  const f = firm.fields;
+  document.getElementById('modal-title').textContent = 'Edit — '+escHtml(f.Title||'');
+  document.getElementById('f-name').value        = f.Title||'';
+  document.getElementById('f-billingEmail').value = f.Billingcontactemail||'';
+  document.getElementById('f-website').value     = f.Website||'';
+  document.getElementById('f-vatNumber').value   = f.VATNumber||'';
+  document.getElementById('f-hourlyRate').value  = f['Default_x0020_hourly_x0020_rate']||'';
+  document.getElementById('f-address1').value    = f.AddressLine1||'';
+  document.getElementById('f-address2').value    = f.AddressLine2||'';
+  document.getElementById('f-address3').value    = f.AddressLine3||'';
+  document.getElementById('f-address4').value    = f.AddressLine4||'';
+  document.getElementById('f-address5').value    = f['Address_x0020_Line_x0020_5']||'';
+  document.getElementById('f-feeBasis').value    = f.Draftingfeebasis||'';
+  document.getElementById('f-feePercent').value  = f['Draftingfee_x0025_']!=null?f['Draftingfee_x0025_']:'';
+  document.getElementById('f-minFee').value      = f['Minimumdraftingfee_x0025_']!=null?f['Minimumdraftingfee_x0025_']:'';
+  document.getElementById('f-laaFee').value      = f['LAA_x0020_Drafting_x0020_fee_x00']||'';
+  document.getElementById('modal-msg').textContent = '';
+  document.getElementById('modal-msg').className = 'save-msg';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+function clearForm(){
+  ['f-name','f-billingEmail','f-website','f-vatNumber','f-hourlyRate',
+   'f-address1','f-address2','f-address3','f-address4','f-address5',
+   'f-feeBasis','f-feePercent','f-minFee','f-laaFee'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+}
+
+function getFormBody(){
+  return {
+    name:         document.getElementById('f-name').value.trim(),
+    billingEmail: document.getElementById('f-billingEmail').value.trim(),
+    website:      document.getElementById('f-website').value.trim(),
+    vatNumber:    document.getElementById('f-vatNumber').value.trim(),
+    hourlyRate:   document.getElementById('f-hourlyRate').value.trim(),
+    address1:     document.getElementById('f-address1').value.trim(),
+    address2:     document.getElementById('f-address2').value.trim(),
+    address3:     document.getElementById('f-address3').value.trim(),
+    address4:     document.getElementById('f-address4').value.trim(),
+    address5:     document.getElementById('f-address5').value.trim(),
+    feeBasis:     document.getElementById('f-feeBasis').value,
+    feePercent:   document.getElementById('f-feePercent').value.trim(),
+    minFee:       document.getElementById('f-minFee').value.trim(),
+    laaFee:       document.getElementById('f-laaFee').value.trim(),
+  };
+}
+
+async function saveFirm(){
+  const msg = document.getElementById('modal-msg');
+  const btn = document.getElementById('modal-save');
+  const body = getFormBody();
+  if(!body.name){ msg.className='save-msg err'; msg.textContent='Firm name is required.'; return; }
+  btn.disabled = true; msg.className='save-msg'; msg.textContent='Saving\u2026';
+  try{
+    const method = editingId ? 'PATCH' : 'POST';
+    if(editingId) body.itemId = editingId;
+    const r = await fetch('/api/clients',{
+      method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()));
+
+    if(editingId){
+      // Update local data
+      const idx = allFirms.findIndex(f=>f.id===editingId);
+      if(idx!==-1){
+        const f = allFirms[idx].fields;
+        f.Title=body.name; f.Billingcontactemail=body.billingEmail;
+        f.Website=body.website; f.VATNumber=body.vatNumber;
+        f['Default_x0020_hourly_x0020_rate']=body.hourlyRate;
+        f.AddressLine1=body.address1; f.AddressLine2=body.address2;
+        f.AddressLine3=body.address3; f.AddressLine4=body.address4;
+        f['Address_x0020_Line_x0020_5']=body.address5;
+        f.Draftingfeebasis=body.feeBasis;
+        f['Draftingfee_x0025_']=body.feePercent?parseFloat(body.feePercent):null;
+        f['Minimumdraftingfee_x0025_']=body.minFee?parseFloat(body.minFee):null;
+        f['LAA_x0020_Drafting_x0020_fee_x00']=body.laaFee;
+      }
+    } else {
+      // Add to local array
+      const created = await r.json().catch(()=>null);
+      allFirms.push({
+        id: created?.id||'new-'+Date.now(),
+        fields:{
+          Title:body.name, Billingcontactemail:body.billingEmail,
+          Website:body.website, VATNumber:body.vatNumber,
+          'Default_x0020_hourly_x0020_rate':body.hourlyRate,
+          AddressLine1:body.address1, AddressLine2:body.address2,
+          AddressLine3:body.address3, AddressLine4:body.address4,
+          'Address_x0020_Line_x0020_5':body.address5,
+          Draftingfeebasis:body.feeBasis,
+          'Draftingfee_x0025_':body.feePercent?parseFloat(body.feePercent):null,
+          'Minimumdraftingfee_x0025_':body.minFee?parseFloat(body.minFee):null,
+          'LAA_x0020_Drafting_x0020_fee_x00':body.laaFee,
+          OpenCasesCount:0,
+        },
+      });
+      allFirms.sort((a,b)=>(a.fields.Title||'').localeCompare(b.fields.Title||''));
+      document.getElementById('page-sub').textContent = allFirms.length+' firm'+(allFirms.length!==1?'s':'');
+    }
+
+    msg.className='save-msg ok'; msg.textContent='\u2713 Saved';
+    renderFirms(document.getElementById('search').value.trim());
+    setTimeout(()=>closeModal(), 1000);
+  }catch(err){
+    msg.className='save-msg err'; msg.textContent='Failed: '+err.message;
+    btn.disabled=false;
+  }
+}
+
+// ── Wire up ───────────────────────────────────────────────────────────────
+document.getElementById('btn-add-firm').addEventListener('click', openAdd);
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-save').addEventListener('click', saveFirm);
+document.getElementById('modal-overlay').addEventListener('click', e=>{
+  if(e.target===document.getElementById('modal-overlay')) closeModal();
+});
+document.getElementById('search').addEventListener('input', e=>{
+  renderFirms(e.target.value.trim());
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init(){
+  await loadIdentity();
+  await loadFirms();
+  // Show/hide add button based on admin status
+  document.getElementById('btn-add-firm').style.display = isAdmin ? '' : 'none';
+}
+
+init();
+</script>
+</body>
+</html>
