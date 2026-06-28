@@ -97,8 +97,16 @@ module.exports = async function (context, req) {
       const ref = (req.query.ref || '').trim();
       if (!ref) { context.res = { status: 400, body: 'Missing ref' }; return; }
 
+      const openOnly = req.query.open === '1';
+
+      // Server-side filter for open-only: Graph boolean $filter uses 0/1 not true/false.
+      // Completed_x003f_ is boolean — filter out completed items at source.
+      // Fall back to fetching all + client-side filter if Graph rejects the $filter.
+      const baseUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items?$expand=fields&$top=999`
+        + (openOnly ? `&$filter=fields/Completed_x003f_ ne true` : '');
+
       const items = [];
-      let url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items?$expand=fields&$top=999`;
+      let url = baseUrl;
       while (url) {
         const data = await graphGet(url, token);
         (data.value || []).forEach(item => {
@@ -108,10 +116,7 @@ module.exports = async function (context, req) {
         url = data['@odata.nextLink'] || null;
       }
 
-      // If ?open=1, filter to incomplete only.
-      // Completed_x003f_ is boolean — Graph omits the field entirely when false,
-      // returns true when completed. So true === completed; absent === incomplete.
-      const openOnly = req.query.open === '1';
+      // Belt-and-braces client-side filter — catches any items Graph let through.
       const filtered = openOnly
         ? items.filter(item => item.fields?.['Completed_x003f_'] !== true)
         : items;
