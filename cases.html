@@ -716,13 +716,10 @@ async function init(){
     allCases=data.value||[];
     myCases=allCases.filter(c=>matchesAssigned(c.fields));
 
-    // Compute WIP for this draftsman
+    // WIP — API already filters to this draftsman server-side
     if(wipResp&&wipResp.ok){
       const wipData=await wipResp.json();
-      wipTotal=(wipData.value||[]).filter(w=>{
-        const email=(w.Email||'').toLowerCase();
-        return email===callerEmail && !w.Billed;
-      }).reduce((s,w)=>s+(w.WIPValue||0),0);
+      wipTotal=(wipData.value||[]).reduce((s,w)=>s+(w.WIPValue||0),0);
     }
 
     // Compute invoiced this month for this draftsman
