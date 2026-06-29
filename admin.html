@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy:#1B2A4A;--navy-mid:#253A60;--navy-light:#2E4A7A;
+      --gold:#C9A84C;--gold-pale:#F5EDD0;
+      --cream:#F4F1EA;--white:#FFFFFF;
+      --grey-mid:#6B7280;--grey-light:#E2DDD4;--grey-faint:#F0EDE6;
+      --green:#065F46;--green-pale:#ECFDF5;
+      --red:#991B1B;--red-pale:#FEF2F2;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px;--radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* Nav */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
+    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* Page header */
+    .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:22px 32px 26px;border-bottom:1px solid rgba(201,168,76,.15);}
+    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--white);}
+    .page-sub{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:4px;}
+
+    /* Main */
+    .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
+
+    /* Quick actions */
+    .qa-section{margin-bottom:28px;}
+    .qa-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;}
+    .qa-grid{display:flex;flex-wrap:wrap;gap:10px;}
+    .qa-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 18px;border-radius:var(--radius-sm);
+      border:1.5px solid var(--navy);background:var(--white);
+      color:var(--navy);font-family:'IBM Plex Sans',sans-serif;
+      font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;
+    }
+    .qa-btn:hover{background:var(--navy);color:var(--gold);}
+    .qa-btn .qa-icon{font-size:16px;line-height:1;}
+    .qa-btn.primary{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+    .qa-btn.primary:hover{background:var(--navy-mid);}
+
+    /* Spinner */
+    .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .state-msg{text-align:center;padding:40px 24px;color:var(--grey-mid);font-size:13.5px;}
+
+    /* Cases section */
+    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;}
+    .section-title{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--navy);}
+    .section-meta{font-size:12.5px;color:var(--grey-mid);}
+    .search-wrap{position:relative;min-width:240px;}
+    .search-wrap input{width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;transition:border-color .18s ease;}
+    .search-wrap input:focus{border-color:var(--gold);}
+    .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--grey-mid);font-size:13px;pointer-events:none;}
+    .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+    /* Status chips */
+    .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
+    .s-pending-assignment{background:#FEF9C3;color:#713F12;}
+    .s-in-billing{background:#DBEAFE;color:#1E40AF;}
+    .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
+    .s-served-client{background:#DCFCE7;color:#14532D;}
+    .s-negotiation{background:#FFF7ED;color:#9A3412;}
+    .s-budgeting{background:#E0F2FE;color:#075985;}
+    .s-assessment{background:#FEF2F2;color:#991B1B;}
+    .s-settled{background:var(--green-pale);color:var(--green);}
+    .s-closed{background:var(--grey-faint);color:var(--grey-mid);}
+    .s-default{background:var(--grey-faint);color:var(--grey-mid);}
+
+    /* Table */
+    .table-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid rgba(27,42,74,.08);}
+    .table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;font-size:13px;}
+    thead th{background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:11px 14px;text-align:left;white-space:nowrap;}
+    thead th:first-child{padding-left:18px;}
+    tbody tr{border-bottom:1px solid var(--grey-faint);transition:background .12s ease;cursor:pointer;}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:hover{background:rgba(201,168,76,.05);}
+    tbody tr:hover .open-btn{opacity:1;}
+    td{padding:11px 14px;vertical-align:middle;}
+    td:first-child{padding-left:18px;}
+    .td-case-name{font-weight:600;color:var(--navy);line-height:1.3;}
+    .td-ref{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);}
+    .td-muted{font-size:12px;color:var(--grey-mid);}
+    .task-chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;background:rgba(201,168,76,.12);color:var(--navy-mid);white-space:nowrap;}
+    .open-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:11.5px;font-weight:600;text-decoration:none;transition:all .15s ease;opacity:0;white-space:nowrap;border:none;cursor:pointer;}
+    .open-btn:hover{background:var(--navy-mid);}
+
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.45);z-index:400;align-items:center;justify-content:center;padding:20px;}
+    .modal-overlay.open{display:flex;}
+    .modal{background:var(--white);border-radius:var(--radius);box-shadow:0 8px 32px rgba(27,42,74,.25);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+    .modal-head{background:var(--navy);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+    .modal-title{font-family:'Spectral',serif;font-weight:300;font-size:17px;color:var(--white);}
+    .modal-close{background:none;border:none;color:rgba(245,242,235,.6);font-size:20px;cursor:pointer;padding:4px 8px;}
+    .modal-close:hover{color:var(--white);}
+    .modal-body{padding:20px;}
+    .modal-footer{padding:14px 18px;border-top:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+    .mf{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+    .mf label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--navy-mid);}
+    .mf input,.mf select,.mf textarea{padding:8px 11px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);background:var(--white);outline:none;width:100%;transition:border-color .18s ease;}
+    .mf input:focus,.mf select:focus,.mf textarea:focus{border-color:var(--gold);}
+    .mf-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .mf-section{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--grey-faint);}
+    .mf-section:first-child{margin-top:0;}
+    .save-msg{font-size:12.5px;margin-right:auto;}
+    .save-msg.ok{color:var(--green);}
+    .save-msg.err{color:var(--red);}
+    .btn-save{padding:8px 18px;background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btn-save:hover{background:var(--navy-mid);}
+    .btn-cancel{padding:8px 16px;background:transparent;color:var(--navy);border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;cursor:pointer;}
+    .btn-cancel:hover{border-color:var(--navy);}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Admin</span>
+  </div>
+  <div class="nav-links">
+    <a href="/cases.html" class="nav-link">&larr; My Cases</a>
+    <a href="/clients.html" class="nav-link">Client Firms</a>
+    <a href="/" class="nav-link">Invoices</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-title">Admin Dashboard</div>
+  <div class="page-sub" id="page-sub">All open cases &amp; quick actions</div>
+</div>
+
+<div class="main">
+
+  <!-- Quick Actions -->
+  <div class="qa-section">
+    <div class="qa-title">Quick Actions</div>
+    <div class="qa-grid">
+      <button class="qa-btn primary" data-modal="modal-case"><span class="qa-icon">&#128188;</span> Book In Case</button>
+      <button class="qa-btn" data-modal="modal-firm"><span class="qa-icon">&#127968;</span> Add Client Firm</button>
+      <button class="qa-btn" data-modal="modal-feeearner"><span class="qa-icon">&#129489;</span> Add Fee Earner</button>
+      <button class="qa-btn" data-modal="modal-court"><span class="qa-icon">&#9878;&#65039;</span> Add Court</button>
+      <button class="qa-btn" data-modal="modal-oppfirm"><span class="qa-icon">&#129354;</span> Add Opponent Firm</button>
+      <button class="qa-btn" data-modal="modal-oppcw"><span class="qa-icon">&#128100;</span> Add Opponent Caseworker</button>
+    </div>
+  </div>
+
+  <!-- All Open Cases -->
+  <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading cases&hellip;</div>
+
+  <div id="cases-section" style="display:none;">
+    <div class="section-head">
+      <div>
+        <div class="section-title">All Open Cases</div>
+        <div class="section-meta" id="cases-meta"></div>
+      </div>
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="search" placeholder="Search cases&hellip;" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Case</th>
+              <th>Client</th>
+              <th>Draftsman</th>
+              <th>Stage</th>
+              <th>Task</th>
+              <th>Last Reminder</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="cases-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Book In Case Modal -->
+<div class="modal-overlay" id="modal-case">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Book In Case</span><button class="modal-close" data-close="modal-case">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf-section">Case Details</div>
+      <div class="mf"><label>Case Name *</label><input type="text" id="ci-name" placeholder="e.g. Smith John-1741234" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Our Reference *</label><input type="text" id="ci-ref" placeholder="e.g. 1741234" /></div>
+        <div class="mf"><label>Date Received</label><input type="date" id="ci-date" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Task</label>
+          <select id="ci-task">
+            <option value="">Select&hellip;</option>
+            <option>Bill of Costs</option><option>Budget</option><option>Replies</option>
+            <option>Points of Dispute</option><option>Schedule</option><option>Other</option>
+          </select>
+        </div>
+        <div class="mf"><label>Stage</label>
+          <select id="ci-stage">
+            <option value="">Select&hellip;</option>
+            <option>Pending assignment</option><option>In billing</option>
+            <option>Awaiting client approval</option><option>Served by client</option>
+            <option>In negotiation (served informally)</option>
+            <option>In negotiation (served formally)</option>
+            <option>In budgeting</option><option>Settled</option>
+          </select>
+        </div>
+      </div>
+      <div class="mf-section">Parties</div>
+      <div class="mf"><label>Client Firm</label><input type="text" id="ci-firm" placeholder="Firm name" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Fee Earner</label><input type="text" id="ci-fe" placeholder="Fee earner name" /></div>
+        <div class="mf"><label>Assigned To</label>
+          <select id="ci-assigned">
+            <option value="">Select draftsman&hellip;</option>
+            <option value="toby@tmclegal.co.uk">Toby</option>
+            <option value="danielle@tmclegal.co.uk">Danielle</option>
+            <option value="joanna@tmclegal.co.uk">Joanna</option>
+            <option value="tracy@tmclegal.co.uk">Tracy</option>
+            <option value="kelly@tmclegal.co.uk">Kelly</option>
+            <option value="tom@tmclegal.co.uk">Tom</option>
+            <option value="julie@tmclegal.co.uk">Julie</option>
+            <option value="daniel@tmclegal.co.uk">Daniel</option>
+          </select>
+        </div>
+      </div>
+      <div class="mf"><label>Opponent Firm</label><input type="text" id="ci-opp" placeholder="Opponent firm name" /></div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-case"></span><button class="btn-cancel" data-close="modal-case">Cancel</button><button class="btn-save" id="save-case">Book In</button></div>
+  </div>
+</div>
+
+<!-- Add Client Firm Modal -->
+<div class="modal-overlay" id="modal-firm">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add Client Firm</span><button class="modal-close" data-close="modal-firm">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Firm Name *</label><input type="text" id="firm-name" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Billing Email</label><input type="text" id="firm-email" /></div>
+        <div class="mf"><label>VAT Number</label><input type="text" id="firm-vat" /></div>
+      </div>
+      <div class="mf-section">Address</div>
+      <div class="mf"><label>Line 1</label><input type="text" id="firm-a1" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 2</label><input type="text" id="firm-a2" /></div>
+        <div class="mf"><label>Line 3</label><input type="text" id="firm-a3" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 4</label><input type="text" id="firm-a4" /></div>
+        <div class="mf"><label>Postcode</label><input type="text" id="firm-a5" /></div>
+      </div>
+      <div class="mf-section">Charging</div>
+      <div class="mf"><label>Drafting Fee Basis</label>
+        <select id="firm-basis">
+          <option value="">— not set —</option>
+          <option>Profit costs as drawn</option><option>Profit costs as recovered</option>
+          <option>Fixed fee</option><option>Hourly rate</option>
+        </select>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Drafting Fee %</label><input type="number" id="firm-feepct" step="0.1" /></div>
+        <div class="mf"><label>Min Drafting Fee %</label><input type="number" id="firm-minfee" step="0.1" /></div>
+      </div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-firm"></span><button class="btn-cancel" data-close="modal-firm">Cancel</button><button class="btn-save" id="save-firm">Save Firm</button></div>
+  </div>
+</div>
+
+<!-- Add Fee Earner Modal -->
+<div class="modal-overlay" id="modal-feeearner">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add Fee Earner</span><button class="modal-close" data-close="modal-feeearner">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf-row">
+        <div class="mf"><label>First Name *</label><input type="text" id="fe-first" /></div>
+        <div class="mf"><label>Last Name *</label><input type="text" id="fe-last" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Email</label><input type="text" id="fe-email" /></div>
+        <div class="mf"><label>Direct Line</label><input type="text" id="fe-phone" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Date of Qualification</label><input type="date" id="fe-qual" /></div>
+        <div class="mf"><label>Status</label>
+          <select id="fe-status">
+            <option value="">Select&hellip;</option>
+            <option>Active</option><option>Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="mf"><label>Experience</label><input type="text" id="fe-exp" placeholder="e.g. Senior Solicitor" /></div>
+      <div class="mf"><label>Notes</label><textarea id="fe-notes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-fe"></span><button class="btn-cancel" data-close="modal-feeearner">Cancel</button><button class="btn-save" id="save-fe">Save Fee Earner</button></div>
+  </div>
+</div>
+
+<!-- Add Court Modal -->
+<div class="modal-overlay" id="modal-court">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add Court</span><button class="modal-close" data-close="modal-court">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Court Name *</label><input type="text" id="court-name" placeholder="e.g. Senior Courts Costs Office" /></div>
+      <div class="mf-section">Address</div>
+      <div class="mf"><label>Line 1</label><input type="text" id="court-a1" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 2</label><input type="text" id="court-a2" /></div>
+        <div class="mf"><label>Line 3</label><input type="text" id="court-a3" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 4</label><input type="text" id="court-a4" /></div>
+        <div class="mf"><label>Postcode</label><input type="text" id="court-a5" /></div>
+      </div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-court"></span><button class="btn-cancel" data-close="modal-court">Cancel</button><button class="btn-save" id="save-court">Save Court</button></div>
+  </div>
+</div>
+
+<!-- Add Opponent Firm Modal -->
+<div class="modal-overlay" id="modal-oppfirm">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add Opponent Firm</span><button class="modal-close" data-close="modal-oppfirm">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Firm Name *</label><input type="text" id="of-name" /></div>
+      <div class="mf"><label>Website</label><input type="text" id="of-web" /></div>
+      <div class="mf-section">Address</div>
+      <div class="mf"><label>Line 1</label><input type="text" id="of-a1" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 2</label><input type="text" id="of-a2" /></div>
+        <div class="mf"><label>Line 3</label><input type="text" id="of-a3" /></div>
+      </div>
+      <div class="mf-row">
+        <div class="mf"><label>Line 4</label><input type="text" id="of-a4" /></div>
+        <div class="mf"><label>Postcode</label><input type="text" id="of-a5" /></div>
+      </div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-of"></span><button class="btn-cancel" data-close="modal-oppfirm">Cancel</button><button class="btn-save" id="save-of">Save Firm</button></div>
+  </div>
+</div>
+
+<!-- Add Opponent Caseworker Modal -->
+<div class="modal-overlay" id="modal-oppcw">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">Add Opponent Caseworker</span><button class="modal-close" data-close="modal-oppcw">&times;</button></div>
+    <div class="modal-body">
+      <div class="mf"><label>Full Name *</label><input type="text" id="cw-name" /></div>
+      <div class="mf-row">
+        <div class="mf"><label>Email</label><input type="text" id="cw-email" /></div>
+        <div class="mf"><label>Phone</label><input type="text" id="cw-phone" /></div>
+      </div>
+      <div class="mf"><label>Firm</label><input type="text" id="cw-firm" placeholder="Opponent firm name" /></div>
+    </div>
+    <div class="modal-footer"><span class="save-msg" id="msg-cw"></span><button class="btn-cancel" data-close="modal-oppcw">Cancel</button><button class="btn-save" id="save-cw">Save Caseworker</button></div>
+  </div>
+</div>
+
+<script>
+let allCases = [];
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function stripHtml(s){return (s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
+function statusClass(s){
+  if(!s) return 's-default'; const sl=s.toLowerCase();
+  if(sl==='pending assignment') return 's-pending-assignment';
+  if(sl==='in billing') return 's-in-billing';
+  if(sl==='awaiting client approval') return 's-awaiting-client';
+  if(sl==='served by client') return 's-served-client';
+  if(sl.startsWith('in negotiation')) return 's-negotiation';
+  if(sl==='in budgeting') return 's-budgeting';
+  if(sl.includes('assessment')||sl.includes('detailed')) return 's-assessment';
+  if(sl==='settled') return 's-settled';
+  if(sl==='closed') return 's-closed';
+  return 's-default';
+}
+
+// Modal wiring
+document.querySelectorAll('[data-modal]').forEach(btn=>{
+  btn.addEventListener('click',()=>openModal(btn.dataset.modal));
+});
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click',()=>closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click',e=>{if(e.target===ov)closeModal(ov.id);});
+});
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  // clear save msg
+  const msgs=['msg-case','msg-firm','msg-fe','msg-court','msg-of','msg-cw'];
+  msgs.forEach(m=>{const el=document.getElementById(m);if(el)el.textContent='';});
+}
+
+// Generic save helper
+async function saveToApi(url, body, msgId, btnId, onSuccess){
+  const msg=document.getElementById(msgId);
+  const btn=document.getElementById(btnId);
+  msg.className='save-msg'; msg.textContent='Saving\u2026';
+  btn.disabled=true;
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,100));
+    msg.className='save-msg ok'; msg.textContent='\u2713 Saved';
+    if(onSuccess) onSuccess();
+  }catch(err){
+    msg.className='save-msg err'; msg.textContent='Failed: '+err.message;
+  }finally{btn.disabled=false;}
+}
+
+// Book In Case
+document.getElementById('save-case').addEventListener('click',()=>{
+  const name=document.getElementById('ci-name').value.trim();
+  const ref=document.getElementById('ci-ref').value.trim();
+  if(!name||!ref){const m=document.getElementById('msg-case');m.className='save-msg err';m.textContent='Case name and reference required.';return;}
+  saveToApi('/api/caseupdate',{
+    action:'create',
+    fields:{
+      Title:name,
+      Ourreference_x0028_text_x0029_:ref,
+      CaseNameForOpenCases:name,
+      StatusMirror:document.getElementById('ci-stage').value||'Pending assignment',
+      Task:document.getElementById('ci-task').value,
+      Firm_x0028_text_x0029_:document.getElementById('ci-firm').value.trim(),
+      assignedToTextValue:document.getElementById('ci-assigned').value,
+      DateReceived:document.getElementById('ci-date').value||new Date().toISOString().slice(0,10),
+    }
+  },'msg-case','save-case');
+});
+
+// Add Client Firm
+document.getElementById('save-firm').addEventListener('click',()=>{
+  const name=document.getElementById('firm-name').value.trim();
+  if(!name){const m=document.getElementById('msg-firm');m.className='save-msg err';m.textContent='Firm name required.';return;}
+  saveToApi('/api/clients',{
+    name,
+    billingEmail:document.getElementById('firm-email').value.trim(),
+    vatNumber:document.getElementById('firm-vat').value.trim(),
+    address1:document.getElementById('firm-a1').value.trim(),
+    address2:document.getElementById('firm-a2').value.trim(),
+    address3:document.getElementById('firm-a3').value.trim(),
+    address4:document.getElementById('firm-a4').value.trim(),
+    address5:document.getElementById('firm-a5').value.trim(),
+    feeBasis:document.getElementById('firm-basis').value,
+    feePercent:document.getElementById('firm-feepct').value,
+    minFee:document.getElementById('firm-minfee').value,
+  },'msg-firm','save-firm');
+});
+
+// Add Fee Earner
+document.getElementById('save-fe').addEventListener('click',()=>{
+  const first=document.getElementById('fe-first').value.trim();
+  const last=document.getElementById('fe-last').value.trim();
+  if(!first||!last){const m=document.getElementById('msg-fe');m.className='save-msg err';m.textContent='First and last name required.';return;}
+  saveToApi('/api/admin?list=feeearners',{
+    title:first+' '+last,
+    firstName:first,
+    lastName:last,
+    email:document.getElementById('fe-email').value.trim(),
+    directLine:document.getElementById('fe-phone').value.trim(),
+    experience:document.getElementById('fe-exp').value.trim(),
+    status:document.getElementById('fe-status').value,
+    notes:document.getElementById('fe-notes').value.trim(),
+    qualified:document.getElementById('fe-qual').value||null,
+  },'msg-fe','save-fe');
+});
+
+// Add Court
+document.getElementById('save-court').addEventListener('click',()=>{
+  const name=document.getElementById('court-name').value.trim();
+  if(!name){const m=document.getElementById('msg-court');m.className='save-msg err';m.textContent='Court name required.';return;}
+  saveToApi('/api/admin?list=courts',{
+    title:name,
+    address1:document.getElementById('court-a1').value.trim(),
+    address2:document.getElementById('court-a2').value.trim(),
+    address3:document.getElementById('court-a3').value.trim(),
+    address4:document.getElementById('court-a4').value.trim(),
+    address5:document.getElementById('court-a5').value.trim(),
+  },'msg-court','save-court');
+});
+
+// Add Opponent Firm
+document.getElementById('save-of').addEventListener('click',()=>{
+  const name=document.getElementById('of-name').value.trim();
+  if(!name){const m=document.getElementById('msg-of');m.className='save-msg err';m.textContent='Firm name required.';return;}
+  saveToApi('/api/admin?list=opponentfirms',{
+    title:name,
+    website:document.getElementById('of-web').value.trim(),
+    address1:document.getElementById('of-a1').value.trim(),
+    address2:document.getElementById('of-a2').value.trim(),
+    address3:document.getElementById('of-a3').value.trim(),
+    address4:document.getElementById('of-a4').value.trim(),
+    address5:document.getElementById('of-a5').value.trim(),
+  },'msg-of','save-of');
+});
+
+// Add Opponent Caseworker
+document.getElementById('save-cw').addEventListener('click',()=>{
+  const name=document.getElementById('cw-name').value.trim();
+  if(!name){const m=document.getElementById('msg-cw');m.className='save-msg err';m.textContent='Name required.';return;}
+  saveToApi('/api/admin?list=opponentcws',{
+    title:name,
+    email:document.getElementById('cw-email').value.trim(),
+    phone:document.getElementById('cw-phone').value.trim(),
+    firm:document.getElementById('cw-firm').value.trim(),
+  },'msg-cw','save-cw');
+});
+
+// Load and render cases
+async function loadCases(){
+  try{
+    const r=await fetch('/api/cases?preload=1');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    allCases=(data.value||[]).filter(c=>{
+      const s=(c.fields['StatusMirror']||'').toLowerCase();
+      return s!=='closed'&&s!=='settled';
+    });
+    allCases.sort((a,b)=>(a.fields['CaseNameForOpenCases']||'').localeCompare(b.fields['CaseNameForOpenCases']||''));
+    document.getElementById('state-loading').style.display='none';
+    document.getElementById('cases-section').style.display='block';
+    document.getElementById('page-sub').textContent=allCases.length+' open cases';
+    renderCases('');
+  }catch(err){
+    document.getElementById('state-loading').innerHTML='<p style="color:#991B1B;">Failed to load: '+escHtml(err.message)+'</p>';
+  }
+}
+
+function renderCases(q){
+  const tbody=document.getElementById('cases-tbody');
+  const filtered=q?allCases.filter(c=>{
+    const name=(c.fields['CaseNameForOpenCases']||c.fields['Title']||'').toLowerCase();
+    const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
+    const firm=(c.fields['Firm_x0028_text_x0029_']||'').toLowerCase();
+    const fe=(c.fields['assignedToTextValue']||'').toLowerCase();
+    const ql=q.toLowerCase();
+    return name.includes(ql)||ref.includes(ql)||firm.includes(ql)||fe.includes(ql);
+  }):allCases;
+
+  document.getElementById('cases-meta').textContent=filtered.length+' case'+(filtered.length!==1?'s':'')+(q?' matching "'+q+'"':'');
+  tbody.innerHTML='';
+
+  filtered.forEach(c=>{
+    const f=c.fields;
+    const ref=f['Ourreference_x0028_text_x0029_']||'';
+    const name=f['CaseNameForOpenCases']||f['Title']||ref;
+    const firm=f['Firm_x0028_text_x0029_']||'\u2014';
+    const assigned=f['assignedToTextValue']||'\u2014';
+    const status=f['StatusMirror']||'\u2014';
+    const task=f['Task']||'';
+    const lastRem=stripHtml(f['Last_x0020_Reminder']||'');
+    const lastRemShort=lastRem.length>70?lastRem.slice(0,70)+'\u2026':lastRem;
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
+      '<td><span class="td-muted">'+escHtml(firm)+'</span></td>'+
+      '<td><span class="td-muted">'+escHtml(assigned)+'</span></td>'+
+      '<td><span class="status-chip '+statusClass(status)+'">'+escHtml(status)+'</span></td>'+
+      '<td>'+(task?'<span class="task-chip">'+escHtml(task)+'</span>':'\u2014')+'</td>'+
+      '<td><span class="td-muted" title="'+escHtml(lastRem)+'">'+escHtml(lastRemShort||'\u2014')+'</span></td>'+
+      '<td><a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a></td>';
+    tr.addEventListener('click',e=>{
+      if(e.target.tagName!=='A') window.location.href='case.html?ref='+encodeURIComponent(ref);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('search').addEventListener('input',e=>renderCases(e.target.value.trim()));
+
+// Set today as default date for booking in
+document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
+
+loadCases();
+</script>
+</body>
+</html>
