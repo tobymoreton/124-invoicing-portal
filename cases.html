@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Cases — TMC Legal Limited</title>
+  <title>Draftsman Dash — TMC Legal Limited</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -251,7 +251,7 @@
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
     <span class="nav-divider"></span>
-    <span class="nav-title">Case Hub</span>
+    <span class="nav-title">Draftsman Dash</span>
   </div>
   <div class="nav-links" id="nav-links">
     <a href="/admin.html" class="nav-link">Admin</a>
@@ -262,7 +262,7 @@
 <div class="page-header">
   <div class="page-header-top">
     <div>
-      <div class="page-title">My Cases</div>
+      <div class="page-title">Draftsman Dash</div>
       <div class="page-sub" id="page-sub">Loading&hellip;</div>
     </div>
     <div class="user-pill">
@@ -319,6 +319,8 @@
     <!-- Action buttons -->
     <div class="dash-actions">
       <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">☕</span> Daily Briefing</button>
+      <button class="btn-dash-action" id="btn-goto-reminders">⏰ All Reminders</button>
+      <button class="btn-dash-action" id="btn-goto-actions">⏳ All Actions</button>
       <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
       <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
@@ -1186,6 +1188,14 @@ function wireCards(){
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
   });
+  document.getElementById('btn-goto-reminders').addEventListener('click',()=>{
+    const remPanel=document.getElementById('rem-panel-list')?.closest('.panel');
+    if(remPanel) remPanel.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  document.getElementById('btn-goto-actions').addEventListener('click',()=>{
+    const caPanel=document.getElementById('ca-panel-list')?.closest('.panel');
+    if(caPanel) caPanel.scrollIntoView({behavior:'smooth',block:'start'});
+  });
   document.getElementById('btn-briefing').addEventListener('click', openBriefing);
   document.getElementById('btn-briefing-close').addEventListener('click', closeBriefing);
   document.getElementById('btn-briefing-close2').addEventListener('click', closeBriefing);
@@ -1255,6 +1265,10 @@ async function fetchAllData(){
     }).reduce((s,inv)=>s+(inv.Net||0),0);
   }
 
+  // Reminders and actions deferred — fetched after initial render
+}
+
+async function fetchSecondaryData(){
   await Promise.all([
     loadReminders(myCases),
     loadActions(myCases),
@@ -1288,20 +1302,29 @@ async function init(){
       allActions=cached.allActions||[];
       myCases=allCases.filter(c=>matchesAssigned(c.fields));
       applyDataAndRender();
-      // Silently refresh in background
-      fetchAllData().then(()=>{
+      // Silently refresh all data in background
+      fetchAllData()
+        .then(()=>fetchSecondaryData())
+        .then(()=>{
+          writeCache();
+          renderStats();
+          renderStagePanel();
+          renderRemPanel();
+          renderActionsPanel();
+          populateCasePickers();
+        }).catch(()=>{/*background refresh failed — cached data still shown*/});
+    } else {
+      // Cold load — render dashboard as soon as cases/wip/invoices arrive (~1-2s)
+      // then load reminders + actions in background
+      await fetchAllData();
+      applyDataAndRender();
+      fetchSecondaryData().then(()=>{
         writeCache();
         renderStats();
-        renderStagePanel();
         renderRemPanel();
         renderActionsPanel();
         populateCasePickers();
-      }).catch(()=>{/*background refresh failed — cached data still shown*/});
-    } else {
-      // Cold load
-      await fetchAllData();
-      writeCache();
-      applyDataAndRender();
+      }).catch(()=>{/*secondary load failed — panels stay empty*/});
     }
   }catch(err){
     document.getElementById('state-loading').innerHTML=
