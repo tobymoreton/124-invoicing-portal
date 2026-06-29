@@ -187,7 +187,7 @@
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
-    .ca-panel-list{max-height:480px;overflow-y:auto;}
+    .ca-panel-list{max-height:640px;overflow-y:auto;}
     /* Action buttons */
     .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;align-items:center;}
     .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
@@ -652,6 +652,11 @@ function renderStagePanel(){
       '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;">Stage</span>'+
       '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);min-width:120px;"></span>'+
       '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);min-width:36px;text-align:right;">Cases</span>'+
+    '</div>'+
+    '<div class="stage-row" id="stage-row-all" style="border-bottom:1px solid var(--grey-light);">'+
+      '<div class="stage-row-left"><span class="status-chip s-default" style="background:var(--navy);color:var(--gold);">All Cases</span></div>'+
+      '<div class="stage-bar-wrap"><div class="stage-bar" style="width:100%"></div></div>'+
+      '<span class="stage-count">'+myCases.length+'</span>'+
     '</div>';
   sorted.forEach(([stage,count])=>{
     const costs=stageCosts[stage];
@@ -666,6 +671,11 @@ function renderStagePanel(){
       '<span class="stage-count">'+count+'</span>';
     row.addEventListener('click',()=>showCaseList({stage},stage,count+' case'+(count!==1?'s':'')));
     el.appendChild(row);
+  });
+  // Wire All Cases row after DOM insertion
+  document.getElementById('stage-row-all').addEventListener('click',()=>{
+    if(activeFilter==='all'){hideCaseList();return;}
+    showCaseList('all','All Open Cases',myCases.length+' case'+(myCases.length!==1?'s':''));
   });
 }
 
@@ -918,7 +928,7 @@ function renderActionsPanel(){
     row.innerHTML=
       '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'—')+'</div>'+
       '<div class="ca-panel-body">'+
-        '<div class="ca-panel-wd">'+escHtml(wd.length>60?wd.slice(0,60)+'…':wd||'—')+'</div>'+
+        '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'…':wd||'—')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
       (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
