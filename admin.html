@@ -182,6 +182,8 @@
     .ar-row.overdue:hover{background:rgba(153,27,27,.08);}
     .ar-date{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--grey-mid);white-space:nowrap;padding-top:2px;min-width:64px;}
     .ar-date.overdue{color:var(--red);}
+    .uc-date{min-width:86px;color:var(--navy-mid);}
+    .uc-rec-label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.75;margin-top:2px;font-family:'IBM Plex Sans',sans-serif;}
     .ar-body{min-width:0;flex:1;}
     .ar-event{font-size:13px;font-weight:600;color:var(--navy);line-height:1.3;}
     .ar-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -816,12 +818,12 @@ function renderUnassignedCases(){
     const ref=f['Ourreference_x0028_text_x0029_']||'';
     const name=f['CaseNameForOpenCases']||f['Title']||ref;
     const firm=f['Firm_x0028_text_x0029_']||'';
-    const dateRec=f['DateReceived']?fmtDateShort(f['DateReceived']):'';
+    const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const row=document.createElement('div');
     row.className='ar-row';
     row.innerHTML=
-      '<div class="ar-date">'+escHtml(dateRec||'\u2014')+'</div>'+
+      '<div class="ar-date uc-date">'+(dateRec?escHtml(dateRec)+'<div class="uc-rec-label">Received</div>':'\u2014')+'</div>'+
       '<div class="ar-body">'+
         '<div class="ar-event">'+escHtml(name)+'</div>'+
         '<div class="ar-case">'+escHtml(ref)+(firm?' \u00b7 '+escHtml(firm):'')+'</div>'+
