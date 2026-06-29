@@ -28,9 +28,16 @@
     .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
     .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
-    .nav-links{display:flex;align-items:center;gap:12px;}
-    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
-    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    .nav-links{display:flex;align-items:center;gap:10px;}
+    .nav-link{
+      font-size:13px;font-weight:700;color:var(--navy);text-decoration:none;
+      padding:8px 20px;border-radius:var(--radius-sm);transition:all .18s ease;
+      letter-spacing:.03em;
+    }
+    .nav-link.nav-link-gold{background:var(--gold);color:var(--navy);border:none;}
+    .nav-link.nav-link-gold:hover{background:#D4AE52;}
+    .nav-link.nav-link-outline{background:transparent;color:var(--gold);border:1.5px solid var(--gold);}
+    .nav-link.nav-link-outline:hover{background:var(--gold);color:var(--navy);}
 
     /* Page header — reversed: gold shimmer */
     .page-header{
@@ -76,10 +83,17 @@
     .qa-btn .qa-icon{font-size:16px;line-height:1;}
     .qa-btn.primary{
       background:var(--navy);color:var(--gold);border-color:var(--navy);
-      padding:13px 48px;font-size:15px;
+      padding:13px 40px;font-size:15px;
       box-shadow:0 2px 8px rgba(27,42,74,.3);
     }
     .qa-btn.primary:hover{background:var(--navy-mid);}
+    .qa-btn.primary-alt{
+      background:rgba(27,42,74,.75);color:var(--gold);border-color:rgba(27,42,74,.75);
+      padding:13px 40px;font-size:15px;
+      box-shadow:0 2px 8px rgba(27,42,74,.2);
+      backdrop-filter:blur(4px);
+    }
+    .qa-btn.primary-alt:hover{background:var(--navy);border-color:var(--navy);}
 
     /* Spinner */
     .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
@@ -163,9 +177,8 @@
     <span class="nav-title">Admin</span>
   </div>
   <div class="nav-links">
-    <a href="/cases.html" class="nav-link">&larr; My Cases</a>
-    <a href="/clients.html" class="nav-link">Client Firms</a>
-    <a href="/" class="nav-link">Invoices</a>
+    <a href="/cases.html" class="nav-link nav-link-gold">&larr; Draftsman Dash</a>
+    <a href="/" class="nav-link nav-link-outline">Invoices</a>
   </div>
 </nav>
 
@@ -178,9 +191,10 @@
 
   <!-- Quick Actions -->
   <div class="qa-section">
-    <!-- Book In Case — own row -->
+    <!-- Primary actions — own row -->
     <div class="qa-grid book-in-row">
       <button class="qa-btn primary" data-modal="modal-case"><span class="qa-icon">&#128188;</span> Book In Case</button>
+      <a href="/invoice-create.html" class="qa-btn primary-alt"><span class="qa-icon">&#128196;</span> Create Invoice</a>
     </div>
     <div class="qa-title">Browse &amp; Manage</div>
     <div class="qa-grid" style="margin-bottom:16px;">
