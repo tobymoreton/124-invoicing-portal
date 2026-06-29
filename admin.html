@@ -32,28 +32,53 @@
     .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
     .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
 
-    /* Page header */
-    .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:22px 32px 26px;border-bottom:1px solid rgba(201,168,76,.15);}
-    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:24px;color:var(--white);}
-    .page-sub{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:4px;}
+    /* Page header — reversed: gold shimmer */
+    .page-header{
+      position:relative;overflow:hidden;
+      background:linear-gradient(135deg,#C9A84C 0%,#E8C96A 30%,#B8962E 55%,#D4AE52 75%,#C9A84C 100%);
+      background-size:300% 100%;
+      animation:shimmer 4s ease-in-out infinite alternate;
+      padding:22px 32px 26px;
+      border-bottom:3px solid rgba(27,42,74,.2);
+    }
+    @keyframes shimmer{
+      0%{background-position:0% 50%;}
+      100%{background-position:100% 50%;}
+    }
+    .page-title{font-family:'Spectral',serif;font-weight:400;font-size:24px;color:var(--navy);}
+    .page-sub{font-size:12.5px;color:rgba(27,42,74,.6);margin-top:4px;}
 
     /* Main */
     .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
 
-    /* Quick actions */
-    .qa-section{margin-bottom:28px;}
-    .qa-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;}
-    .qa-grid{display:flex;flex-wrap:wrap;gap:10px;}
+    /* Quick actions — gold panel */
+    .qa-section{
+      margin-bottom:28px;
+      background:linear-gradient(135deg,#C9A84C 0%,#E8C96A 30%,#B8962E 55%,#D4AE52 75%,#C9A84C 100%);
+      background-size:300% 100%;
+      animation:shimmer 4s ease-in-out infinite alternate;
+      border-radius:var(--radius);
+      padding:24px 28px;
+      box-shadow:0 4px 16px rgba(27,42,74,.18);
+    }
+    .qa-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,42,74,.6);margin-bottom:12px;text-align:center;}
+    .qa-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+    .qa-grid.book-in-row{justify-content:center;margin-bottom:20px;}
     .qa-btn{
       display:inline-flex;align-items:center;gap:8px;
       padding:10px 18px;border-radius:var(--radius-sm);
-      border:1.5px solid var(--navy);background:var(--white);
+      border:1.5px solid rgba(27,42,74,.35);background:rgba(27,42,74,.08);
       color:var(--navy);font-family:'IBM Plex Sans',sans-serif;
       font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;
+      backdrop-filter:blur(2px);
     }
-    .qa-btn:hover{background:var(--navy);color:var(--gold);}
+    .qa-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
     .qa-btn .qa-icon{font-size:16px;line-height:1;}
-    .qa-btn.primary{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+    .qa-btn.primary{
+      background:var(--navy);color:var(--gold);border-color:var(--navy);
+      padding:13px 48px;font-size:15px;
+      box-shadow:0 2px 8px rgba(27,42,74,.3);
+    }
     .qa-btn.primary:hover{background:var(--navy-mid);}
 
     /* Spinner */
@@ -153,6 +178,10 @@
 
   <!-- Quick Actions -->
   <div class="qa-section">
+    <!-- Book In Case — own row -->
+    <div class="qa-grid book-in-row">
+      <button class="qa-btn primary" data-modal="modal-case"><span class="qa-icon">&#128188;</span> Book In Case</button>
+    </div>
     <div class="qa-title">Browse &amp; Manage</div>
     <div class="qa-grid" style="margin-bottom:16px;">
       <a href="/clients.html" class="qa-btn"><span class="qa-icon">&#127968;</span> Client Firms</a>
@@ -163,7 +192,6 @@
     </div>
     <div class="qa-title">Add New</div>
     <div class="qa-grid">
-      <button class="qa-btn primary" data-modal="modal-case"><span class="qa-icon">&#128188;</span> Book In Case</button>
       <button class="qa-btn" data-modal="modal-firm"><span class="qa-icon">&#127968;</span> Add Client Firm</button>
       <button class="qa-btn" data-modal="modal-feeearner"><span class="qa-icon">&#129489;</span> Add Fee Earner</button>
       <button class="qa-btn" data-modal="modal-court"><span class="qa-icon">&#9878;&#65039;</span> Add Court</button>
