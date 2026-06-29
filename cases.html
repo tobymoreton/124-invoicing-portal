@@ -853,7 +853,9 @@ async function loadActions(cases){
       .then(r=>r.ok?r.json():[])
       .then(data=>{
         const caseName=(cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
-        return (Array.isArray(data)?data:(data.value||[])).map(a=>({...a,_caseRef:ref,_caseName:caseName}));
+        return (Array.isArray(data)?data:(data.value||[]))
+          .filter(a=>a.fields?.['Billed_x003f_']!==true)
+          .map(a=>({...a,_caseRef:ref,_caseName:caseName}));
       })
       .catch(()=>[])
     )
@@ -861,8 +863,8 @@ async function loadActions(cases){
   allActions=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
   // Sort by date desc
   allActions.sort((a,b)=>{
-    const da=a.DateWorkDone||a.DateEntered||'';
-    const db=b.DateWorkDone||b.DateEntered||'';
+    const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
+    const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
     return db.localeCompare(da);
   });
 }
@@ -877,9 +879,11 @@ function renderActionsPanel(){
   }
   el.innerHTML='';
   allActions.forEach(a=>{
-    const date=a.DateWorkDone||a.DateEntered||'';
-    const wd=(a.WorkDone||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-    const val=(parseFloat(a.WIPValue)||0);
+    const date=a.fields?.['field_12']||a.fields?.['field_1']||'';
+    const wd=(a.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+    const rate=parseFloat(a.fields?.['field_6'])||0;
+    const val=hrs*rate;
     const row=document.createElement('div');
     row.className='ca-panel-row';
     row.innerHTML=
