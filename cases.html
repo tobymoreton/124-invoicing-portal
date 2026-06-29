@@ -73,8 +73,9 @@
     .stat-card.danger .stat-card-accent{background:var(--red);}
 
     /* ── Dashboard columns ── */
-    .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;}
-    @media(max-width:900px){.dash-cols{grid-template-columns:1fr;}}
+    .dash-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:28px;}
+    @media(max-width:1100px){.dash-cols{grid-template-columns:1fr 1fr;}}
+    @media(max-width:700px){.dash-cols{grid-template-columns:1fr;}}
 
     /* ── Panel card ── */
     .panel{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);border:1px solid rgba(27,42,74,.07);overflow:hidden;}
@@ -173,7 +174,44 @@
     .task-chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500;background:rgba(201,168,76,.12);color:var(--navy-mid);white-space:nowrap;}
     .open-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:12px;font-weight:600;text-decoration:none;transition:all .15s ease;opacity:0;white-space:nowrap;border:none;cursor:pointer;}
     .open-btn:hover{background:var(--navy-mid);transform:translateY(-1px);}
-    .status-select{font-size:11px;padding:3px 8px;border:1.5px solid var(--gold);border-radius:12px;font-family:'IBM Plex Sans',sans-serif;color:var(--navy);background:var(--white);outline:none;cursor:pointer;max-width:210px;}
+    /* Actions panel */
+    .ca-panel-row{display:flex;align-items:flex-start;gap:10px;padding:9px 18px;border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .12s ease;}
+    .ca-panel-row:last-child{border-bottom:none;}
+    .ca-panel-row:hover{background:rgba(201,168,76,.04);}
+    .ca-panel-date{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--grey-mid);white-space:nowrap;padding-top:2px;min-width:54px;}
+    .ca-panel-body{min-width:0;flex:1;}
+    .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
+    .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
+    .ca-panel-list{max-height:360px;overflow-y:auto;}
+    /* Action buttons */
+    .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;}
+    .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
+    .btn-dash-action:hover{background:var(--navy);color:var(--gold);}
+    /* Modal */
+    .dash-modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.45);z-index:400;align-items:center;justify-content:center;padding:20px;}
+    .dash-modal-overlay.open{display:flex;}
+    .dash-modal{background:var(--white);border-radius:var(--radius);box-shadow:0 8px 32px rgba(27,42,74,.25);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
+    .dash-modal-head{background:var(--navy);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+    .dash-modal-title{font-family:'Spectral',serif;font-weight:300;font-size:17px;color:var(--white);}
+    .dash-modal-close{background:none;border:none;color:rgba(245,242,235,.6);font-size:20px;cursor:pointer;padding:4px 8px;}
+    .dash-modal-body{padding:20px;}
+    .dash-modal-footer{padding:14px 18px;border-top:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+    .dm-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+    .dm-field label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--navy-mid);}
+    .dm-field input,.dm-field select,.dm-field textarea{padding:8px 11px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);background:var(--white);outline:none;width:100%;}
+    .dm-field input:focus,.dm-field select:focus,.dm-field textarea:focus{border-color:var(--gold);}
+    .dm-field textarea{resize:vertical;min-height:70px;}
+    .dm-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .dm-save-msg{font-size:12.5px;margin-right:auto;}
+    .dm-save-msg.ok{color:var(--green);}
+    .dm-save-msg.err{color:var(--red);}
+    .dm-btn{padding:8px 18px;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;}
+    .dm-btn-primary{background:var(--navy);color:var(--gold);border:none;}
+    .dm-btn-primary:hover{background:var(--navy-mid);}
+    .dm-btn-secondary{background:transparent;color:var(--navy);border:1.5px solid var(--grey-light);}
+    .dm-btn-secondary:hover{border-color:var(--navy);}
   </style>
 </head>
 <body>
@@ -256,6 +294,17 @@
         </div>
       </div>
 
+      <!-- Case Actions -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Case Actions</span>
+          <span class="panel-count" id="ca-panel-count"></span>
+        </div>
+        <div class="ca-panel-list" id="ca-panel-list">
+          <div class="ca-panel-empty">Loading actions&hellip;</div>
+        </div>
+      </div>
+
       <!-- Reminders -->
       <div class="panel">
         <div class="panel-head">
@@ -267,6 +316,12 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- Action buttons -->
+    <div class="dash-actions">
+      <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
+      <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
 
     <!-- Case list (shown on card/stage click) -->
@@ -301,11 +356,100 @@
   </div><!-- /dashboard -->
 </div>
 
+<!-- Add Action Modal -->
+<div class="dash-modal-overlay" id="modal-action">
+  <div class="dash-modal">
+    <div class="dash-modal-head">
+      <span class="dash-modal-title">Add Case Action</span>
+      <button class="dash-modal-close" data-close="modal-action">&times;</button>
+    </div>
+    <div class="dash-modal-body">
+      <div class="dm-field">
+        <label>Case *</label>
+        <select id="ca-case-ref"><option value="">Select a case&hellip;</option></select>
+      </div>
+      <div class="dm-field">
+        <label>Work Done *</label>
+        <textarea id="ca-work-done" placeholder="Describe the work&hellip;"></textarea>
+      </div>
+      <div class="dm-row">
+        <div class="dm-field">
+          <label>Date</label>
+          <input type="date" id="ca-date" />
+        </div>
+        <div class="dm-field">
+          <label>Hours</label>
+          <input type="number" id="ca-hours" step="0.1" min="0" placeholder="0.0" />
+        </div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-field">
+          <label>Rate (£/hr)</label>
+          <input type="number" id="ca-rate" step="1" min="0" placeholder="0" />
+        </div>
+        <div class="dm-field" style="justify-content:flex-end;flex-direction:row;align-items:center;gap:10px;padding-top:20px;">
+          <label style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;">Billable?</label>
+          <input type="checkbox" id="ca-billable" checked style="width:18px;height:18px;accent-color:var(--navy);" />
+        </div>
+      </div>
+    </div>
+    <div class="dash-modal-footer">
+      <span class="dm-save-msg" id="ca-msg"></span>
+      <button class="dm-btn dm-btn-secondary" data-close="modal-action">Cancel</button>
+      <button class="dm-btn dm-btn-primary" id="ca-save">Save Action</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Reminder Modal -->
+<div class="dash-modal-overlay" id="modal-reminder">
+  <div class="dash-modal">
+    <div class="dash-modal-head">
+      <span class="dash-modal-title">Add Reminder</span>
+      <button class="dash-modal-close" data-close="modal-reminder">&times;</button>
+    </div>
+    <div class="dash-modal-body">
+      <div class="dm-field">
+        <label>Case *</label>
+        <select id="rem-case-ref"><option value="">Select a case&hellip;</option></select>
+      </div>
+      <div class="dm-field">
+        <label>Event *</label>
+        <select id="rem-event"><option value="">Select event&hellip;</option></select>
+      </div>
+      <div class="dm-row">
+        <div class="dm-field">
+          <label>Due Date</label>
+          <input type="date" id="rem-due" />
+        </div>
+        <div class="dm-field">
+          <label>Priority</label>
+          <select id="rem-priority">
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="dm-field">
+        <label>Detail</label>
+        <textarea id="rem-detail" placeholder="Optional notes&hellip;"></textarea>
+      </div>
+    </div>
+    <div class="dash-modal-footer">
+      <span class="dm-save-msg" id="rem-msg"></span>
+      <button class="dm-btn dm-btn-secondary" data-close="modal-reminder">Cancel</button>
+      <button class="dm-btn dm-btn-primary" id="rem-save">Save Reminder</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let allCases     = [];
 let myCases      = [];
 let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
+let allActions   = [];   // flat array of TT2 rows across all my cases
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
 let callerEmail  = '';
@@ -314,6 +458,19 @@ let isAdmin      = false;
 let activeFilter = null; // 'all'|'overdue'|'no-reminder'|{stage:'...'}
 
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+const REM_EVENTS = [
+  'Approve Bill','CCMC','Chase Chambers','Chase Client','Chase HJA – Emailed 7 days ago',
+  'Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer',
+  'Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies',
+  'Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice',
+  'Issue Invoice - Draft done','Issue Part 8','Lodge completed bill','Make Offer','Mediation',
+  'Meeting','Points of Dispute due','Prepare for CCMC','Prepare for Detailed Assessment',
+  'Prepare for Mediation','Prepare for Without Prejudice call','Relay offer to Client',
+  'Replies due','Request Detailed Assessment','Request Provisional Assessment','Review',
+  'Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally',
+  'Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget',
+  'Start Precedent R','Start Replies','Without Prejudice call',
+];
 const NAME_DISPLAY = {
   joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',
   julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley',
@@ -687,6 +844,159 @@ function openStatusEdit(td){
   sel.addEventListener('blur',()=>{if(!settled){settled=true;restore(currentVal);}});
 }
 
+// ── Load case actions ───────────────────────────────────────────────
+async function loadActions(cases){
+  const refs=cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean);
+  if(!refs.length){allActions=[];return;}
+  const results=await Promise.allSettled(
+    refs.map(ref=>fetch('/api/caseactions?ref='+encodeURIComponent(ref))
+      .then(r=>r.ok?r.json():[])
+      .then(data=>{
+        const caseName=(cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+        return (Array.isArray(data)?data:(data.value||[])).map(a=>({...a,_caseRef:ref,_caseName:caseName}));
+      })
+      .catch(()=>[])
+    )
+  );
+  allActions=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+  // Sort by date desc
+  allActions.sort((a,b)=>{
+    const da=a.DateWorkDone||a.DateEntered||'';
+    const db=b.DateWorkDone||b.DateEntered||'';
+    return db.localeCompare(da);
+  });
+}
+
+// ── Render actions panel ─────────────────────────────────────────────
+function renderActionsPanel(){
+  const el=document.getElementById('ca-panel-list');
+  document.getElementById('ca-panel-count').textContent=allActions.length;
+  if(!allActions.length){
+    el.innerHTML='<div class="ca-panel-empty">No actions recorded.</div>';
+    return;
+  }
+  el.innerHTML='';
+  allActions.forEach(a=>{
+    const date=a.DateWorkDone||a.DateEntered||'';
+    const wd=(a.WorkDone||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    const val=(parseFloat(a.WIPValue)||0);
+    const row=document.createElement('div');
+    row.className='ca-panel-row';
+    row.innerHTML=
+      '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'—')+'</div>'+
+      '<div class="ca-panel-body">'+
+        '<div class="ca-panel-wd">'+escHtml(wd.length>60?wd.slice(0,60)+'…':wd||'—')+'</div>'+
+        '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
+      '</div>'+
+      (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
+    row.addEventListener('click',()=>{
+      window.location.href='case.html?ref='+encodeURIComponent(a._caseRef)+'#tab-actions';
+    });
+    el.appendChild(row);
+  });
+}
+
+// ── Populate case pickers ───────────────────────────────────────────
+function populateCasePickers(){
+  const opts=myCases.map(c=>{
+    const ref=c.fields['Ourreference_x0028_text_x0029_']||'';
+    const name=c.fields['CaseNameForOpenCases']||ref;
+    return '<option value="'+escHtml(ref)+'">'+escHtml(name)+'</option>';
+  }).join('');
+  document.getElementById('ca-case-ref').innerHTML='<option value="">Select a case&hellip;</option>'+opts;
+  document.getElementById('rem-case-ref').innerHTML='<option value="">Select a case&hellip;</option>'+opts;
+  // Populate reminder events
+  const evOpts=REM_EVENTS.map(e=>'<option value="'+escHtml(e)+'">'+escHtml(e)+'</option>').join('');
+  document.getElementById('rem-event').innerHTML='<option value="">Select event&hellip;</option>'+evOpts;
+  // Default date to today
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('ca-date').value=today;
+  document.getElementById('rem-due').value=today;
+}
+
+// ── Modal helpers ───────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  document.getElementById(id==='modal-action'?'ca-msg':'rem-msg').textContent='';
+}
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click',()=>closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.dash-modal-overlay').forEach(ov=>{
+  ov.addEventListener('click',e=>{if(e.target===ov)closeModal(ov.id);});
+});
+
+// ── Save action ───────────────────────────────────────────────────
+async function saveAction(){
+  const msg=document.getElementById('ca-msg');
+  const btn=document.getElementById('ca-save');
+  const ref=document.getElementById('ca-case-ref').value;
+  const wd=document.getElementById('ca-work-done').value.trim();
+  if(!ref){msg.className='dm-save-msg err';msg.textContent='Please select a case.';return;}
+  if(!wd){msg.className='dm-save-msg err';msg.textContent='Work done is required.';return;}
+  const hrs=parseFloat(document.getElementById('ca-hours').value)||0;
+  const rate=parseFloat(document.getElementById('ca-rate').value)||0;
+  const date=document.getElementById('ca-date').value;
+  const billable=document.getElementById('ca-billable').checked;
+  const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving…';
+  try{
+    const r=await fetch('/api/caseactions',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ref,workDone:wd,timeSpent:hrs,rate,billable,date,email:callerEmail,completedBy:callerName}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    // Add to local array and re-render
+    const created=await r.json().catch(()=>({}));
+    allActions.unshift({...created,_caseRef:ref,_caseName:caseName,WorkDone:wd,DateWorkDone:date,WIPValue:hrs*rate});
+    renderActionsPanel();
+    msg.className='dm-save-msg ok';msg.textContent='✓ Saved';
+    setTimeout(()=>closeModal('modal-action'),1000);
+    // Reset form
+    document.getElementById('ca-work-done').value='';
+    document.getElementById('ca-hours').value='';
+    document.getElementById('ca-rate').value='';
+    document.getElementById('ca-billable').checked=true;
+  }catch(err){
+    msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;
+  }finally{btn.disabled=false;}
+}
+
+// ── Save reminder ────────────────────────────────────────────────
+async function saveReminder(){
+  const msg=document.getElementById('rem-msg');
+  const btn=document.getElementById('rem-save');
+  const ref=document.getElementById('rem-case-ref').value;
+  const event=document.getElementById('rem-event').value;
+  if(!ref){msg.className='dm-save-msg err';msg.textContent='Please select a case.';return;}
+  if(!event){msg.className='dm-save-msg err';msg.textContent='Please select an event.';return;}
+  const due=document.getElementById('rem-due').value;
+  const priority=document.getElementById('rem-priority').value;
+  const detail=document.getElementById('rem-detail').value.trim();
+  const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving…';
+  try{
+    const r=await fetch('/api/reminders',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ref,title:ref,event,duedate:due,priority,detail,completed:false}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const created=await r.json().catch(()=>({}));
+    // Add to local reminders and re-render
+    allReminders.push({...created,_caseRef:ref,_caseName:caseName,
+      fields:{Event:event,Duedate:due?due+'T00:00:00Z':null,Priority:priority,Brief:detail,CompletedMirror:'No'}});
+    renderRemPanel();
+    renderStats();
+    msg.className='dm-save-msg ok';msg.textContent='✓ Saved';
+    setTimeout(()=>closeModal('modal-reminder'),1000);
+    document.getElementById('rem-event').value='';
+    document.getElementById('rem-detail').value='';
+  }catch(err){
+    msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;
+  }finally{btn.disabled=false;}
+}
+
 // ── Wire up stat cards ─────────────────────────────────────────────────────
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
@@ -699,6 +1009,10 @@ function wireCards(){
     showCaseList('no-reminder','Cases with No Open Reminder',n+' case'+(n!==1?'s':''));
   });
   document.getElementById('btn-close-list').addEventListener('click',hideCaseList);
+  document.getElementById('btn-add-action').addEventListener('click',()=>openModal('modal-action'));
+  document.getElementById('btn-add-reminder').addEventListener('click',()=>openModal('modal-reminder'));
+  document.getElementById('ca-save').addEventListener('click',saveAction);
+  document.getElementById('rem-save').addEventListener('click',saveReminder);
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -726,35 +1040,30 @@ async function init(){
         .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
     }
 
-    // Invoiced this month — derive draftsman from Ourref → Cases.Draftsmanemail
-    // (DraftedByEmail is blank on pre-portal invoices)
+    // Invoiced this month — API returns plain array (not {value:[]})
+    // Filter by DraftedByEmail matching caller
     if(invResp&&invResp.ok){
       const invData=await invResp.json();
-      // Build a ref → draftsmanemail map from all cases
-      const refEmailMap={};
-      allCases.forEach(c=>{
-        const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').trim();
-        const email=(c.fields['Draftsmanemail']||'').toLowerCase();
-        if(ref&&email) refEmailMap[ref]=email;
-      });
+      const invItems=Array.isArray(invData)?invData:(invData.value||[]);
       const now=new Date();
       const yr=now.getFullYear(); const mo=now.getMonth();
-      invoicedThisMonth=(invData.value||[]).filter(inv=>{
+      invoicedThisMonth=invItems.filter(inv=>{
         if(inv.Cancelled) return false;
         if(!inv.InvoiceDate) return false;
+        if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
         const d=new Date(inv.InvoiceDate);
-        if(d.getFullYear()!==yr||d.getMonth()!==mo) return false;
-        // Match by DraftedByEmail first, fall back to Ourref lookup
-        const draftEmail=(inv.DraftedByEmail||'').toLowerCase()||refEmailMap[(inv.Ourref||'').trim()]||'';
-        return draftEmail===callerEmail;
+        return d.getFullYear()===yr&&d.getMonth()===mo;
       }).reduce((s,inv)=>s+(inv.Net||0),0);
     }
 
     document.getElementById('page-sub').textContent=
       myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
 
-    // Load reminders for all my cases
-    await loadReminders(myCases);
+    // Load reminders and actions for all my cases in parallel
+    await Promise.all([
+      loadReminders(myCases),
+      loadActions(myCases),
+    ]);
 
     document.getElementById('state-loading').style.display='none';
     document.getElementById('dashboard').style.display='block';
@@ -762,6 +1071,8 @@ async function init(){
     renderStats();
     renderStagePanel();
     renderRemPanel();
+    renderActionsPanel();
+    populateCasePickers();
     wireCards();
 
   }catch(err){
