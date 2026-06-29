@@ -183,7 +183,7 @@
     .ca-panel-row:hover{background:rgba(201,168,76,.04);}
     .ca-panel-date{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--grey-mid);white-space:nowrap;padding-top:2px;min-width:54px;}
     .ca-panel-body{min-width:0;flex:1;}
-    .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
@@ -933,7 +933,7 @@ function renderActionsPanel(){
       '</div>'+
       (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
     row.addEventListener('click',()=>{
-      window.location.href='case.html?ref='+encodeURIComponent(a._caseRef)+'#tab-actions';
+      window.location.href='case.html?ref='+encodeURIComponent(a._caseRef)+'&action='+encodeURIComponent(a.id)+'#tab-actions';
     });
     el.appendChild(row);
   });
