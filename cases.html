@@ -215,6 +215,34 @@
     .dm-btn-primary:hover{background:var(--navy-mid);}
     .dm-btn-secondary{background:transparent;color:var(--navy);border:1.5px solid var(--grey-light);}
     .dm-btn-secondary:hover{border-color:var(--navy);}
+
+    /* ── Daily Briefing modal ── */
+    .briefing-modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.55);z-index:400;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+    .briefing-modal-overlay.open{display:flex;}
+    .briefing-modal{background:var(--white);border-radius:var(--radius);box-shadow:0 8px 40px rgba(27,42,74,.3);width:100%;max-width:780px;}
+    .briefing-modal-head{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;border-radius:var(--radius) var(--radius) 0 0;}
+    .briefing-modal-title{font-family:'Spectral',serif;font-weight:300;font-size:20px;color:var(--white);display:flex;align-items:center;gap:10px;}
+    .briefing-modal-close{background:none;border:none;color:rgba(245,242,235,.6);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;}
+    .briefing-modal-close:hover{color:var(--white);}
+    .briefing-body{padding:28px 30px;max-height:70vh;overflow-y:auto;}
+    .briefing-loading{text-align:center;padding:40px;color:var(--grey-mid);font-size:14px;}
+    .briefing-content{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;line-height:1.7;color:var(--navy);}
+    .briefing-content h1{font-family:'Spectral',serif;font-weight:400;font-size:20px;margin:0 0 14px;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:8px;}
+    .briefing-content h2{font-family:'Spectral',serif;font-weight:400;font-size:16px;margin:22px 0 8px;color:var(--navy-mid);}
+    .briefing-content h3{font-size:13.5px;font-weight:700;margin:16px 0 6px;color:var(--navy);}
+    .briefing-content p{margin:0 0 10px;}
+    .briefing-content strong{font-weight:700;color:var(--navy);}
+    .briefing-content em{font-style:italic;}
+    .briefing-content ul,.briefing-content ol{margin:0 0 10px 20px;}
+    .briefing-content li{margin-bottom:4px;}
+    .briefing-content hr{border:none;border-top:1px solid var(--grey-light);margin:18px 0;}
+    .briefing-content .brf-urgent{background:#FEF2F2;border-left:3px solid var(--red);padding:10px 14px;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:10px 0;}
+    .briefing-footer{padding:12px 22px;border-top:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:space-between;background:var(--grey-faint);border-radius:0 0 var(--radius) var(--radius);}
+    .briefing-as-of{font-size:11px;color:var(--grey-mid);font-style:italic;}
+    /* Prominent briefing button */
+    .btn-briefing{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;border-radius:var(--radius-sm);border:none;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.03em;box-shadow:0 2px 8px rgba(27,42,74,.25);transition:all .18s ease;}
+    .btn-briefing:hover{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);box-shadow:0 4px 14px rgba(27,42,74,.35);transform:translateY(-1px);}
+    .btn-briefing-icon{font-size:16px;line-height:1;}
   </style>
 </head>
 <body>
@@ -292,6 +320,7 @@
 
     <!-- Action buttons -->
     <div class="dash-actions">
+      <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">☕</span> Daily Briefing</button>
       <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
       <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
@@ -364,6 +393,24 @@
     </div>
 
   </div><!-- /dashboard -->
+</div>
+
+<!-- Daily Briefing Modal -->
+<div class="briefing-modal-overlay" id="modal-briefing">
+  <div class="briefing-modal">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">☕ Daily Briefing</span>
+      <button class="briefing-modal-close" id="btn-briefing-close">&times;</button>
+    </div>
+    <div class="briefing-body" id="briefing-body">
+      <div class="briefing-loading" id="briefing-loading">Loading&hellip;</div>
+      <div class="briefing-content" id="briefing-content" style="display:none;"></div>
+    </div>
+    <div class="briefing-footer">
+      <span class="briefing-as-of" id="briefing-as-of"></span>
+      <button class="dm-btn dm-btn-secondary" id="btn-briefing-close2">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- Add Action Modal -->
@@ -1054,12 +1101,69 @@ function setWipPeriod(p){
   updateWipPeriodCard();
 }
 
+// ── Daily Briefing ────────────────────────────────────────────────────────
+let briefingLoaded = false;
+let briefingText   = '';
+
+function renderBriefing(text){
+  // Minimal markdown → HTML: ##/### headings, **bold**, *italic*, --- hr, bullet lists
+  let html = escHtml(text)
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, s => '<ul>'+s+'</ul>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  // Wrap top level in paragraph if not already a block element
+  if(!/^<[h1-6ul]/.test(html)) html = '<p>'+html+'</p>';
+  return html;
+}
+
+async function openBriefing(){
+  document.getElementById('modal-briefing').classList.add('open');
+  if(briefingLoaded) return;
+  document.getElementById('briefing-loading').style.display='block';
+  document.getElementById('briefing-content').style.display='none';
+  try{
+    const r = await fetch('/api/briefing');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    briefingText = data.briefing || '';
+    briefingLoaded = true;
+    const content = document.getElementById('briefing-content');
+    if(!briefingText){
+      content.innerHTML = '<p style="color:var(--grey-mid);font-style:italic;">No briefing available for today.</p>';
+    } else {
+      content.innerHTML = renderBriefing(briefingText);
+    }
+    document.getElementById('briefing-loading').style.display='none';
+    content.style.display='block';
+    document.getElementById('briefing-as-of').textContent =
+      'Updated: '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  }catch(err){
+    document.getElementById('briefing-loading').textContent = 'Failed to load briefing: '+err.message;
+  }
+}
+
+function closeBriefing(){
+  document.getElementById('modal-briefing').classList.remove('open');
+}
+
 // ── Wire up stat cards ─────────────────────────────────────────────────────
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
   });
+  document.getElementById('btn-briefing').addEventListener('click', openBriefing);
+  document.getElementById('btn-briefing-close').addEventListener('click', closeBriefing);
+  document.getElementById('btn-briefing-close2').addEventListener('click', closeBriefing);
+  document.getElementById('modal-briefing').addEventListener('click', e=>{ if(e.target===document.getElementById('modal-briefing')) closeBriefing(); });
   document.getElementById('btn-close-list').addEventListener('click',hideCaseList);
   document.getElementById('btn-add-action').addEventListener('click',()=>openModal('modal-action'));
   document.getElementById('btn-add-reminder').addEventListener('click',()=>openModal('modal-reminder'));
