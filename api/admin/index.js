@@ -3,6 +3,7 @@ const { URL } = require('url');
 
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
+const WRITE_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
 const LISTS = {
   feeearners:    '750616ac-5c2e-4a3c-91d9-b0e6cad1e6e9',
   courts:        'e867d355-7eb4-40c7-a790-ee1c591a1361',
@@ -49,6 +50,17 @@ async function graphPost(url, token, body) {
     const req = https.request({ hostname: u.hostname, path: u.pathname + u.search, method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json', 'Content-Length': Buffer.byteLength(bs) } }, res => {
       let d = ''; res.on('data', c => d += c);
       res.on('end', () => { if (res.statusCode >= 400) { reject(new Error('Graph POST ' + res.statusCode + ': ' + d.slice(0,200))); return; } try { resolve(JSON.parse(d)); } catch(e) { resolve({}); } });
+    });
+    req.on('error', reject); req.write(bs); req.end();
+  });
+}
+
+async function graphPatch(url, token, body) {
+  return new Promise((resolve, reject) => {
+    const bs = JSON.stringify(body); const u = new URL(url);
+    const req = https.request({ hostname: u.hostname, path: u.pathname + u.search, method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json', 'Content-Length': Buffer.byteLength(bs) } }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => { if (res.statusCode >= 400) { reject(new Error('Graph PATCH ' + res.statusCode + ': ' + d.slice(0,200))); return; } try { resolve(JSON.parse(d)); } catch(e) { resolve({}); } });
     });
     req.on('error', reject); req.write(bs); req.end();
   });
@@ -104,6 +116,7 @@ module.exports = async function (context, req) {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     const baseUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + guid + '/items';
 
+    // ── GET: return all items sorted by Title ────────────────────────────────
     if (req.method === 'GET') {
       const items = []; let url = baseUrl + '?$expand=fields&$top=999';
       while (url) {
@@ -116,12 +129,30 @@ module.exports = async function (context, req) {
       return;
     }
 
+    // Write operations — restricted to Management + Lesley
+    if (!WRITE_EMAILS.includes(callerEmail)) {
+      context.res = { status: 403, body: 'Write access restricted' }; return;
+    }
+
+    // ── POST: create new item ─────────────────────────────────────────────────
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const fields = buildFields(listKey, body);
       if (!fields['Title']) { context.res = { status: 400, body: 'Title required' }; return; }
       const created = await graphPost(baseUrl, token, { fields });
       context.res = { status: 201, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: created.id }) };
+      return;
+    }
+
+    // ── PATCH: update existing item ───────────────────────────────────────────
+    if (req.method === 'PATCH') {
+      const itemId = req.query.id;
+      if (!itemId) { context.res = { status: 400, body: 'id query param required for PATCH' }; return; }
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+      const fields = buildFields(listKey, body);
+      if (Object.keys(fields).length === 0) { context.res = { status: 400, body: 'No fields to update' }; return; }
+      await graphPatch(baseUrl + '/' + itemId + '/fields', token, fields);
+      context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true }) };
       return;
     }
 
