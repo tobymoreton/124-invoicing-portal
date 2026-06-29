@@ -184,9 +184,9 @@
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
-    .ca-panel-list{max-height:360px;overflow-y:auto;}
+    .ca-panel-list{max-height:480px;overflow-y:auto;}
     /* Action buttons */
-    .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;}
+    .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;align-items:center;}
     .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
     .btn-dash-action:hover{background:var(--navy);color:var(--gold);}
     /* Modal */
@@ -280,6 +280,12 @@
       </div>
     </div>
 
+    <!-- Action buttons -->
+    <div class="dash-actions">
+      <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
+      <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
+    </div>
+
     <!-- Two column panels -->
     <div class="dash-cols">
 
@@ -316,12 +322,6 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- Action buttons -->
-    <div class="dash-actions">
-      <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
-      <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
 
     <!-- Case list (shown on card/stage click) -->
