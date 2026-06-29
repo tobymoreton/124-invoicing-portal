@@ -1106,21 +1106,30 @@ let briefingLoaded = false;
 let briefingText   = '';
 
 function renderBriefing(text){
-  // Minimal markdown → HTML: ##/### headings, **bold**, *italic*, --- hr, bullet lists
-  let html = escHtml(text)
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // SP field may contain HTML entities (&amp; &quot; &#NNN;) — decode them first
+  const decoded = text
+    .replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"')
+    .replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n)))
+    .replace(/&nbsp;/g,' ');
+  // Strip any genuine HTML tags for safety, then convert markdown
+  const safe = decoded.replace(/<[^>]*>/g,'');
+  // Escape for HTML injection (after entity decode, before markdown conversion)
+  function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  let html = esc(safe)
+    .replace(/^### (.+)$/gm, (_,t)=>'<h3>'+t+'</h3>')
+    .replace(/^## (.+)$/gm,  (_,t)=>'<h2>'+t+'</h2>')
+    .replace(/^# (.+)$/gm,   (_,t)=>'<h1>'+t+'</h1>')
+    .replace(/\*\*(.+?)\*\*/g, (_,t)=>'<strong>'+t+'</strong>')
+    .replace(/\*(.+?)\*/g,    (_,t)=>'<em>'+t+'</em>')
     .replace(/^---+$/gm, '<hr>')
-    .replace(/^\* (.+)$/gm, '<li>$1</li>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, s => '<ul>'+s+'</ul>')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>');
-  // Wrap top level in paragraph if not already a block element
-  if(!/^<[h1-6ul]/.test(html)) html = '<p>'+html+'</p>';
+    .replace(/^[\*\-] (.+)$/gm, (_,t)=>'<li>'+t+'</li>')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, s=>'<ul>'+s+'</ul>')
+    .replace(/\n{2,}/g,'</p><p>')
+    .replace(/\n/g,'<br>');
+  if(!/^<[h1-6ul]/.test(html)) html='<p>'+html+'</p>';
   return html;
 }
 
@@ -1152,6 +1161,8 @@ async function openBriefing(){
 
 function closeBriefing(){
   document.getElementById('modal-briefing').classList.remove('open');
+  // Reset so re-open always re-renders with latest content
+  briefingLoaded=false;
 }
 
 // ── Wire up stat cards ─────────────────────────────────────────────────────
@@ -1171,66 +1182,112 @@ function wireCards(){
   document.getElementById('rem-save').addEventListener('click',saveReminder);
 }
 
+// ── Session cache ─────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function cacheKey(){
+  return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon');
+}
+function writeCache(){
+  try{
+    sessionStorage.setItem(cacheKey(), JSON.stringify({
+      cachedAt: Date.now(),
+      allCases, wipTotal, invoicedThisMonth, allReminders, allActions,
+    }));
+  }catch{/*quota or unavailable — silently skip*/}
+}
+function readCache(){
+  try{
+    const raw=sessionStorage.getItem(cacheKey());
+    if(!raw) return null;
+    const c=JSON.parse(raw);
+    if(Date.now()-c.cachedAt>CACHE_TTL_MS) return null;
+    return c;
+  }catch{ return null; }
+}
+
+// ── Full data fetch ────────────────────────────────────────────────────────
+async function fetchAllData(){
+  const [casesResp, wipResp, invResp] = await Promise.all([
+    fetch('/api/cases?preload=1'),
+    fetch('/api/wip').catch(()=>null),
+    fetch('/api/invoices').catch(()=>null),
+  ]);
+  if(!casesResp.ok) throw new Error('HTTP '+casesResp.status);
+  const data=await casesResp.json();
+  allCases=data.value||[];
+  myCases=allCases.filter(c=>matchesAssigned(c.fields));
+
+  if(wipResp&&wipResp.ok){
+    const wipData=await wipResp.json();
+    const wipItems=Array.isArray(wipData)?wipData:(wipData.value||[]);
+    wipTotal=wipItems
+      .filter(w=>!callerEmail||!w.Email||(w.Email||'').toLowerCase()===callerEmail)
+      .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
+  }
+
+  if(invResp&&invResp.ok){
+    const invData=await invResp.json();
+    const invItems=Array.isArray(invData)?invData:(invData.value||[]);
+    const now=new Date();
+    const yr=now.getFullYear(); const mo=now.getMonth();
+    invoicedThisMonth=invItems.filter(inv=>{
+      if(inv.Cancelled) return false;
+      if(!inv.InvoiceDate) return false;
+      if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
+      const d=new Date(inv.InvoiceDate);
+      return d.getFullYear()===yr&&d.getMonth()===mo;
+    }).reduce((s,inv)=>s+(inv.Net||0),0);
+  }
+
+  await Promise.all([
+    loadReminders(myCases),
+    loadActions(myCases),
+  ]);
+}
+
+function applyDataAndRender(){
+  document.getElementById('page-sub').textContent=
+    myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
+  document.getElementById('state-loading').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  renderStats();
+  renderStagePanel();
+  renderRemPanel();
+  renderActionsPanel();
+  populateCasePickers();
+  wireCards();
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 async function init(){
   await loadIdentity();
   try{
-    // Load cases, WIP, invoices and reminders in parallel
-    const [casesResp, wipResp, invResp] = await Promise.all([
-      fetch('/api/cases?preload=1'),
-      fetch('/api/wip').catch(()=>null),
-      fetch('/api/invoices').catch(()=>null),
-    ]);
-    if(!casesResp.ok) throw new Error('HTTP '+casesResp.status);
-    const data=await casesResp.json();
-    allCases=data.value||[];
-    myCases=allCases.filter(c=>matchesAssigned(c.fields));
-
-    // WIP — API returns a plain array (not wrapped in {value:[]})
-    if(wipResp&&wipResp.ok){
-      const wipData=await wipResp.json();
-      const wipItems=Array.isArray(wipData)?wipData:(wipData.value||[]);
-      // Admin gets all draftsmen — filter to own email client-side
-      wipTotal=wipItems
-        .filter(w=>!callerEmail||!w.Email||(w.Email||'').toLowerCase()===callerEmail)
-        .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
+    const cached=readCache();
+    if(cached){
+      // Render from cache immediately
+      allCases=cached.allCases||[];
+      wipTotal=cached.wipTotal||0;
+      invoicedThisMonth=cached.invoicedThisMonth||0;
+      allReminders=cached.allReminders||[];
+      allActions=cached.allActions||[];
+      myCases=allCases.filter(c=>matchesAssigned(c.fields));
+      applyDataAndRender();
+      // Silently refresh in background
+      fetchAllData().then(()=>{
+        writeCache();
+        renderStats();
+        renderStagePanel();
+        renderRemPanel();
+        renderActionsPanel();
+        populateCasePickers();
+      }).catch(()=>{/*background refresh failed — cached data still shown*/});
+    } else {
+      // Cold load
+      await fetchAllData();
+      writeCache();
+      applyDataAndRender();
     }
-
-    // Invoiced this month — API returns plain array (not {value:[]})
-    // Filter by DraftedByEmail matching caller
-    if(invResp&&invResp.ok){
-      const invData=await invResp.json();
-      const invItems=Array.isArray(invData)?invData:(invData.value||[]);
-      const now=new Date();
-      const yr=now.getFullYear(); const mo=now.getMonth();
-      invoicedThisMonth=invItems.filter(inv=>{
-        if(inv.Cancelled) return false;
-        if(!inv.InvoiceDate) return false;
-        if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
-        const d=new Date(inv.InvoiceDate);
-        return d.getFullYear()===yr&&d.getMonth()===mo;
-      }).reduce((s,inv)=>s+(inv.Net||0),0);
-    }
-
-    document.getElementById('page-sub').textContent=
-      myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
-
-    // Load reminders and actions for all my cases in parallel
-    await Promise.all([
-      loadReminders(myCases),
-      loadActions(myCases),
-    ]);
-
-    document.getElementById('state-loading').style.display='none';
-    document.getElementById('dashboard').style.display='block';
-
-    renderStats();
-    renderStagePanel();
-    renderRemPanel();
-    renderActionsPanel();
-    populateCasePickers();
-    wireCards();
-
   }catch(err){
     document.getElementById('state-loading').innerHTML=
       '<h3 style="color:#991B1B;">Error loading cases</h3><p style="margin-top:8px;color:var(--grey-mid);">'+escHtml(err.message)+'</p>';
