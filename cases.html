@@ -254,7 +254,6 @@
     <span class="nav-title">Case Hub</span>
   </div>
   <div class="nav-links" id="nav-links">
-    <a href="/" class="nav-link">&larr; Invoices</a>
     <a href="/admin.html" class="nav-link">Admin</a>
     <a href="/invoice-create.html" class="nav-link">+ New Invoice Draft</a>
   </div>
@@ -607,14 +606,6 @@ async function loadIdentity(){
       callerName=NAME_DISPLAY[local]||user.userDetails;
       document.getElementById('user-name').textContent=callerName||callerEmail;
       isAdmin=ADMIN_EMAILS.includes(callerEmail);
-      if(isAdmin){
-        const navLinks=document.getElementById('nav-links');
-        if(navLinks&&!navLinks.querySelector('[href="/finance.html"]')){
-          const a=document.createElement('a');
-          a.href='/finance.html';a.className='nav-link';a.textContent='Finance';
-          navLinks.appendChild(a);
-        }
-      }
     }
   }catch{/*ignore*/}
 }
