@@ -31,6 +31,24 @@
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
     .nav-back{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
     .nav-back:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* ── Document builder bar ────────────────────────── */
+    .doc-bar{background:var(--navy);padding:0 32px;display:flex;align-items:center;gap:6px;overflow-x:auto;white-space:nowrap;border-bottom:2px solid var(--gold-mid);}
+    .doc-bar::-webkit-scrollbar{height:3px;}
+    .doc-bar::-webkit-scrollbar-thumb{background:rgba(201,168,76,.4);border-radius:2px;}
+    .doc-btn{
+      display:inline-flex;align-items:center;gap:6px;
+      font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;
+      letter-spacing:.04em;text-transform:uppercase;
+      color:rgba(245,242,235,.8);background:var(--navy-mid);
+      border:1px solid rgba(201,168,76,.2);border-radius:0;
+      padding:10px 16px;cursor:pointer;text-decoration:none;
+      transition:background .15s ease,color .15s ease,border-color .15s ease;
+      flex-shrink:0;
+    }
+    .doc-btn:hover{background:var(--gold-mid);color:var(--navy);border-color:var(--gold-mid);}
+    .doc-btn.gold{background:var(--gold-mid);color:var(--navy);border-color:var(--gold-mid);}
+    .doc-btn.gold:hover{background:var(--gold);border-color:var(--gold);}
     /* ── Case switcher ───────────────────── */
     .nav-right{display:flex;align-items:center;gap:12px;}
     .case-switcher{position:relative;}
@@ -539,6 +557,9 @@
     <div class="case-name" id="hdr-name"></div>
     <div class="case-meta" id="hdr-meta"></div>
   </div>
+
+  <!-- Document builder bar -->
+  <div class="doc-bar" id="doc-bar"></div>
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="overview">Case Overview</button>
@@ -1724,6 +1745,121 @@ function renderHeader() {
     f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']
   ].filter(Boolean).join(' · ');
   document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
+  renderDocumentBar();
+}
+
+function renderDocumentBar() {
+  const f  = caseFields;
+  const i  = interest;
+  const bar = document.getElementById('doc-bar');
+  if (!bar) return;
+
+  const enc = encodeURIComponent;
+
+  // Shared params
+  const firm      = f['Firm_x0028_text_x0029_']          || '';
+  const ourRef    = f['Ourreference_x0028_text_x0029_']  || '';
+  const yourRef   = f['ClientCaseReference']              || '';
+  const multi     = !!(f['Andothers_x003f_']);
+  const matter    = multi
+    ? (f['MultiClaimants'] || '')
+    : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ');
+  const caseName  = f['CaseNameForOpenCases'] || matter;
+  const feeEarner = f['FeeEarner_x0028_fromFM_x0029_'] || '';
+  const draftsman = switcherCallerName || '';
+
+  // Opponent / court
+  const oppoFirm = f['opponentFirmMirror']               || '';
+  const oppoA1   = f['Opponent_x0020_Address_x0020_1']   || '';
+  const oppoA2   = f['Opponent_x0020_Address_x0020_2']   || '';
+  const oppoA3   = f['Opponent_x0020_Address_x0020_3']   || '';
+  const oppoA4   = f['Opponent_x0020_Address_x0020_4']   || '';
+  const oppoA5   = f['Opponent_x0020_Address_x0020_5']   || '';
+  const oppoRef  = f['Opponentreference']                || '';
+  const court    = f['CourtName_Text']                   || '';
+  const claimNo  = f['ClaimNo']                         || '';
+  const defendant = f['OpponentPartyName']              || '';
+
+  // Interest figures (computed after computeInterest() has run)
+  const totalInterest = (i.totalInterest > 0)
+    ? '£' + i.totalInterest.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})
+    : '';
+  const dailyRate = (i.currentDailyRate > 0)
+    ? '£' + i.currentDailyRate.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})
+    : '';
+
+  const BLUE = 'https://blue-forest-06239b410.7.azurestaticapps.net';
+  const ICY  = 'https://icy-flower-0f5f0b110.7.azurestaticapps.net';
+
+  const links = [
+    {
+      label: 'Acknowledgment',
+      url: BLUE + '/builder.html?'
+        + 'firm='    + enc(firm)
+        + '&matter=' + enc(matter)
+        + '&yourref='+ enc(yourRef)
+        + '&ourref=' + enc(ourRef),
+    },
+    {
+      label: 'Informal Service',
+      url: ICY + '/builder.html?'
+        + 'MatterName=' + enc(matter)
+        + '&FeeEarner='  + enc(feeEarner)
+        + '&Draftsman='  + enc(draftsman)
+        + '&CaseRef='    + enc(yourRef)
+        + '&TMCRef='     + enc(ourRef),
+    },
+    {
+      label: 'Formal Service',
+      url: ICY + '/builder.html?'
+        + 'template=FormalServiceNonHJA'
+        + '&OppoFirm='      + enc(oppoFirm)
+        + '&OppoAddress1='  + enc(oppoA1)
+        + '&OppoAddress2='  + enc(oppoA2)
+        + '&OppoAddress3='  + enc(oppoA3)
+        + '&OppoAddress4='  + enc(oppoA4)
+        + '&OppoAddress5='  + enc(oppoA5)
+        + '&YourRef='       + enc(oppoRef)
+        + '&OurRef='        + enc(ourRef)
+        + '&FullCaseName='  + enc(caseName)
+        + '&Firm='          + enc(firm)
+        + '&TotalInterest='    + enc(totalInterest)
+        + '&DailyRatePeriod4=' + enc(dailyRate),
+    },
+    {
+      label: 'Inter Partes Memo',
+      url: ICY + '/builder.html?'
+        + 'MatterName=' + enc(matter)
+        + '&FeeEarner=' + enc(feeEarner)
+        + '&Draftsman=' + enc(draftsman)
+        + '&CaseRef='   + enc(yourRef)
+        + '&TMCRef='    + enc(ourRef),
+    },
+    {
+      label: 'Notice of Acting',
+      url: ICY + '/builder.html?'
+        + 'template=NoticeOfActing'
+        + '&CourtName='     + enc(court)
+        + '&ClaimNo='       + enc(claimNo)
+        + '&ClaimantName='  + enc(matter)
+        + '&DefendantName=' + enc(defendant),
+      gold: true,
+    },
+    {
+      label: 'Email Templates',
+      url: BLUE + '/emails.html?'
+        + 'firm='    + enc(firm)
+        + '&matter=' + enc(matter)
+        + '&yourref='+ enc(yourRef)
+        + '&ourref=' + enc(ourRef)
+        + '&name='   + enc(feeEarner.split(' ')[0]),
+      gold: true,
+    },
+  ];
+
+  bar.innerHTML = links.map(u =>
+    '<a class="doc-btn' + (u.gold ? ' gold' : '') + '" href="' + u.url + '" target="_blank" rel="noopener noreferrer">' + u.label + '</a>'
+  ).join('');
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
