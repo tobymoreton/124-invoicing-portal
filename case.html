@@ -2783,6 +2783,17 @@ async function loadCaseActions() {
     caActions = data.value || [];
     renderCaTable();
     initAddActionPanel();
+    // Deep-link: open specific action in edit mode if ?action= param present
+    const deepActionId = new URLSearchParams(window.location.search).get('action');
+    if (deepActionId && caActions.some(a => a.id === deepActionId)) {
+      caEditingId = deepActionId;
+      renderCaTable();
+      // Scroll to the editing row
+      setTimeout(() => {
+        const tr = document.querySelector(`tr[data-id="${deepActionId}"]`);
+        if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
   } catch (err) {
     document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message;
   }
