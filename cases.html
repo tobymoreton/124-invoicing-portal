@@ -31,8 +31,8 @@
     .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
     .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
     .nav-links{display:flex;align-items:center;gap:12px;}
-    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);transition:all .18s ease;}
-    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    .nav-link{font-size:13px;font-weight:600;color:var(--navy);text-decoration:none;padding:7px 16px;border:none;border-radius:var(--radius-sm);background:var(--gold);transition:all .18s ease;}
+    .nav-link:hover{background:var(--gold-mid);color:var(--navy);transform:translateY(-1px);box-shadow:0 3px 8px rgba(27,42,74,.3);}
 
     /* ── Page header ── */
     .page-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);padding:24px 32px 28px;border-bottom:1px solid rgba(201,168,76,.15);}
@@ -1114,23 +1114,48 @@ function renderBriefing(text){
     .replace(/&quot;/g,'"')
     .replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n)))
     .replace(/&nbsp;/g,' ');
-  // Strip any genuine HTML tags for safety, then convert markdown
+  // Strip any genuine HTML tags for safety
   const safe = decoded.replace(/<[^>]*>/g,'');
-  // Escape for HTML injection (after entity decode, before markdown conversion)
+  // Escape only < > & for HTML injection safety (NOT quotes, NOT high-codepoint Unicode/emoji)
   function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  let html = esc(safe)
-    .replace(/^### (.+)$/gm, (_,t)=>'<h3>'+t+'</h3>')
-    .replace(/^## (.+)$/gm,  (_,t)=>'<h2>'+t+'</h2>')
-    .replace(/^# (.+)$/gm,   (_,t)=>'<h1>'+t+'</h1>')
-    .replace(/\*\*(.+?)\*\*/g, (_,t)=>'<strong>'+t+'</strong>')
-    .replace(/\*(.+?)\*/g,    (_,t)=>'<em>'+t+'</em>')
-    .replace(/^---+$/gm, '<hr>')
-    .replace(/^[\*\-] (.+)$/gm, (_,t)=>'<li>'+t+'</li>')
-    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, s=>'<ul>'+s+'</ul>')
-    .replace(/\n{2,}/g,'</p><p>')
-    .replace(/\n/g,'<br>');
-  if(!/^<[h1-6ul]/.test(html)) html='<p>'+html+'</p>';
+  // Process line by line so headings and paragraphs don't interfere with each other
+  const lines = safe.split('\n');
+  const out = [];
+  let inPara = false;
+  for(let i=0;i<lines.length;i++){
+    const line = lines[i];
+    const h3 = line.match(/^### (.+)/);
+    const h2 = line.match(/^## (.+)/);
+    const h1 = line.match(/^# (.+)/);
+    const hr = line.match(/^---+$/);
+    const li = line.match(/^[\*\-] (.+)/);
+    const blank = line.trim()==='';
+    if(inPara && (h1||h2||h3||hr||blank)){
+      out.push('</p>'); inPara=false;
+    }
+    if(h3){ out.push('<h3>'+inlineEsc(h3[1])+'</h3>'); }
+    else if(h2){ out.push('<h2>'+inlineEsc(h2[1])+'</h2>'); }
+    else if(h1){ out.push('<h1>'+inlineEsc(h1[1])+'</h1>'); }
+    else if(hr){ out.push('<hr>'); }
+    else if(li){ out.push('<li>'+inlineEsc(li[1])+'</li>'); }
+    else if(blank){ /* gap handled above */ }
+    else{
+      if(!inPara){ out.push('<p>'); inPara=true; }
+      else out.push('<br>');
+      out.push(inlineEsc(line));
+    }
+  }
+  if(inPara) out.push('</p>');
+  // Wrap consecutive li in ul
+  let html = out.join('')
+    .replace(/(<li>[\s\S]*?<\/li>)+/g, s=>'<ul>'+s+'</ul>');
   return html;
+}
+function inlineEsc(s){
+  // Escape HTML-unsafe chars, apply inline markdown, preserve emoji
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,(_,t)=>'<strong>'+t+'</strong>')
+    .replace(/\*(.+?)\*/g,(_,t)=>'<em>'+t+'</em>');
 }
 
 async function openBriefing(){
