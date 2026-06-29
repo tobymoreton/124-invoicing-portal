@@ -582,7 +582,7 @@
 <div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
 <div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
-<div id="app" style="display:none;">
+<div id="app">
   <div class="case-header">
     <div class="case-ref" id="hdr-ref"></div>
     <div class="case-name" id="hdr-name"></div>
@@ -1494,53 +1494,8 @@ async function loadCourts() {
 async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
-
-  // ── Try instant render from sessionStorage cache ─────────────────────────
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   try {
-    const raw = sessionStorage.getItem('tmc_case_' + ref);
-    if (raw) {
-      const cached = JSON.parse(raw);
-      if (cached && cached.fields && (Date.now() - cached.cachedAt) < CACHE_TTL) {
-        caseItemId = cached.id;
-        caseFields = cached.fields;
-        computeFigures();
-        computeInterest();
-        renderHeader();
-        renderOverviewTab();
-        renderBookingInTab();
-        renderSettlementTab();
-        renderCostsTab();
-        renderInterestTab();
-        loadCourts().then(() => renderOpponentTab());
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('app').style.display     = 'block';
-        caLoaded = true; loadCaseActions();
-        remLoaded = true; loadReminders();
-        // Background refresh — update cache silently, no spinner
-        fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1')
-          .then(r => r.ok ? r.json() : null)
-          .then(data => {
-            const match = data && (data.value || []).find(item =>
-              (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
-            );
-            if (match) {
-              try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({id:match.id, fields:match.fields, cachedAt:Date.now()})); } catch(ex) {}
-              caseItemId = match.id;
-              caseFields = match.fields || {};
-              computeFigures(); computeInterest();
-              renderHeader(); renderOverviewTab(); renderBookingInTab();
-              renderOpponentTab(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
-            }
-          })
-          .catch(() => { /* background refresh failed — cached data still shown */ });
-        return; // cache hit: done
-      }
-    }
-  } catch(ex) { /* sessionStorage unavailable or corrupt — fall through to normal load */ }
-
-  // ── Cold load — no cache hit ──────────────────────────────────────────────
-  try {
+    // Fetch case data and courts list in parallel
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
       loadCourts(),
@@ -1551,8 +1506,6 @@ async function loadCase() {
       (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
     );
     if (!match) { showError('Case not found', 'No case with reference ' + ref + '.'); return; }
-    // Write to cache
-    try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({id:match.id, fields:match.fields, cachedAt:Date.now()})); } catch(ex) {}
     caseItemId = match.id;
     caseFields = match.fields || {};
     computeFigures();
@@ -1560,12 +1513,15 @@ async function loadCase() {
     renderHeader();
     renderOverviewTab();
     renderBookingInTab();
-    renderOpponentTab();
+    renderOpponentTab(); // CourtName select already populated by loadCourts()
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
-    caLoaded = true; loadCaseActions();
-    remLoaded = true; loadReminders();
+    // Pre-load case actions and reminders in background so they're ready when tabs are clicked
+    caLoaded = true;
+    loadCaseActions();
+    remLoaded = true;
+    loadReminders();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
