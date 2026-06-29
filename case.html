@@ -1494,18 +1494,70 @@ async function loadCourts() {
 async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
+
+  // ── Instant render from sessionStorage cache ────────────────────────────
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  let fromCache = false;
   try {
-    // Fetch case data and courts list in parallel
+    const raw = sessionStorage.getItem('tmc_case_' + ref);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached && cached.fields && (Date.now() - cached.cachedAt) < CACHE_TTL) {
+        caseItemId = cached.id;
+        caseFields = cached.fields;
+        computeFigures();
+        computeInterest();
+        renderHeader();
+        renderOverviewTab();
+        renderBookingInTab();
+        renderSettlementTab();
+        renderCostsTab();
+        renderInterestTab();
+        loadCourts().then(() => renderOpponentTab());
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('app').style.display     = 'block';
+        caLoaded = true; loadCaseActions();
+        remLoaded = true; loadReminders();
+        fromCache = true;
+      }
+    }
+  } catch(ex) { /* sessionStorage unavailable or corrupt — fall through */ }
+
+  // ── Always fetch fresh data from Graph ──────────────────────────────────
+  // If cache hit: refresh in background and silently update
+  // If cache miss: fetch is the primary load (shows spinner)
+  try {
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
-      loadCourts(),
+      fromCache ? Promise.resolve() : loadCourts(),
     ]);
     if (!caseResp.ok) throw new Error('HTTP ' + caseResp.status);
     const data  = await caseResp.json();
     const match = (data.value || []).find(item =>
       (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
     );
-    if (!match) { showError('Case not found', 'No case with reference ' + ref + '.'); return; }
+    if (!match) {
+      if (!fromCache) showError('Case not found', 'No case with reference ' + ref + '.');
+      return;
+    }
+    // Update cache
+    try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({id:match.id, fields:match.fields, cachedAt:Date.now()})); } catch(ex) {}
+    // If cache already rendered, only re-render if data has changed (avoid flicker)
+    if (fromCache) {
+      caseItemId = match.id;
+      caseFields = match.fields || {};
+      computeFigures();
+      computeInterest();
+      renderHeader();
+      renderOverviewTab();
+      renderBookingInTab();
+      renderOpponentTab();
+      renderSettlementTab();
+      renderCostsTab();
+      renderInterestTab();
+      return;
+    }
+    // Cold load — no cache
     caseItemId = match.id;
     caseFields = match.fields || {};
     computeFigures();
@@ -1513,19 +1565,17 @@ async function loadCase() {
     renderHeader();
     renderOverviewTab();
     renderBookingInTab();
-    renderOpponentTab(); // CourtName select already populated by loadCourts()
+    renderOpponentTab();
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
-    // Pre-load case actions and reminders in background so they're ready when tabs are clicked
-    caLoaded = true;
-    loadCaseActions();
-    remLoaded = true;
-    loadReminders();
+    caLoaded = true; loadCaseActions();
+    remLoaded = true; loadReminders();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
-    showError('Error loading case', err.message);
+    if (!fromCache) showError('Error loading case', err.message);
+    // If cache was used, swallow the error silently — user already has data
   }
 }
 
