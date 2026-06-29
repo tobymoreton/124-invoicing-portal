@@ -610,23 +610,31 @@
         </div>
       </div>
 
-      <!-- Row 2b: Billing Info -->
-      <div class="card">
-        <div class="card-head"><span class="card-title">💷 Billing Info</span></div>
-        <dl class="read-grid">
-          <div class="read-row"><dt>Fee Basis</dt><dd class="ov-editable" id="ov-feebasis">—</dd></div>
-          <div class="read-row"><dt>IP Fee %</dt><dd class="ov-editable" id="ov-ipfee">—</dd></div>
-          <div class="read-row"><dt>LA Fee %</dt><dd class="ov-editable" id="ov-lafee">—</dd></div>
-          <div class="read-row"><dt>Min Fee %</dt><dd class="ov-editable" id="ov-minfee">—</dd></div>
-          <div class="read-row"><dt>Hourly Rate (£)</dt><dd class="ov-editable" id="ov-rate">—</dd></div>
-          <div class="read-row"><dt>Minimum Fee Applied</dt><dd class="ov-editable" id="ov-minfeeapplied">—</dd></div>
-          <div class="read-row"><dt>VAT on Drafting Fee</dt><dd class="ov-editable" id="ov-vatondrafting">—</dd></div>
-          <div class="read-row"><dt>Provisional Drafting Fee (£)</dt><dd id="ov-provdrafting">—</dd></div>
-          <div class="read-row"><dt>Provisional Min Fee (£)</dt><dd id="ov-provminfee">—</dd></div>
-        </dl>
+      <!-- Row 3: Client + Opponent & Court -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><span class="card-title">👤 Client</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>Name</dt><dd id="ov-clientname">—</dd></div>
+            <div class="read-row"><dt>Client Firm</dt><dd id="ov-firm">—</dd></div>
+            <div class="read-row"><dt>Fee Earner</dt><dd id="ov-feeearner">—</dd></div>
+            <div class="read-row"><dt>Client Ref</dt><dd id="ov-clientref">—</dd></div>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">⚖️ Opponent &amp; Court</span></div>
+          <dl class="read-grid">
+            <div class="read-row"><dt>Opponent</dt><dd id="ov-opponent">—</dd></div>
+            <div class="read-row"><dt>Opponent Firm</dt><dd id="ov-opponentfirm">—</dd></div>
+            <div class="read-row"><dt>Opponent Ref</dt><dd id="ov-opponentref">—</dd></div>
+            <div class="read-row"><dt>Court</dt><dd id="ov-court">—</dd></div>
+            <div class="read-row"><dt>Claim No</dt><dd id="ov-claimno">—</dd></div>
+            <div class="read-row"><dt>Service Email</dt><dd id="ov-serviceemail">—</dd></div>
+          </dl>
+        </div>
       </div>
 
-      <!-- Row 3: Flags + Activity -->
+      <!-- Row 4: Flags + Activity -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">🚩 Flags</span></div>
@@ -641,6 +649,22 @@
             <div class="read-row"><dt style="white-space:nowrap;">⏰ Last Reminder</dt><dd id="ov-lastreminder" style="text-align:left;padding-left:12px;white-space:normal;line-height:1.5;">—</dd></div>
           </dl>
         </div>
+      </div>
+
+      <!-- Row 5: Billing Info (moved to bottom) -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">💷 Billing Info</span></div>
+        <dl class="read-grid">
+          <div class="read-row"><dt>Fee Basis</dt><dd class="ov-editable" id="ov-feebasis">—</dd></div>
+          <div class="read-row"><dt>IP Fee %</dt><dd class="ov-editable" id="ov-ipfee">—</dd></div>
+          <div class="read-row"><dt>LA Fee %</dt><dd class="ov-editable" id="ov-lafee">—</dd></div>
+          <div class="read-row"><dt>Min Fee %</dt><dd class="ov-editable" id="ov-minfee">—</dd></div>
+          <div class="read-row"><dt>Hourly Rate (£)</dt><dd class="ov-editable" id="ov-rate">—</dd></div>
+          <div class="read-row"><dt>Minimum Fee Applied</dt><dd class="ov-editable" id="ov-minfeeapplied">—</dd></div>
+          <div class="read-row"><dt>VAT on Drafting Fee</dt><dd class="ov-editable" id="ov-vatondrafting">—</dd></div>
+          <div class="read-row"><dt>Provisional Drafting Fee (£)</dt><dd id="ov-provdrafting">—</dd></div>
+          <div class="read-row"><dt>Provisional Min Fee (£)</dt><dd id="ov-provminfee">—</dd></div>
+        </dl>
       </div>
 
     </div><!-- /tab-overview -->
@@ -1727,6 +1751,22 @@ function renderOverviewTab() {
   setText('ov-flags',          stripHtml(f['Flags'])               || '—');
   setText('ov-lastaction',     f['LastAction']           || '—');
   setText('ov-lastreminder',   stripHtml(f['Last_x0020_Reminder'])  || '—');
+  // Client details
+  const multi = !!(f['Andothers_x003f_']);
+  const clientName = multi
+    ? (f['MultiClaimants'] || '—')
+    : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ') || '—';
+  setText('ov-clientname',   clientName);
+  setText('ov-firm',         f['Firm_x0028_text_x0029_']           || '—');
+  setText('ov-feeearner',    f['FeeEarner_x0028_fromFM_x0029_']    || '—');
+  setText('ov-clientref',    f['ClientCaseReference']               || '—');
+  // Opponent & Court details
+  setText('ov-opponent',     f['OpponentPartyName']                 || '—');
+  setText('ov-opponentfirm', f['opponentFirmMirror']                || '—');
+  setText('ov-opponentref',  f['Opponentreference']                 || '—');
+  setText('ov-court',        f['CourtName_Text']                    || '—');
+  setText('ov-claimno',      f['ClaimNo']                           || '—');
+  setText('ov-serviceemail', f['ServiceEmail']                      || '—');
   // Billing Info (read-only display)
   setText('ov-feebasis',      f['Drafting_x0020_fee_x0020_basis'] || '—');
   const ipFee  = parseFloat(f['Fee_x0025__x0028_number_x0029_']);
