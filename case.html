@@ -582,7 +582,7 @@
 <div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
 <div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
-<div id="app">
+<div id="app" style="display:none;">
   <div class="case-header">
     <div class="case-ref" id="hdr-ref"></div>
     <div class="case-name" id="hdr-name"></div>
@@ -1555,6 +1555,9 @@ async function loadCase() {
       renderSettlementTab();
       renderCostsTab();
       renderInterestTab();
+      // Ensure loading is hidden in case cache path didn't complete it
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display     = 'block';
       return;
     }
     // Cold load — no cache
