@@ -2616,13 +2616,13 @@ async function initSwitcher() {
       const local = switcherCallerEmail.split('@')[0].toLowerCase();
       const NAME_MAP = {joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley'};
       switcherCallerName = NAME_MAP[local] || local;
-      // Add Finance nav link for admins
+      // Add Admin nav link for admins
       const ADMIN_EMAILS_CASE = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
       if (ADMIN_EMAILS_CASE.includes(switcherCallerEmail)) {
         const navRight = document.querySelector('.nav-right');
-        if (navRight && !navRight.querySelector('[href="/finance.html"]')) {
+        if (navRight && !navRight.querySelector('[href="/admin.html"]')) {
           const a = document.createElement('a');
-          a.href = '/finance.html'; a.className = 'nav-back'; a.textContent = 'Finance';
+          a.href = '/admin.html'; a.className = 'nav-back'; a.textContent = 'Admin';
           navRight.insertBefore(a, navRight.firstChild);
         }
       }
