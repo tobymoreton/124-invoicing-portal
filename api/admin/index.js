@@ -116,7 +116,6 @@ module.exports = async function (context, req) {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     const baseUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + guid + '/items';
 
-    // ── GET: return all items sorted by Title ────────────────────────────────
     if (req.method === 'GET') {
       const items = []; let url = baseUrl + '?$expand=fields&$top=999';
       while (url) {
@@ -129,12 +128,10 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Write operations — restricted to Management + Lesley
     if (!WRITE_EMAILS.includes(callerEmail)) {
       context.res = { status: 403, body: 'Write access restricted' }; return;
     }
 
-    // ── POST: create new item ─────────────────────────────────────────────────
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const fields = buildFields(listKey, body);
@@ -144,7 +141,6 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // ── PATCH: update existing item ───────────────────────────────────────────
     if (req.method === 'PATCH') {
       const itemId = req.query.id;
       if (!itemId) { context.res = { status: 400, body: 'id query param required for PATCH' }; return; }
