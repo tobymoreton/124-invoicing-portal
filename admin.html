@@ -190,7 +190,7 @@
               <th>Draftsman</th>
               <th>Stage</th>
               <th>Task</th>
-              <th>Last Reminder</th>
+              <th>Date Received</th>
               <th></th>
             </tr>
           </thead>
@@ -542,7 +542,7 @@ async function loadCases(){
       const s=(c.fields['StatusMirror']||'').toLowerCase();
       return s!=='closed'&&s!=='settled';
     });
-    allCases.sort((a,b)=>(a.fields['CaseNameForOpenCases']||'').localeCompare(b.fields['CaseNameForOpenCases']||''));
+    allCases.sort((a,b)=>(b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''));
     document.getElementById('state-loading').style.display='none';
     document.getElementById('cases-section').style.display='block';
     document.getElementById('page-sub').textContent=allCases.length+' open cases';
@@ -589,6 +589,12 @@ function renderCases(q){
     tr.addEventListener('click',e=>{
       if(e.target.tagName!=='A') window.location.href='case.html?ref='+encodeURIComponent(ref);
     });
+    // swap last reminder cell for date received
+    const cells=tr.querySelectorAll('td');
+    if(cells.length>=6){
+      const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+      cells[5].innerHTML='<span class="td-muted">'+escHtml(dateRec)+'</span>';
+    }
     tbody.appendChild(tr);
   });
 }
