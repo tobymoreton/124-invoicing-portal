@@ -637,7 +637,16 @@ function renderCases(q){
       '<td><span class="td-muted" title="'+escHtml(lastRem)+'">'+escHtml(lastRemShort||'\u2014')+'</span></td>'+
       '<td><a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a></td>';
     tr.addEventListener('click',e=>{
-      if(e.target.tagName!=='A') window.location.href='case.html?ref='+encodeURIComponent(ref);
+      if(e.target.tagName!=='A'){
+        try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
+        window.location.href='case.html?ref='+encodeURIComponent(ref);
+      }
+    });
+    // Also wire the Open link
+    const openLink = tr.querySelector('.open-btn');
+    if(openLink) openLink.addEventListener('click', e=>{
+      e.stopPropagation();
+      try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
     });
     // swap last reminder cell for date received
     const cells=tr.querySelectorAll('td');
