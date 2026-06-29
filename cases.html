@@ -71,6 +71,9 @@
     .stat-card-accent{position:absolute;top:0;left:0;width:3px;height:100%;background:var(--gold);opacity:0;transition:opacity .18s ease;}
     .stat-card.active .stat-card-accent{opacity:1;}
     .stat-card.danger .stat-card-accent{background:var(--red);}
+    .wip-toggle{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:8px;border:1.5px solid rgba(27,42,74,.2);background:transparent;color:var(--grey-mid);cursor:pointer;transition:all .15s ease;font-family:'IBM Plex Sans',sans-serif;}
+    .wip-toggle:hover{border-color:var(--navy);color:var(--navy);}
+    .wip-toggle.active{background:var(--navy);color:var(--gold);border-color:var(--navy);}
 
     /* ── Dashboard columns ── */
     .dash-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:28px;}
@@ -273,11 +276,17 @@
         <div class="stat-card-value" id="stat-invoiced" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">net, current calendar month</div>
       </div>
-      <div class="stat-card" id="card-no-reminder" data-filter="no-reminder">
+      <div class="stat-card" id="card-wip-period">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">No Reminder Set</div>
-        <div class="stat-card-value" id="stat-no-rem">0</div>
-        <div class="stat-card-sub">cases with no open reminder</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="stat-card-label" style="margin-bottom:0;">WIP This Period</div>
+          <div style="display:flex;gap:4px;">
+            <button id="wip-toggle-month" class="wip-toggle active" onclick="setWipPeriod('month')">Month</button>
+            <button id="wip-toggle-week" class="wip-toggle" onclick="setWipPeriod('week')">Week</button>
+          </div>
+        </div>
+        <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
+        <div class="stat-card-sub" id="stat-wip-period-sub">billed &amp; unbilled, current month</div>
       </div>
     </div>
 
@@ -453,6 +462,9 @@ let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
 let allActions   = [];   // flat array of TT2 rows across all my cases
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
+let wipThisMonth = 0;  // billed+unbilled WIP value from actions this calendar month
+let wipThisWeek  = 0;  // billed+unbilled WIP value from actions this Mon–Sun week
+let wipPeriod    = 'month'; // 'month' | 'week'
 let callerEmail  = '';
 let callerName   = '';
 let isAdmin      = false;
@@ -597,11 +609,27 @@ function renderStats(){
   // Invoiced this month — set from invoicedThisMonth loaded in init
   document.getElementById('stat-invoiced').textContent=invoicedThisMonth>0?fmt(invoicedThisMonth):'\u2014';
 
-  // Cases with no open reminder
-  const openRem=allReminders.filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes');
-  const refsWithOpenRem=new Set(openRem.map(r=>r._caseRef));
-  const noRemCases=myCases.filter(c=>!refsWithOpenRem.has(c.fields['Ourreference_x0028_text_x0029_']));
-  document.getElementById('stat-no-rem').textContent=noRemCases.length;
+  // WIP this period — computed from allActions (all unbilled TT2 rows already in memory)
+  const now2=new Date();
+  const yr2=now2.getFullYear(),mo2=now2.getMonth();
+  // Week: Mon–Sun containing today
+  const dow=now2.getDay(); // 0=Sun
+  const diffToMon=dow===0?6:dow-1;
+  const weekStart=new Date(now2); weekStart.setHours(0,0,0,0); weekStart.setDate(weekStart.getDate()-diffToMon);
+  const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+  wipThisMonth=0; wipThisWeek=0;
+  allActions.forEach(a=>{
+    const dateStr=a.fields?.['field_12']||a.fields?.['field_1']||'';
+    if(!dateStr) return;
+    const d=new Date(dateStr);
+    if(isNaN(d)) return;
+    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+    const rate=parseFloat(a.fields?.['field_6'])||0;
+    const val=hrs*rate;
+    if(d.getFullYear()===yr2&&d.getMonth()===mo2) wipThisMonth+=val;
+    if(d>=weekStart&&d<weekEnd) wipThisWeek+=val;
+  });
+  updateWipPeriodCard();
 }
 
 // ── Render stage breakdown ─────────────────────────────────────────────────
@@ -1002,16 +1030,25 @@ async function saveReminder(){
   }finally{btn.disabled=false;}
 }
 
+// ── WIP period card helpers ────────────────────────────────────────────────
+function updateWipPeriodCard(){
+  const val=wipPeriod==='month'?wipThisMonth:wipThisWeek;
+  document.getElementById('stat-wip-period').textContent=val>0?fmt(val):'—';
+  document.getElementById('stat-wip-period-sub').textContent=
+    wipPeriod==='month'?'billed & unbilled, current month':'billed & unbilled, this week';
+}
+function setWipPeriod(p){
+  wipPeriod=p;
+  document.getElementById('wip-toggle-month').classList.toggle('active',p==='month');
+  document.getElementById('wip-toggle-week').classList.toggle('active',p==='week');
+  updateWipPeriodCard();
+}
+
 // ── Wire up stat cards ─────────────────────────────────────────────────────
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
-  });
-  document.getElementById('card-no-reminder').addEventListener('click',()=>{
-    if(activeFilter==='no-reminder'){hideCaseList();return;}
-    const n=parseInt(document.getElementById('stat-no-rem').textContent)||0;
-    showCaseList('no-reminder','Cases with No Open Reminder',n+' case'+(n!==1?'s':''));
   });
   document.getElementById('btn-close-list').addEventListener('click',hideCaseList);
   document.getElementById('btn-add-action').addEventListener('click',()=>openModal('modal-action'));
