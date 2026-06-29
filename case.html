@@ -1158,17 +1158,7 @@
             <div class="field"><label>Total Pre-Authority Payments (£)</label><input type="number" id="fi-PreAuth" step="0.01" min="0" disabled /></div>
             <div class="field"><label>Costs of Assessment — manual (£)</label><input type="number" id="fi-CoA" step="0.01" min="0" disabled /></div>
           </div>
-          <div style="margin-top:20px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:12px;">Interim Payments</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-              <div class="field"><label>Payment 1 Amount (£)</label><input type="number" id="fi-IP1" step="0.01" min="0" disabled /></div>
-              <div class="field"><label>Payment 2 Amount (£)</label><input type="number" id="fi-IP2" step="0.01" min="0" disabled /></div>
-              <div class="field"><label>Payment 3 Amount (£)</label><input type="number" id="fi-IP3" step="0.01" min="0" disabled /></div>
-              <div class="field"><label>Payment 1 Date</label><input type="date" id="fi-IPD1" disabled /></div>
-              <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" disabled /></div>
-              <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" disabled /></div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -1208,9 +1198,30 @@
 
     </div><!-- /tab-interest -->
 
-    <!-- ════════ PLACEHOLDER TABS ════════ -->
+    <!-- ════════ INTERIM PAYMENTS TAB ════════ -->
     <div class="tab-panel" id="tab-interim">
-      <div class="coming-soon"><div class="icon">💳</div><h3>Interim Payments</h3><p>Coming soon.</p></div>
+
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-ip-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-ip-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-ip-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-ip"></span>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Interim Payments</span></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+            <div class="field"><label>Payment 1 Amount (£)</label><input type="number" id="fi-IP1" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Payment 2 Amount (£)</label><input type="number" id="fi-IP2" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Payment 3 Amount (£)</label><input type="number" id="fi-IP3" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Payment 1 Date</label><input type="date" id="fi-IPD1" disabled /></div>
+            <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" disabled /></div>
+            <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" disabled /></div>
+          </div>
+        </div>
+      </div>
+
     </div>
     <div class="tab-panel" id="tab-expenses">
       <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
@@ -1832,6 +1843,36 @@ function renderDocumentBar() {
   const BLUE = 'https://blue-forest-06239b410.7.azurestaticapps.net';
   const ICY  = 'https://icy-flower-0f5f0b110.7.azurestaticapps.net';
 
+  // Booking In Sheet — opens in new tab (not overlay)
+  const multi = !!(f['Andothers_x003f_']);
+  const biParams = new URLSearchParams({
+    casename:    caseName,
+    ourref:      ourRef,
+    firm:        firm,
+    laip:        f['InterPartesorLegalAid']          || '',
+    funding:     f['PrimaryFundingType']              || '',
+    first:       f['OurPartyFirstName']               || '',
+    surname:     multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || ''),
+    multi:       multi ? '1' : '0',
+    clientref:   yourRef,
+    feeearner:   feeEarner,
+    casetype:    f['Casetype']                        || '',
+    track:       f['CaseTrack']                       || '',
+    task:        f['Task']                            || '',
+    datereceived:f['DateReceived']                    || '',
+    turnaround:  f['Turnaround_x0020__x0001f3af_']   || '',
+    status:      f['StatusMirror']                    || '',
+    assigned:    f['assignedToTextValue']              || '',
+    coassigned:  f['coAssignedMirror']                || '',
+    feebasis:    f['Drafting_x0020_fee_x0020_basis']  || '',
+    ipfee:       f['Fee_x0025__x0028_number_x0029_'] != null ? String(f['Fee_x0025__x0028_number_x0029_']) : '',
+    minfee:      f['Minfee_x0025__x0028_number_x0029'] != null ? String(f['Minfee_x0025__x0028_number_x0029']) : '',
+    rate:        f['RateForCase']                    != null ? String(f['RateForCase']) : '',
+    wip:         f['Work_x0020_In_x0020_Progress']   != null ? String(f['Work_x0020_In_x0020_Progress']) : '',
+    notes:       f['Notes']                           || '',
+  }).toString();
+  const biUrl = '/booking-in-sheet.html?' + biParams;
+
   const links = [
     {
       label: 'Acknowledgment',
@@ -1898,8 +1939,8 @@ function renderDocumentBar() {
 
   bar.innerHTML = links.map(u =>
     '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>'
-  ).join('');
-  bar.querySelectorAll('.doc-btn').forEach(btn => {
+  ).join('') + '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
+  bar.querySelectorAll('.doc-btn[data-url]').forEach(btn => {
     btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent));
   });
 }
@@ -2270,6 +2311,7 @@ const TAB_FIELDS = {
   'tab-opponent':   '#tab-opponent input:not([readonly]), #tab-opponent select, #tab-opponent textarea, #tab-opponent input[type=checkbox]',
   'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select',
   'tab-interest':   '#tab-interest input:not([readonly]), #tab-interest select',
+  'tab-interim':    '#tab-interim input:not([readonly]), #tab-interim select',
 };
 
 function tabEnableFields(tabId) {
@@ -2454,6 +2496,25 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   else btn.disabled = false;
 });
 
+// Interim Payments
+document.getElementById('btn-ip-edit').addEventListener('click',   () => tabSetEditMode('ip','tab-interim'));
+document.getElementById('btn-ip-cancel').addEventListener('click', () => { renderInterestTab(); tabSetReadMode('ip','tab-interim'); });
+document.getElementById('btn-ip-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-ip-save');
+  const msg = document.getElementById('msg-ip');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const fields = {};
+  for (const [sp, el] of Object.entries({
+    'InterimPayment1':'fi-IP1','InterimPayment2':'fi-IP2','InterimPayment3':'fi-IP3',
+  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  for (const [sp, el] of Object.entries({
+    'InterimPaymentDate1':'fi-IPD1','InterimPaymentDate2':'fi-IPD2','InterimPaymentDate3':'fi-IPD3',
+  })) { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); tabSetReadMode('ip','tab-interim'); }
+  else btn.disabled = false;
+});
+
 // Interest
 document.getElementById('btn-int-edit').addEventListener('click',   () => tabSetEditMode('int','tab-interest'));
 document.getElementById('btn-int-cancel').addEventListener('click', () => { renderInterestTab(); tabSetReadMode('int','tab-interest'); });
@@ -2464,12 +2525,8 @@ document.getElementById('btn-int-save').addEventListener('click', async () => {
   const fields = {};
   for (const [sp, el] of Object.entries({
     'SumForInterestCalculationOverrid':'fi-SumOverride','TotalPreAuthorityPayments':'fi-PreAuth',
-    'CostsOfAssessmentForInterestTabO':'fi-CoA','InterimPayment1':'fi-IP1',
-    'InterimPayment2':'fi-IP2','InterimPayment3':'fi-IP3',
+    'CostsOfAssessmentForInterestTabO':'fi-CoA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
-  for (const [sp, el] of Object.entries({
-    'InterimPaymentDate1':'fi-IPD1','InterimPaymentDate2':'fi-IPD2','InterimPaymentDate3':'fi-IPD3',
-  })) { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); tabSetReadMode('int','tab-interest'); }
   else btn.disabled = false;
