@@ -1495,9 +1495,8 @@ async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
 
-  // ── Instant render from sessionStorage cache ────────────────────────────
+  // ── Try instant render from sessionStorage cache ─────────────────────────
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-  let fromCache = false;
   try {
     const raw = sessionStorage.getItem('tmc_case_' + ref);
     if (raw) {
@@ -1518,49 +1517,42 @@ async function loadCase() {
         document.getElementById('app').style.display     = 'block';
         caLoaded = true; loadCaseActions();
         remLoaded = true; loadReminders();
-        fromCache = true;
+        // Background refresh — update cache silently, no spinner
+        fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1')
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            const match = data && (data.value || []).find(item =>
+              (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
+            );
+            if (match) {
+              try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({id:match.id, fields:match.fields, cachedAt:Date.now()})); } catch(ex) {}
+              caseItemId = match.id;
+              caseFields = match.fields || {};
+              computeFigures(); computeInterest();
+              renderHeader(); renderOverviewTab(); renderBookingInTab();
+              renderOpponentTab(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
+            }
+          })
+          .catch(() => { /* background refresh failed — cached data still shown */ });
+        return; // cache hit: done
       }
     }
-  } catch(ex) { /* sessionStorage unavailable or corrupt — fall through */ }
+  } catch(ex) { /* sessionStorage unavailable or corrupt — fall through to normal load */ }
 
-  // ── Always fetch fresh data from Graph ──────────────────────────────────
-  // If cache hit: refresh in background and silently update
-  // If cache miss: fetch is the primary load (shows spinner)
+  // ── Cold load — no cache hit ──────────────────────────────────────────────
   try {
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
-      fromCache ? Promise.resolve() : loadCourts(),
+      loadCourts(),
     ]);
     if (!caseResp.ok) throw new Error('HTTP ' + caseResp.status);
     const data  = await caseResp.json();
     const match = (data.value || []).find(item =>
       (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
     );
-    if (!match) {
-      if (!fromCache) showError('Case not found', 'No case with reference ' + ref + '.');
-      return;
-    }
-    // Update cache
+    if (!match) { showError('Case not found', 'No case with reference ' + ref + '.'); return; }
+    // Write to cache
     try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({id:match.id, fields:match.fields, cachedAt:Date.now()})); } catch(ex) {}
-    // If cache already rendered, only re-render if data has changed (avoid flicker)
-    if (fromCache) {
-      caseItemId = match.id;
-      caseFields = match.fields || {};
-      computeFigures();
-      computeInterest();
-      renderHeader();
-      renderOverviewTab();
-      renderBookingInTab();
-      renderOpponentTab();
-      renderSettlementTab();
-      renderCostsTab();
-      renderInterestTab();
-      // Ensure loading is hidden in case cache path didn't complete it
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('app').style.display     = 'block';
-      return;
-    }
-    // Cold load — no cache
     caseItemId = match.id;
     caseFields = match.fields || {};
     computeFigures();
@@ -1577,8 +1569,7 @@ async function loadCase() {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
-    if (!fromCache) showError('Error loading case', err.message);
-    // If cache was used, swallow the error silently — user already has data
+    showError('Error loading case', err.message);
   }
 }
 
