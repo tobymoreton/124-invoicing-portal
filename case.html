@@ -49,6 +49,38 @@
     .doc-btn:hover{background:var(--gold-mid);color:var(--navy);border-color:var(--gold-mid);}
     .doc-btn.gold{background:var(--gold-mid);color:var(--navy);border-color:var(--gold-mid);}
     .doc-btn.gold:hover{background:var(--gold);border-color:var(--gold);}
+
+    /* ── Doc builder overlay ────────────────── */
+    .doc-overlay{
+      display:none;position:fixed;inset:0;z-index:600;
+      background:rgba(27,42,74,.55);backdrop-filter:blur(2px);
+      align-items:stretch;justify-content:stretch;
+    }
+    .doc-overlay.open{display:flex;}
+    .doc-overlay-inner{
+      display:flex;flex-direction:column;
+      width:100%;height:100%;
+    }
+    .doc-overlay-bar{
+      display:flex;align-items:center;justify-content:space-between;
+      background:var(--navy);padding:0 18px;height:48px;
+      flex-shrink:0;border-bottom:2px solid var(--gold-mid);
+    }
+    .doc-overlay-title{
+      font-size:12px;font-weight:700;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--gold);
+    }
+    .doc-overlay-close{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 16px;background:rgba(201,168,76,.15);
+      border:1px solid rgba(201,168,76,.35);border-radius:var(--radius-sm);
+      color:var(--gold);font-family:'IBM Plex Sans',sans-serif;
+      font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;
+    }
+    .doc-overlay-close:hover{background:var(--gold);color:var(--navy);}
+    .doc-overlay-iframe{
+      flex:1;width:100%;border:none;background:var(--white);
+    }
     /* ── Case switcher ───────────────────── */
     .nav-right{display:flex;align-items:center;gap:12px;}
     .case-switcher{position:relative;}
@@ -1367,6 +1399,17 @@
   </div>
 </div>
 
+<!-- Doc builder overlay -->
+<div class="doc-overlay" id="doc-overlay">
+  <div class="doc-overlay-inner">
+    <div class="doc-overlay-bar">
+      <span class="doc-overlay-title" id="doc-overlay-title">Document Builder</span>
+      <button class="doc-overlay-close" id="doc-overlay-close">× Close</button>
+    </div>
+    <iframe class="doc-overlay-iframe" id="doc-overlay-iframe" src="about:blank" allow="downloads"></iframe>
+  </div>
+</div>
+
 <script>
 let caseItemId = null;
 let caseFields = null;
@@ -1843,7 +1886,6 @@ function renderDocumentBar() {
         + '&ClaimNo='       + enc(claimNo)
         + '&ClaimantName='  + enc(matter)
         + '&DefendantName=' + enc(defendant),
-      gold: true,
     },
     {
       label: 'Email Templates',
@@ -1853,13 +1895,15 @@ function renderDocumentBar() {
         + '&yourref='+ enc(yourRef)
         + '&ourref=' + enc(ourRef)
         + '&name='   + enc(feeEarner.split(' ')[0]),
-      gold: true,
     },
   ];
 
   bar.innerHTML = links.map(u =>
-    '<a class="doc-btn' + (u.gold ? ' gold' : '') + '" href="' + u.url + '" target="_blank" rel="noopener noreferrer">' + u.label + '</a>'
+    '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>'
   ).join('');
+  bar.querySelectorAll('.doc-btn').forEach(btn => {
+    btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent));
+  });
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
@@ -2681,6 +2725,19 @@ function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.val
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
 function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
+
+// ── Doc overlay ──────────────────────────────────────────
+function openDocOverlay(url, label) {
+  document.getElementById('doc-overlay-title').textContent = label;
+  document.getElementById('doc-overlay-iframe').src = url;
+  document.getElementById('doc-overlay').classList.add('open');
+}
+function closeDocOverlay() {
+  document.getElementById('doc-overlay').classList.remove('open');
+  document.getElementById('doc-overlay-iframe').src = 'about:blank';
+}
+document.getElementById('doc-overlay-close').addEventListener('click', closeDocOverlay);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocOverlay(); });
 
 loadCase();
 
