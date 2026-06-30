@@ -11,18 +11,12 @@ const LISTS = {
   opponentcws:   '0a86dd15-ef3b-4460-8236-b722d22cdc51',
 };
 
-// Per-list $select for the GET expand. A bare $expand=fields returns 503
-// serviceNotAvailable on the three lists that contain a Lookup column
-// (feeearners, opponentfirms, opponentcws) under Graph app-only auth.
-// Adding any valid $select stops Graph trying to materialise the lookup.
-// Graph silently drops selected names that don't exist, so we keep these to
-// the fields confirmed present from live data; feeearners is Title-only until
-// its real internal field names are verified (the register names 503'd).
-const SELECTS = {
-  feeearners:    'Title',
-  opponentfirms: 'Title',
-  opponentcws:   'Title',
-};
+// NOTE: the GET path uses a bare $expand=fields for every list. An earlier
+// $select workaround existed to dodge a Graph 503 on feeearners, but the real
+// cause was four corrupt "Firm: Address Line" projected-lookup columns on the
+// SP Fee Earners list, which crashed the list in SP itself and made Graph 503.
+// Those columns were deleted (2026-06-30), so a bare expand works again and
+// returns all real fields without per-list field-name maintenance.
 
 function getCallerEmail(req) {
   try {
@@ -131,11 +125,7 @@ module.exports = async function (context, req) {
 
     // GET: return all items sorted by Title
     if (req.method === 'GET') {
-      // Lists with a Lookup column 503 on a bare $expand=fields under app-only
-      // auth. For those, request only the plain fields via $expand=fields($select=...).
-      const sel = SELECTS[listKey];
-      const expand = sel ? '$expand=fields($select=' + sel + ')' : '$expand=fields';
-      const items = []; let url = baseUrl + '?' + expand + '&$top=999';
+      const items = []; let url = baseUrl + '?$expand=fields&$top=999';
       while (url) {
         const data = await graphGet(url, token);
         (data.value || []).forEach(i => items.push({ id: i.id, fields: i.fields || {} }));
