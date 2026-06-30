@@ -196,6 +196,9 @@
     .ar-done:hover{background:var(--green);color:#fff;}
     .ar-empty{padding:32px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ar-loading{padding:28px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
+    /* Unassigned — inline assign select */
+    .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;max-width:128px;}
+    .uc-assign-sel:hover,.uc-assign-sel:focus{border-color:var(--gold);}
   </style>
 </head>
 <body>
@@ -828,13 +831,60 @@ function renderUnassignedCases(){
         '<div class="ar-event">'+escHtml(name)+'</div>'+
         '<div class="ar-case">'+escHtml(ref)+(firm?' \u00b7 '+escHtml(firm):'')+'</div>'+
       '</div>'+
-      (task?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;">'+escHtml(task)+'</span>':'');
+      (task?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;">'+escHtml(task)+'</span>':'')+
+      '<select class="uc-assign-sel" title="Assign to draftsman">'+
+        '<option value="">Assign to\u2026</option>'+
+        '<option value="toby@tmclegal.co.uk">Toby</option>'+
+        '<option value="danielle@tmclegal.co.uk">Danielle</option>'+
+        '<option value="joanna@tmclegal.co.uk">Joanna</option>'+
+        '<option value="tracy@tmclegal.co.uk">Tracy</option>'+
+        '<option value="kelly@tmclegal.co.uk">Kelly</option>'+
+        '<option value="tom@tmclegal.co.uk">Tom</option>'+
+        '<option value="julie@tmclegal.co.uk">Julie</option>'+
+        '<option value="daniel@tmclegal.co.uk">Daniel</option>'+
+      '</select>';
+    const ucSel=row.querySelector('.uc-assign-sel');
+    ucSel.addEventListener('click',e=>e.stopPropagation());
+    ucSel.addEventListener('change',()=>{ if(!ucSel.value) return; assignCase(c.id,ref,ucSel.value,row,ucSel); });
     row.addEventListener('click',()=>{
       try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
       window.location.href='case.html?ref='+encodeURIComponent(ref);
     });
     listEl.appendChild(row);
   });
+}
+
+// ── Assign case inline ─────────────────────────────────────────────────────
+async function assignCase(caseId,ref,email,rowEl,selEl){
+  selEl.disabled=true;
+  rowEl.style.opacity='0.45';
+  try{
+    const r=await fetch('/api/caseupdate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:caseId,fields:{assignedToTextValue:email}}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,80));
+    // Update in-memory so All Open Cases table reflects change
+    const caseObj=allCases.find(c=>c.id===caseId);
+    if(caseObj) caseObj.fields['assignedToTextValue']=email;
+    // Fade row out, then remove
+    rowEl.style.transition='opacity 0.35s ease';
+    rowEl.style.opacity='0';
+    setTimeout(()=>{
+      rowEl.remove();
+      const rem=document.getElementById('uc-list').querySelectorAll('.ar-row').length;
+      document.getElementById('uc-count').textContent=rem;
+      if(!rem) document.getElementById('uc-list').innerHTML='<div class="ar-empty">No unassigned cases \u2014 all allocated!</div>';
+    },350);
+  }catch(err){
+    selEl.disabled=false;
+    rowEl.style.opacity='';
+    selEl.value='';
+    let errSpan=rowEl.querySelector('.uc-assign-err');
+    if(!errSpan){errSpan=document.createElement('span');errSpan.className='uc-assign-err';errSpan.style.cssText='font-size:11px;color:#991B1B;flex-shrink:0;margin-left:4px;';rowEl.appendChild(errSpan);}
+    errSpan.textContent='Save failed';
+    setTimeout(()=>{errSpan.textContent='';},3000);
+  }
 }
 
 // Set today as default date for booking in
