@@ -77,14 +77,16 @@ function buildFields(list, body) {
   const f = {};
   if (list === 'feeearners') {
     if (body.title      != null) f['Title']                           = body.title;
-    if (body.firstName  != null) f['Fee_x0020_earner_x0020_first_x'] = body.firstName;
-    if (body.lastName   != null) f['Fee_x0020_earner_x0020_last_x0'] = body.lastName;
+    if (body.firstName  != null) f['Fee_x0020_earner_x0020_first_x00'] = body.firstName;
+    if (body.lastName   != null) f['Fee_x0020_earner_x0020_last_x002'] = body.lastName;
     if (body.email      != null) f['Email']                           = body.email;
-    if (body.directLine != null) f['Direct_x0020_line']               = body.directLine;
-    if (body.experience != null) f['Fee_x0020_Earner_x0020_Experie']  = body.experience;
+    if (body.directLine != null) f['Directline']                      = body.directLine;
     if (body.status     != null) f['Status']                          = body.status;
     if (body.notes      != null) f['Notes']                           = body.notes;
-    if (body.qualified  != null) f['Date_x0020_of_x0020_qualificati'] = body.qualified;
+    if (body.qualified  != null) f['Dateofqualification']             = body.qualified;
+    // Field names confirmed from live Graph data 2026-06-30 (record 'Abbie Roberts').
+    // 'Experience' internal name not yet confirmed (no populated record) - omitted
+    // from write until verified.
   } else if (list === 'courts') {
     if (body.title    != null) f['Title']    = body.title;
     if (body.address1 != null) f['Address1'] = body.address1;
