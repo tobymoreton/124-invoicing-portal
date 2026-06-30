@@ -73,6 +73,17 @@ async function graphPatch(url, token, body) {
   });
 }
 
+async function graphDelete(url, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({ hostname: u.hostname, path: u.pathname + u.search, method: 'DELETE', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => { if (res.statusCode >= 400) { reject(new Error('Graph DELETE ' + res.statusCode + ': ' + d.slice(0,200))); return; } resolve({}); });
+    });
+    req.on('error', reject); req.end();
+  });
+}
+
 function buildFields(list, body) {
   const f = {};
   if (list === 'feeearners') {
@@ -162,6 +173,15 @@ module.exports = async function (context, req) {
       if (Object.keys(fields).length === 0) { context.res = { status: 400, body: 'No fields to update' }; return; }
       await graphPatch(baseUrl + '/' + itemId + '/fields', token, fields);
       context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true }) };
+      return;
+    }
+
+    // DELETE: permanently remove an item (restricted to WRITE_EMAILS via guard above)
+    if (req.method === 'DELETE') {
+      const itemId = req.query.id;
+      if (!itemId) { context.res = { status: 400, body: 'id query param required for DELETE' }; return; }
+      await graphDelete(baseUrl + '/' + itemId, token);
+      context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, deleted: itemId }) };
       return;
     }
 
