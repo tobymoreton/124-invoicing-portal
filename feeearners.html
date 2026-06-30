@@ -52,6 +52,9 @@
     .btn-primary:hover{background:var(--navy-mid);}
     .btn-secondary{padding:8px 16px;background:transparent;color:var(--navy);border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s ease;}
     .btn-secondary:hover{border-color:var(--navy);}
+    .btn-danger{padding:9px 18px;background:transparent;color:var(--red);border:1.5px solid var(--red);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .18s ease;white-space:nowrap;}
+    .btn-danger:hover{background:var(--red);color:var(--white);}
+    .btn-danger.confirm{background:var(--red);color:var(--white);}
 
     /* Spinner */
     .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
@@ -222,6 +225,7 @@
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn-danger" id="btn-delete" style="display:none;">Delete</button>
       <span class="save-msg" id="save-msg"></span>
       <button class="btn-secondary" id="btn-cancel">Cancel</button>
       <button class="btn-primary" id="btn-save">Save</button>
@@ -335,6 +339,8 @@ function openAdd(){
   document.getElementById('f-qualified').value='';
   document.getElementById('f-status').value='Active';
   document.getElementById('save-msg').textContent='';
+  resetDeleteBtn();
+  document.getElementById('btn-delete').style.display='none';
   document.getElementById('modal-overlay').classList.add('open');
   document.getElementById('f-first').focus();
 }
@@ -353,6 +359,8 @@ function openEdit(item){
   document.getElementById('f-status').value=f['Status']||'Active';
   document.getElementById('f-notes').value=f['Notes']||'';
   document.getElementById('save-msg').textContent='';
+  resetDeleteBtn();
+  document.getElementById('btn-delete').style.display=isAdmin?'':'none';
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -403,10 +411,48 @@ function showMsg(text,cls){
   el.className='save-msg'+(cls?' '+cls:'');
 }
 
+let deleteArmed=false;
+let deleteTimer=null;
+function resetDeleteBtn(){
+  deleteArmed=false;
+  if(deleteTimer){clearTimeout(deleteTimer);deleteTimer=null;}
+  const b=document.getElementById('btn-delete');
+  b.textContent='Delete';
+  b.classList.remove('confirm');
+}
+
+async function onDeleteClick(){
+  if(!isAdmin||!editId) return;
+  const b=document.getElementById('btn-delete');
+  // First click arms the confirm; second click within 4s performs the delete.
+  if(!deleteArmed){
+    deleteArmed=true;
+    b.textContent='Click again to confirm';
+    b.classList.add('confirm');
+    deleteTimer=setTimeout(resetDeleteBtn,4000);
+    return;
+  }
+  resetDeleteBtn();
+  b.disabled=true; b.textContent='Deleting…';
+  showMsg('','');
+  try{
+    const url='/api/reflists?list='+LIST+'&id='+encodeURIComponent(editId);
+    const r=await fetch(url,{method:'DELETE'});
+    if(!r.ok){ const t=await r.text(); throw new Error(t||'HTTP '+r.status); }
+    showMsg('Deleted ✓','ok');
+    setTimeout(()=>{closeModal(); load();},600);
+  }catch(err){
+    showMsg('Error: '+err.message,'err');
+  }finally{
+    b.disabled=false; b.textContent='Delete';
+  }
+}
+
 document.getElementById('btn-add').addEventListener('click',openAdd);
 document.getElementById('modal-close').addEventListener('click',closeModal);
 document.getElementById('btn-cancel').addEventListener('click',closeModal);
 document.getElementById('btn-save').addEventListener('click',save);
+document.getElementById('btn-delete').addEventListener('click',onDeleteClick);
 document.getElementById('search').addEventListener('input',e=>render(e.target.value.trim()));
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
