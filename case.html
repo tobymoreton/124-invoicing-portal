@@ -1517,11 +1517,10 @@ async function loadCase() {
     renderSettlementTab();
     renderCostsTab();
     renderInterestTab();
-    // Pre-load case actions and reminders in background so they're ready when tabs are clicked
-    caLoaded = true;
-    loadCaseActions();
-    remLoaded = true;
-    loadReminders();
+    // Case actions & reminders load lazily on first tab click (see tab handlers).
+    // They are NOT pre-fetched here: /api/caseactions and /api/reminders each walk
+    // their whole SP list per call, so firing them during the initial case load
+    // can stall the page (Graph throttling). Lazy load keeps the case page fast.
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
@@ -1844,7 +1843,7 @@ function renderDocumentBar() {
   const ICY  = 'https://icy-flower-0f5f0b110.7.azurestaticapps.net';
 
   // Booking In Sheet — opens in new tab (not overlay)
-  const multi = !!(f['Andothers_x003f_']);
+  // (multi already declared above)
   const biParams = new URLSearchParams({
     casename:    caseName,
     ourref:      ourRef,
