@@ -211,8 +211,8 @@ async function load(){
   try{
     const [email, rCW, rFirms] = await Promise.all([
       getMe(),
-      fetch('/api/admin?list=' + LIST),
-      fetch('/api/admin?list=opponentfirms'),
+      fetch('/api/reflists?list=' + LIST),
+      fetch('/api/reflists?list=opponentfirms'),
     ]);
     isWriter = WRITE_EMAILS.includes(email);
     if(!rCW.ok) throw new Error('HTTP ' + rCW.status);
@@ -344,7 +344,7 @@ async function save(){
   showMsg('','');
 
   try{
-    let url = '/api/admin?list=' + LIST;
+    let url = '/api/reflists?list=' + LIST;
     let method = 'POST';
     if(editId){ url += '&id=' + encodeURIComponent(editId); method = 'PATCH'; }
     const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
