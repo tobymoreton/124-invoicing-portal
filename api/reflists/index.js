@@ -11,15 +11,17 @@ const LISTS = {
   opponentcws:   '0a86dd15-ef3b-4460-8236-b722d22cdc51',
 };
 
-// Per-list $select of NON-LOOKUP fields only. Lists containing a Lookup column
-// (feeearners->Firm, opponentfirms->Caseworkers, opponentcws->Caseworker firm)
-// cause Graph to return 503 serviceNotAvailable on a bare $expand=fields, because
-// app-only auth cannot resolve the lookup. Selecting only plain fields avoids it.
-// courts has no lookup, so it is intentionally omitted (uses bare $expand=fields).
+// Per-list $select for the GET expand. A bare $expand=fields returns 503
+// serviceNotAvailable on the three lists that contain a Lookup column
+// (feeearners, opponentfirms, opponentcws) under Graph app-only auth.
+// Adding any valid $select stops Graph trying to materialise the lookup.
+// Graph silently drops selected names that don't exist, so we keep these to
+// the fields confirmed present from live data; feeearners is Title-only until
+// its real internal field names are verified (the register names 503'd).
 const SELECTS = {
-  feeearners:    'Title,Fee_x0020_earner_x0020_first_x,Fee_x0020_earner_x0020_last_x0,Email,Direct_x0020_line,Fee_x0020_Earner_x0020_Experie,Status,Notes,Date_x0020_of_x0020_qualificati',
-  opponentfirms: 'Title,Address_x0020_line_x0020_1,Address_x0020_line_x0020_2,Address_x0020_line_x0020_3,Address_x0020_line_x0020_4,Address_x0020_line_x0020_5,Website',
-  opponentcws:   'Title,Phone_x0020_number,Email,CaseworkerFirmText',
+  feeearners:    'Title',
+  opponentfirms: 'Title',
+  opponentcws:   'Title',
 };
 
 function getCallerEmail(req) {
