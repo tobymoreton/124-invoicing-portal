@@ -208,7 +208,7 @@ async function getMe(){
 
 async function load(){
   try{
-    const [email, r] = await Promise.all([getMe(), fetch('/api/admin?list=' + LIST)]);
+    const [email, r] = await Promise.all([getMe(), fetch('/api/reflists?list=' + LIST)]);
     isWriter = WRITE_EMAILS.includes(email);
     if(!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
@@ -313,7 +313,7 @@ async function save(){
   showMsg('','');
 
   try{
-    let url = '/api/admin?list=' + LIST;
+    let url = '/api/reflists?list=' + LIST;
     let method = 'POST';
     if(editId){ url += '&id=' + encodeURIComponent(editId); method = 'PATCH'; }
     const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
