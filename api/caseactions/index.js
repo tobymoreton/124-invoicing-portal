@@ -74,8 +74,9 @@ module.exports = async function (context, req) {
 
     // ── GET ──────────────────────────────────────────────────────────────────
     if (req.method === 'GET') {
-      const ref = (req.query.ref || '').trim();
-      if (!ref) { context.res = { status: 400, body: 'Missing required param: ref' }; return; }
+      const ref     = (req.query.ref || '').trim();
+      const allMode = (req.query.all || '') === '1';
+      if (!ref && !allMode) { context.res = { status: 400, body: 'Missing required param: ref (or all=1)' }; return; }
 
       const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
                  + `?$expand=fields`
@@ -89,9 +90,15 @@ module.exports = async function (context, req) {
         url = page['@odata.nextLink'] || null;
       }
 
-      const filtered = all.filter(item =>
-        (item.fields?.['field_16'] || '').toString().trim() === ref
-      );
+      // all=1 mode: return every UNBILLED entry across all cases in a single
+      // list walk. The dashboard previously fired one call per case (~38 calls),
+      // each walking the whole TT2 list — that throttled Graph and produced
+      // intermittent 500s. One call replaces all of them.
+      const filtered = allMode
+        ? all.filter(item => item.fields?.['Billed_x003f_'] !== true)
+        : all.filter(item =>
+            (item.fields?.['field_16'] || '').toString().trim() === ref
+          );
 
       filtered.sort((a, b) => {
         const da = new Date(a.fields?.['field_12'] || a.fields?.['field_1'] || 0);
