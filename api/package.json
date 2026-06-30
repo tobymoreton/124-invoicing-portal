@@ -1,6 +1,6 @@
 {
   "name": "tmc-invoicing-portal-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Azure Functions API for P124 TMC Invoicing Portal",
   "main": "invoices/index.js",
   "engines": {
