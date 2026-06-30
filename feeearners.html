@@ -285,10 +285,10 @@ function render(q){
   const ql=q.toLowerCase();
   const filtered=q?allItems.filter(i=>{
     const f=i.fields;
-    const name=((f['Fee_x0020_earner_x0020_first_x']||'')+' '+(f['Fee_x0020_earner_x0020_last_x0']||'')).toLowerCase();
+    const name=((f['Fee_x0020_earner_x0020_first_x00']||'')+' '+(f['Fee_x0020_earner_x0020_last_x002']||'')+' '+(f['Title']||'')).toLowerCase();
     const email=(f['Email']||'').toLowerCase();
-    const exp=(f['Fee_x0020_Earner_x0020_Experie']||'').toLowerCase();
-    return name.includes(ql)||email.includes(ql)||exp.includes(ql);
+    const phone=(f['Directline']||'').toLowerCase();
+    return name.includes(ql)||email.includes(ql)||phone.includes(ql);
   }):allItems;
 
   const total=allItems.length;
@@ -299,13 +299,13 @@ function render(q){
   tbody.innerHTML='';
   filtered.forEach(item=>{
     const f=item.fields;
-    const first=f['Fee_x0020_earner_x0020_first_x']||'';
-    const last=f['Fee_x0020_earner_x0020_last_x0']||'';
+    const first=f['Fee_x0020_earner_x0020_first_x00']||'';
+    const last=f['Fee_x0020_earner_x0020_last_x002']||'';
     const name=(first+' '+last).trim()||f['Title']||'—';
-    const email=f['Email']||'—';
-    const phone=f['Direct_x0020_line']||'—';
+    const email=(f['Email']||'—').trim();
+    const phone=f['Directline']||'—';
     const exp=f['Fee_x0020_Earner_x0020_Experie']||'';
-    const qualified=f['Date_x0020_of_x0020_qualificati']?new Date(f['Date_x0020_of_x0020_qualificati']).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
+    const qualified=f['Dateofqualification']?new Date(f['Dateofqualification']).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
     const status=f['Status']||'Active';
     const statusCls=status.toLowerCase()==='inactive'?'s-inactive':'s-active';
 
@@ -344,12 +344,12 @@ function openEdit(item){
   editId=item.id;
   const f=item.fields;
   document.getElementById('modal-title').textContent='Edit Fee Earner';
-  document.getElementById('f-first').value=f['Fee_x0020_earner_x0020_first_x']||'';
-  document.getElementById('f-last').value=f['Fee_x0020_earner_x0020_last_x0']||'';
-  document.getElementById('f-email').value=f['Email']||'';
-  document.getElementById('f-phone').value=f['Direct_x0020_line']||'';
+  document.getElementById('f-first').value=f['Fee_x0020_earner_x0020_first_x00']||'';
+  document.getElementById('f-last').value=f['Fee_x0020_earner_x0020_last_x002']||'';
+  document.getElementById('f-email').value=(f['Email']||'').trim();
+  document.getElementById('f-phone').value=f['Directline']||'';
   document.getElementById('f-experience').value=f['Fee_x0020_Earner_x0020_Experie']||'';
-  document.getElementById('f-qualified').value=f['Date_x0020_of_x0020_qualificati']?f['Date_x0020_of_x0020_qualificati'].slice(0,10):'';
+  document.getElementById('f-qualified').value=f['Dateofqualification']?f['Dateofqualification'].slice(0,10):'';
   document.getElementById('f-status').value=f['Status']||'Active';
   document.getElementById('f-notes').value=f['Notes']||'';
   document.getElementById('save-msg').textContent='';
