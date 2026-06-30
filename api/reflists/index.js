@@ -11,6 +11,17 @@ const LISTS = {
   opponentcws:   '0a86dd15-ef3b-4460-8236-b722d22cdc51',
 };
 
+// Per-list $select of NON-LOOKUP fields only. Lists containing a Lookup column
+// (feeearners->Firm, opponentfirms->Caseworkers, opponentcws->Caseworker firm)
+// cause Graph to return 503 serviceNotAvailable on a bare $expand=fields, because
+// app-only auth cannot resolve the lookup. Selecting only plain fields avoids it.
+// courts has no lookup, so it is intentionally omitted (uses bare $expand=fields).
+const SELECTS = {
+  feeearners:    'Title,Fee_x0020_earner_x0020_first_x,Fee_x0020_earner_x0020_last_x0,Email,Direct_x0020_line,Fee_x0020_Earner_x0020_Experie,Status,Notes,Date_x0020_of_x0020_qualificati',
+  opponentfirms: 'Title,Address_x0020_line_x0020_1,Address_x0020_line_x0020_2,Address_x0020_line_x0020_3,Address_x0020_line_x0020_4,Address_x0020_line_x0020_5,Website',
+  opponentcws:   'Title,Phone_x0020_number,Email,CaseworkerFirmText',
+};
+
 function getCallerEmail(req) {
   try {
     const h = req.headers && req.headers['x-ms-client-principal'];
@@ -118,7 +129,11 @@ module.exports = async function (context, req) {
 
     // GET: return all items sorted by Title
     if (req.method === 'GET') {
-      const items = []; let url = baseUrl + '?$expand=fields&$top=999';
+      // Lists with a Lookup column 503 on a bare $expand=fields under app-only
+      // auth. For those, request only the plain fields via $expand=fields($select=...).
+      const sel = SELECTS[listKey];
+      const expand = sel ? '$expand=fields($select=' + sel + ')' : '$expand=fields';
+      const items = []; let url = baseUrl + '?' + expand + '&$top=999';
       while (url) {
         const data = await graphGet(url, token);
         (data.value || []).forEach(i => items.push({ id: i.id, fields: i.fields || {} }));
