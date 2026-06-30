@@ -931,21 +931,32 @@ function openStatusEdit(td){
 
 // ── Load case actions ───────────────────────────────────────────────
 async function loadActions(cases){
-  const refs=cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean);
-  if(!refs.length){allActions=[];return;}
-  const results=await Promise.allSettled(
-    refs.map(ref=>fetch('/api/caseactions?ref='+encodeURIComponent(ref))
-      .then(r=>r.ok?r.json():[])
-      .then(data=>{
-        const caseName=(cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
-        return (Array.isArray(data)?data:(data.value||[]))
-          .filter(a=>a.fields?.['Billed_x003f_']!==true)
-          .map(a=>({...a,_caseRef:ref,_caseName:caseName}));
-      })
-      .catch(()=>[])
-    )
-  );
-  allActions=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+  const refSet=new Set(cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean));
+  if(!refSet.size){allActions=[];return;}
+  // Map ref -> case name for display
+  const nameByRef={};
+  cases.forEach(c=>{
+    const r=c.fields['Ourreference_x0028_text_x0029_'];
+    if(r) nameByRef[r]=c.fields['CaseNameForOpenCases']||r;
+  });
+  // ONE call fetches every unbilled TT2 row across all cases, then filter to
+  // this draftsman's refs client-side. Replaces the old 38-calls-each-
+  // walking-the-whole-list pattern that throttled Graph and returned partial
+  // results (some 200s, some 500s).
+  try{
+    const r=await fetch('/api/caseactions?all=1');
+    const data=r.ok?await r.json():{value:[]};
+    const rows=Array.isArray(data)?data:(data.value||[]);
+    allActions=rows
+      .filter(a=>refSet.has((a.fields?.['field_16']||'').toString().trim()))
+      .filter(a=>a.fields?.['Billed_x003f_']!==true)
+      .map(a=>{
+        const ref=(a.fields?.['field_16']||'').toString().trim();
+        return {...a,_caseRef:ref,_caseName:nameByRef[ref]||ref};
+      });
+  }catch{
+    allActions=[];
+  }
   // Sort by date desc
   allActions.sort((a,b)=>{
     const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
