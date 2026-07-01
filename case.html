@@ -2321,7 +2321,8 @@ function tabDisableFields(tabId) {
 }
 function tabSetEditMode(prefix, tabId) {
   document.getElementById('btn-' + prefix + '-edit').style.display   = 'none';
-  document.getElementById('btn-' + prefix + '-save').style.display   = 'inline-flex';
+  const saveBtn = document.getElementById('btn-' + prefix + '-save');
+  saveBtn.style.display = 'inline-flex'; saveBtn.disabled = false;
   document.getElementById('btn-' + prefix + '-cancel').style.display = 'inline-flex';
   tabEnableFields(tabId);
 }
@@ -2357,7 +2358,10 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); }
+  if (msg.className.includes('ok')) {
+    try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
+    tabSetReadMode('sett','tab-settlement');
+  }
   else btn.disabled = false;
 });
 
