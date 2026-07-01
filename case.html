@@ -1062,10 +1062,16 @@
             </tr></thead>
             <tbody>
               <tr>
-                <td class="row-label">PC excl ALL TMC Time</td>
-                <td><input type="number" id="fc-PCexTMC" class="tbl-input" step="0.01" disabled /></td>
+                <td class="row-label">PC excl TMC (Vatable)</td>
+                <td><input type="number" id="fc-PCexTMC-vat" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatPC-row">—</td>
                 <td class="tbl-computed" id="cv-pcInc">—</td>
+              </tr>
+              <tr>
+                <td class="row-label">PC excl TMC (Non-Vatable)</td>
+                <td><input type="number" id="fc-PCexTMC-nonvat" class="tbl-input" step="0.01" disabled /></td>
+                <td class="tbl-computed">—</td>
+                <td class="tbl-computed" id="cv-pcNonVatInc">—</td>
               </tr>
               <tr>
                 <td class="row-label">TMC Drafting Time</td>
@@ -1074,7 +1080,7 @@
                 <td class="tbl-computed" id="cv-tmcInc">—</td>
               </tr>
               <tr>
-                <td class="row-label">Other TMC Profit Costs</td>
+                <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
                 <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
                 <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
                 <td class="tbl-computed" id="cv-otherTMCInc">—</td>
@@ -1092,10 +1098,10 @@
                 <td class="tbl-computed" id="cv-counselInc">—</td>
               </tr>
               <tr class="other-row">
-                <td class="row-label">Other TMC Fees — excl bill</td>
+                <td class="row-label">Other TMC Fees — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
                 <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed">—</td>
-                <td class="tbl-computed">—</td>
+                <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
+                <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
               </tr>
             </tbody>
           </table>
@@ -1567,8 +1573,12 @@ function computeFigures() {
     : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   // Total IP Profit Costs = PC excl TMC + TMC drafting time + Other TMC PC (matches SP)
+  const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
+  const otherTMCPCVat   = !!(f['OtherTMCPCVatable']);
+  const otherTMCFeesVat = !!(f['OtherTMCFeesVatable']);
   const totalIPPC    = claimedPC + draftingTimeIP + otherTMCPC;
-  const vatOnPC      = totalIPPC      * vatPct;
+  const vatableIPPC  = (claimedPC - nonVatablePC) + draftingTimeIP + (otherTMCPCVat ? otherTMCPC : 0);
+  const vatOnPC      = vatableIPPC * vatPct;
   const vatOnCounsel = counselClaimed * vatPct;
   const vatOnLAPC    = laProfitCosts  * vatPct;
   // Total Costs Claimed (IP only — LA is separate) = SP Calc_TotalInterPartesCosts.
@@ -2226,7 +2236,14 @@ function renderCostsTab() {
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
 
   // Input fields
-  setNum('fc-PCexTMC',       f['ProfitCostsClaimed_x0028_Ex_x002']);
+  const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
+  const vatablePC       = Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC);
+  const otherTMCPCVat   = !!(f['OtherTMCPCVatable']);
+  const otherTMCFeesVat = !!(f['OtherTMCFeesVatable']);
+  setNum('fc-PCexTMC-vat',    vatablePC);
+  setNum('fc-PCexTMC-nonvat', nonVatablePC);
+  setCheck('fc-OtherTMCPC-vatable',   otherTMCPCVat);
+  setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
   setNum('fc-TMCDrafting',   f['DraftingTimeClaimed']);
   setNum('fc-OtherTMCPC',    f['Other_x0020_TMC_x0020_PC_x0020__']);
   setNum('fc-Disb',          f['DisbursementsClaimed']);
@@ -2245,15 +2262,19 @@ function renderCostsTab() {
   const vatDisb   = parseFloat(f['VATonDisbursements'])                || 0;
   const counsel   = parseFloat(f['CounselsFeesClaimed'])               || 0;
 
-  setText('cv-vatPC-row',      fmt(pc      * vatPct));
-  setText('cv-pcInc',          fmt(pc      * (1 + vatPct)));
-  setText('cv-vatTMC-row',     fmt(tmc     * vatPct));
-  setText('cv-tmcInc',         fmt(tmc     * (1 + vatPct)));
-  setText('cv-vatOtherTMC-row',fmt(otherTMC * vatPct));
-  setText('cv-otherTMCInc',   fmt(otherTMC * (1 + vatPct)));
-  setText('cv-disbInc',        fmt(disb + vatDisb));
-  setText('cv-vatCounsel-row', fmt(counsel  * vatPct));
-  setText('cv-counselInc',     fmt(counsel  * (1 + vatPct)));
+  const otherTMCFeesAmt = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
+  setText('cv-vatPC-row',           vatablePC > 0 ? fmt(vatablePC * vatPct) : '\u2014');
+  setText('cv-pcInc',               fmt(vatablePC * (1 + vatPct)));
+  setText('cv-pcNonVatInc',         nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014');
+  setText('cv-vatTMC-row',          fmt(tmc * vatPct));
+  setText('cv-tmcInc',              fmt(tmc * (1 + vatPct)));
+  setText('cv-vatOtherTMC-row',     otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014');
+  setText('cv-otherTMCInc',         otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
+  setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014');
+  setText('cv-otherTMCFeesInc',     otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
+  setText('cv-disbInc',             fmt(disb + vatDisb));
+  setText('cv-vatCounsel-row',      fmt(counsel * vatPct));
+  setText('cv-counselInc',          fmt(counsel * (1 + vatPct)));
 
   // Summary totals panel
   setText('cc-totalIPPC',    fmt(c.totalIPPC));
@@ -2308,7 +2329,7 @@ const TAB_FIELDS = {
   'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox], #btn-import-counsel, #btn-calc-coa',
   'tab-bookingin':  '#tab-bookingin input:not([readonly]), #tab-bookingin select, #tab-bookingin textarea, #tab-bookingin input[type=checkbox]',
   'tab-opponent':   '#tab-opponent input:not([readonly]), #tab-opponent select, #tab-opponent textarea, #tab-opponent input[type=checkbox]',
-  'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select',
+  'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select, #tab-costs input[type=checkbox]',
   'tab-interest':   '#tab-interest input:not([readonly]), #tab-interest select',
   'tab-interim':    '#tab-interim input:not([readonly]), #tab-interim select',
 };
@@ -2485,8 +2506,14 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   const msg = document.getElementById('msg-costs');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
   const fields = {};
+  const _vatableVal    = parseFloat(document.getElementById('fc-PCexTMC-vat')?.value) || 0;
+  const _nonVatableVal = parseFloat(document.getElementById('fc-PCexTMC-nonvat')?.value) || 0;
+  fields['ProfitCostsClaimed_x0028_Ex_x002'] = (_vatableVal + _nonVatableVal) || null;
+  fields['NonVatableProfitCosts']  = _nonVatableVal || null;
+  fields['OtherTMCPCVatable']     = !!(document.getElementById('fc-OtherTMCPC-vatable')?.checked);
+  fields['OtherTMCFeesVatable']   = !!(document.getElementById('fc-OtherTMCFees-vatable')?.checked);
   for (const [sp, el] of Object.entries({
-    'ProfitCostsClaimed_x0028_Ex_x002':'fc-PCexTMC','DraftingTimeClaimed':'fc-TMCDrafting',
+    'DraftingTimeClaimed':'fc-TMCDrafting',
     'Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
     'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel',
     'OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
