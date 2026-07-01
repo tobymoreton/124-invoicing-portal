@@ -1545,7 +1545,7 @@ function computeFigures() {
   const coa            = parseFloat(f['Costsofassessment'])               || 0;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const netDraftingFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])    || 0;
+  const _netDraftingFeeStored = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])    || 0;
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
@@ -1568,6 +1568,10 @@ function computeFigures() {
 
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
+  const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
+  const netDraftingFee = feePctIP > 0
+    ? Math.round(netBeforeDrafting * feePctIP / 100 * 100) / 100
+    : _netDraftingFeeStored;
   const netAfterDrafting  = vatOnDrafting
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
     : netBeforeDrafting - netDraftingFee;
