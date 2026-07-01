@@ -114,6 +114,7 @@
     .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
     .s-pending-assignment{background:#FEF9C3;color:#713F12;}
     .s-in-billing{background:#DBEAFE;color:#1E40AF;}
+    .s-pending-billing{background:#ECFEFF;color:#155E75;}
     .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
     .s-served-client{background:#DCFCE7;color:#14532D;}
     .s-negotiation{background:#FFF7ED;color:#9A3412;}
@@ -329,7 +330,7 @@
         <div class="mf"><label>Stage</label>
           <select id="ci-stage">
             <option value="">Select&hellip;</option>
-            <option>Pending assignment</option><option>In billing</option>
+            <option>Pending assignment</option><option>In billing</option><option>Pending billing</option>
             <option>Awaiting client approval</option><option>Served by client</option>
             <option>In negotiation (served informally)</option>
             <option>In negotiation (served formally)</option>
@@ -495,6 +496,7 @@ function statusClass(s){
   if(!s) return 's-default'; const sl=s.toLowerCase();
   if(sl==='pending assignment') return 's-pending-assignment';
   if(sl==='in billing') return 's-in-billing';
+  if(sl==='pending billing') return 's-pending-billing';
   if(sl==='awaiting client approval') return 's-awaiting-client';
   if(sl==='served by client') return 's-served-client';
   if(sl.startsWith('in negotiation')) return 's-negotiation';
