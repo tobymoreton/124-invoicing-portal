@@ -128,7 +128,7 @@
     .tab-bar::-webkit-scrollbar{display:none;}
     .tab-btn{
       padding:0 24px;height:48px;font-size:13px;font-weight:500;letter-spacing:.04em;
-      color:rgba(245,242,235,.5);border:none;background:none;cursor:pointer;
+      color:rgba(245,242,235,.8);border:none;background:none;cursor:pointer;
       white-space:nowrap;transition:all .2s ease;position:relative;
       border-bottom:3px solid transparent;
     }
@@ -139,7 +139,7 @@
       height:3px;background:var(--gold);border-radius:2px 2px 0 0;
       transition:left .2s ease,right .2s ease;
     }
-    .tab-btn:hover{color:rgba(245,242,235,.8);}
+    .tab-btn:hover{color:var(--white);}
     .tab-btn.active{color:var(--white);font-weight:600;}
     .tab-btn.active::after{left:0;right:0;}
 
@@ -828,6 +828,14 @@
         <dl class="read-grid" style="margin-top:4px;">
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
           <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
+          <div class="read-row">
+            <dt style="padding-top:6px;padding-bottom:6px;">
+              <label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;">
+                <input type="checkbox" id="inp-sett-include-tmc" style="width:13px;height:13px;accent-color:var(--navy);"> Include TMC time in fee base?
+              </label>
+            </dt>
+            <dd style="padding-top:6px;padding-bottom:6px;"></dd>
+          </div>
           <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
           <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="r-PctPC">—</dd></div>
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctBill">—</dd></div>
@@ -1431,6 +1439,7 @@ let caseItemId = null;
 let caseFields = null;
 let computed   = {};
 let interest   = {};
+let _settFeeOnDrawn = false;
 
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '—';
@@ -1570,8 +1579,11 @@ function computeFigures() {
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
+  const _drawnFeeBase  = _settFeeOnDrawn
+    ? (claimedPC + draftingTimeIP + otherTMCPC)
+    : netBeforeDrafting;
   const netDraftingFee = feePctIP > 0
-    ? Math.round(netBeforeDrafting * feePctIP / 100 * 100) / 100
+    ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100
     : _netDraftingFeeStored;
   const netAfterDrafting  = vatOnDrafting
     ? netBeforeDrafting - (netDraftingFee * vatHelper)
@@ -2686,6 +2698,12 @@ async function generateSettlementPDF() {
 }
 
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
+
+document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () => {
+  _settFeeOnDrawn = !!(document.getElementById('inp-sett-include-tmc')?.checked);
+  computeFigures(); computeInterest();
+  renderSettlementTab(); renderCostsTab(); renderInterestTab();
+});
 
 // ── Case switcher ────────────────────────────────────────────────────────
 let switcherCases = [];
