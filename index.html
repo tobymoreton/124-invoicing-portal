@@ -493,19 +493,14 @@ async function load() {
       renderTable();
     }
 
-    // Fetch WIP — all three tiers get it; server filters appropriately
+    // Fetch WIP — all authenticated users see the FULL WIP schedule (no per-user
+    // filtering). The prior client-side re-filter ("only show own WIP") duplicated
+    // the now-removed API restriction and was silently dropping valid entries for
+    // non-admin/finance users — removed 2026-07-01.
     try {
       const wipRes = await fetch(API_WIP, { headers: { Accept: 'application/json' } });
       if (wipRes.ok) {
-        const rawWIP = await wipRes.json();
-        // Client-side filter for non-admin/non-finance users: only show own WIP
-        if (!isAdmin && !isFinance) {
-          allWIPItems = rawWIP.filter(item =>
-            (item.Email || '').toLowerCase() === callerEmail
-          );
-        } else {
-          allWIPItems = rawWIP;
-        }
+        allWIPItems = await wipRes.json();
       }
     } catch(e) { /* WIP load failure non-fatal — section will show empty */ }
 
