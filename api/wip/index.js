@@ -13,10 +13,12 @@
  *     Use Completedby_x0028_text_x0029_ (Text mirror) instead.
  * ⚠️  BillableAmount£ (Num_BillableAmount_x00a3_) is a native Currency field — safe for Graph.
  *
- * Three-tier access (must stay in sync with api/invoices and api/lineitems):
- *   ADMIN   — all WIP items
- *   FINANCE — all WIP items (leaderboard view, no invoice table)
- *   DRAFTSMAN — own WIP only, filtered server-side by Completedby_x0028_text_x0029_
+ * Access: ALL authenticated users (Admin/Finance/Draftsman) see the FULL WIP schedule,
+ * unfiltered by who completed the work. (Prior per-draftsman filter on field_18 email
+ * REMOVED 2026-07-01 — it silently dropped valid entries, including some the draftsman
+ * had completed themselves, and this schedule must show all work to anyone raising an
+ * invoice.) isAdmin/isFinance are still computed for potential future use but no longer
+ * gate what WIP data is returned.
  *
  * List: Time Tracking2
  * GUID: 67db204c-30a5-4f4d-b276-60852d9967e1
@@ -92,7 +94,7 @@ module.exports = async function (context, req) {
 
   try {
     const token   = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const items   = await fetchAllWIP(token, isAdmin, isFinance, callerEmail);
+    const items   = await fetchAllWIP(token);
 
     context.res = {
       status: 200,
@@ -147,20 +149,16 @@ function getToken(tenantId, clientId, clientSecret) {
 
 // ─── FETCH ALL WIP (handles pagination) ──────────────────
 // Both Billable? and Billed? are indexed — safe to use in Graph $filter.
-// Draftsmen are also filtered server-side by email where possible.
-// NOTE: Completedby_x0028_text_x0029_ contains the draftsman name (text), not email.
-//       field_18 contains the email. Both selected; draftsman filter uses field_18.
-async function fetchAllWIP(token, isAdmin, isFinance, callerEmail) {
+// No caller-based filtering — WIP schedule must show ALL work to ANY authenticated
+// user who can create an invoice, regardless of role or who completed the work.
+// (Draftsman-only-sees-own-WIP restriction REMOVED 2026-07-01 — was filtering on
+//  field_18 (email), which is not a reliable "who did the work" identifier and
+//  was silently dropping valid entries, incl. some Tom Winyard himself completed.)
+async function fetchAllWIP(token) {
   // Filter: not yet billed (Billable flag unreliable — many valid WIP entries have Billable=false)
   const wipFilter = `fields/Billed_x003f_ eq false`;
 
-  // Draftsmen additionally filtered by their email (field_18)
-  // UNCERTAIN if field_18 is indexed — if Graph rejects it, fall back to client-side filter
-  const emailClause = (!isAdmin && !isFinance)
-    ? ` and fields/field_18 eq '${callerEmail}'`
-    : '';
-
-  const filter = encodeURIComponent(wipFilter + emailClause);
+  const filter = encodeURIComponent(wipFilter);
 
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
                `?$expand=fields($select=${SELECT_FIELDS})&$filter=${filter}&$top=999&$orderby=fields/field_12 desc`;
@@ -173,14 +171,6 @@ async function fetchAllWIP(token, isAdmin, isFinance, callerEmail) {
     const items = (page.value || []).map(normalise);
     all = all.concat(items);
     url = page['@odata.nextLink'] || null;
-  }
-
-  // Fallback client-side filter for draftsmen in case field_18 is not indexed
-  if (!isAdmin && !isFinance) {
-    all = all.filter(item =>
-      (item.Email || '').toLowerCase() === callerEmail ||
-      (item.DraftsmanName || '').toLowerCase().startsWith(callerEmail.split('@')[0].replace('.', ' '))
-    );
   }
 
   // Sort by DateCompleted desc (most recent first)
