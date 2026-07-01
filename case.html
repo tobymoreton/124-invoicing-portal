@@ -1574,8 +1574,8 @@ function computeFigures() {
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   // Total IP Profit Costs = PC excl TMC + TMC drafting time + Other TMC PC (matches SP)
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
-  const otherTMCPCVat   = !!(f['OtherTMCPCVatable']);
-  const otherTMCFeesVat = !!(f['OtherTMCFeesVatable']);
+  const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
+  const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   const totalIPPC    = claimedPC + draftingTimeIP + otherTMCPC;
   const vatableIPPC  = (claimedPC - nonVatablePC) + draftingTimeIP + (otherTMCPCVat ? otherTMCPC : 0);
   const vatOnPC      = vatableIPPC * vatPct;
@@ -2238,8 +2238,8 @@ function renderCostsTab() {
   // Input fields
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
   const vatablePC       = Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC);
-  const otherTMCPCVat   = !!(f['OtherTMCPCVatable']);
-  const otherTMCFeesVat = !!(f['OtherTMCFeesVatable']);
+  const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
+  const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   setNum('fc-PCexTMC-vat',    vatablePC);
   setNum('fc-PCexTMC-nonvat', nonVatablePC);
   setCheck('fc-OtherTMCPC-vatable',   otherTMCPCVat);
