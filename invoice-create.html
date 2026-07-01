@@ -743,7 +743,7 @@ function recalc() {
     ipLine = 'Preparing Draft Bill of Costs';
   }
   if (minFeeIp && ipLine) ipLine += ' | Minimum fee';
-  el('fig-drafting-line').textContent = ipLine + (includeTMC && tmcPCExtra > 0 ? ' (incl TMC time)' : '');
+  el('fig-drafting-line').textContent = ipLine;
 
   // LA drafting fee (always As Drawn) — with optional override / minimum fee
   const laComputed = Math.round(laProfitCosts * laFeePct / 100 * 100) / 100;
