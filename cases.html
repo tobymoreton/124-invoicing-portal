@@ -105,6 +105,7 @@
     .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
     .s-pending-assignment{background:#FEF9C3;color:#713F12;}
     .s-in-billing{background:#DBEAFE;color:#1E40AF;}
+    .s-pending-billing{background:#ECFEFF;color:#155E75;}
     .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
     .s-served-client{background:#DCFCE7;color:#14532D;}
     .s-negotiation{background:#FFF7ED;color:#9A3412;}
@@ -413,6 +414,28 @@
   </div>
 </div>
 
+<!-- All Actions Modal -->
+<div class="briefing-modal-overlay" id="modal-all-actions">
+  <div class="briefing-modal" style="max-width:860px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">⏳ All Actions</span>
+      <button class="briefing-modal-close" id="btn-all-actions-close">&times;</button>
+    </div>
+    <div id="modal-actions-list" style="max-height:72vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- All Reminders Modal -->
+<div class="briefing-modal-overlay" id="modal-all-reminders">
+  <div class="briefing-modal" style="max-width:860px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">⏰ All Open Reminders</span>
+      <button class="briefing-modal-close" id="btn-all-reminders-close">&times;</button>
+    </div>
+    <div id="modal-reminders-list" style="max-height:72vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <!-- Add Action Modal -->
 <div class="dash-modal-overlay" id="modal-action">
   <div class="dash-modal">
@@ -536,7 +559,7 @@ const NAME_DISPLAY = {
   julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley',
 };
 const STATUS_VALUES = [
-  'Pending assignment','In billing','Awaiting client approval','Served by client',
+  'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
   'In negotiation (served informally)','In negotiation (served formally)',
   'In negotiation (points of dispute received)','In negotiation (replies served)',
   'In budgeting','Awaiting provisional assessment','Pending detailed assessment',
@@ -567,6 +590,7 @@ function statusClass(s){
   const sl=s.toLowerCase();
   if(sl==='pending assignment')       return 's-pending-assignment';
   if(sl==='in billing')               return 's-in-billing';
+  if(sl==='pending billing')          return 's-pending-billing';
   if(sl==='awaiting client approval') return 's-awaiting-client';
   if(sl==='served by client')         return 's-served-client';
   if(sl.startsWith('in negotiation')) return 's-negotiation';
@@ -1204,20 +1228,109 @@ function closeBriefing(){
   briefingLoaded=false;
 }
 
+// ── All Actions modal ───────────────────────────────────────────────────────
+function openAllActionsModal(){
+  const el=document.getElementById('modal-actions-list');
+  el.innerHTML='';
+  document.querySelector('#modal-all-actions .briefing-modal-title').textContent='\u23f3 All Actions ('+allActions.length+')';
+  if(!allActions.length){
+    el.innerHTML='<div style="padding:40px 24px;text-align:center;color:var(--grey-mid);font-size:13px;">No actions recorded.</div>';
+  } else {
+    allActions.forEach(a=>{
+      const date=a.fields?.['field_12']||a.fields?.['field_1']||'';
+      const wd=(a.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+      const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+      const rate=parseFloat(a.fields?.['field_6'])||0;
+      const val=hrs*rate;
+      const row=document.createElement('div');
+      row.className='ca-panel-row';
+      row.innerHTML=
+        '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
+        '<div class="ca-panel-body">'+
+          '<div class="ca-panel-wd">'+escHtml(wd||'\u2014')+'</div>'+
+          '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
+        '</div>'+
+        (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
+      row.addEventListener('click',()=>{
+        document.getElementById('modal-all-actions').classList.remove('open');
+        try{
+          const caseObj=allCases.find(x=>x.fields['Ourreference_x0028_text_x0029_']===a._caseRef);
+          if(caseObj) sessionStorage.setItem('tmc_case_'+a._caseRef, JSON.stringify({id:caseObj.id,fields:caseObj.fields,cachedAt:Date.now()}));
+        }catch(ex){}
+        window.location.href='case.html?ref='+encodeURIComponent(a._caseRef)+'#tab-actions';
+      });
+      el.appendChild(row);
+    });
+  }
+  document.getElementById('modal-all-actions').classList.add('open');
+}
+
+// ── All Reminders modal ──────────────────────────────────────────────────────
+function openAllRemindersModal(){
+  const el=document.getElementById('modal-reminders-list');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const open=[...allReminders]
+    .filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes')
+    .sort((a,b)=>{
+      const da=a.fields?.['Duedate']?new Date(a.fields['Duedate']):new Date('9999');
+      const db=b.fields?.['Duedate']?new Date(b.fields['Duedate']):new Date('9999');
+      return da-db;
+    });
+  el.innerHTML='';
+  document.querySelector('#modal-all-reminders .briefing-modal-title').textContent='\u23f0 All Open Reminders ('+open.length+')';
+  if(!open.length){
+    el.innerHTML='<div style="padding:40px 24px;text-align:center;color:var(--grey-mid);font-size:13px;">No open reminders \u2014 all clear!</div>';
+  } else {
+    open.forEach(r=>{
+      const f=r.fields||{};
+      const dueDate=f['Duedate']?new Date(f['Duedate']):null;
+      const overdue=dueDate&&dueDate<today;
+      const pri=f['Priority']||'';
+      const priBadge=pri==='High'?'<span class="rem-pri-badge pri-high">H</span>'
+        :pri==='Low'?'<span class="rem-pri-badge pri-low">L</span>'
+        :pri==='Medium'?'<span class="rem-pri-badge pri-medium">M</span>':'';
+      const detail=stripHtml(f['Brief']||'');
+      const row=document.createElement('div');
+      row.className='rem-row'+(overdue?' overdue':'');
+      row.style.padding='10px 24px';
+      row.innerHTML=
+        '<div class="rem-date'+(overdue?' overdue':'')+'">'+(dueDate?escHtml(fmtDateShort(dueDate.toISOString())):'No date')+'</div>'+
+        '<div class="rem-body">'+
+          '<div class="rem-event">'+escHtml(f['Event']||'Reminder')+'</div>'+
+          '<div class="rem-case">'+escHtml(r._caseName||r._caseRef)+'</div>'+
+          (detail?'<div class="rem-detail">'+escHtml(detail)+'</div>':'')+
+        '</div>'+
+        priBadge+
+        '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">\u2713 Done</button>';
+      row.querySelector('.rem-done-btn').addEventListener('click',e=>{
+        e.stopPropagation();
+        markRemDone(r.id,row);
+        setTimeout(()=>{
+          if(document.getElementById('modal-all-reminders').classList.contains('open')) openAllRemindersModal();
+        },500);
+      });
+      row.addEventListener('click',()=>{
+        document.getElementById('modal-all-reminders').classList.remove('open');
+        window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';
+      });
+      el.appendChild(row);
+    });
+  }
+  document.getElementById('modal-all-reminders').classList.add('open');
+}
+
 // ── Wire up stat cards ─────────────────────────────────────────────────────
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
   });
-  document.getElementById('btn-goto-reminders').addEventListener('click',()=>{
-    const remPanel=document.getElementById('rem-panel-list')?.closest('.panel');
-    if(remPanel) remPanel.scrollIntoView({behavior:'smooth',block:'start'});
-  });
-  document.getElementById('btn-goto-actions').addEventListener('click',()=>{
-    const caPanel=document.getElementById('ca-panel-list')?.closest('.panel');
-    if(caPanel) caPanel.scrollIntoView({behavior:'smooth',block:'start'});
-  });
+  document.getElementById('btn-goto-reminders').addEventListener('click', openAllRemindersModal);
+  document.getElementById('btn-goto-actions').addEventListener('click', openAllActionsModal);
+  document.getElementById('btn-all-actions-close').addEventListener('click',()=>document.getElementById('modal-all-actions').classList.remove('open'));
+  document.getElementById('btn-all-reminders-close').addEventListener('click',()=>document.getElementById('modal-all-reminders').classList.remove('open'));
+  document.getElementById('modal-all-actions').addEventListener('click',e=>{if(e.target===document.getElementById('modal-all-actions'))document.getElementById('modal-all-actions').classList.remove('open');});
+  document.getElementById('modal-all-reminders').addEventListener('click',e=>{if(e.target===document.getElementById('modal-all-reminders'))document.getElementById('modal-all-reminders').classList.remove('open');});
   document.getElementById('btn-briefing').addEventListener('click', openBriefing);
   document.getElementById('btn-briefing-close').addEventListener('click', closeBriefing);
   document.getElementById('btn-briefing-close2').addEventListener('click', closeBriefing);
