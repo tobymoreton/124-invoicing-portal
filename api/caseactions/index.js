@@ -134,6 +134,7 @@ module.exports = async function (context, req) {
       const dateWorkDone = b.dateWorkDone ? new Date(b.dateWorkDone).toISOString() : now;
 
       const fields = {
+        Title:    b.caseName || ref,
         field_1:  dateEntered,
         field_2:  workDone,
         field_3:  timeSpent,
