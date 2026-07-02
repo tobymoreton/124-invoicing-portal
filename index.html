@@ -226,7 +226,8 @@
     <span class="nav-title">Invoice Portal</span>
   </div>
   <div style="display:flex;align-items:center;gap:24px;" id="nav-right">
-    <a href="#ds-section" class="nav-jump">Draftsman Earnings ↓</a>
+    <a href="/cases.html" class="nav-jump">&larr; My Cases</a>
+    <a href="#ds-section" class="nav-jump" id="nav-earnings-jump">Draftsman Earnings ↓</a>
     <span class="nav-meta" id="nav-date"></span>
   </div>
 </nav>
@@ -451,12 +452,21 @@ async function load() {
         a.onmouseout  = function(){ this.style.borderColor='rgba(201,168,76,.3)'; this.style.color='rgba(201,168,76,.85)'; this.style.background=''; };
         navRight.insertBefore(a, navRight.firstChild);
       }
+      if (navRight && !navRight.querySelector('[href="/admin.html"]')) {
+        const aa = document.createElement('a');
+        aa.href = '/admin.html';
+        aa.innerHTML = '&larr; Admin';
+        aa.style.cssText = 'font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:5px;transition:all .18s ease;';
+        aa.onmouseover = function(){ this.style.borderColor='var(--gold)'; this.style.color='var(--gold)'; this.style.background='rgba(201,168,76,.08)'; };
+        aa.onmouseout  = function(){ this.style.borderColor='rgba(201,168,76,.3)'; this.style.color='rgba(201,168,76,.85)'; this.style.background=''; };
+        navRight.insertBefore(aa, navRight.firstChild);
+      }
     }
 
     // Finance tier: hide ledger + nav jump; show filters bar and invoice table
     if (isFinance) {
       document.querySelector('.ledger').style.display = 'none';
-      const navJump = document.querySelector('.nav-jump');
+      const navJump = document.getElementById('nav-earnings-jump');
       if (navJump) navJump.style.display = 'none';
     }
 
@@ -465,7 +475,7 @@ async function load() {
       document.querySelector('.ledger').style.display    = 'none';
       document.querySelector('.filters-bar').style.display = 'none';
       document.querySelector('.main').style.display      = 'none';
-      const navJump = document.querySelector('.nav-jump');
+      const navJump = document.getElementById('nav-earnings-jump');
       if (navJump) navJump.style.display = 'none';
       const dsTitle = document.querySelector('.ds-title');
       if (dsTitle && callerEmail) {
