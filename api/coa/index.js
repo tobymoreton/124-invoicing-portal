@@ -89,50 +89,51 @@ module.exports = async function (context, req) {
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
-    // Fetch all TT2 items and case limit in parallel.
-    // DEBUG MODE: inline the fetch so we can run step-by-step filter counts.
+    // Fetch all TT2 items and case limit in parallel
     const [allItems, limit] = await Promise.all([
       fetchAllTT2Items(token),
       fetchCaseLimit(token, ref),
     ]);
 
-    // Step 1: match ref
+    // Filter 1: match case ref (field_16)
     const refMatches = allItems.filter(item =>
       (item.fields?.['field_16'] || '').toString().trim() === ref
     );
 
-    // Step 2: exclude explicitly non-billable
-    const billableMatches = refMatches.filter(item =>
-      item.fields?.['Billable_x003f_'] !== false
-    );
+    // Filter 2: exclude entries with no recorded time AND explicitly non-billable.
+    // ⚠️  Billable_x003f_ written via Graph POST is unreliable on this tenant —
+    //      Graph reads it back as false even when SP UI shows Yes and the value
+    //      was written as true. Confirmed via debug 2026-07-02: portal-created entries
+    //      returned Billable=false despite SP showing Billable=Yes.
+    //      Fix: include any entry that has actual recorded time (field_3 > 0 or
+    //      TimeSpentMirror > 0) regardless of Billable flag. Only exclude entries
+    //      that are BOTH explicitly non-billable AND have no recorded time.
+    const billableMatches = refMatches.filter(item => {
+      const f   = item.fields || {};
+      const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+      // Has time recorded — include regardless of unreliable Billable boolean
+      if (hrs > 0) return true;
+      // No time recorded — only include if not explicitly marked non-billable
+      return f['Billable_x003f_'] !== false;
+    });
 
-    // Step 3: for unbilled mode, exclude already-billed entries
+    // Filter 3: for unbilled mode, exclude already-billed entries
     const entries = billableMatches.filter(item => {
       if (mode === 'unbilled' && item.fields?.['Billed_x003f_'] === true) return false;
       return true;
     });
 
-    // DEBUG: expose filter counts and raw Billable/Billed values for diagnosis
-    const debug = {
-      ref,
-      mode,
-      totalFetched: allItems.length,
-      matchRef: refMatches.length,
-      matchRefAndBillable: billableMatches.length,
-      matchAll: entries.length,
-      billableValues: refMatches.map(i => i.fields?.['Billable_x003f_']),
-      billedValues:   refMatches.map(i => i.fields?.['Billed_x003f_']),
-      field16Sample:  refMatches.slice(0,3).map(i => i.fields?.['field_16']),
-    };
-
-    // Sum billable value — use Num_BillableAmount_x00a3_ if populated,
-    // otherwise compute from TimeSpentMirror x field_6
+    // Sum — use Num_BillableAmount_x00a3_ if populated (billed entries),
+    // otherwise compute from TimeSpentMirror × field_6.
+    // Fall back to field_3 (raw hrs) if TimeSpentMirror not yet set by PA mirror —
+    // portal-created entries write field_3 but PA mirror may not have run yet.
     const sum = entries.reduce((acc, entry) => {
       const f   = entry.fields || {};
       const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
+      const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
       const val = !isNaN(amt) && amt > 0
         ? amt
-        : (parseFloat(f['TimeSpentMirror']) || 0) * (parseFloat(f['field_6']) || 0);
+        : hrs * (parseFloat(f['field_6']) || 0);
       return acc + val;
     }, 0);
 
@@ -144,7 +145,6 @@ module.exports = async function (context, req) {
         count: entries.length,
         limit: limit,
         mode:  mode,
-        debug, // REMOVE before production
       }),
     };
   } catch (err) {
