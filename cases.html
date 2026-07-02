@@ -312,7 +312,7 @@
           </div>
         </div>
         <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
-        <div class="stat-card-sub" id="stat-wip-period-sub">billed &amp; unbilled, current month</div>
+        <div class="stat-card-sub" id="stat-wip-period-sub">unbilled, current month</div>
       </div>
     </div>
 
@@ -320,8 +320,6 @@
     <div class="dash-actions">
       <a href="/invoice-create.html" class="btn-dash-action" style="margin-right:auto;text-decoration:none;">+ New Invoice Draft</a>
       <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">☕</span> Daily Briefing</button>
-      <button class="btn-dash-action" id="btn-goto-reminders">⏰ All Reminders</button>
-      <button class="btn-dash-action" id="btn-goto-actions">⏳ All Actions</button>
       <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
       <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
@@ -532,8 +530,8 @@ let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
 let allActions   = [];   // flat array of TT2 rows across all my cases
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
-let wipThisMonth = 0;  // billed+unbilled WIP value from actions this calendar month
-let wipThisWeek  = 0;  // billed+unbilled WIP value from actions this Mon–Sun week
+let wipThisMonth = 0;  // unbilled WIP value from actions this calendar month
+let wipThisWeek  = 0;  // unbilled WIP value from actions this Mon–Sun week
 let wipPeriod    = 'month'; // 'month' | 'week'
 let callerEmail  = '';
 let callerName   = '';
@@ -632,6 +630,18 @@ async function loadIdentity(){
       callerName=NAME_DISPLAY[local]||user.userDetails;
       document.getElementById('user-name').textContent=callerName||callerEmail;
       isAdmin=ADMIN_EMAILS.includes(callerEmail);
+      // Toby-only quick link to the Invoice Portal (index.html)
+      if(callerEmail==='toby@tmclegal.co.uk'){
+        const nl=document.getElementById('nav-links');
+        if(nl&&!document.getElementById('nav-invoice-portal')){
+          const a=document.createElement('a');
+          a.id='nav-invoice-portal';
+          a.href='/index.html';
+          a.className='nav-link';
+          a.textContent='Invoice Portal';
+          nl.insertBefore(a,nl.firstChild);
+        }
+      }
     }
   }catch{/*ignore*/}
 }
@@ -1131,7 +1141,7 @@ function updateWipPeriodCard(){
   const val=wipPeriod==='month'?wipThisMonth:wipThisWeek;
   document.getElementById('stat-wip-period').textContent=val>0?fmt(val):'—';
   document.getElementById('stat-wip-period-sub').textContent=
-    wipPeriod==='month'?'billed & unbilled, current month':'billed & unbilled, this week';
+    wipPeriod==='month'?'unbilled, current month':'unbilled, this week';
 }
 function setWipPeriod(p){
   wipPeriod=p;
@@ -1326,10 +1336,6 @@ function wireCards(){
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' cases');
   });
-  document.getElementById('btn-goto-reminders').addEventListener('click', openAllRemindersModal);
-  document.getElementById('btn-goto-actions').addEventListener('click', openAllActionsModal);
-  document.getElementById('btn-all-actions-close').addEventListener('click',()=>document.getElementById('modal-all-actions').classList.remove('open'));
-  document.getElementById('btn-all-reminders-close').addEventListener('click',()=>document.getElementById('modal-all-reminders').classList.remove('open'));
   document.getElementById('modal-all-actions').addEventListener('click',e=>{if(e.target===document.getElementById('modal-all-actions'))document.getElementById('modal-all-actions').classList.remove('open');});
   document.getElementById('modal-all-reminders').addEventListener('click',e=>{if(e.target===document.getElementById('modal-all-reminders'))document.getElementById('modal-all-reminders').classList.remove('open');});
   document.getElementById('btn-briefing').addEventListener('click', openBriefing);
