@@ -2169,7 +2169,7 @@ async function initSwitcher() {
       if (ADMIN_EMAILS_CASE.includes(switcherCallerEmail)) {
         const navRight = document.querySelector('.nav-right');
         if (navRight && !navRight.querySelector('[href="/admin.html"]')) {
-          const a = document.createElement('a'); a.href = '/admin.html'; a.className = 'nav-back'; a.textContent = 'Admin';
+          const a = document.createElement('a'); a.href = '/admin.html'; a.className = 'nav-back'; a.textContent = '← Admin';
           navRight.insertBefore(a, navRight.firstChild);
         }
       }
