@@ -255,7 +255,7 @@
     <span class="nav-title">Draftsman Dash</span>
   </div>
   <div class="nav-links" id="nav-links">
-    <a href="/admin.html" class="nav-link">Admin</a>
+    <a href="/admin.html" class="nav-link">&larr; Admin</a>
   </div>
 </nav>
 
@@ -638,8 +638,8 @@ async function loadIdentity(){
           a.id='nav-invoice-portal';
           a.href='/index.html';
           a.className='nav-link';
-          a.textContent='Invoice Portal';
-          nl.insertBefore(a,nl.firstChild);
+          a.textContent='Invoice Portal \u2192';
+          nl.appendChild(a);
         }
       }
     }
