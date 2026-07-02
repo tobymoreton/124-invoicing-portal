@@ -61,7 +61,8 @@ const SELECT_FIELDS = [
   'Drafting_x0020_fee_x0020_basis',
   'InterPartesorLegalAid',
   'MinimumFee',
-  // Full case name fields (Fullcasename is calculated — reconstruct from parts)
+  // Full case name fields
+  'fullCaseNameMirror',
   'Fullcasenameoveride',
   'CaseNameForOpenCases',
   'OurPartyFirstName',
