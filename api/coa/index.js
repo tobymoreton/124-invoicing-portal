@@ -89,14 +89,44 @@ module.exports = async function (context, req) {
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
-    // Fetch TT2 entries and Cases limit value in parallel
-    const [entries, limit] = await Promise.all([
-      fetchTT2Entries(token, ref, mode),
+    // Fetch all TT2 items and case limit in parallel.
+    // DEBUG MODE: inline the fetch so we can run step-by-step filter counts.
+    const [allItems, limit] = await Promise.all([
+      fetchAllTT2Items(token),
       fetchCaseLimit(token, ref),
     ]);
 
+    // Step 1: match ref
+    const refMatches = allItems.filter(item =>
+      (item.fields?.['field_16'] || '').toString().trim() === ref
+    );
+
+    // Step 2: exclude explicitly non-billable
+    const billableMatches = refMatches.filter(item =>
+      item.fields?.['Billable_x003f_'] !== false
+    );
+
+    // Step 3: for unbilled mode, exclude already-billed entries
+    const entries = billableMatches.filter(item => {
+      if (mode === 'unbilled' && item.fields?.['Billed_x003f_'] === true) return false;
+      return true;
+    });
+
+    // DEBUG: expose filter counts and raw Billable/Billed values for diagnosis
+    const debug = {
+      ref,
+      mode,
+      totalFetched: allItems.length,
+      matchRef: refMatches.length,
+      matchRefAndBillable: billableMatches.length,
+      matchAll: entries.length,
+      billableValues: refMatches.map(i => i.fields?.['Billable_x003f_']),
+      billedValues:   refMatches.map(i => i.fields?.['Billed_x003f_']),
+      field16Sample:  refMatches.slice(0,3).map(i => i.fields?.['field_16']),
+    };
+
     // Sum billable value — use Num_BillableAmount_x00a3_ if populated,
-    // otherwise compute from TimeSpentMirror × field_6 (same pattern as /api/wip)
+    // otherwise compute from TimeSpentMirror x field_6
     const sum = entries.reduce((acc, entry) => {
       const f   = entry.fields || {};
       const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
@@ -114,6 +144,7 @@ module.exports = async function (context, req) {
         count: entries.length,
         limit: limit,
         mode:  mode,
+        debug, // REMOVE before production
       }),
     };
   } catch (err) {
@@ -127,13 +158,9 @@ module.exports = async function (context, req) {
 // Reasoning: Billable_x003f_ filter with allowthrottleablequeries + $top=5000
 // was returning incomplete results. Fetching all ~3762 items and filtering
 // client-side is consistent with how /api/wip works and is proven reliable.
-async function fetchTT2Entries(token, ref, mode) {
-  // No $select restriction — boolean fields (Billable_x003f_, Billed_x003f_) are
-  // silently dropped from Graph responses when explicitly named in $expand=fields($select=...).
-  // on this tenant. Fetching all fields is consistent with /api/caseactions and is
-  // proven reliable. Per-case TT2 item count is small so no perf concern.
-  // (Restriction removed 2026-07-01 — was causing new billable entries to be excluded
-  // from COA calculation even when SP showed Billable=Yes/Billed=No correctly.)
+// Returns ALL TT2 items unpaged — filtering is done inline in module.exports (debug mode).
+async function fetchAllTT2Items(token) {
+  // No $select restriction — boolean fields drop silently when named in $select on this tenant.
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
              + `?$expand=fields`
              + `&$top=999`;
@@ -147,19 +174,7 @@ async function fetchTT2Entries(token, ref, mode) {
     url = page['@odata.nextLink'] || null;
   }
 
-  // All filtering is client-side.
-  // Billable_x003f_: Graph may return true, 1, '1', null, or omit the field entirely for
-  // newly-created items even without $select. Use === false (explicit false only) rather
-  // than !value — this treats null/absent as billable, which is correct: if someone
-  // explicitly unchecked Billable, SP would return false, not null.
-  // Billed_x003f_: same — false booleans are often absent from Graph responses.
-  return all.filter(item => {
-    const f = item.fields || {};
-    if ((f['field_16'] || '').toString().trim() !== ref) return false;
-    if (f['Billable_x003f_'] === false) return false;
-    if (mode === 'unbilled' && f['Billed_x003f_'] === true) return false;
-    return true;
-  });
+  return all;
 }
 
 // ─── Fetch the case's limit value from the Cases list ────────────────────────
