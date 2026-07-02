@@ -704,6 +704,7 @@ function renderStagePanel(){
     stageCounts[s]=(stageCounts[s]||0)+1;
     stageCosts[s]=(stageCosts[s]||0)+computeTotalCosts(c.fields);
   });
+  if(!('Pending billing' in stageCounts)) stageCounts['Pending billing']=0;
   const sorted=Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]);
   const maxCount=Math.max(...sorted.map(([,n])=>n),1);
   document.getElementById('stage-panel-count').textContent=sorted.length+' stage'+(sorted.length!==1?'s':'');
