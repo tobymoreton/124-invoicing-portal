@@ -543,7 +543,7 @@
   <table class="tbl-vert">
     <tr><td>Disbursements</td><td id="pdf-pay-disb"></td></tr>
     <tr><td>Counsel's Fees</td><td id="pdf-pay-counsel"></td></tr>
-    <tr><td>Costs of Assessment</td><td id="pdf-pay-coa"></td></tr>
+    <tr><td>Total Costs of Assessment</td><td id="pdf-pay-coa"></td></tr>
     <tr><td>Other TMC Fees (excl Drafting)</td><td id="pdf-pay-other"></td></tr>
     <tr class="total-row"><td>Total</td><td id="pdf-pay-total"></td></tr>
   </table>
@@ -783,7 +783,7 @@
               </dd>
             </div>
             <div class="liab-row">
-              <dt>Costs of Assessment</dt>
+              <dt>TMC Costs of Assessment</dt>
               <dd class="coa-cell">
                 <input type="number" id="f-Costsofassessment" class="liab-input" step="0.01" min="0" disabled />
                 <div class="coa-wrapper">
@@ -794,6 +794,14 @@
                   </div>
                 </div>
               </dd>
+            </div>
+            <div class="liab-row">
+              <dt>Client paid expenses</dt>
+              <dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd>
+            </div>
+            <div class="liab-row">
+              <dt>Total Costs of Assessment</dt>
+              <dd><span class="liab-static" id="r-TotalCOA">—</span></dd>
             </div>
             <div class="liab-row">
               <dt>Other TMC Fees (excl Drafting)</dt>
@@ -1553,6 +1561,8 @@ function computeFigures() {
   const disbursements  = parseFloat(f['DisbursementsClaimed'])            || 0;
   const vatOnDisb      = parseFloat(f['VATonDisbursements'])              || 0;
   const coa            = parseFloat(f['Costsofassessment'])               || 0;
+  const clientExpenses = parseFloat(f['ClientPaidExpenses'])               || 0; // SP column needed for persistence
+  const totalCOA       = coa + clientExpenses;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const _netDraftingFeeStored = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])    || 0;
@@ -1570,13 +1580,13 @@ function computeFigures() {
                           : lastOffer;
 
   const disbIncVAT    = disbursements + vatOnDisb;
-  const totalPayable  = disbIncVAT + counsel + coa + otherTMC;
+  const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
   const tmcPCIncVAT   = draftingTimeIP * vatHelper;
   const counselIncVAT = counselClaimed * vatHelper;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
 
-  const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coa - otherTMC;
+  const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - totalCOA - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
   const _drawnFeeBase  = _settFeeOnDrawn
@@ -1605,7 +1615,7 @@ function computeFigures() {
   const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
 
   computed = {
-    offerOrSettlement, disbIncVAT, counsel, coa, otherTMC, totalPayable,
+    offerOrSettlement, disbIncVAT, counsel, coa, clientExpenses, totalCOA, otherTMC, totalPayable,
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
     claimedPC, draftingTimeIP, disbursements, counselClaimed,
     netTotalClaimed: claimedPC + draftingTimeIP + disbursements + counselClaimed,
@@ -2232,6 +2242,8 @@ function renderSettlementTab() {
   setText('r-TotalLiab',     fmt(c.totalPayable));
   setNum('f-Counselsfeespayable', f['Counselsfeespayable']);
   setNum('f-Costsofassessment',   f['Costsofassessment']);
+  setNum('f-ClientPaidExpenses',  f['ClientPaidExpenses']);
+  setText('r-TotalCOA',           fmt(c.totalCOA));
   setNum('f-OtherTMCInvoices',    f['OtherTMCInvoices_ex_x0020_bill']);
 
   setText('r-InterestOn',   fmt(i.interestOn));
@@ -2391,6 +2403,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
     'BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
     'Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
+    // TODO: add 'ClientPaidExpenses':'f-ClientPaidExpenses' once SP column is created on Cases list
     'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
@@ -2483,6 +2496,15 @@ document.getElementById('btn-calc-coa').addEventListener('click', (e) => {
 });
 document.addEventListener('click', () => coaPicker.classList.remove('open'));
 
+// ── Live update of Total COA display as user edits either input ──────────────
+function _updateTotalCOADisplay() {
+  const tmcCOA = parseFloat(document.getElementById('f-Costsofassessment')?.value) || 0;
+  const exp    = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value)  || 0;
+  setText('r-TotalCOA', fmt(tmcCOA + exp));
+}
+document.getElementById('f-Costsofassessment')?.addEventListener('input', _updateTotalCOADisplay);
+document.getElementById('f-ClientPaidExpenses')?.addEventListener('input', _updateTotalCOADisplay);
+
 // ── COA mode selected ─────────────────────────────────────────────────────
 document.querySelectorAll('.coa-opt').forEach(btn => {
   btn.addEventListener('click', async (e) => {
@@ -2502,6 +2524,9 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
       const base   = (data.limit && data.limit > 0) ? data.limit : data.sum;
       const coaIncVAT = Math.round(base * (1 + vatPct) * 100) / 100;
       document.getElementById('f-Costsofassessment').value = coaIncVAT || '';
+      // Update Total COA display immediately
+      const _exp = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
+      setText('r-TotalCOA', fmt((coaIncVAT || 0) + _exp));
       // Show what was used
       const modeLabel = mode === 'unbilled' ? 'unbilled' : 'all billable';
       const limitNote = (data.limit && data.limit > 0) ? ' (capped at £' + data.limit.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')' : '';
@@ -2621,7 +2646,7 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-totalclaimed').textContent     = fmt(c.totalClaimed);
   document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
   document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
-  document.getElementById('pdf-pay-coa').textContent     = fmt(c.coa);
+  document.getElementById('pdf-pay-coa').textContent     = fmt(c.totalCOA);
   document.getElementById('pdf-pay-other').textContent   = fmt(c.otherTMC);
   document.getElementById('pdf-pay-total').textContent   = fmt(c.totalPayable);
   document.getElementById('pdf-rec-gross').textContent     = fmt(c.grossPC);
