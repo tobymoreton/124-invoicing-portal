@@ -809,11 +809,12 @@
         <div class="card-head"><span class="card-title">Offers Made</span></div>
         <div class="card-body">
           <div class="offers-grid">
+            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Date of Last Offer</label><input type="date" id="f-DateOfLastOffer" disabled /></div>
+            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" disabled /></div>
             <div class="field"><label>PC at Advised Rates (£)</label><input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" disabled /></div>
             <div class="field"><label>Bottom Line (£)</label><input type="number" id="f-BottomLine" step="0.01" min="0" disabled /></div>
             <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" disabled /></div>
           </div>
           <div class="check-row">
             <div class="field checkbox-field">
@@ -1820,6 +1821,7 @@ function renderOffersTab() {
   const f = caseFields;
   setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']); setNum('f-BottomLine', f['BottomLine']); setNum('f-LikelyTopEnd', f['LikelyTopEnd']);
   setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']); setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
+  setDate('f-DateOfLastOffer', f['DateOfLastOffer']);
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']); setCheck('f-Offerincludesinterest_x003f_', f['Offerincludesinterest_x003f_']);
 }
 
@@ -1904,6 +1906,7 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
     'ProfitCostsatAdvisedRates':'f-ProfitCostsatAdvisedRates','BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  const dloV = document.getElementById('f-DateOfLastOffer').value; fields['DateOfLastOffer'] = dloV ? dloV + 'T00:00:00Z' : null;
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
   await doSave(fields, btn, msg, 'edit-msg');
