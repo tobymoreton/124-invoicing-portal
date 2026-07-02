@@ -33,7 +33,7 @@
     .nav-back:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
 
     /* ── Document builder bar ────────────────────────── */
-    .doc-bar{background:var(--navy);padding:0 32px;display:flex;align-items:center;gap:6px;overflow-x:auto;white-space:nowrap;border-bottom:2px solid var(--gold-mid);}
+    .doc-bar{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:center;gap:6px;overflow-x:auto;white-space:nowrap;border-bottom:2px solid var(--gold-mid);}
     .doc-bar::-webkit-scrollbar{height:3px;}
     .doc-bar::-webkit-scrollbar-thumb{background:rgba(201,168,76,.4);border-radius:2px;}
     .doc-btn{
@@ -1682,7 +1682,10 @@ function renderDocumentBar() {
     { label: 'Notice of Acting', url: ICY + '/builder.html?' + 'template=NoticeOfActing' + '&CourtName=' + enc(court) + '&ClaimNo=' + enc(claimNo) + '&ClaimantName=' + enc(matter) + '&DefendantName=' + enc(defendant) },
     { label: 'Email Templates', url: BLUE + '/emails.html?' + 'firm=' + enc(firm) + '&matter=' + enc(matter) + '&yourref=' + enc(yourRef) + '&ourref=' + enc(ourRef) + '&name=' + enc(feeEarner.split(' ')[0]) },
   ];
-  bar.innerHTML = links.map(u => '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>').join('') + '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
+  const biBtnHtml = '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
+  const linkHtmls = links.map(u => '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>');
+  linkHtmls.splice(1, 0, biBtnHtml);
+  bar.innerHTML = linkHtmls.join('');
   bar.querySelectorAll('.doc-btn[data-url]').forEach(btn => { btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent)); });
 }
 
