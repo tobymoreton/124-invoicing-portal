@@ -148,13 +148,16 @@ async function fetchTT2Entries(token, ref, mode) {
   }
 
   // All filtering is client-side.
-  // Billable_x003f_ via Graph may return boolean true, string '1', or number 1 — use truthy check.
-  // Billed_x003f_ same pattern.
+  // Billable_x003f_: Graph may return true, 1, '1', null, or omit the field entirely for
+  // newly-created items even without $select. Use === false (explicit false only) rather
+  // than !value — this treats null/absent as billable, which is correct: if someone
+  // explicitly unchecked Billable, SP would return false, not null.
+  // Billed_x003f_: same — false booleans are often absent from Graph responses.
   return all.filter(item => {
     const f = item.fields || {};
     if ((f['field_16'] || '').toString().trim() !== ref) return false;
-    if (!f['Billable_x003f_']) return false;
-    if (mode === 'unbilled' && f['Billed_x003f_']) return false;
+    if (f['Billable_x003f_'] === false) return false;
+    if (mode === 'unbilled' && f['Billed_x003f_'] === true) return false;
     return true;
   });
 }
