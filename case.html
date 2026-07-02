@@ -411,7 +411,6 @@
     .edit-msg{font-size:13px;color:var(--grey-mid);}
     .edit-msg.ok{color:var(--green);font-weight:500;}
     .edit-msg.err{color:#991B1B;}
-    /* Overview edit-mode field styles */
     .ov-select{
       padding:7px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
       font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);
@@ -426,7 +425,6 @@
       box-shadow:inset 0 1px 2px rgba(27,42,74,.05);
     }
     .ov-date:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
-    /* read-row dd in edit mode */
     .edit-mode .ov-editable{padding:6px 8px!important;}
 
     /* ── Coming soon / states ────────────────── */
@@ -475,32 +473,24 @@
 <!-- ── PDF output ─────────────────────────────────────────────────────────── -->
 <div id="pdf-output" style="display:none;">
   <style>
-    /* Matches existing TMC settlement report: navy #001B44, gold #B59A6A */
     #pdf-output *{box-sizing:border-box;margin:0;padding:0;}
     #pdf-output{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:100%;}
-    /* Header row: title right, logo right below */
     #pdf-output .pdf-top{display:flex;justify-content:flex-end;align-items:flex-start;margin-bottom:5mm;}
     #pdf-output .pdf-top-right{text-align:right;}
     #pdf-output .pdf-top-right h1{font-size:18pt;font-weight:bold;color:#000;margin-bottom:3mm;}
     #pdf-output .pdf-top-right img{height:42px;display:block;margin-left:auto;}
-    /* Section headings */
     #pdf-output h2{font-size:11pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1.5mm;margin:5mm 0 2.5mm;page-break-after:avoid;}
-    /* Tables — compact */
     #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:3.5mm;font-size:8.5pt;page-break-inside:avoid;}
     #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1.5mm 2.5mm;color:#000;}
-    /* Settlement details */
     #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:38%;background:#fff;}
     #pdf-output .tbl-details td:last-child{text-align:left;}
-    /* Costs Claimed horizontal */
     #pdf-output .tbl-horiz th{font-weight:bold;text-align:right;background:#fff;color:#000;}
     #pdf-output .tbl-horiz td{text-align:right;}
     #pdf-output .tbl-horiz td.row-label{text-align:left;}
     #pdf-output .tbl-horiz tr.total-row td{font-weight:bold;}
-    /* Vertical tables */
     #pdf-output .tbl-vert td:first-child{text-align:right;width:65%;}
     #pdf-output .tbl-vert td:last-child{text-align:right;}
     #pdf-output .tbl-vert tr.total-row td{font-weight:bold;}
-    /* Recovery */
     #pdf-output .tbl-recovery td:first-child{text-align:right;width:65%;}
     #pdf-output .tbl-recovery td:last-child{text-align:right;}
     #pdf-output .tbl-recovery tr.highlight td{font-weight:bold;}
@@ -590,7 +580,6 @@
     <div class="case-meta" id="hdr-meta"></div>
   </div>
 
-  <!-- Document builder bar -->
   <div class="doc-bar" id="doc-bar"></div>
 
   <div class="tab-bar">
@@ -603,6 +592,7 @@
     <button class="tab-btn" data-tab="caseactions">Case Actions</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
     <button class="tab-btn" data-tab="settlement">Settlement</button>
+    <button class="tab-btn" data-tab="offers">Offers</button>
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
   </div>
 
@@ -610,32 +600,19 @@
 
     <!-- ════════ CASE OVERVIEW TAB ════════ -->
     <div class="tab-panel active" id="tab-overview">
-
-      <!-- Edit / Save / Cancel bar -->
       <div class="edit-bar">
         <button class="btn-edit" id="btn-ov-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-ov-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-ov-cancel">Cancel</button>
         <span class="edit-msg" id="msg-ov"></span>
       </div>
-
-      <!-- Row 1: Assignment + Key Dates side by side -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Assignment</span></div>
           <dl class="read-grid">
-            <div class="read-row">
-              <dt>Assigned To</dt>
-              <dd class="ov-editable" id="ov-assigned">—</dd>
-            </div>
-            <div class="read-row">
-              <dt>Co-Assigned To</dt>
-              <dd class="ov-editable" id="ov-coassigned">—</dd>
-            </div>
-            <div class="read-row">
-              <dt>Status</dt>
-              <dd class="ov-editable" id="ov-status">—</dd>
-            </div>
+            <div class="read-row"><dt>Assigned To</dt><dd class="ov-editable" id="ov-assigned">—</dd></div>
+            <div class="read-row"><dt>Co-Assigned To</dt><dd class="ov-editable" id="ov-coassigned">—</dd></div>
+            <div class="read-row"><dt>Status</dt><dd class="ov-editable" id="ov-status">—</dd></div>
           </dl>
         </div>
         <div class="card">
@@ -650,8 +627,6 @@
           </dl>
         </div>
       </div>
-
-      <!-- Row 2: Current Position -->
       <div class="card">
         <div class="card-head">
           <span class="card-title">➡️ Current Position</span>
@@ -661,8 +636,6 @@
           <div id="ov-currentposition" style="font-size:14px;line-height:1.7;color:var(--navy);white-space:pre-wrap;">—</div>
         </div>
       </div>
-
-      <!-- Row 3: Flags + Activity -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">🚩 Flags</span></div>
@@ -678,8 +651,6 @@
           </dl>
         </div>
       </div>
-
-      <!-- Row 4: Client + Opponent & Court -->
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">👤 Client</span></div>
@@ -702,8 +673,6 @@
           </dl>
         </div>
       </div>
-
-      <!-- Row 5: Billing Info (moved to bottom) -->
       <div class="card">
         <div class="card-head"><span class="card-title">💷 Billing Info</span></div>
         <dl class="read-grid">
@@ -718,19 +687,16 @@
           <div class="read-row"><dt>Provisional Min Fee (£)</dt><dd id="ov-provminfee">—</dd></div>
         </dl>
       </div>
-
     </div><!-- /tab-overview -->
 
     <!-- ════════ SETTLEMENT TAB ════════ -->
     <div class="tab-panel" id="tab-settlement">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-sett-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-sett-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-sett-cancel">Cancel</button>
         <span class="edit-msg" id="msg-sett"></span>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Settlement Details</span></div>
         <div class="card-body">
@@ -743,38 +709,11 @@
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-head"><span class="card-title">Offers Made</span></div>
-        <div class="card-body">
-          <div class="offers-grid">
-            <div class="field"><label>PC at Advised Rates (£)</label><input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Bottom Line (£)</label><input type="number" id="f-BottomLine" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" disabled /></div>
-            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" disabled /></div>
-          </div>
-          <div class="check-row">
-            <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludescostsofsssessment_x" disabled />
-              <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
-            </div>
-            <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludesinterest_x003f_" disabled />
-              <label for="f-Offerincludesinterest_x003f_">Offer includes interest?</label>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
           <dl class="liab-grid">
-            <div class="liab-row">
-              <dt>Disbursements inc VAT</dt>
-              <dd><span class="liab-static" id="r-Disbursements">—</span></dd>
-            </div>
+            <div class="liab-row"><dt>Disbursements inc VAT</dt><dd><span class="liab-static" id="r-Disbursements">—</span></dd></div>
             <div class="liab-row">
               <dt>Counsel's Fees payable</dt>
               <dd class="coa-cell">
@@ -795,22 +734,10 @@
                 </div>
               </dd>
             </div>
-            <div class="liab-row">
-              <dt>Client paid expenses</dt>
-              <dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd>
-            </div>
-            <div class="liab-row">
-              <dt>Total Costs of Assessment</dt>
-              <dd><span class="liab-static" id="r-TotalCOA">—</span></dd>
-            </div>
-            <div class="liab-row">
-              <dt>Other TMC Fees (excl Drafting)</dt>
-              <dd><input type="number" id="f-OtherTMCInvoices" class="liab-input" step="0.01" min="0" disabled /></dd>
-            </div>
-            <div class="liab-row total">
-              <dt>Total Liabilities</dt>
-              <dd><span class="liab-static" id="r-TotalLiab">—</span></dd>
-            </div>
+            <div class="liab-row"><dt>Client paid expenses</dt><dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd></div>
+            <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="r-TotalCOA">—</span></dd></div>
+            <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><input type="number" id="f-OtherTMCInvoices" class="liab-input" step="0.01" min="0" disabled /></dd></div>
+            <div class="liab-row total"><dt>Total Liabilities</dt><dd><span class="liab-static" id="r-TotalLiab">—</span></dd></div>
           </dl>
         </div>
         <div class="card">
@@ -824,7 +751,6 @@
           </div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Recovery</span></div>
         <div style="padding:16px 22px 0;">
@@ -849,27 +775,54 @@
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctBill">—</dd></div>
         </dl>
       </div>
-
       <div class="pdf-bar">
         <button class="btn-pdf" id="btn-gen-pdf">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6zm4-5h4v1.5h-4V15zm0-3h4v1.5h-4V12zm0-3h2v1.5h-2V9z"/></svg>
           Generate Settlement Report PDF
         </button>
       </div>
-
     </div><!-- /tab-settlement -->
+
+    <!-- ════════ OFFERS TAB ════════ -->
+    <div class="tab-panel" id="tab-offers">
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-offers-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-offers-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-offers-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-offers"></span>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Offers Made</span></div>
+        <div class="card-body">
+          <div class="offers-grid">
+            <div class="field"><label>PC at Advised Rates (£)</label><input type="number" id="f-ProfitCostsatAdvisedRates" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Bottom Line (£)</label><input type="number" id="f-BottomLine" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Paying Party Last Offer (£)</label><input type="number" id="f-PayingPartysLastOffer" step="0.01" min="0" disabled /></div>
+            <div class="field"><label>Figure for Settlement Sheet (£)</label><input type="number" id="f-FigureForSettlementSheet" step="0.01" min="0" disabled /></div>
+          </div>
+          <div class="check-row">
+            <div class="field checkbox-field">
+              <input type="checkbox" id="f-Offerincludescostsofsssessment_x" disabled />
+              <label for="f-Offerincludescostsofsssessment_x">Offer includes costs of assessment?</label>
+            </div>
+            <div class="field checkbox-field">
+              <input type="checkbox" id="f-Offerincludesinterest_x003f_" disabled />
+              <label for="f-Offerincludesinterest_x003f_">Offer includes interest?</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-offers -->
 
     <!-- ════════ BOOKING IN TAB ════════ -->
     <div class="tab-panel" id="tab-bookingin">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-bi-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-bi-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-bi-cancel">Cancel</button>
         <span class="edit-msg" id="msg-bi"></span>
       </div>
-
-      <!-- Row 1: Date Received / Turnaround / Due Date (computed) / Our Ref -->
       <div class="card">
         <div class="card-head"><span class="card-title">Case Details</span></div>
         <div class="card-body">
@@ -891,8 +844,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Row 2: Party names + Fee Earner / Firm -->
       <div class="card">
         <div class="card-head"><span class="card-title">Parties &amp; Representation</span></div>
         <div class="card-body">
@@ -908,8 +859,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Row 3: Classification -->
       <div class="card">
         <div class="card-head"><span class="card-title">Classification</span></div>
         <div class="card-body">
@@ -917,66 +866,36 @@
             <div class="field"><label>Case Type</label>
               <select id="bi-Casetype" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— select —</option>
-                <option>Civil liberties</option>
-                <option>Clinical negligence</option>
-                <option>Costs only</option>
-                <option>Employer's liability</option>
-                <option>Employment</option>
-                <option>Family</option>
-                <option>Housing</option>
-                <option>Immigration</option>
-                <option>Inquests</option>
-                <option>Judicial review</option>
-                <option>Personal injury</option>
-                <option>Professional negligence</option>
-                <option>Public law</option>
-                <option>Road traffic accident</option>
-                <option>Other</option>
+                <option>Civil liberties</option><option>Clinical negligence</option><option>Costs only</option>
+                <option>Employer's liability</option><option>Employment</option><option>Family</option>
+                <option>Housing</option><option>Immigration</option><option>Inquests</option>
+                <option>Judicial review</option><option>Personal injury</option><option>Professional negligence</option>
+                <option>Public law</option><option>Road traffic accident</option><option>Other</option>
               </select>
             </div>
             <div class="field"><label>IP or LAA</label>
               <select id="bi-LAIP" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— select —</option>
-                <option>Inter Partes</option>
-                <option>Legal Aid</option>
-                <option>Both</option>
+                <option value="">— select —</option><option>Inter Partes</option><option>Legal Aid</option><option>Both</option>
               </select>
             </div>
             <div class="field"><label>Primary Funding</label>
               <select id="bi-PrimaryFunding" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— select —</option>
-                <option>Legal Aid</option>
-                <option>CFA</option>
-                <option>DBA</option>
-                <option>Private</option>
-                <option>Other</option>
+                <option value="">— select —</option><option>Legal Aid</option><option>CFA</option><option>DBA</option><option>Private</option><option>Other</option>
               </select>
             </div>
             <div class="field"><label>Task</label>
               <select id="bi-Task" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— select —</option>
-                <option>Bill of Costs</option>
-                <option>Points of Dispute</option>
-                <option>Replies</option>
-                <option>Budget</option>
-                <option>Precedent H</option>
-                <option>Other</option>
+                <option value="">— select —</option><option>Bill of Costs</option><option>Points of Dispute</option><option>Replies</option><option>Budget</option><option>Precedent H</option><option>Other</option>
               </select>
             </div>
             <div class="field"><label>Track</label>
               <select id="bi-Track" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— select —</option>
-                <option>Fast</option>
-                <option>Multi</option>
-                <option>Intermediate</option>
-                <option>Small Claims</option>
+                <option value="">— select —</option><option>Fast</option><option>Multi</option><option>Intermediate</option><option>Small Claims</option>
               </select>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Row 4: Case name overrides + Notes -->
       <div class="card">
         <div class="card-head"><span class="card-title">Title &amp; Notes</span></div>
         <div class="card-body">
@@ -987,27 +906,20 @@
           </div>
         </div>
       </div>
-
-      <!-- Acknowledgment link (read-only) -->
       <div class="card">
         <div class="card-head"><span class="card-title">Acknowledgment</span></div>
-        <div class="card-body">
-          <div id="bi-AckLink" style="font-size:14px;color:var(--grey-mid);">—</div>
-        </div>
+        <div class="card-body"><div id="bi-AckLink" style="font-size:14px;color:var(--grey-mid);">—</div></div>
       </div>
-
     </div><!-- /tab-bookingin -->
 
     <!-- ════════ OPPONENT & COURT TAB ════════ -->
     <div class="tab-panel" id="tab-opponent">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-op-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-op-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-op-cancel">Cancel</button>
         <span class="edit-msg" id="msg-op"></span>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Opponent</span></div>
         <div class="card-body">
@@ -1016,18 +928,11 @@
             <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" disabled /></div>
             <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" disabled /></div>
             <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
-            <div class="field checkbox-field" style="margin-top:8px;">
-              <input type="checkbox" id="op-MoreThanOneDef" disabled />
-              <label for="op-MoreThanOneDef">More than one Defendant?</label>
-            </div>
-            <div class="field checkbox-field" style="margin-top:8px;">
-              <input type="checkbox" id="op-LitigantInPerson" disabled />
-              <label for="op-LitigantInPerson">Litigant in Person?</label>
-            </div>
+            <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-MoreThanOneDef" disabled /><label for="op-MoreThanOneDef">More than one Defendant?</label></div>
+            <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
           </div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Opponent Address</span></div>
         <div class="card-body">
@@ -1040,7 +945,6 @@
           </div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Court</span></div>
         <div class="card-body">
@@ -1055,80 +959,76 @@
           </div>
         </div>
       </div>
-
     </div><!-- /tab-opponent -->
 
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-costs-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-costs-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-costs-cancel">Cancel</button>
         <span class="edit-msg" id="msg-costs"></span>
       </div>
-
       <div class="card">
-          <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
-          <table class="costs-entry-table">
-            <thead><tr>
-              <th class="col-label"></th>
-              <th class="col-net">Net (£)</th>
-              <th class="col-vat">VAT (£)</th>
-              <th class="col-inc">Inc VAT (£)</th>
-            </tr></thead>
-            <tbody>
-              <tr>
-                <td class="row-label">PC excl TMC (Vatable)</td>
-                <td><input type="number" id="fc-PCexTMC-vat" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-vatPC-row">—</td>
-                <td class="tbl-computed" id="cv-pcInc">—</td>
-              </tr>
-              <tr>
-                <td class="row-label">PC excl TMC (Non-Vatable)</td>
-                <td><input type="number" id="fc-PCexTMC-nonvat" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed">—</td>
-                <td class="tbl-computed" id="cv-pcNonVatInc">—</td>
-              </tr>
-              <tr>
-                <td class="row-label">TMC Drafting Time</td>
-                <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-vatTMC-row">—</td>
-                <td class="tbl-computed" id="cv-tmcInc">—</td>
-              </tr>
-              <tr>
-                <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
-                <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
-                <td class="tbl-computed" id="cv-otherTMCInc">—</td>
-              </tr>
-              <tr>
-                <td class="row-label">Disbursements Claimed</td>
-                <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" disabled /></td>
-                <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-disbInc">—</td>
-              </tr>
-              <tr>
-                <td class="row-label">Counsel's Fees Claimed</td>
-                <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
-                <td class="tbl-computed" id="cv-counselInc">—</td>
-              </tr>
-              <tr class="other-row">
-                <td class="row-label">Other TMC Fees — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
-                <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
-                <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
-                <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="vat-pct-row">
-            <label for="fc-VatPct">VAT % Claimed</label>
-            <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" disabled />
-            <span>%</span>
-          </div>
+        <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span></div>
+        <table class="costs-entry-table">
+          <thead><tr>
+            <th class="col-label"></th>
+            <th class="col-net">Net (£)</th>
+            <th class="col-vat">VAT (£)</th>
+            <th class="col-inc">Inc VAT (£)</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="row-label">PC excl TMC (Vatable)</td>
+              <td><input type="number" id="fc-PCexTMC-vat" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatPC-row">—</td>
+              <td class="tbl-computed" id="cv-pcInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">PC excl TMC (Non-Vatable)</td>
+              <td><input type="number" id="fc-PCexTMC-nonvat" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed">—</td>
+              <td class="tbl-computed" id="cv-pcNonVatInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">TMC Drafting Time</td>
+              <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatTMC-row">—</td>
+              <td class="tbl-computed" id="cv-tmcInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+              <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
+              <td class="tbl-computed" id="cv-otherTMCInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">Disbursements Claimed</td>
+              <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" disabled /></td>
+              <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-disbInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">Counsel's Fees Claimed</td>
+              <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
+              <td class="tbl-computed" id="cv-counselInc">—</td>
+            </tr>
+            <tr class="other-row">
+              <td class="row-label">Other TMC Fees — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+              <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
+              <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="vat-pct-row">
+          <label for="fc-VatPct">VAT % Claimed</label>
+          <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" disabled />
+          <span>%</span>
+        </div>
       </div>
-
       <div class="two-col" style="align-items:start;">
         <div class="card">
           <div class="card-head"><span class="card-title">Calculated Totals</span></div>
@@ -1143,36 +1043,24 @@
         <div class="card">
           <div class="card-head"><span class="card-title">Legal Aid Only</span></div>
           <table class="costs-entry-table">
-            <thead><tr>
-              <th class="col-label"></th>
-              <th class="col-net">Net (£)</th>
-            </tr></thead>
+            <thead><tr><th class="col-label"></th><th class="col-net">Net (£)</th></tr></thead>
             <tbody>
-              <tr>
-                <td class="row-label">LA Only Profit Costs</td>
-                <td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" disabled /></td>
-              </tr>
-              <tr>
-                <td class="row-label">TMC Drafting Time — LA</td>
-                <td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" disabled /></td>
-              </tr>
+              <tr><td class="row-label">LA Only Profit Costs</td><td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" disabled /></td></tr>
+              <tr><td class="row-label">TMC Drafting Time — LA</td><td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" disabled /></td></tr>
             </tbody>
           </table>
         </div>
-      </div><!-- /two-col -->
-
+      </div>
     </div><!-- /tab-costs -->
 
     <!-- ════════ INTEREST TAB ════════ -->
     <div class="tab-panel" id="tab-interest">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-int-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-int-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-int-cancel">Cancel</button>
         <span class="edit-msg" id="msg-int"></span>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Inputs</span></div>
         <div class="card-body">
@@ -1181,10 +1069,8 @@
             <div class="field"><label>Total Pre-Authority Payments (£)</label><input type="number" id="fi-PreAuth" step="0.01" min="0" disabled /></div>
             <div class="field"><label>Costs of Assessment — manual (£)</label><input type="number" id="fi-CoA" step="0.01" min="0" disabled /></div>
           </div>
-
         </div>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Interest Summary</span></div>
         <div class="interest-hero">
@@ -1203,7 +1089,6 @@
           <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
         </dl>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Period Breakdown</span></div>
         <div style="overflow-x:auto;">
@@ -1218,19 +1103,16 @@
           </table>
         </div>
       </div>
-
     </div><!-- /tab-interest -->
 
     <!-- ════════ INTERIM PAYMENTS TAB ════════ -->
     <div class="tab-panel" id="tab-interim">
-
       <div class="edit-bar">
         <button class="btn-edit" id="btn-ip-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-ip-save">✓ Save Changes</button>
         <button class="btn-edit-cancel" id="btn-ip-cancel">Cancel</button>
         <span class="edit-msg" id="msg-ip"></span>
       </div>
-
       <div class="card">
         <div class="card-head"><span class="card-title">Interim Payments</span></div>
         <div class="card-body">
@@ -1244,13 +1126,12 @@
           </div>
         </div>
       </div>
-
     </div>
+
     <div class="tab-panel" id="tab-expenses">
       <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
     </div>
 
-    <!-- ════════ CASE ACTIONS TAB ════════ -->
     <!-- ════════ REMINDERS TAB ════════ -->
     <div class="tab-panel" id="tab-reminders">
       <div style="display:flex;gap:22px;align-items:flex-start;">
@@ -1281,7 +1162,7 @@
               </table>
             </div>
             <div id="rem-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading reminders…</div>
-            <div id="rem-empty"   style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No reminders for this case.</div>
+            <div id="rem-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No reminders for this case.</div>
           </div>
         </div>
         <div style="width:290px;flex-shrink:0;">
@@ -1323,10 +1204,9 @@
       </div>
     </div><!-- /tab-reminders -->
 
+    <!-- ════════ CASE ACTIONS TAB ════════ -->
     <div class="tab-panel" id="tab-caseactions">
       <div style="display:flex;gap:22px;align-items:flex-start;">
-
-        <!-- Left: actions table -->
         <div style="flex:1;min-width:0;">
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1344,41 +1224,26 @@
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>By</th>
-                    <th>Work Done</th>
-                    <th class="ca-right">Hrs</th>
-                    <th class="ca-right">Rate</th>
-                    <th class="ca-right">Amt</th>
-                    <th class="ca-center">Bill.</th>
-                    <th class="ca-center">Billed</th>
-                    <th class="ca-center">Sched.</th>
-                    <th></th>
+                    <th>Date</th><th>By</th><th>Work Done</th>
+                    <th class="ca-right">Hrs</th><th class="ca-right">Rate</th><th class="ca-right">Amt</th>
+                    <th class="ca-center">Bill.</th><th class="ca-center">Billed</th>
+                    <th class="ca-center">Sched.</th><th></th>
                   </tr>
                 </thead>
                 <tbody id="ca-tbody"></tbody>
               </table>
             </div>
             <div id="ca-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading actions…</div>
-            <div id="ca-empty"  style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No actions found for this case.</div>
+            <div id="ca-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No actions found for this case.</div>
           </div>
         </div>
-
-        <!-- Right: Add Action panel -->
         <div style="width:320px;flex-shrink:0;">
           <div class="card">
             <div class="card-head"><span class="card-title">Add Action</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
-              <div class="field">
-                <label>Date Entered</label>
-                <input type="date" id="ca-add-dateentered" />
-              </div>
-              <div class="field">
-                <label>Date Work Done</label>
-                <input type="date" id="ca-add-dateworkdone" />
-              </div>
-              <div class="field">
-                <label>Brief</label>
+              <div class="field"><label>Date Entered</label><input type="date" id="ca-add-dateentered" /></div>
+              <div class="field"><label>Date Work Done</label><input type="date" id="ca-add-dateworkdone" /></div>
+              <div class="field"><label>Brief</label>
                 <select id="ca-add-brief" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
                   <option value="Preparation/Perusal">Preparation/Perusal</option>
                   <option value="Attendance">Attendance</option>
@@ -1388,24 +1253,20 @@
                   <option value="Other">Other</option>
                 </select>
               </div>
-              <div class="field">
-                <label>Completed By</label>
+              <div class="field"><label>Completed By</label>
                 <select id="ca-add-completedby" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
                   <option value="">-- select --</option>
                   <option>Joanna</option><option>Tracy</option><option>Kelly</option>
                   <option>Tom</option><option>Julie</option><option>Daniel</option><option>Toby</option>
                 </select>
               </div>
-              <div class="field">
-                <label>Rate (£/hr)</label>
+              <div class="field"><label>Rate (£/hr)</label>
                 <input type="number" id="ca-add-rate" step="0.01" min="0" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;" />
               </div>
-              <div class="field">
-                <label>Time Spent (hrs)</label>
+              <div class="field"><label>Time Spent (hrs)</label>
                 <input type="number" id="ca-add-timespent" step="0.25" min="0" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;" />
               </div>
-              <div class="field">
-                <label>Work Done</label>
+              <div class="field"><label>Work Done</label>
                 <textarea id="ca-add-workdone" rows="5" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;resize:vertical;"></textarea>
               </div>
               <div style="display:flex;align-items:center;gap:10px;">
@@ -1420,7 +1281,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </div><!-- /tab-caseactions -->
 
@@ -1495,20 +1355,17 @@ async function loadCourts() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     const sel = document.getElementById('op-CourtName');
-    // Rebuild options: blank placeholder + sorted court names
-    const current = sel.value; // preserve any value already set
+    const current = sel.value;
     sel.innerHTML = '<option value="">— select court —</option>';
     (data.courts || []).forEach(name => {
       const o = document.createElement('option');
       o.value = name; o.textContent = name;
       sel.appendChild(o);
     });
-    // Re-apply current case value if caseFields already loaded
     if (caseFields) setSelectOp('op-CourtName', caseFields['CourtName_Text']);
     else if (current) setSelectOp('op-CourtName', current);
   } catch (err) {
     console.warn('Courts list failed to load:', err.message);
-    // Leave select as-is; setSelectOp will add the value as a fallback option
     const sel = document.getElementById('op-CourtName');
     sel.innerHTML = '<option value="">— court list unavailable —</option>';
     if (caseFields && caseFields['CourtName_Text']) setSelectOp('op-CourtName', caseFields['CourtName_Text']);
@@ -1519,7 +1376,6 @@ async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
   try {
-    // Fetch case data and courts list in parallel
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
       loadCourts(),
@@ -1537,14 +1393,11 @@ async function loadCase() {
     renderHeader();
     renderOverviewTab();
     renderBookingInTab();
-    renderOpponentTab(); // CourtName select already populated by loadCourts()
+    renderOpponentTab();
     renderSettlementTab();
+    renderOffersTab();
     renderCostsTab();
     renderInterestTab();
-    // Case actions & reminders load lazily on first tab click (see tab handlers).
-    // They are NOT pre-fetched here: /api/caseactions and /api/reminders each walk
-    // their whole SP list per call, so firing them during the initial case load
-    // can stall the page (Graph throttling). Lazy load keeps the case page fast.
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
   } catch (err) {
@@ -1561,11 +1414,11 @@ function computeFigures() {
   const disbursements  = parseFloat(f['DisbursementsClaimed'])            || 0;
   const vatOnDisb      = parseFloat(f['VATonDisbursements'])              || 0;
   const coa            = parseFloat(f['Costsofassessment'])               || 0;
-  const clientExpenses = parseFloat(f['ClientPaidExpenses'])               || 0; // SP column needed for persistence
+  const clientExpenses = parseFloat(f['ClientPaidExpenses'])               || 0;
   const totalCOA       = coa + clientExpenses;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const _netDraftingFeeStored = parseFloat(f['Net_x0020_Drafting_x0020_Fee'])    || 0;
+  const _netDraftingFeeStored = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
@@ -1575,31 +1428,20 @@ function computeFigures() {
   const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
-  const offerOrSettlement = figureForSheet > 0 ? figureForSheet
-                          : settlementAmt  > 0 ? settlementAmt
-                          : lastOffer;
-
+  const offerOrSettlement = figureForSheet > 0 ? figureForSheet : settlementAmt > 0 ? settlementAmt : lastOffer;
   const disbIncVAT    = disbursements + vatOnDisb;
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
   const tmcPCIncVAT   = draftingTimeIP * vatHelper;
   const counselIncVAT = counselClaimed * vatHelper;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
-
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - totalCOA - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
-  const _drawnFeeBase  = _settFeeOnDrawn
-    ? (claimedPC + draftingTimeIP + otherTMCPC)
-    : netBeforeDrafting;
-  const netDraftingFee = feePctIP > 0
-    ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100
-    : _netDraftingFeeStored;
-  const netAfterDrafting  = vatOnDrafting
-    ? netBeforeDrafting - (netDraftingFee * vatHelper)
-    : netBeforeDrafting - netDraftingFee;
+  const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + otherTMCPC) : netBeforeDrafting;
+  const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : _netDraftingFeeStored;
+  const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
-  // Total IP Profit Costs = PC excl TMC + TMC drafting time + Other TMC PC (matches SP)
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
   const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
@@ -1608,8 +1450,6 @@ function computeFigures() {
   const vatOnPC      = vatableIPPC * vatPct;
   const vatOnCounsel = counselClaimed * vatPct;
   const vatOnLAPC    = laProfitCosts  * vatPct;
-  // Total Costs Claimed (IP only — LA is separate) = SP Calc_TotalInterPartesCosts.
-  // This is the interest base and the % Recovery Against Overall Bill denominator.
   const totalCostsClaimed = totalIPPC + vatOnPC + disbursements + vatOnDisb + counselClaimed + vatOnCounsel;
   const totalBill    = totalCostsClaimed;
   const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
@@ -1621,7 +1461,6 @@ function computeFigures() {
     netTotalClaimed: claimedPC + draftingTimeIP + disbursements + counselClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill, totalBill,
-    // Costs Claimed — IP build-up + LA
     otherTMCPC, laProfitCosts, tmcDraftingLA,
     totalIPPC, vatOnPC, vatOnCounsel, vatOnLAPC, totalCostsClaimed,
   };
@@ -1630,7 +1469,6 @@ function computeFigures() {
 function computeInterest() {
   const f     = caseFields;
   const today = new Date(); today.setHours(0,0,0,0);
-
   const sumOverride = parseFloat(f['SumForInterestCalculationOverrid']) || 0;
   const preAuth     = parseFloat(f['TotalPreAuthorityPayments'])        || 0;
   const ip1         = parseFloat(f['InterimPayment1'])                  || 0;
@@ -1641,36 +1479,24 @@ function computeInterest() {
   const ipd3        = f['InterimPaymentDate3'] ? new Date(f['InterimPaymentDate3']) : null;
   const authDate    = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   const coaManual   = parseFloat(f['CostsOfAssessmentForInterestTabO']) || 0;
-
   const interestOn = sumOverride > 0 ? sumOverride : (computed.totalBill || 0);
-
   const p1 = interestOn - preAuth;
-  const p2 = p1 - ip1;
-  const p3 = p2 - ip2;
-  const p4 = p3 - ip3;
-
+  const p2 = p1 - ip1; const p3 = p2 - ip2; const p4 = p3 - ip3;
   const r1 = p1 * 0.08 / 365;
   const r2 = ipd1 ? p2 * 0.08 / 365 : 0;
   const r3 = ipd2 ? p3 * 0.08 / 365 : 0;
   const r4 = ipd3 ? p4 * 0.08 / 365 : ipd2 ? p3 * 0.08 / 365 : ipd1 ? p2 * 0.08 / 365 : 0;
-
   const days1 = authDate ? (ipd1 ? daysBetween(authDate, ipd1) : daysBetween(authDate, today)) : 0;
   const days2 = ipd1 ? (ipd2 ? daysBetween(ipd1, ipd2) : daysBetween(ipd1, today)) : 0;
   const days3 = ipd2 ? (ipd3 ? daysBetween(ipd2, ipd3) : daysBetween(ipd2, today)) : 0;
   const days4 = ipd3 ? daysBetween(ipd3, today) : 0;
-
-  const int1 = days1 * r1;
-  const int2 = days2 * r2;
-  const int3 = days3 * r3;
-  const int4 = days4 * r4;
-
+  const int1 = days1 * r1; const int2 = days2 * r2; const int3 = days3 * r3; const int4 = days4 * r4;
   const totalInterest     = int1 + int2 + int3 + int4;
   const totalInclInterest = interestOn + totalInterest;
   const totalInclCOA      = interestOn + totalInterest + coaManual;
   const totalInterim      = ip1 + ip2 + ip3;
   const principalRemaining = ipd3 ? p4 : ipd2 ? p3 : ipd1 ? p2 : p1;
   const currentDailyRate   = ipd3 ? r4 : ipd2 ? r3 : ipd1 ? r2 : r1;
-
   interest = {
     interestOn, preAuth, totalInterim, principalRemaining, currentDailyRate,
     totalInterest, totalInclInterest, totalInclCOA, coaManual,
@@ -1685,10 +1511,7 @@ function computeInterest() {
 
 function computeDueDate(dateReceivedISO, turnaround) {
   if (!dateReceivedISO || !turnaround) return null;
-  const days = turnaround === '1 week' ? 7
-             : turnaround === '2 weeks' ? 14
-             : turnaround === '3 weeks' ? 21
-             : turnaround === '4 weeks' ? 28 : 0;
+  const days = turnaround === '1 week' ? 7 : turnaround === '2 weeks' ? 14 : turnaround === '3 weeks' ? 21 : turnaround === '4 weeks' ? 28 : 0;
   if (!days) return null;
   const d = new Date(dateReceivedISO);
   d.setDate(d.getDate() + days);
@@ -1697,30 +1520,17 @@ function computeDueDate(dateReceivedISO, turnaround) {
 
 function renderBookingInTab() {
   const f = caseFields;
-
-  // Dates
   setDate('bi-DateReceived', f['DateReceived']);
   document.getElementById('bi-OurRef').value = f['Ourreference_x0028_text_x0029_'] || '';
   document.getElementById('bi-ClientRef').value = f['ClientCaseReference'] || '';
-
-  // Turnaround select
   const ta = f['Turnaround_x0020__x0001f3af_'] || '';
   const taEl = document.getElementById('bi-Turnaround');
-  // Ensure the option exists before setting; if not, add it temporarily
   let found = false;
   for (const opt of taEl.options) { if (opt.value === ta) { found = true; break; } }
-  if (!found && ta) {
-    const opt = document.createElement('option');
-    opt.value = ta; opt.textContent = ta;
-    taEl.appendChild(opt);
-  }
+  if (!found && ta) { const opt = document.createElement('option'); opt.value = ta; opt.textContent = ta; taEl.appendChild(opt); }
   taEl.value = ta;
-
-  // Computed due date
   const dueDateObj = computeDueDate(f['DateReceived'], ta);
   document.getElementById('bi-DueDate').value = dueDateObj ? dueDateObj.toLocaleDateString('en-GB') : '';
-
-  // Live recalc when date or turnaround changes
   function updateDueDate() {
     const drVal = document.getElementById('bi-DateReceived').value;
     const taVal = document.getElementById('bi-Turnaround').value;
@@ -1729,39 +1539,24 @@ function renderBookingInTab() {
   }
   document.getElementById('bi-DateReceived').addEventListener('change', updateDueDate);
   document.getElementById('bi-Turnaround').addEventListener('change', updateDueDate);
-
-  // WIP
   const wip = f['Work_x0020_In_x0020_Progress'];
   document.getElementById('bi-WIP').value = (wip !== null && wip !== undefined && wip !== '') ? parseFloat(wip) : '';
-
-  // Party names — bi-Surname doubles as Multi Claimants field when checkbox ticked
   const multi = !!(f['Andothers_x003f_']);
   document.getElementById('bi-FirstName').value = f['OurPartyFirstName'] || '';
-  // Populate bi-Surname from MultiClaimants if multi, else OurPartySurname
-  document.getElementById('bi-Surname').value = multi
-    ? (f['MultiClaimants'] || '')
-    : (f['OurPartySurname'] || '');
+  document.getElementById('bi-Surname').value = multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || '');
   document.getElementById('bi-FeeEarner').value  = f['FeeEarner_x0028_fromFM_x0029_'] || '';
   document.getElementById('bi-Firm').value       = f['Firm_x0028_text_x0029_'] || '';
   setCheck('bi-Andothers', f['Andothers_x003f_']);
-
-  // Sync label text + First Name lock whenever checkbox changes
   function syncPartyFields() {
     const isMulti = document.getElementById('bi-Andothers').checked;
-    // Label swap
     document.getElementById('bi-Surname-label').textContent  = isMulti ? 'Multi Claimants' : 'Surname';
     document.getElementById('bi-FirstName-label').textContent = isMulti ? '\u00a0' : 'First Name';
-    // First Name: lock + clear when multi
     const fnEl = document.getElementById('bi-FirstName');
-    fnEl.readOnly = isMulti;
-    fnEl.style.opacity = isMulti ? '0.4' : '1';
-    fnEl.style.cursor  = isMulti ? 'not-allowed' : '';
+    fnEl.readOnly = isMulti; fnEl.style.opacity = isMulti ? '0.4' : '1'; fnEl.style.cursor = isMulti ? 'not-allowed' : '';
     if (isMulti) fnEl.value = '';
   }
   syncPartyFields();
   document.getElementById('bi-Andothers').addEventListener('change', syncPartyFields);
-
-  // Classification selects — use same pattern: set value, add if missing
   function setSelect(id, val) {
     const el = document.getElementById(id);
     if (!val) { el.value = ''; return; }
@@ -1770,39 +1565,24 @@ function renderBookingInTab() {
     if (!found) { const o = document.createElement('option'); o.value = val; o.textContent = val; el.appendChild(o); }
     el.value = val;
   }
-  setSelect('bi-Casetype',      f['Casetype']);
-  setSelect('bi-LAIP',          f['InterPartesorLegalAid']);
-  setSelect('bi-PrimaryFunding',f['PrimaryFundingType']);
-  setSelect('bi-Task',          f['Task']);
-  setSelect('bi-Track',         f['CaseTrack']);
-
-  // Title overrides + Notes
+  setSelect('bi-Casetype', f['Casetype']); setSelect('bi-LAIP', f['InterPartesorLegalAid']);
+  setSelect('bi-PrimaryFunding', f['PrimaryFundingType']); setSelect('bi-Task', f['Task']); setSelect('bi-Track', f['CaseTrack']);
   document.getElementById('bi-AddSuffix').value        = f['Add_x0020_To_x0020_Title'] || '';
   document.getElementById('bi-FullNameOverride').value = f['Fullcasenameoveride']       || '';
   document.getElementById('bi-Notes').value            = f['Notes']                     || '';
-
-  // Acknowledgment link
   const ackEl = document.getElementById('bi-AckLink');
   const ackUrl = f['Acknowledgmentemail'];
-  if (ackUrl) {
-    ackEl.innerHTML = '<a href="' + ackUrl + '" target="_blank" style="color:var(--navy);font-weight:500;">Open Acknowledgment Email Template ↗</a>';
-  } else {
-    ackEl.textContent = 'No acknowledgment link set.';
-  }
+  if (ackUrl) { ackEl.innerHTML = '<a href="' + ackUrl + '" target="_blank" style="color:var(--navy);font-weight:500;">Open Acknowledgment Email Template ↗</a>'; }
+  else { ackEl.textContent = 'No acknowledgment link set.'; }
 }
 
-// setSelect for opponent tab — adds option if missing, sets value
 function setSelectOp(id, val) {
   const el = document.getElementById(id);
   if (!el) return;
   if (!val) { el.value = ''; return; }
   let found = false;
   for (const opt of el.options) { if (opt.value === val) { found = true; break; } }
-  if (!found) {
-    const o = document.createElement('option');
-    o.value = val; o.textContent = val;
-    el.appendChild(o);
-  }
+  if (!found) { const o = document.createElement('option'); o.value = val; o.textContent = val; el.appendChild(o); }
   el.value = val;
 }
 
@@ -1812,7 +1592,6 @@ function renderOpponentTab() {
   document.getElementById('op-Opponentreference').value  = f['Opponentreference']                || '';
   document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
-  // Court name — setSelect handles missing options gracefully
   setSelectOp('op-CourtName', f['CourtName_Text']);
   document.getElementById('op-Division').value           = f['Division']                         || '';
   document.getElementById('op-ClaimNo').value            = f['ClaimNo']                          || '';
@@ -1829,9 +1608,7 @@ function renderHeader() {
   const f = caseFields;
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
   document.getElementById('hdr-name').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
-  document.getElementById('hdr-meta').textContent = [
-    f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']
-  ].filter(Boolean).join(' · ');
+  document.getElementById('hdr-meta').textContent = [f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']].filter(Boolean).join(' · ');
   document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
   renderDocumentBar();
 }
@@ -1841,22 +1618,16 @@ function renderDocumentBar() {
   const i  = interest;
   const bar = document.getElementById('doc-bar');
   if (!bar) return;
-
   const enc = encodeURIComponent;
-
-  // Shared params
   const firm      = f['Firm_x0028_text_x0029_']          || '';
   const ourRef    = f['Ourreference_x0028_text_x0029_']  || '';
   const yourRef   = f['ClientCaseReference']              || '';
   const multi     = !!(f['Andothers_x003f_']);
-  const matter    = multi
-    ? (f['MultiClaimants'] || '')
-    : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ');
-  const caseName  = f['CaseNameForOpenCases'] || matter;
+  const matter    = multi ? (f['MultiClaimants'] || '') : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ');
+  const caseName     = f['CaseNameForOpenCases'] || matter;
+  const fullCaseName = f['fullCaseNameMirror'] || f['Fullcasenameoveride'] || matter;
   const feeEarner = f['FeeEarner_x0028_fromFM_x0029_'] || '';
   const draftsman = switcherCallerName || '';
-
-  // Opponent / court
   const oppoFirm = f['opponentFirmMirror']               || '';
   const oppoA1   = f['Opponent_x0020_Address_x0020_1']   || '';
   const oppoA2   = f['Opponent_x0020_Address_x0020_2']   || '';
@@ -1867,118 +1638,37 @@ function renderDocumentBar() {
   const court    = f['CourtName_Text']                   || '';
   const claimNo  = f['ClaimNo']                         || '';
   const defendant = f['OpponentPartyName']              || '';
-
-  // Interest figures (computed after computeInterest() has run)
-  const totalInterest = (i.totalInterest > 0)
-    ? '£' + i.totalInterest.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})
-    : '';
-  const dailyRate = (i.currentDailyRate > 0)
-    ? '£' + i.currentDailyRate.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})
-    : '';
-
+  const totalInterest = (i.totalInterest > 0) ? '£' + i.totalInterest.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+  const dailyRate = (i.currentDailyRate > 0) ? '£' + i.currentDailyRate.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
   const BLUE = 'https://blue-forest-06239b410.7.azurestaticapps.net';
   const ICY  = 'https://icy-flower-0f5f0b110.7.azurestaticapps.net';
-
-  // Booking In Sheet — opens in new tab (not overlay)
-  // (multi already declared above)
   const biParams = new URLSearchParams({
-    casename:    caseName,
-    ourref:      ourRef,
-    firm:        firm,
-    laip:        f['InterPartesorLegalAid']          || '',
-    funding:     f['PrimaryFundingType']              || '',
-    first:       f['OurPartyFirstName']               || '',
-    surname:     multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || ''),
-    multi:       multi ? '1' : '0',
-    clientref:   yourRef,
-    feeearner:   feeEarner,
-    casetype:    f['Casetype']                        || '',
-    track:       f['CaseTrack']                       || '',
-    task:        f['Task']                            || '',
-    datereceived:f['DateReceived']                    || '',
-    turnaround:  f['Turnaround_x0020__x0001f3af_']   || '',
-    status:      f['StatusMirror']                    || '',
-    assigned:    f['assignedToTextValue']              || '',
-    coassigned:  f['coAssignedMirror']                || '',
-    feebasis:    f['Drafting_x0020_fee_x0020_basis']  || '',
-    ipfee:       f['Fee_x0025__x0028_number_x0029_'] != null ? String(f['Fee_x0025__x0028_number_x0029_']) : '',
-    minfee:      f['Minfee_x0025__x0028_number_x0029'] != null ? String(f['Minfee_x0025__x0028_number_x0029']) : '',
-    rate:        f['RateForCase']                    != null ? String(f['RateForCase']) : '',
-    wip:         f['Work_x0020_In_x0020_Progress']   != null ? String(f['Work_x0020_In_x0020_Progress']) : '',
-    notes:       f['Notes']                           || '',
+    casename: caseName, ourref: ourRef, firm: firm,
+    laip: f['InterPartesorLegalAid'] || '', funding: f['PrimaryFundingType'] || '',
+    first: f['OurPartyFirstName'] || '',
+    surname: multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || ''),
+    multi: multi ? '1' : '0', clientref: yourRef, feeearner: feeEarner,
+    casetype: f['Casetype'] || '', track: f['CaseTrack'] || '', task: f['Task'] || '',
+    datereceived: f['DateReceived'] || '', turnaround: f['Turnaround_x0020__x0001f3af_'] || '',
+    status: f['StatusMirror'] || '', assigned: f['assignedToTextValue'] || '',
+    coassigned: f['coAssignedMirror'] || '', feebasis: f['Drafting_x0020_fee_x0020_basis'] || '',
+    ipfee: f['Fee_x0025__x0028_number_x0029_'] != null ? String(f['Fee_x0025__x0028_number_x0029_']) : '',
+    minfee: f['Minfee_x0025__x0028_number_x0029'] != null ? String(f['Minfee_x0025__x0028_number_x0029']) : '',
+    rate: f['RateForCase'] != null ? String(f['RateForCase']) : '',
+    wip: f['Work_x0020_In_x0020_Progress'] != null ? String(f['Work_x0020_In_x0020_Progress']) : '',
+    notes: f['Notes'] || '',
   }).toString();
   const biUrl = '/booking-in-sheet.html?' + biParams;
-
   const links = [
-    {
-      label: 'Acknowledgment',
-      url: BLUE + '/builder.html?'
-        + 'firm='    + enc(firm)
-        + '&matter=' + enc(matter)
-        + '&yourref='+ enc(yourRef)
-        + '&ourref=' + enc(ourRef),
-    },
-    {
-      label: 'Informal Service',
-      url: ICY + '/builder.html?'
-        + 'MatterName=' + enc(matter)
-        + '&FeeEarner='  + enc(feeEarner)
-        + '&Draftsman='  + enc(draftsman)
-        + '&CaseRef='    + enc(yourRef)
-        + '&TMCRef='     + enc(ourRef),
-    },
-    {
-      label: 'Formal Service',
-      url: ICY + '/builder.html?'
-        + 'template=FormalServiceNonHJA'
-        + '&OppoFirm='      + enc(oppoFirm)
-        + '&OppoAddress1='  + enc(oppoA1)
-        + '&OppoAddress2='  + enc(oppoA2)
-        + '&OppoAddress3='  + enc(oppoA3)
-        + '&OppoAddress4='  + enc(oppoA4)
-        + '&OppoAddress5='  + enc(oppoA5)
-        + '&YourRef='       + enc(oppoRef)
-        + '&OurRef='        + enc(ourRef)
-        + '&FullCaseName='  + enc(caseName)
-        + '&Firm='          + enc(firm)
-        + '&TotalInterest='    + enc(totalInterest)
-        + '&DailyRatePeriod4=' + enc(dailyRate),
-    },
-    {
-      label: 'Inter Partes Memo',
-      url: ICY + '/builder.html?'
-        + 'MatterName=' + enc(matter)
-        + '&FeeEarner=' + enc(feeEarner)
-        + '&Draftsman=' + enc(draftsman)
-        + '&CaseRef='   + enc(yourRef)
-        + '&TMCRef='    + enc(ourRef),
-    },
-    {
-      label: 'Notice of Acting',
-      url: ICY + '/builder.html?'
-        + 'template=NoticeOfActing'
-        + '&CourtName='     + enc(court)
-        + '&ClaimNo='       + enc(claimNo)
-        + '&ClaimantName='  + enc(matter)
-        + '&DefendantName=' + enc(defendant),
-    },
-    {
-      label: 'Email Templates',
-      url: BLUE + '/emails.html?'
-        + 'firm='    + enc(firm)
-        + '&matter=' + enc(matter)
-        + '&yourref='+ enc(yourRef)
-        + '&ourref=' + enc(ourRef)
-        + '&name='   + enc(feeEarner.split(' ')[0]),
-    },
+    { label: 'Acknowledgment', url: BLUE + '/builder.html?' + 'firm=' + enc(firm) + '&matter=' + enc(matter) + '&yourref=' + enc(yourRef) + '&ourref=' + enc(ourRef) },
+    { label: 'Informal Service', url: ICY + '/builder.html?' + 'MatterName=' + enc(matter) + '&FeeEarner=' + enc(feeEarner) + '&Draftsman=' + enc(draftsman) + '&CaseRef=' + enc(yourRef) + '&TMCRef=' + enc(ourRef) },
+    { label: 'Formal Service', url: ICY + '/builder.html?' + 'template=FormalServiceNonHJA' + '&OppoFirm=' + enc(oppoFirm) + '&OppoAddress1=' + enc(oppoA1) + '&OppoAddress2=' + enc(oppoA2) + '&OppoAddress3=' + enc(oppoA3) + '&OppoAddress4=' + enc(oppoA4) + '&OppoAddress5=' + enc(oppoA5) + '&YourRef=' + enc(oppoRef) + '&OurRef=' + enc(ourRef) + '&FullCaseName=' + enc(fullCaseName) + '&Firm=' + enc(firm) + '&TotalInterest=' + enc(totalInterest) + '&DailyRatePeriod4=' + enc(dailyRate) },
+    { label: 'Inter Partes Memo', url: ICY + '/builder.html?' + 'MatterName=' + enc(matter) + '&FeeEarner=' + enc(feeEarner) + '&Draftsman=' + enc(draftsman) + '&CaseRef=' + enc(yourRef) + '&TMCRef=' + enc(ourRef) },
+    { label: 'Notice of Acting', url: ICY + '/builder.html?' + 'template=NoticeOfActing' + '&CourtName=' + enc(court) + '&ClaimNo=' + enc(claimNo) + '&ClaimantName=' + enc(matter) + '&DefendantName=' + enc(defendant) },
+    { label: 'Email Templates', url: BLUE + '/emails.html?' + 'firm=' + enc(firm) + '&matter=' + enc(matter) + '&yourref=' + enc(yourRef) + '&ourref=' + enc(ourRef) + '&name=' + enc(feeEarner.split(' ')[0]) },
   ];
-
-  bar.innerHTML = links.map(u =>
-    '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>'
-  ).join('') + '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
-  bar.querySelectorAll('.doc-btn[data-url]').forEach(btn => {
-    btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent));
-  });
+  bar.innerHTML = links.map(u => '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>').join('') + '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
+  bar.querySelectorAll('.doc-btn[data-url]').forEach(btn => { btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent)); });
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
@@ -1986,85 +1676,45 @@ const STATUS_VALUES = [
   'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
   'In negotiation (served informally)','In negotiation (served formally)',
   'In negotiation (points of dispute received)','In negotiation (replies served)',
-  'In budgeting','Awaiting provisional assessment','Pending detailed assessment',
-  'Settled','Closed'
+  'In budgeting','Awaiting provisional assessment','Pending detailed assessment','Settled','Closed'
 ];
 
 function renderOverviewTab() {
   const f = caseFields;
-  // Always render read-only text first (edit mode swaps these out)
-  setText('ov-assigned',       f['assignedToTextValue'] || '—');
-  setText('ov-coassigned',     f['coAssignedMirror']    || '—');
-  setText('ov-status',         f['StatusMirror']        || '—');
-  setText('ov-servedinf',      fmtDate(f['DateServedInformally0']));
-  setText('ov-part8',          fmtDate(f['DatePart8Issued']));
-  setText('ov-servedfml',      fmtDate(f['DateServedFormally0']));
-  setText('ov-poddue',         fmtDate(f['PODS_x0020_Due']));
-  setText('ov-podrec',         fmtDate(f['PODS_x0020_Received']));
-  setText('ov-settled',        fmtDate(f['DateSettled0']));
-  setText('ov-currentposition',stripHtml(f['Current_x0020_Position']) || '—');
-  setText('ov-flags',          stripHtml(f['Flags'])               || '—');
-  setText('ov-lastaction',     f['LastAction']           || '—');
-  setText('ov-lastreminder',   stripHtml(f['Last_x0020_Reminder'])  || '—');
-  // Client details
+  setText('ov-assigned', f['assignedToTextValue'] || '—'); setText('ov-coassigned', f['coAssignedMirror'] || '—'); setText('ov-status', f['StatusMirror'] || '—');
+  setText('ov-servedinf', fmtDate(f['DateServedInformally0'])); setText('ov-part8', fmtDate(f['DatePart8Issued'])); setText('ov-servedfml', fmtDate(f['DateServedFormally0']));
+  setText('ov-poddue', fmtDate(f['PODS_x0020_Due'])); setText('ov-podrec', fmtDate(f['PODS_x0020_Received'])); setText('ov-settled', fmtDate(f['DateSettled0']));
+  setText('ov-currentposition', stripHtml(f['Current_x0020_Position']) || '—'); setText('ov-flags', stripHtml(f['Flags']) || '—');
+  setText('ov-lastaction', f['LastAction'] || '—'); setText('ov-lastreminder', stripHtml(f['Last_x0020_Reminder']) || '—');
   const multi = !!(f['Andothers_x003f_']);
-  const clientName = multi
-    ? (f['MultiClaimants'] || '—')
-    : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ') || '—';
-  setText('ov-clientname',   clientName);
-  setText('ov-firm',         f['Firm_x0028_text_x0029_']           || '—');
-  setText('ov-feeearner',    f['FeeEarner_x0028_fromFM_x0029_']    || '—');
-  setText('ov-clientref',    f['ClientCaseReference']               || '—');
-  // Opponent & Court details
-  setText('ov-opponent',     f['OpponentPartyName']                 || '—');
-  setText('ov-opponentfirm', f['opponentFirmMirror']                || '—');
-  setText('ov-opponentref',  f['Opponentreference']                 || '—');
-  setText('ov-court',        f['CourtName_Text']                    || '—');
-  setText('ov-claimno',      f['ClaimNo']                           || '—');
-  setText('ov-serviceemail', f['ServiceEmail']                      || '—');
-  // Billing Info (read-only display)
-  setText('ov-feebasis',      f['Drafting_x0020_fee_x0020_basis'] || '—');
-  const ipFee  = parseFloat(f['Fee_x0025__x0028_number_x0029_']);
-  const laFee  = parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00']);
-  const minFee = parseFloat(f['Minfee_x0025__x0028_number_x0029']);
-  const rate   = parseFloat(f['RateForCase']);
-  const provDF = parseFloat(f['ProvisionalDraftingFee']);
-  const provMF = parseFloat(f['ProvisionalMinDraftingFee']);
-  setText('ov-ipfee',         !isNaN(ipFee)  ? ipFee  + '%' : '—');
-  setText('ov-lafee',         !isNaN(laFee)  ? laFee  + '%' : '—');
-  setText('ov-minfee',        !isNaN(minFee) ? minFee + '%' : '—');
-  setText('ov-rate',          !isNaN(rate)   ? '£' + rate.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
-  setText('ov-minfeeapplied', f['MinimumFee'] ? 'Yes' : 'No');
-  setText('ov-vatondrafting', f['VatOnDraftingFee_x003f_'] ? 'Yes' : 'No');
-  setText('ov-provdrafting',  !isNaN(provDF) && provDF > 0 ? '£' + provDF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
-  setText('ov-provminfee',    !isNaN(provMF) && provMF > 0 ? '£' + provMF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
-  const cpUpd = f['CP_x0020_Last_x0020_Updated'];
-  const cpEl  = document.getElementById('ov-cpupdated');
+  const clientName = multi ? (f['MultiClaimants'] || '—') : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ') || '—';
+  setText('ov-clientname', clientName); setText('ov-firm', f['Firm_x0028_text_x0029_'] || '—'); setText('ov-feeearner', f['FeeEarner_x0028_fromFM_x0029_'] || '—'); setText('ov-clientref', f['ClientCaseReference'] || '—');
+  setText('ov-opponent', f['OpponentPartyName'] || '—'); setText('ov-opponentfirm', f['opponentFirmMirror'] || '—'); setText('ov-opponentref', f['Opponentreference'] || '—');
+  setText('ov-court', f['CourtName_Text'] || '—'); setText('ov-claimno', f['ClaimNo'] || '—'); setText('ov-serviceemail', f['ServiceEmail'] || '—');
+  setText('ov-feebasis', f['Drafting_x0020_fee_x0020_basis'] || '—');
+  const ipFee = parseFloat(f['Fee_x0025__x0028_number_x0029_']); const laFee = parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00']);
+  const minFee = parseFloat(f['Minfee_x0025__x0028_number_x0029']); const rate = parseFloat(f['RateForCase']);
+  const provDF = parseFloat(f['ProvisionalDraftingFee']); const provMF = parseFloat(f['ProvisionalMinDraftingFee']);
+  setText('ov-ipfee', !isNaN(ipFee) ? ipFee + '%' : '—'); setText('ov-lafee', !isNaN(laFee) ? laFee + '%' : '—');
+  setText('ov-minfee', !isNaN(minFee) ? minFee + '%' : '—');
+  setText('ov-rate', !isNaN(rate) ? '£' + rate.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
+  setText('ov-minfeeapplied', f['MinimumFee'] ? 'Yes' : 'No'); setText('ov-vatondrafting', f['VatOnDraftingFee_x003f_'] ? 'Yes' : 'No');
+  setText('ov-provdrafting', !isNaN(provDF) && provDF > 0 ? '£' + provDF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
+  setText('ov-provminfee', !isNaN(provMF) && provMF > 0 ? '£' + provMF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
+  const cpUpd = f['CP_x0020_Last_x0020_Updated']; const cpEl = document.getElementById('ov-cpupdated');
   if (cpEl) cpEl.textContent = cpUpd ? 'Updated ' + fmtDate(cpUpd) : '';
-  // Make sure we're in read mode after a re-render
   ovSetReadMode();
 }
 
 function makeSelect(id, options, currentVal) {
-  const sel = document.createElement('select');
-  sel.className = 'ov-select'; sel.id = id + '-input';
-  const blank = document.createElement('option');
-  blank.value = ''; blank.textContent = '— select —';
-  sel.appendChild(blank);
-  options.forEach(o => {
-    const opt = document.createElement('option');
-    opt.value = o; opt.textContent = o;
-    if (o === currentVal) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  const sel = document.createElement('select'); sel.className = 'ov-select'; sel.id = id + '-input';
+  const blank = document.createElement('option'); blank.value = ''; blank.textContent = '— select —'; sel.appendChild(blank);
+  options.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; if (o === currentVal) opt.selected = true; sel.appendChild(opt); });
   return sel;
 }
 
 function makeDateInput(id, isoVal) {
-  const inp = document.createElement('input');
-  inp.type = 'date'; inp.className = 'ov-date'; inp.id = id + '-input';
-  inp.value = toDateInput(isoVal);
-  return inp;
+  const inp = document.createElement('input'); inp.type = 'date'; inp.className = 'ov-date'; inp.id = id + '-input'; inp.value = toDateInput(isoVal); return inp;
 }
 
 function ovSetEditMode() {
@@ -2072,77 +1722,27 @@ function ovSetEditMode() {
   document.getElementById('btn-ov-edit').style.display   = 'none';
   document.getElementById('btn-ov-save').style.display   = 'inline-flex';
   document.getElementById('btn-ov-cancel').style.display = 'inline-flex';
-
-  // Billing Info inputs
-  const feeBasisEl = document.getElementById('ov-feebasis');
-  feeBasisEl.innerHTML = '';
-  feeBasisEl.appendChild(makeSelect('ov-feebasis', [
-    '% of Profit Costs', 'As Drawn', 'As Recovered', 'Fixed Fee', 'Hourly Rate', 'Other'
-  ], f['Drafting_x0020_fee_x0020_basis']));
-
-  const biNumFields = [
-    ['ov-ipfee',  parseFloat(f['Fee_x0025__x0028_number_x0029_']) || ''],
-    ['ov-lafee',  parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00']) || ''],
-    ['ov-minfee', parseFloat(f['Minfee_x0025__x0028_number_x0029']) || ''],
-    ['ov-rate',   parseFloat(f['RateForCase']) || ''],
-  ];
-  biNumFields.forEach(([elId, val]) => {
-    const dd = document.getElementById(elId);
-    dd.innerHTML = '';
-    const inp = document.createElement('input');
-    inp.type = 'number'; inp.className = 'ov-date'; inp.id = elId + '-input';
-    inp.step = '0.01'; inp.min = '0'; inp.value = val;
-    dd.appendChild(inp);
+  const feeBasisEl = document.getElementById('ov-feebasis'); feeBasisEl.innerHTML = '';
+  feeBasisEl.appendChild(makeSelect('ov-feebasis', ['% of Profit Costs','As Drawn','As Recovered','Fixed Fee','Hourly Rate','Other'], f['Drafting_x0020_fee_x0020_basis']));
+  [['ov-ipfee', parseFloat(f['Fee_x0025__x0028_number_x0029_'])||''],['ov-lafee', parseFloat(f['LAA_x0020_Drafting_x0020_Fee_x00'])||''],['ov-minfee', parseFloat(f['Minfee_x0025__x0028_number_x0029'])||''],['ov-rate', parseFloat(f['RateForCase'])||'']].forEach(([elId, val]) => {
+    const dd = document.getElementById(elId); dd.innerHTML = '';
+    const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'ov-date'; inp.id = elId + '-input'; inp.step = '0.01'; inp.min = '0'; inp.value = val; dd.appendChild(inp);
   });
-
-  const biToggleFields = [
-    ['ov-minfeeapplied', !!(f['MinimumFee'])],
-    ['ov-vatondrafting', !!(f['VatOnDraftingFee_x003f_'])],
-  ];
-  biToggleFields.forEach(([elId, val]) => {
-    const dd = document.getElementById(elId);
-    dd.innerHTML = '';
-    const sel = document.createElement('select');
-    sel.className = 'ov-select'; sel.id = elId + '-input';
-    ['Yes','No'].forEach(o => {
-      const opt = document.createElement('option');
-      opt.value = o; opt.textContent = o;
-      if ((val && o === 'Yes') || (!val && o === 'No')) opt.selected = true;
-      sel.appendChild(opt);
-    });
+  [['ov-minfeeapplied', !!(f['MinimumFee'])],['ov-vatondrafting', !!(f['VatOnDraftingFee_x003f_'])]].forEach(([elId, val]) => {
+    const dd = document.getElementById(elId); dd.innerHTML = '';
+    const sel = document.createElement('select'); sel.className = 'ov-select'; sel.id = elId + '-input';
+    ['Yes','No'].forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; if ((val && o === 'Yes') || (!val && o === 'No')) opt.selected = true; sel.appendChild(opt); });
     dd.appendChild(sel);
   });
-
-  // Assignment dropdowns
-  const assignedEl = document.getElementById('ov-assigned');
-  assignedEl.innerHTML = '';
+  const assignedEl = document.getElementById('ov-assigned'); assignedEl.innerHTML = '';
   assignedEl.appendChild(makeSelect('ov-assigned', TEAM_MEMBERS, f['assignedToTextValue']));
-
-  const coEl = document.getElementById('ov-coassigned');
-  coEl.innerHTML = '';
+  const coEl = document.getElementById('ov-coassigned'); coEl.innerHTML = '';
   const coSel = makeSelect('ov-coassigned', TEAM_MEMBERS, f['coAssignedMirror']);
-  // Replace blank option with — none —
-  coSel.children[0].textContent = '— none —';
-  if (!f['coAssignedMirror']) coSel.value = '';
-  coEl.appendChild(coSel);
-
-  const statusEl = document.getElementById('ov-status');
-  statusEl.innerHTML = '';
+  coSel.children[0].textContent = '— none —'; if (!f['coAssignedMirror']) coSel.value = ''; coEl.appendChild(coSel);
+  const statusEl = document.getElementById('ov-status'); statusEl.innerHTML = '';
   statusEl.appendChild(makeSelect('ov-status', STATUS_VALUES, f['StatusMirror']));
-
-  // Date inputs
-  const dateMap = [
-    ['ov-servedinf', f['DateServedInformally0']],
-    ['ov-part8',     f['DatePart8Issued']],
-    ['ov-servedfml', f['DateServedFormally0']],
-    ['ov-poddue',    f['PODS_x0020_Due']],
-    ['ov-podrec',    f['PODS_x0020_Received']],
-    ['ov-settled',   f['DateSettled0']],
-  ];
-  dateMap.forEach(([elId, isoVal]) => {
-    const dd = document.getElementById(elId);
-    dd.innerHTML = '';
-    dd.appendChild(makeDateInput(elId, isoVal));
+  [['ov-servedinf', f['DateServedInformally0']],['ov-part8', f['DatePart8Issued']],['ov-servedfml', f['DateServedFormally0']],['ov-poddue', f['PODS_x0020_Due']],['ov-podrec', f['PODS_x0020_Received']],['ov-settled', f['DateSettled0']]].forEach(([elId, isoVal]) => {
+    const dd = document.getElementById(elId); dd.innerHTML = ''; dd.appendChild(makeDateInput(elId, isoVal));
   });
 }
 
@@ -2155,207 +1755,105 @@ function ovSetReadMode() {
 }
 
 document.getElementById('btn-ov-edit').addEventListener('click', ovSetEditMode);
-
-document.getElementById('btn-ov-cancel').addEventListener('click', () => {
-  renderOverviewTab(); // re-renders read-only and calls ovSetReadMode
-});
-
+document.getElementById('btn-ov-cancel').addEventListener('click', () => { renderOverviewTab(); });
 document.getElementById('btn-ov-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-ov-save');
-  const msg = document.getElementById('msg-ov');
+  const btn = document.getElementById('btn-ov-save'); const msg = document.getElementById('msg-ov');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
-
   const assignedVal = document.getElementById('ov-assigned-input')?.value  || null;
   const coVal       = document.getElementById('ov-coassigned-input')?.value || null;
   const statusVal   = document.getElementById('ov-status-input')?.value     || null;
-
-  const dateFields = [
-    ['ov-servedinf-input', 'DateServedInformally0'],
-    ['ov-part8-input',     'DatePart8Issued'],
-    ['ov-servedfml-input', 'DateServedFormally0'],
-    ['ov-poddue-input',    'PODS_x0020_Due'],
-    ['ov-podrec-input',    'PODS_x0020_Received'],
-    ['ov-settled-input',   'DateSettled0'],
-  ];
-
-  // Only include select fields if the user made a selection — empty string = not changed, skip to avoid overwriting existing SP values
+  const dateFields = [['ov-servedinf-input','DateServedInformally0'],['ov-part8-input','DatePart8Issued'],['ov-servedfml-input','DateServedFormally0'],['ov-poddue-input','PODS_x0020_Due'],['ov-podrec-input','PODS_x0020_Received'],['ov-settled-input','DateSettled0']];
   const fields = {};
   if (assignedVal) { fields.assignedToTextValue = assignedVal; fields.AssignedToMirror = assignedVal; }
-  if (coVal)      fields.coAssignedMirror = coVal;
-  if (statusVal)  fields.StatusMirror = statusVal;
-  dateFields.forEach(([inputId, spField]) => {
-    const v = document.getElementById(inputId)?.value;
-    fields[spField] = v ? v + 'T00:00:00Z' : null;
-  });
-
-  // Billing Info
-  const feeBasisVal = document.getElementById('ov-feebasis-input')?.value;
-  if (feeBasisVal) fields['Drafting_x0020_fee_x0020_basis'] = feeBasisVal;
-  const ipFeeVal  = document.getElementById('ov-ipfee-input')?.value;
-  const laFeeVal  = document.getElementById('ov-lafee-input')?.value;
-  const minFeeVal = document.getElementById('ov-minfee-input')?.value;
-  const rateVal   = document.getElementById('ov-rate-input')?.value;
+  if (coVal) fields.coAssignedMirror = coVal;
+  if (statusVal) fields.StatusMirror = statusVal;
+  dateFields.forEach(([inputId, spField]) => { const v = document.getElementById(inputId)?.value; fields[spField] = v ? v + 'T00:00:00Z' : null; });
+  const feeBasisVal = document.getElementById('ov-feebasis-input')?.value; if (feeBasisVal) fields['Drafting_x0020_fee_x0020_basis'] = feeBasisVal;
+  const ipFeeVal = document.getElementById('ov-ipfee-input')?.value; const laFeeVal = document.getElementById('ov-lafee-input')?.value;
+  const minFeeVal = document.getElementById('ov-minfee-input')?.value; const rateVal = document.getElementById('ov-rate-input')?.value;
   if (ipFeeVal  !== '' && ipFeeVal  != null) fields['Fee_x0025__x0028_number_x0029_']  = parseFloat(ipFeeVal);
   if (laFeeVal  !== '' && laFeeVal  != null) fields['LAA_x0020_Drafting_x0020_Fee_x00'] = parseFloat(laFeeVal);
   if (minFeeVal !== '' && minFeeVal != null) fields['Minfee_x0025__x0028_number_x0029'] = parseFloat(minFeeVal);
   if (rateVal   !== '' && rateVal   != null) fields['RateForCase']                       = parseFloat(rateVal);
-  const minFeeAppliedVal  = document.getElementById('ov-minfeeapplied-input')?.value;
-  const vatOnDraftingVal  = document.getElementById('ov-vatondrafting-input')?.value;
+  const minFeeAppliedVal = document.getElementById('ov-minfeeapplied-input')?.value;
+  const vatOnDraftingVal = document.getElementById('ov-vatondrafting-input')?.value;
   if (minFeeAppliedVal != null) fields['MinimumFee']              = minFeeAppliedVal === 'Yes';
   if (vatOnDraftingVal != null) fields['VatOnDraftingFee_x003f_'] = vatOnDraftingVal === 'Yes';
-
   try {
-    const resp = await fetch('/api/caseupdate', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ itemId: caseItemId, fields }),
-    });
+    const resp = await fetch('/api/caseupdate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId: caseItemId, fields }) });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
-    Object.assign(caseFields, fields);
-    msg.className = 'edit-msg ok'; msg.textContent = '✓ Saved';
-    renderHeader();
-    renderOverviewTab();
+    Object.assign(caseFields, fields); msg.className = 'edit-msg ok'; msg.textContent = '✓ Saved';
+    renderHeader(); renderOverviewTab();
     setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
-  } catch (err) {
-    msg.className = 'edit-msg err'; msg.textContent = 'Save failed: ' + err.message;
-  } finally {
-    btn.disabled = false;
-  }
+  } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Save failed: ' + err.message; }
+  finally { btn.disabled = false; }
 });
 
 function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
+  setTxt('f-CaseNameForOpenCases', f['CaseNameForOpenCases']); setTxt('f-ClientCaseReference', f['ClientCaseReference']);
+  setTxt('f-Ourreference', f['Ourreference_x0028_text_x0029_']); setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
+  setText('r-Disbursements', fmt(c.disbIncVAT)); setText('r-TotalLiab', fmt(c.totalPayable));
+  setNum('f-Counselsfeespayable', f['Counselsfeespayable']); setNum('f-Costsofassessment', f['Costsofassessment']);
+  setNum('f-ClientPaidExpenses', f['ClientPaidExpenses']); setText('r-TotalCOA', fmt(c.totalCOA)); setNum('f-OtherTMCInvoices', f['OtherTMCInvoices_ex_x0020_bill']);
+  setText('r-InterestOn', fmt(i.interestOn)); setText('r-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
+  setText('r-DailyRate', fmt(i.currentDailyRate)); setText('r-TotalInterest', fmt(i.totalInterest)); setText('r-TotalInclCOA', fmt(i.totalInclCOA));
+  setText('r-NetAfterDrafting', fmt(c.netAfterDrafting)); setText('r-GrossPCRecovery', fmt(c.grossPC)); setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
+  setText('r-DraftingFee', fmt(c.netDraftingFee)); setText('r-PctPC', fmtPct(c.pctPC)); setText('r-PctBill', fmtPct(c.pctBill));
+}
 
-  setTxt('f-CaseNameForOpenCases',      f['CaseNameForOpenCases']);
-  setTxt('f-ClientCaseReference',       f['ClientCaseReference']);
-  setTxt('f-Ourreference',              f['Ourreference_x0028_text_x0029_']);
-  setDate('f-DateSettled0',             f['DateSettled0']);
-  setNum('f-Settlementamount',          f['Settlementamount']);
-  setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']);
-  setNum('f-BottomLine',                f['BottomLine']);
-  setNum('f-LikelyTopEnd',              f['LikelyTopEnd']);
-  setNum('f-PayingPartysLastOffer',     f['PayingPartysLastOffer']);
-  setNum('f-FigureForSettlementSheet',  f['FigureForSettlementSheet']);
-  setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
-  setCheck('f-Offerincludesinterest_x003f_',     f['Offerincludesinterest_x003f_']);
-
-  setText('r-Disbursements', fmt(c.disbIncVAT));
-  setText('r-TotalLiab',     fmt(c.totalPayable));
-  setNum('f-Counselsfeespayable', f['Counselsfeespayable']);
-  setNum('f-Costsofassessment',   f['Costsofassessment']);
-  setNum('f-ClientPaidExpenses',  f['ClientPaidExpenses']);
-  setText('r-TotalCOA',           fmt(c.totalCOA));
-  setNum('f-OtherTMCInvoices',    f['OtherTMCInvoices_ex_x0020_bill']);
-
-  setText('r-InterestOn',   fmt(i.interestOn));
-  setText('r-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
-  setText('r-DailyRate',    fmt(i.currentDailyRate));
-  setText('r-TotalInterest',fmt(i.totalInterest));
-  setText('r-TotalInclCOA', fmt(i.totalInclCOA));
-
-  setText('r-NetAfterDrafting',  fmt(c.netAfterDrafting));
-  setText('r-GrossPCRecovery',   fmt(c.grossPC));
-  setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
-  setText('r-DraftingFee',       fmt(c.netDraftingFee));
-  setText('r-PctPC',             fmtPct(c.pctPC));
-  setText('r-PctBill',           fmtPct(c.pctBill));
+function renderOffersTab() {
+  const f = caseFields;
+  setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']); setNum('f-BottomLine', f['BottomLine']); setNum('f-LikelyTopEnd', f['LikelyTopEnd']);
+  setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']); setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
+  setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']); setCheck('f-Offerincludesinterest_x003f_', f['Offerincludesinterest_x003f_']);
 }
 
 function renderCostsTab() {
   const f = caseFields; const c = computed;
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-
-  // Input fields
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
   const vatablePC       = Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC);
   const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
-  setNum('fc-PCexTMC-vat',    vatablePC);
-  setNum('fc-PCexTMC-nonvat', nonVatablePC);
-  setCheck('fc-OtherTMCPC-vatable',   otherTMCPCVat);
-  setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
-  setNum('fc-TMCDrafting',   f['DraftingTimeClaimed']);
-  setNum('fc-OtherTMCPC',    f['Other_x0020_TMC_x0020_PC_x0020__']);
-  setNum('fc-Disb',          f['DisbursementsClaimed']);
-  setNum('fc-VatDisb',       f['VATonDisbursements']);
-  setNum('fc-Counsel',       f['CounselsFeesClaimed']);
-  setNum('fc-VatPct',        vatPct * 100);
-  setNum('fc-OtherTMCFees',  f['OtherTMCInvoices_ex_x0020_bill']);
-  setNum('fc-LAPC',          f['LegalAidOnlyProfitCosts']);
-  setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
-
-  // Per-row VAT and Inc VAT computed cells
-  const pc        = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0;
-  const tmc       = parseFloat(f['DraftingTimeClaimed'])               || 0;
-  const otherTMC  = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
-  const disb      = parseFloat(f['DisbursementsClaimed'])              || 0;
-  const vatDisb   = parseFloat(f['VATonDisbursements'])                || 0;
-  const counsel   = parseFloat(f['CounselsFeesClaimed'])               || 0;
-
+  setNum('fc-PCexTMC-vat', vatablePC); setNum('fc-PCexTMC-nonvat', nonVatablePC);
+  setCheck('fc-OtherTMCPC-vatable', otherTMCPCVat); setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
+  setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
+  setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']); setNum('fc-Counsel', f['CounselsFeesClaimed']);
+  setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
+  setNum('fc-LAPC', f['LegalAidOnlyProfitCosts']); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
+  const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
+  const disb = parseFloat(f['DisbursementsClaimed']) || 0; const vatDisb = parseFloat(f['VATonDisbursements']) || 0; const counsel = parseFloat(f['CounselsFeesClaimed']) || 0;
   const otherTMCFeesAmt = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
-  setText('cv-vatPC-row',           vatablePC > 0 ? fmt(vatablePC * vatPct) : '\u2014');
-  setText('cv-pcInc',               fmt(vatablePC * (1 + vatPct)));
-  setText('cv-pcNonVatInc',         nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014');
-  setText('cv-vatTMC-row',          fmt(tmc * vatPct));
-  setText('cv-tmcInc',              fmt(tmc * (1 + vatPct)));
-  setText('cv-vatOtherTMC-row',     otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014');
-  setText('cv-otherTMCInc',         otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
-  setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014');
-  setText('cv-otherTMCFeesInc',     otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
-  setText('cv-disbInc',             fmt(disb + vatDisb));
-  setText('cv-vatCounsel-row',      fmt(counsel * vatPct));
-  setText('cv-counselInc',          fmt(counsel * (1 + vatPct)));
-
-  // Summary totals panel
-  setText('cc-totalIPPC',    fmt(c.totalIPPC));
-  setText('cc-vatPC',        fmt(c.vatOnPC));
-  setText('cc-vatCounsel',   fmt(c.vatOnCounsel));
-  setText('cc-vatLAPC',      fmt(c.vatOnLAPC));
-  setText('cc-totalClaimed', fmt(c.totalCostsClaimed));
+  setText('cv-vatPC-row', vatablePC > 0 ? fmt(vatablePC * vatPct) : '\u2014'); setText('cv-pcInc', fmt(vatablePC * (1 + vatPct)));
+  setText('cv-pcNonVatInc', nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014'); setText('cv-vatTMC-row', fmt(tmc * vatPct)); setText('cv-tmcInc', fmt(tmc * (1 + vatPct)));
+  setText('cv-vatOtherTMC-row', otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014'); setText('cv-otherTMCInc', otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
+  setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014'); setText('cv-otherTMCFeesInc', otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
+  setText('cv-disbInc', fmt(disb + vatDisb)); setText('cv-vatCounsel-row', fmt(counsel * vatPct)); setText('cv-counselInc', fmt(counsel * (1 + vatPct)));
+  setText('cc-totalIPPC', fmt(c.totalIPPC)); setText('cc-vatPC', fmt(c.vatOnPC)); setText('cc-vatCounsel', fmt(c.vatOnCounsel)); setText('cc-vatLAPC', fmt(c.vatOnLAPC)); setText('cc-totalClaimed', fmt(c.totalCostsClaimed));
 }
 
 function renderInterestTab() {
   const f = caseFields; const i = interest;
-
-  setText('i-TotalInclCOA',       fmt(i.totalInclCOA));
-  setText('i-InterestOn',         fmt(i.interestOn));
-  setText('i-AuthToAssess',       fmtDate(f['DateofAuthoritytoAssess']));
-  setText('i-PreAuthTotal',       fmt(i.preAuth));
-  setText('i-InterimTotal',       fmt(i.totalInterim));
-  setText('i-PrincipalRemaining', fmt(i.principalRemaining));
-  setText('i-DailyRate',          fmt(i.currentDailyRate));
-  setText('i-TotalInterest',      fmt(i.totalInterest));
-  setText('i-TotalInclInterest',  fmt(i.totalInclInterest));
-  setText('i-CoA',                fmt(i.coaManual));
-
+  setText('i-TotalInclCOA', fmt(i.totalInclCOA)); setText('i-InterestOn', fmt(i.interestOn)); setText('i-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
+  setText('i-PreAuthTotal', fmt(i.preAuth)); setText('i-InterimTotal', fmt(i.totalInterim)); setText('i-PrincipalRemaining', fmt(i.principalRemaining));
+  setText('i-DailyRate', fmt(i.currentDailyRate)); setText('i-TotalInterest', fmt(i.totalInterest)); setText('i-TotalInclInterest', fmt(i.totalInclInterest)); setText('i-CoA', fmt(i.coaManual));
   i.periods.forEach((p, idx) => {
-    const n = idx + 1;
-    const active = p.days > 0 || p.interest > 0;
-    const cls = active ? 'mono' : 'dim';
-    document.getElementById('p-days-'     + n).textContent = active ? fmtN(p.days, 0) : '—';
-    document.getElementById('p-principal-'+ n).textContent = active ? fmt(p.principal) : '—';
-    document.getElementById('p-rate-'     + n).textContent = active ? fmt(p.rate)      : '—';
-    document.getElementById('p-interest-' + n).textContent = active ? fmt(p.interest)  : '—';
-    document.getElementById('p-days-'     + n).className = cls;
-    document.getElementById('p-principal-'+ n).className = cls;
-    document.getElementById('p-rate-'     + n).className = cls;
-    document.getElementById('p-interest-' + n).className = cls;
+    const n = idx + 1; const active = p.days > 0 || p.interest > 0; const cls = active ? 'mono' : 'dim';
+    document.getElementById('p-days-' + n).textContent = active ? fmtN(p.days, 0) : '—';
+    document.getElementById('p-principal-' + n).textContent = active ? fmt(p.principal) : '—';
+    document.getElementById('p-rate-' + n).textContent = active ? fmt(p.rate) : '—';
+    document.getElementById('p-interest-' + n).textContent = active ? fmt(p.interest) : '—';
+    ['p-days-','p-principal-','p-rate-','p-interest-'].forEach(pfx => { document.getElementById(pfx + n).className = cls; });
   });
-
-  setNum('fi-SumOverride', f['SumForInterestCalculationOverrid']);
-  setNum('fi-PreAuth',     f['TotalPreAuthorityPayments']);
-  setNum('fi-CoA',         f['CostsOfAssessmentForInterestTabO']);
-  setNum('fi-IP1',         f['InterimPayment1']);
-  setNum('fi-IP2',         f['InterimPayment2']);
-  setNum('fi-IP3',         f['InterimPayment3']);
-  setDate('fi-IPD1',       f['InterimPaymentDate1']);
-  setDate('fi-IPD2',       f['InterimPaymentDate2']);
-  setDate('fi-IPD3',       f['InterimPaymentDate3']);
+  setNum('fi-SumOverride', f['SumForInterestCalculationOverrid']); setNum('fi-PreAuth', f['TotalPreAuthorityPayments']); setNum('fi-CoA', f['CostsOfAssessmentForInterestTabO']);
+  setNum('fi-IP1', f['InterimPayment1']); setNum('fi-IP2', f['InterimPayment2']); setNum('fi-IP3', f['InterimPayment3']);
+  setDate('fi-IPD1', f['InterimPaymentDate1']); setDate('fi-IPD2', f['InterimPaymentDate2']); setDate('fi-IPD3', f['InterimPaymentDate3']);
 }
 
-// ── Generic tab edit/save/cancel wiring ──────────────────────────────
-// Returns the list of editable field selectors for a given tab panel
 const TAB_FIELDS = {
   'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox], #btn-import-counsel, #btn-calc-coa',
+  'tab-offers':     '#tab-offers input:not([readonly]), #tab-offers select, #tab-offers input[type=checkbox]',
   'tab-bookingin':  '#tab-bookingin input:not([readonly]), #tab-bookingin select, #tab-bookingin textarea, #tab-bookingin input[type=checkbox]',
   'tab-opponent':   '#tab-opponent input:not([readonly]), #tab-opponent select, #tab-opponent textarea, #tab-opponent input[type=checkbox]',
   'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select, #tab-costs input[type=checkbox]',
@@ -2363,12 +1861,8 @@ const TAB_FIELDS = {
   'tab-interim':    '#tab-interim input:not([readonly]), #tab-interim select',
 };
 
-function tabEnableFields(tabId) {
-  document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => el.disabled = false);
-}
-function tabDisableFields(tabId) {
-  document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => { if (!el.readOnly) el.disabled = true; });
-}
+function tabEnableFields(tabId) { document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => el.disabled = false); }
+function tabDisableFields(tabId) { document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => { if (!el.readOnly) el.disabled = true; }); }
 function tabSetEditMode(prefix, tabId) {
   document.getElementById('btn-' + prefix + '-edit').style.display   = 'none';
   const saveBtn = document.getElementById('btn-' + prefix + '-save');
@@ -2385,118 +1879,106 @@ function tabSetReadMode(prefix, tabId) {
   tabDisableFields(tabId);
 }
 
-// Settlement
-document.getElementById('btn-sett-edit').addEventListener('click',   () => tabSetEditMode('sett','tab-settlement'));
-document.getElementById('btn-sett-cancel').addEventListener('click', () => { renderSettlementTab(); tabSetReadMode('sett','tab-settlement'); });
-document.getElementById('btn-sett-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-sett-save');
-  const msg = document.getElementById('msg-sett');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
-  const fields = {
-    CaseNameForOpenCases: document.getElementById('f-CaseNameForOpenCases').value || null,
-    ClientCaseReference:  document.getElementById('f-ClientCaseReference').value  || null,
-  };
-  const dv = document.getElementById('f-DateSettled0').value;
-  fields['DateSettled0'] = dv ? dv + 'T00:00:00Z' : null;
+// Offers
+document.getElementById('btn-offers-edit').addEventListener('click', () => tabSetEditMode('offers','tab-offers'));
+document.getElementById('btn-offers-cancel').addEventListener('click', () => { renderOffersTab(); tabSetReadMode('offers','tab-offers'); });
+document.getElementById('btn-offers-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-offers-save'); const msg = document.getElementById('msg-offers');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  const fields = {};
   for (const [sp, el] of Object.entries({
-    'Settlementamount':'f-Settlementamount','ProfitCostsatAdvisedRates':'f-ProfitCostsatAdvisedRates',
-    'BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
+    'ProfitCostsatAdvisedRates':'f-ProfitCostsatAdvisedRates','BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
-    'Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
-    'ClientPaidExpenses':'f-ClientPaidExpenses',
-    'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
   fields['Offerincludesinterest_x003f_']     = document.getElementById('f-Offerincludesinterest_x003f_').checked;
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
-    try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
+    try { computeFigures(); computeInterest(); renderHeader(); renderOffersTab(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Offers re-render:', e); }
+    tabSetReadMode('offers','tab-offers');
+  } else btn.disabled = false;
+});
+
+// Settlement
+document.getElementById('btn-sett-edit').addEventListener('click', () => tabSetEditMode('sett','tab-settlement'));
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { renderSettlementTab(); tabSetReadMode('sett','tab-settlement'); });
+document.getElementById('btn-sett-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  const fields = { CaseNameForOpenCases: document.getElementById('f-CaseNameForOpenCases').value || null, ClientCaseReference: document.getElementById('f-ClientCaseReference').value || null };
+  const dv = document.getElementById('f-DateSettled0').value; fields['DateSettled0'] = dv ? dv + 'T00:00:00Z' : null;
+  for (const [sp, el] of Object.entries({
+    'Settlementamount':'f-Settlementamount','Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
+    'ClientPaidExpenses':'f-ClientPaidExpenses','OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
+  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) {
+    try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
     tabSetReadMode('sett','tab-settlement');
-  }
-  else btn.disabled = false;
+  } else btn.disabled = false;
 });
 
 // Booking In
-document.getElementById('btn-bi-edit').addEventListener('click',   () => tabSetEditMode('bi','tab-bookingin'));
+document.getElementById('btn-bi-edit').addEventListener('click', () => tabSetEditMode('bi','tab-bookingin'));
 document.getElementById('btn-bi-cancel').addEventListener('click', () => { renderBookingInTab(); tabSetReadMode('bi','tab-bookingin'); });
 document.getElementById('btn-bi-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-bi-save');
-  const msg = document.getElementById('msg-bi');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const btn = document.getElementById('btn-bi-save'); const msg = document.getElementById('msg-bi');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   const fields = {};
   fields['OurPartyFirstName'] = document.getElementById('bi-FirstName').value || null;
-  const isMultiSave = document.getElementById('bi-Andothers').checked;
-  const surnameVal  = document.getElementById('bi-Surname').value || null;
-  fields['OurPartySurname']  = isMultiSave ? null : surnameVal;
-  fields['MultiClaimants']   = isMultiSave ? surnameVal : null;
-  fields['ClientCaseReference']           = document.getElementById('bi-ClientRef').value || null;
+  const isMultiSave = document.getElementById('bi-Andothers').checked; const surnameVal = document.getElementById('bi-Surname').value || null;
+  fields['OurPartySurname']  = isMultiSave ? null : surnameVal; fields['MultiClaimants'] = isMultiSave ? surnameVal : null;
+  fields['ClientCaseReference'] = document.getElementById('bi-ClientRef').value || null;
   fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value || null;
   fields['Firm_x0028_text_x0029_']        = document.getElementById('bi-Firm').value || null;
   fields['Add_x0020_To_x0020_Title']      = document.getElementById('bi-AddSuffix').value || null;
   fields['Fullcasenameoveride']           = document.getElementById('bi-FullNameOverride').value || null;
   fields['Notes']                         = document.getElementById('bi-Notes').value || null;
-  fields['Casetype']                      = document.getElementById('bi-Casetype').value || null;
-  fields['InterPartesorLegalAid']         = document.getElementById('bi-LAIP').value || null;
-  fields['PrimaryFundingType']            = document.getElementById('bi-PrimaryFunding').value || null;
-  fields['Task']                          = document.getElementById('bi-Task').value || null;
-  fields['CaseTrack']                     = document.getElementById('bi-Track').value || null;
-  fields['Turnaround_x0020__x0001f3af_']  = document.getElementById('bi-Turnaround').value || null;
+  fields['Casetype'] = document.getElementById('bi-Casetype').value || null; fields['InterPartesorLegalAid'] = document.getElementById('bi-LAIP').value || null;
+  fields['PrimaryFundingType'] = document.getElementById('bi-PrimaryFunding').value || null; fields['Task'] = document.getElementById('bi-Task').value || null;
+  fields['CaseTrack'] = document.getElementById('bi-Track').value || null; fields['Turnaround_x0020__x0001f3af_'] = document.getElementById('bi-Turnaround').value || null;
   fields['Andothers_x003f_'] = document.getElementById('bi-Andothers').checked;
-  const wipV = document.getElementById('bi-WIP').value;
-  fields['Work_x0020_In_x0020_Progress'] = wipV === '' ? null : parseFloat(wipV);
-  const drV = document.getElementById('bi-DateReceived').value;
-  fields['DateReceived'] = drV ? drV + 'T00:00:00Z' : null;
+  const wipV = document.getElementById('bi-WIP').value; fields['Work_x0020_In_x0020_Progress'] = wipV === '' ? null : parseFloat(wipV);
+  const drV = document.getElementById('bi-DateReceived').value; fields['DateReceived'] = drV ? drV + 'T00:00:00Z' : null;
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { renderHeader(); renderBookingInTab(); tabSetReadMode('bi','tab-bookingin'); }
-  else btn.disabled = false;
+  if (msg.className.includes('ok')) { renderHeader(); renderBookingInTab(); tabSetReadMode('bi','tab-bookingin'); } else btn.disabled = false;
 });
 
 // Opponent & Court
-document.getElementById('btn-op-edit').addEventListener('click',   () => tabSetEditMode('op','tab-opponent'));
+document.getElementById('btn-op-edit').addEventListener('click', () => tabSetEditMode('op','tab-opponent'));
 document.getElementById('btn-op-cancel').addEventListener('click', () => { renderOpponentTab(); tabSetReadMode('op','tab-opponent'); });
 document.getElementById('btn-op-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-op-save');
-  const msg = document.getElementById('msg-op');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const btn = document.getElementById('btn-op-save'); const msg = document.getElementById('msg-op');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   const fields = {
-    OpponentPartyName:               document.getElementById('op-OpponentPartyName').value  || null,
-    Opponentreference:               document.getElementById('op-Opponentreference').value  || null,
-    opponentFirmMirror:              document.getElementById('op-opponentFirmMirror').value || null,
-    ServiceEmail:                    document.getElementById('op-ServiceEmail').value       || null,
-    CourtName_Text:                  document.getElementById('op-CourtName').value          || null,
-    Division:                        document.getElementById('op-Division').value           || null,
-    ClaimNo:                         document.getElementById('op-ClaimNo').value            || null,
-    Opponent_x0020_Address_x0020_1:  document.getElementById('op-Addr1').value              || null,
-    Opponent_x0020_Address_x0020_2:  document.getElementById('op-Addr2').value              || null,
-    Opponent_x0020_Address_x0020_3:  document.getElementById('op-Addr3').value              || null,
-    Opponent_x0020_Address_x0020_4:  document.getElementById('op-Addr4').value              || null,
-    Opponent_x0020_Address_x0020_5:  document.getElementById('op-Addr5').value              || null,
-    Morethanonedefendant_x003f_:     document.getElementById('op-MoreThanOneDef').checked,
-    Litigant_x0020_in_x0020_Person_x:document.getElementById('op-LitigantInPerson').checked,
+    OpponentPartyName: document.getElementById('op-OpponentPartyName').value || null,
+    Opponentreference: document.getElementById('op-Opponentreference').value || null,
+    opponentFirmMirror: document.getElementById('op-opponentFirmMirror').value || null,
+    ServiceEmail: document.getElementById('op-ServiceEmail').value || null,
+    CourtName_Text: document.getElementById('op-CourtName').value || null,
+    Division: document.getElementById('op-Division').value || null, ClaimNo: document.getElementById('op-ClaimNo').value || null,
+    Opponent_x0020_Address_x0020_1: document.getElementById('op-Addr1').value || null,
+    Opponent_x0020_Address_x0020_2: document.getElementById('op-Addr2').value || null,
+    Opponent_x0020_Address_x0020_3: document.getElementById('op-Addr3').value || null,
+    Opponent_x0020_Address_x0020_4: document.getElementById('op-Addr4').value || null,
+    Opponent_x0020_Address_x0020_5: document.getElementById('op-Addr5').value || null,
+    Morethanonedefendant_x003f_: document.getElementById('op-MoreThanOneDef').checked,
+    Litigant_x0020_in_x0020_Person_x: document.getElementById('op-LitigantInPerson').checked,
   };
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { renderOpponentTab(); tabSetReadMode('op','tab-opponent'); }
-  else btn.disabled = false;
+  if (msg.className.includes('ok')) { renderOpponentTab(); tabSetReadMode('op','tab-opponent'); } else btn.disabled = false;
 });
 
-// ── Import Counsel's Fees from Costs Claimed ──────────────────────────────
 document.getElementById('btn-import-counsel').addEventListener('click', () => {
-  const f = caseFields;
-  const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+  const f = caseFields; const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const counselIncVAT = Math.round(counselClaimed * (1 + vatPct) * 100) / 100;
-  document.getElementById('f-Counselsfeespayable').value = counselIncVAT || '';
+  document.getElementById('f-Counselsfeespayable').value = Math.round(counselClaimed * (1 + vatPct) * 100) / 100 || '';
 });
 
-// ── COA Calculate button — show/hide picker ───────────────────────────────
 const coaPicker = document.getElementById('coa-picker');
-document.getElementById('btn-calc-coa').addEventListener('click', (e) => {
-  e.stopPropagation();
-  coaPicker.classList.toggle('open');
-});
+document.getElementById('btn-calc-coa').addEventListener('click', (e) => { e.stopPropagation(); coaPicker.classList.toggle('open'); });
 document.addEventListener('click', () => coaPicker.classList.remove('open'));
 
-// ── Live update of Total COA display as user edits either input ──────────────
 function _updateTotalCOADisplay() {
   const tmcCOA = parseFloat(document.getElementById('f-Costsofassessment')?.value) || 0;
   const exp    = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value)  || 0;
@@ -2505,48 +1987,38 @@ function _updateTotalCOADisplay() {
 document.getElementById('f-Costsofassessment')?.addEventListener('input', _updateTotalCOADisplay);
 document.getElementById('f-ClientPaidExpenses')?.addEventListener('input', _updateTotalCOADisplay);
 
-// ── COA mode selected ─────────────────────────────────────────────────────
 document.querySelectorAll('.coa-opt').forEach(btn => {
   btn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    coaPicker.classList.remove('open');
-    const mode = btn.dataset.mode;
-    const calcBtn = document.getElementById('btn-calc-coa');
-    calcBtn.disabled = true;
-    calcBtn.textContent = '…';
+    e.stopPropagation(); coaPicker.classList.remove('open');
+    const mode = btn.dataset.mode; const calcBtn = document.getElementById('btn-calc-coa');
+    calcBtn.disabled = true; calcBtn.textContent = '\u2026';
     const ref = (caseFields['Ourreference_x0028_text_x0029_'] || '').trim();
     try {
       const resp = await fetch('/api/coa?ref=' + encodeURIComponent(ref) + '&mode=' + mode);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
-      // Cap logic: if limit set and > 0, use limit; otherwise use sum
       const vatPct = parseFloat(caseFields['VAT_x0020__x0025__x0020_Claimed']) || 0;
-      const base   = (data.limit && data.limit > 0) ? data.limit : data.sum;
+      const base = (data.limit && data.limit > 0) ? data.limit : data.sum;
       const coaIncVAT = Math.round(base * (1 + vatPct) * 100) / 100;
       document.getElementById('f-Costsofassessment').value = coaIncVAT || '';
-      // Update Total COA display immediately
       const _exp = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
       setText('r-TotalCOA', fmt((coaIncVAT || 0) + _exp));
-      // Show what was used
-      const modeLabel = mode === 'unbilled' ? 'unbilled' : 'all billable';
-      const limitNote = (data.limit && data.limit > 0) ? ' (capped at £' + data.limit.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')' : '';
-      calcBtn.textContent = '✓ ' + data.count + ' entries' + limitNote;
-      setTimeout(() => { calcBtn.textContent = '⚡ Calculate'; calcBtn.disabled = false; }, 3000);
+      const limitNote = (data.limit && data.limit > 0) ? ' (capped at \u00a3' + data.limit.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')' : '';
+      calcBtn.textContent = '\u2713 ' + data.count + ' entries' + limitNote;
+      setTimeout(() => { calcBtn.textContent = '\u26a1 Calculate'; calcBtn.disabled = false; }, 3000);
     } catch (err) {
-      calcBtn.textContent = '✗ Error';
-      setTimeout(() => { calcBtn.textContent = '⚡ Calculate'; calcBtn.disabled = false; }, 3000);
-      console.error('COA calc error:', err);
+      calcBtn.textContent = '\u2717 Error';
+      setTimeout(() => { calcBtn.textContent = '\u26a1 Calculate'; calcBtn.disabled = false; }, 3000);
     }
   });
 });
 
 // Costs Claimed
-document.getElementById('btn-costs-edit').addEventListener('click',   () => tabSetEditMode('costs','tab-costs'));
+document.getElementById('btn-costs-edit').addEventListener('click', () => tabSetEditMode('costs','tab-costs'));
 document.getElementById('btn-costs-cancel').addEventListener('click', () => { renderCostsTab(); tabSetReadMode('costs','tab-costs'); });
 document.getElementById('btn-costs-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-costs-save');
-  const msg = document.getElementById('msg-costs');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const btn = document.getElementById('btn-costs-save'); const msg = document.getElementById('msg-costs');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   const fields = {};
   const _vatableVal    = parseFloat(document.getElementById('fc-PCexTMC-vat')?.value) || 0;
   const _nonVatableVal = parseFloat(document.getElementById('fc-PCexTMC-nonvat')?.value) || 0;
@@ -2555,50 +2027,41 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   fields['OtherTMCPCVatable']     = !!(document.getElementById('fc-OtherTMCPC-vatable')?.checked);
   fields['OtherTMCFeesVatable']   = !!(document.getElementById('fc-OtherTMCFees-vatable')?.checked);
   for (const [sp, el] of Object.entries({
-    'DraftingTimeClaimed':'fc-TMCDrafting',
-    'Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
-    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel',
-    'OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
+    'DraftingTimeClaimed':'fc-TMCDrafting','Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
+    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel','OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
     'LegalAidOnlyProfitCosts':'fc-LAPC','TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
-  const vp = document.getElementById('fc-VatPct').value;
-  fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+  const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('costs','tab-costs'); }
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('costs','tab-costs'); }
   else btn.disabled = false;
 });
 
 // Interim Payments
-document.getElementById('btn-ip-edit').addEventListener('click',   () => tabSetEditMode('ip','tab-interim'));
+document.getElementById('btn-ip-edit').addEventListener('click', () => tabSetEditMode('ip','tab-interim'));
 document.getElementById('btn-ip-cancel').addEventListener('click', () => { renderInterestTab(); tabSetReadMode('ip','tab-interim'); });
 document.getElementById('btn-ip-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-ip-save');
-  const msg = document.getElementById('msg-ip');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const btn = document.getElementById('btn-ip-save'); const msg = document.getElementById('msg-ip');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   const fields = {};
-  for (const [sp, el] of Object.entries({
-    'InterimPayment1':'fi-IP1','InterimPayment2':'fi-IP2','InterimPayment3':'fi-IP3',
-  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
-  for (const [sp, el] of Object.entries({
-    'InterimPaymentDate1':'fi-IPD1','InterimPaymentDate2':'fi-IPD2','InterimPaymentDate3':'fi-IPD3',
-  })) { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
+  for (const [sp, el] of Object.entries({'InterimPayment1':'fi-IP1','InterimPayment2':'fi-IP2','InterimPayment3':'fi-IP3'}))
+    { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  for (const [sp, el] of Object.entries({'InterimPaymentDate1':'fi-IPD1','InterimPaymentDate2':'fi-IPD2','InterimPaymentDate3':'fi-IPD3'}))
+    { const v = document.getElementById(el).value; fields[sp] = v ? v + 'T00:00:00Z' : null; }
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); tabSetReadMode('ip','tab-interim'); }
   else btn.disabled = false;
 });
 
 // Interest
-document.getElementById('btn-int-edit').addEventListener('click',   () => tabSetEditMode('int','tab-interest'));
+document.getElementById('btn-int-edit').addEventListener('click', () => tabSetEditMode('int','tab-interest'));
 document.getElementById('btn-int-cancel').addEventListener('click', () => { renderInterestTab(); tabSetReadMode('int','tab-interest'); });
 document.getElementById('btn-int-save').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-int-save');
-  const msg = document.getElementById('msg-int');
-  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  const btn = document.getElementById('btn-int-save'); const msg = document.getElementById('msg-int');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   const fields = {};
-  for (const [sp, el] of Object.entries({
-    'SumForInterestCalculationOverrid':'fi-SumOverride','TotalPreAuthorityPayments':'fi-PreAuth',
-    'CostsOfAssessmentForInterestTabO':'fi-CoA',
-  })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  for (const [sp, el] of Object.entries({'SumForInterestCalculationOverrid':'fi-SumOverride','TotalPreAuthorityPayments':'fi-PreAuth','CostsOfAssessmentForInterestTabO':'fi-CoA'}))
+    { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) { Object.assign(caseFields, fields); computeInterest(); renderSettlementTab(); renderInterestTab(); tabSetReadMode('int','tab-interest'); }
   else btn.disabled = false;
@@ -2607,117 +2070,64 @@ document.getElementById('btn-int-save').addEventListener('click', async () => {
 async function doSave(fields, btn, msg, msgClass) {
   const cls = msgClass || 'save-msg';
   try {
-    const resp = await fetch('/api/caseupdate', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ itemId: caseItemId, fields }),
-    });
+    const resp = await fetch('/api/caseupdate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId: caseItemId, fields }) });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     Object.assign(caseFields, fields);
-    msg.className = cls + ' ok'; msg.textContent = '✓ Saved';
-    setTimeout(() => { if (msg.textContent === '✓ Saved') { msg.textContent = ''; msg.className = cls; } }, 3000);
-  } catch (err) {
-    msg.className = cls + ' err'; msg.textContent = 'Save failed: ' + err.message;
-    btn.disabled = false;
-  }
+    msg.className = cls + ' ok'; msg.textContent = '\u2713 Saved';
+    setTimeout(() => { if (msg.textContent === '\u2713 Saved') { msg.textContent = ''; msg.className = cls; } }, 3000);
+  } catch (err) { msg.className = cls + ' err'; msg.textContent = 'Save failed: ' + err.message; btn.disabled = false; }
 }
 
 async function generateSettlementPDF() {
-  const f = caseFields; const c = computed;
-  const btn = document.getElementById('btn-gen-pdf');
+  const f = caseFields; const c = computed; const btn = document.getElementById('btn-gen-pdf');
   btn.disabled = true;
-  btn.querySelector('span') && (btn.querySelector('span').textContent = 'Generating…');
-
-  // Populate all fields
-  document.getElementById('pdf-case').textContent          = f['CaseNameForOpenCases'] || f['Title'] || '—';
-  document.getElementById('pdf-clientref').textContent     = f['ClientCaseReference'] || '—';
-  document.getElementById('pdf-tmcref').textContent        = f['Ourreference_x0028_text_x0029_'] || '—';
-  document.getElementById('pdf-datesettled').textContent   = fmtDate(f['DateSettled0']);
-  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0
-    ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-  document.getElementById('pdf-pc-net').textContent           = fmt(c.claimedPC);
-  document.getElementById('pdf-tmcpc-net').textContent        = fmt(c.draftingTimeIP);
-  document.getElementById('pdf-disb-net').textContent         = fmt(c.disbursements);
-  document.getElementById('pdf-counsel-net').textContent      = fmt(c.counselClaimed);
+  document.getElementById('pdf-case').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  document.getElementById('pdf-clientref').textContent = f['ClientCaseReference'] || '—';
+  document.getElementById('pdf-tmcref').textContent = f['Ourreference_x0028_text_x0029_'] || '—';
+  document.getElementById('pdf-datesettled').textContent = fmtDate(f['DateSettled0']);
+  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0 ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+  document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP);
+  document.getElementById('pdf-disb-net').textContent = fmt(c.disbursements); document.getElementById('pdf-counsel-net').textContent = fmt(c.counselClaimed);
   document.getElementById('pdf-totalclaimed-net').textContent = fmt(c.netTotalClaimed);
-  document.getElementById('pdf-pc').textContent               = fmt(c.pcIncVAT);
-  document.getElementById('pdf-tmcpc').textContent            = fmt(c.tmcPCIncVAT);
-  document.getElementById('pdf-disb').textContent             = fmt(c.disbIncVAT);
-  document.getElementById('pdf-counsel').textContent          = fmt(c.counselIncVAT);
-  document.getElementById('pdf-totalclaimed').textContent     = fmt(c.totalClaimed);
-  document.getElementById('pdf-pay-disb').textContent    = fmt(c.disbIncVAT);
-  document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
-  document.getElementById('pdf-pay-coa').textContent     = fmt(c.totalCOA);
-  document.getElementById('pdf-pay-other').textContent   = fmt(c.otherTMC);
-  document.getElementById('pdf-pay-total').textContent   = fmt(c.totalPayable);
-  document.getElementById('pdf-rec-gross').textContent     = fmt(c.grossPC);
-  document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
-  document.getElementById('pdf-rec-drafting').textContent  = fmt(c.netDraftingFee);
-  document.getElementById('pdf-rec-netafter').textContent  = fmt(c.netAfterDrafting);
-  document.getElementById('pdf-rec-pctpc').textContent     = fmtPct(c.pctPC);
-  document.getElementById('pdf-rec-pctbill').textContent   = fmtPct(c.pctBill);
-
-  // Render off-screen so html2canvas can capture it
+  document.getElementById('pdf-pc').textContent = fmt(c.pcIncVAT); document.getElementById('pdf-tmcpc').textContent = fmt(c.tmcPCIncVAT);
+  document.getElementById('pdf-disb').textContent = fmt(c.disbIncVAT); document.getElementById('pdf-counsel').textContent = fmt(c.counselIncVAT);
+  document.getElementById('pdf-totalclaimed').textContent = fmt(c.totalClaimed);
+  document.getElementById('pdf-pay-disb').textContent = fmt(c.disbIncVAT); document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
+  document.getElementById('pdf-pay-coa').textContent = fmt(c.totalCOA); document.getElementById('pdf-pay-other').textContent = fmt(c.otherTMC);
+  document.getElementById('pdf-pay-total').textContent = fmt(c.totalPayable);
+  document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
+  document.getElementById('pdf-rec-drafting').textContent = fmt(c.netDraftingFee); document.getElementById('pdf-rec-netafter').textContent = fmt(c.netAfterDrafting);
+  document.getElementById('pdf-rec-pctpc').textContent = fmtPct(c.pctPC); document.getElementById('pdf-rec-pctbill').textContent = fmtPct(c.pctBill);
   const pdfEl = document.getElementById('pdf-output');
   pdfEl.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px;';
-
-  // Fetch and inline logo
   const logoEl = document.getElementById('pdf-logo');
   try {
     const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
     if (logoResp.ok) {
       const blob = await logoResp.blob();
-      const b64  = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload  = () => res(r.result);
-        r.onerror = () => rej(new Error('Logo read failed'));
-        r.readAsDataURL(blob);
-      });
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Logo read failed')); r.readAsDataURL(blob); });
       await new Promise((res) => { logoEl.onload = res; logoEl.onerror = res; logoEl.src = b64; });
     } else { logoEl.style.display = 'none'; }
-  } catch (e) { console.error('Logo fetch failed:', e); logoEl.style.display = 'none'; }
-
-  // Small delay to ensure layout is stable
+  } catch (e) { logoEl.style.display = 'none'; }
   await new Promise(res => setTimeout(res, 150));
-
   try {
-    const { jsPDF } = window.jspdf;
-    const A4_W = 210, A4_H = 297;
+    const { jsPDF } = window.jspdf; const A4_W = 210, A4_H = 297;
     const canvas = await html2canvas(pdfEl, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
+      scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
       onclone: (clonedDoc) => {
-        // html2canvas 1.4.1 cannot parse the CSS oklch() colour function
-        // (library predates it). Strip every stylesheet except the inline
-        // <style> inside #pdf-output, and force the cloned root to plain
-        // black-on-white, so the parser only ever sees hex colours. The
-        // report styles itself entirely within #pdf-output (hex + Arial),
-        // so removing the page/extension CSS does not change its appearance.
-        clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
-          if (!node.closest('#pdf-output')) node.remove();
-        });
-        clonedDoc.documentElement.style.color = '#000';
-        clonedDoc.documentElement.style.background = '#fff';
+        clonedDoc.querySelectorAll('link[rel="stylesheet"], style').forEach(node => { if (!node.closest('#pdf-output')) node.remove(); });
+        clonedDoc.documentElement.style.color = '#000'; clonedDoc.documentElement.style.background = '#fff';
       },
     });
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const ratio = A4_W / canvas.width;
-    const renderedH = canvas.height * ratio;
-    if (renderedH <= A4_H) {
-      pdf.addImage(imgData, 'PNG', 0, 0, A4_W, renderedH);
-    } else {
-      pdf.addImage(imgData, 'PNG', 0, 0, A4_W, A4_H);
-    }
+    const ratio = A4_W / canvas.width; const renderedH = canvas.height * ratio;
+    if (renderedH <= A4_H) { pdf.addImage(imgData, 'PNG', 0, 0, A4_W, renderedH); } else { pdf.addImage(imgData, 'PNG', 0, 0, A4_W, A4_H); }
     const ref = (f['Ourreference_x0028_text_x0029_'] || 'Settlement').replace(/[^a-zA-Z0-9-]/g, '-');
     pdf.save('Settlement-Report-' + ref + '.pdf');
-  } catch (err) {
-    console.error('PDF generation failed:', err);
-    alert('PDF generation failed: ' + err.message);
-  } finally {
-    pdfEl.style.cssText = 'display:none;';
-    btn.disabled = false;
+  } catch (err) { alert('PDF generation failed: ' + err.message); }
+  finally {
+    pdfEl.style.cssText = 'display:none;'; btn.disabled = false;
     btn.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;fill:currentColor;flex-shrink:0"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6zm4-5h4v1.5h-4V15zm0-3h4v1.5h-4V12zm0-3h2v1.5h-2V9z"/></svg> Generate Settlement Report PDF';
   }
 }
@@ -2726,23 +2136,13 @@ document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlem
 
 document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () => {
   _settFeeOnDrawn = !!(document.getElementById('inp-sett-include-tmc')?.checked);
-  computeFigures(); computeInterest();
-  renderSettlementTab(); renderCostsTab(); renderInterestTab();
+  computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
 });
 
-// ── Case switcher ────────────────────────────────────────────────────────
-let switcherCases = [];
-let switcherCallerEmail = '';
-let switcherCallerName  = '';
+let switcherCases = []; let switcherCallerEmail = ''; let switcherCallerName = '';
 
 async function initSwitcher() {
-  // Fetch identity + cases in parallel
-  const [identityResp, casesResp] = await Promise.allSettled([
-    fetch('/.auth/me'),
-    fetch('/api/cases?preload=1'),
-  ]);
-
-  // Resolve identity
+  const [identityResp, casesResp] = await Promise.allSettled([fetch('/.auth/me'), fetch('/api/cases?preload=1')]);
   try {
     const data = identityResp.status === 'fulfilled' ? await identityResp.value.json() : null;
     const user = data && (data.clientPrincipal || (Array.isArray(data) ? data[0]?.clientPrincipal : null));
@@ -2751,32 +2151,24 @@ async function initSwitcher() {
       const local = switcherCallerEmail.split('@')[0].toLowerCase();
       const NAME_MAP = {joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley'};
       switcherCallerName = NAME_MAP[local] || local;
-      // Add Admin nav link for admins
       const ADMIN_EMAILS_CASE = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
       if (ADMIN_EMAILS_CASE.includes(switcherCallerEmail)) {
         const navRight = document.querySelector('.nav-right');
         if (navRight && !navRight.querySelector('[href="/admin.html"]')) {
-          const a = document.createElement('a');
-          a.href = '/admin.html'; a.className = 'nav-back'; a.textContent = 'Admin';
+          const a = document.createElement('a'); a.href = '/admin.html'; a.className = 'nav-back'; a.textContent = 'Admin';
           navRight.insertBefore(a, navRight.firstChild);
         }
       }
     }
-  } catch(e) { /* identity unavailable */ }
-
-  // Resolve cases
+  } catch(e) {}
   try {
     const data = casesResp.status === 'fulfilled' ? await casesResp.value.json() : { value: [] };
-    const all = data.value || [];
-    const nameL  = switcherCallerName.toLowerCase();
-    const emailL = switcherCallerEmail.split('@')[0].toLowerCase();
-    // Filter to current user's open cases
+    const all = data.value || []; const nameL = switcherCallerName.toLowerCase(); const emailL = switcherCallerEmail.split('@')[0].toLowerCase();
     switcherCases = all.filter(c => {
       const f = c.fields || {};
       const assigned   = (f['assignedToTextValue'] || '').toLowerCase();
       const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
-      return (nameL  && (assigned.includes(nameL)   || coAssigned.includes(nameL)))
-          || (emailL && (assigned.includes(emailL)  || coAssigned.includes(emailL)));
+      return (nameL && (assigned.includes(nameL) || coAssigned.includes(nameL))) || (emailL && (assigned.includes(emailL) || coAssigned.includes(emailL)));
     }).sort((a, b) => {
       const na = ((a.fields||{})['CaseNameForOpenCases']||(a.fields||{})['Title']||'').toLowerCase();
       const nb = ((b.fields||{})['CaseNameForOpenCases']||(b.fields||{})['Title']||'').toLowerCase();
@@ -2789,73 +2181,37 @@ async function initSwitcher() {
 function renderSwitcherList(q) {
   const currentRef = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   const list = document.getElementById('switcher-list');
-  const filtered = q
-    ? switcherCases.filter(c => {
-        const f = c.fields || {};
-        const name = (f['CaseNameForOpenCases'] || f['Title'] || '').toLowerCase();
-        const ref  = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
-        return name.includes(q.toLowerCase()) || ref.includes(q.toLowerCase());
-      })
-    : switcherCases;
-
-  if (!filtered.length) {
-    list.innerHTML = '<div class="switcher-empty">No cases found</div>';
-    return;
-  }
-
+  const filtered = q ? switcherCases.filter(c => {
+    const f = c.fields || {};
+    const name = (f['CaseNameForOpenCases'] || f['Title'] || '').toLowerCase();
+    const ref  = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+    return name.includes(q.toLowerCase()) || ref.includes(q.toLowerCase());
+  }) : switcherCases;
+  if (!filtered.length) { list.innerHTML = '<div class="switcher-empty">No cases found</div>'; return; }
   list.innerHTML = '';
   filtered.forEach(c => {
-    const f   = c.fields || {};
-    const ref = f['Ourreference_x0028_text_x0029_'] || '';
-    const name = f['CaseNameForOpenCases'] || f['Title'] || ref;
-    const firm = f['Firm_x0028_text_x0029_'] || '';
-    const div = document.createElement('div');
-    div.className = 'switcher-item' + (ref === currentRef ? ' current' : '');
-    div.setAttribute('role', 'option');
-    div.innerHTML =
-      '<span class="switcher-item-name">' + escHtml(name) + '</span>' +
-      '<span class="switcher-item-meta">' + escHtml(ref) + (firm ? ' · ' + escHtml(firm) : '') + '</span>';
-    if (ref !== currentRef) {
-      div.addEventListener('click', () => {
-        window.location.href = 'case.html?ref=' + encodeURIComponent(ref);
-      });
-    }
+    const f = c.fields || {}; const ref = f['Ourreference_x0028_text_x0029_'] || ''; const name = f['CaseNameForOpenCases'] || f['Title'] || ref; const firm = f['Firm_x0028_text_x0029_'] || '';
+    const div = document.createElement('div'); div.className = 'switcher-item' + (ref === currentRef ? ' current' : ''); div.setAttribute('role', 'option');
+    div.innerHTML = '<span class="switcher-item-name">' + escHtml(name) + '</span><span class="switcher-item-meta">' + escHtml(ref) + (firm ? ' · ' + escHtml(firm) : '') + '</span>';
+    if (ref !== currentRef) { div.addEventListener('click', () => { window.location.href = 'case.html?ref=' + encodeURIComponent(ref); }); }
     list.appendChild(div);
   });
 }
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Wire up switcher toggle + search
 document.getElementById('switcher-btn').addEventListener('click', e => {
-  e.stopPropagation();
-  const dd  = document.getElementById('switcher-dropdown');
-  const btn = document.getElementById('switcher-btn');
-  const open = dd.classList.toggle('open');
-  btn.classList.toggle('open', open);
-  if (open) { document.getElementById('switcher-search').focus(); };
+  e.stopPropagation(); const dd = document.getElementById('switcher-dropdown'); const btn = document.getElementById('switcher-btn');
+  const open = dd.classList.toggle('open'); btn.classList.toggle('open', open); if (open) { document.getElementById('switcher-search').focus(); };
 });
-document.getElementById('switcher-search').addEventListener('input', e => {
-  renderSwitcherList(e.target.value.trim());
-});
+document.getElementById('switcher-search').addEventListener('input', e => { renderSwitcherList(e.target.value.trim()); });
 document.getElementById('switcher-search').addEventListener('click', e => e.stopPropagation());
-document.addEventListener('click', () => {
-  document.getElementById('switcher-dropdown').classList.remove('open');
-  document.getElementById('switcher-btn').classList.remove('open');
-});
+document.addEventListener('click', () => { document.getElementById('switcher-dropdown').classList.remove('open'); document.getElementById('switcher-btn').classList.remove('open'); });
 
 initSwitcher();
 
 function stripHtml(s) {
-  return (s || '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
-    .replace(/&quot;/g, '"')
-    .trim();
+  return (s || '').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#(\d+);/g,(_, n) => String.fromCharCode(n)).replace(/&quot;/g,'"').trim();
 }
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
 function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.value = val || ''; }
@@ -2863,513 +2219,223 @@ function setNum(id, val)   { const e = document.getElementById(id); if (e) e.val
 function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
-// ── Doc overlay ──────────────────────────────────────────
-function openDocOverlay(url, label) {
-  document.getElementById('doc-overlay-title').textContent = label;
-  document.getElementById('doc-overlay-iframe').src = url;
-  document.getElementById('doc-overlay').classList.add('open');
-}
-function closeDocOverlay() {
-  document.getElementById('doc-overlay').classList.remove('open');
-  document.getElementById('doc-overlay-iframe').src = 'about:blank';
-}
+function openDocOverlay(url, label) { document.getElementById('doc-overlay-title').textContent = label; document.getElementById('doc-overlay-iframe').src = url; document.getElementById('doc-overlay').classList.add('open'); }
+function closeDocOverlay() { document.getElementById('doc-overlay').classList.remove('open'); document.getElementById('doc-overlay-iframe').src = 'about:blank'; }
 document.getElementById('doc-overlay-close').addEventListener('click', closeDocOverlay);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocOverlay(); });
 
 loadCase();
 
-// ── Case Actions tab ────────────────────────────────────────────────────────
-let remActions   = [];
-let remEditingId = null;
-let remLoaded    = false;
+let remActions = []; let remEditingId = null; let remLoaded = false;
 
 async function loadReminders() {
-  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
-  if (!ref) return;
-  document.getElementById('rem-loading').style.display = 'block';
-  document.getElementById('rem-empty').style.display   = 'none';
-  document.getElementById('rem-tbody').innerHTML = '';
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
+  document.getElementById('rem-loading').style.display = 'block'; document.getElementById('rem-empty').style.display = 'none'; document.getElementById('rem-tbody').innerHTML = '';
   try {
-    const resp = await fetch('/api/reminders?ref=' + encodeURIComponent(ref));
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    remActions = data.value || [];
-    renderRemTable();
-    initAddRemPanel();
-  } catch (err) {
-    document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message;
-  }
+    const resp = await fetch('/api/reminders?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json(); remActions = data.value || []; renderRemTable(); initAddRemPanel();
+  } catch (err) { document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message; }
 }
 
-const REM_EVENTS = [
-  'Approve Bill',
-  'CCMC',
-  'Chase Chambers',
-  'Chase Client',
-  'Chase HJA – Emailed 7 days ago',
-  'Chase Other Side for Interim',
-  'Chase Other Side for Interim & Offer',
-  'Chase Other Side for Offer',
-  'Chase Other Side for response',
-  'Detailed Assessment',
-  'Finalise Bill',
-  'Finalise Replies',
-  'Finalise Budget',
-  'General reminder',
-  'Get Counsel reduction',
-  'Important reminder',
-  'Invoice',
-  'Issue Invoice - Draft done',
-  'Issue Part 8',
-  'Lodge completed bill',
-  'Make Offer',
-  'Mediation',
-  'Meeting',
-  'Points of Dispute due',
-  'Prepare for CCMC',
-  'Prepare for Detailed Assessment',
-  'Prepare for Mediation',
-  'Prepare for Without Prejudice call',
-  'Relay offer to Client',
-  'Replies due',
-  'Request Detailed Assessment',
-  'Request Provisional Assessment',
-  'Review',
-  'Send Bill to Client',
-  'Send Budget to Client',
-  'Send Replies to Client',
-  'Serve formally',
-  'Serve informally',
-  'Serve Precedent H',
-  'Serve Precedent R',
-  'Start Bill',
-  'Start Budget',
-  'Start Precedent R',
-  'Start Replies',
-  'Without Prejudice call',
-];
+const REM_EVENTS = ['Approve Bill','CCMC','Chase Chambers','Chase Client','Chase HJA \u2013 Emailed 7 days ago','Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer','Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies','Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice','Issue Invoice - Draft done','Issue Part 8','Lodge completed bill','Make Offer','Mediation','Meeting','Points of Dispute due','Prepare for CCMC','Prepare for Detailed Assessment','Prepare for Mediation','Prepare for Without Prejudice call','Relay offer to Client','Replies due','Request Detailed Assessment','Request Provisional Assessment','Review','Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally','Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget','Start Precedent R','Start Replies','Without Prejudice call'];
 const REM_PRIORITIES = ['High','Medium','Low'];
 
 function renderRemTable() {
-  const tbody   = document.getElementById('rem-tbody');
-  const loading = document.getElementById('rem-loading');
-  const empty   = document.getElementById('rem-empty');
-  const summary = document.getElementById('rem-summary');
-  loading.style.display = 'none';
-  tbody.innerHTML = '';
+  const tbody = document.getElementById('rem-tbody'); const loading = document.getElementById('rem-loading'); const empty = document.getElementById('rem-empty'); const summary = document.getElementById('rem-summary');
+  loading.style.display = 'none'; tbody.innerHTML = '';
   if (!remActions.length) { empty.style.display = 'block'; summary.textContent = ''; return; }
   empty.style.display = 'none';
   const open = remActions.filter(r => !r.fields?.['Completed_x003f_']).length;
   summary.textContent = remActions.length + ' reminder' + (remActions.length !== 1 ? 's' : '') + ' \u00b7 ' + open + ' open';
   const today = new Date(); today.setHours(0,0,0,0);
   remActions.forEach(action => {
-    const f         = action.fields || {};
-    const id        = action.id;
-    const dueDate   = f['Duedate']   || '';
-    const event     = f['Event']     || '';
-    const detail    = f['Brief']     || '';
-    const priority  = f['Priority']  || '';
-    const completed = !!(f['Completed_x003f_']);
-    const admin     = !!(f['Admin_x003f_']);
-    const isEditing = remEditingId === id;
-    const dueObj    = dueDate ? new Date(dueDate) : null;
-    const overdue   = !completed && dueObj && dueObj < today;
-    const tr = document.createElement('tr');
-    tr.dataset.id = id;
+    const f = action.fields || {}; const id = action.id;
+    const dueDate = f['Duedate'] || ''; const event = f['Event'] || ''; const detail = f['Brief'] || '';
+    const priority = f['Priority'] || ''; const completed = !!(f['Completed_x003f_']); const admin = !!(f['Admin_x003f_']);
+    const isEditing = remEditingId === id; const dueObj = dueDate ? new Date(dueDate) : null;
+    const overdue = !completed && dueObj && dueObj < today;
+    const tr = document.createElement('tr'); tr.dataset.id = id;
     tr.className = 'ca-row' + (completed ? ' ca-billed' : '') + (overdue ? ' rem-overdue' : '');
     if (isEditing) {
-      tr.innerHTML = `
-        <td class="ca-cell"><input type="date" class="ca-edit-rate" style="width:100%;" id="rem-edit-due-${id}" value="${toDateInput(dueDate)}" /></td>
-        <td class="ca-cell"><select class="ca-edit-rate" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-event-${id}">
-          ${REM_EVENTS.map(v => `<option${v===event?' selected':''}>${escHtml(v)}</option>`).join('')}
-        </select></td>
+      tr.innerHTML = `<td class="ca-cell"><input type="date" class="ca-edit-rate" style="width:100%;" id="rem-edit-due-${id}" value="${toDateInput(dueDate)}" /></td>
+        <td class="ca-cell"><select class="ca-edit-rate" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-event-${id}">${REM_EVENTS.map(v => `<option${v===event?' selected':''}>${escHtml(v)}</option>`).join('')}</select></td>
         <td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" id="rem-edit-detail-${id}" rows="3">${escHtml(detail)}</textarea></td>
-        <td class="ca-cell ca-center"><select class="ca-edit-rate" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-priority-${id}">
-          ${REM_PRIORITIES.map(v => `<option${v===priority?' selected':''}>${v}</option>`).join('')}
-        </select></td>
+        <td class="ca-cell ca-center"><select class="ca-edit-rate" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-priority-${id}">${REM_PRIORITIES.map(v => `<option${v===priority?' selected':''}>${v}</option>`).join('')}</select></td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-done-${id}" ${completed?'checked':''} /></td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-admin-${id}" ${admin?'checked':''} /></td>
-        <td class="ca-cell ca-actions">
-          <button class="ca-btn-save" data-id="${id}">\u2713</button>
-          <button class="ca-btn-cancel" data-id="${id}">\u00d7</button>
-        </td>`;
+        <td class="ca-cell ca-actions"><button class="ca-btn-save" data-id="${id}">\u2713</button><button class="ca-btn-cancel" data-id="${id}">\u00d7</button></td>`;
     } else {
-      const priBadge = priority === 'High'
-        ? '<span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#991B1B;padding:2px 4px;border-radius:8px;">H</span>'
-        : priority === 'Low'
-        ? '<span style="font-size:10px;font-weight:600;color:var(--grey-mid);">L</span>'
-        : '<span style="font-size:10px;font-weight:600;color:var(--navy-mid);">M</span>';
-      tr.innerHTML = `
-        <td class="ca-cell ca-mono" style="font-size:12px;${overdue?'color:#991B1B;font-weight:700;':''}">` + escHtml(fmtDate(dueDate)) + `</td>
-        <td class="ca-cell" style="font-size:11.5px;">` + escHtml(event) + `</td>
-        <td class="ca-cell ca-cell-wd" title="` + escHtml(detail) + `">` + escHtml(detail.length>100?detail.slice(0,100)+'…':detail) + `</td>
-        <td class="ca-cell ca-center">` + priBadge + `</td>
-        <td class="ca-cell ca-center">` + (completed?'<span style="color:var(--green);font-weight:700;font-size:14px;">✓</span>':'<span style="color:var(--grey-light);">&#9675;</span>') + `</td>
-        <td class="ca-cell ca-center">` + (admin?'<span style="font-size:11px;font-weight:700;color:var(--navy-mid);">A</span>':'−') + `</td>
-        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="` + id + `">✏️</button></td>`;
+      const priBadge = priority === 'High' ? '<span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#991B1B;padding:2px 4px;border-radius:8px;">H</span>' : priority === 'Low' ? '<span style="font-size:10px;font-weight:600;color:var(--grey-mid);">L</span>' : '<span style="font-size:10px;font-weight:600;color:var(--navy-mid);">M</span>';
+      tr.innerHTML = `<td class="ca-cell ca-mono" style="font-size:12px;${overdue?'color:#991B1B;font-weight:700;':''}">${escHtml(fmtDate(dueDate))}</td>
+        <td class="ca-cell" style="font-size:11.5px;">${escHtml(event)}</td>
+        <td class="ca-cell ca-cell-wd" title="${escHtml(detail)}">${escHtml(detail.length>100?detail.slice(0,100)+'\u2026':detail)}</td>
+        <td class="ca-cell ca-center">${priBadge}</td>
+        <td class="ca-cell ca-center">${completed?'<span style="color:var(--green);font-weight:700;font-size:14px;">\u2713</span>':'<span style="color:var(--grey-light);">&#9675;</span>'}</td>
+        <td class="ca-cell ca-center">${admin?'<span style="font-size:11px;font-weight:700;color:var(--navy-mid);">A</span>':'\u2212'}</td>
+        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => {
-    btn.addEventListener('click', () => { remEditingId = btn.dataset.id; renderRemTable(); });
-  });
-  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => {
-    btn.addEventListener('click', () => { remEditingId = null; renderRemTable(); });
-  });
-  tbody.querySelectorAll('.ca-btn-save').forEach(btn => {
-    btn.addEventListener('click', () => saveRemRow(btn.dataset.id));
-  });
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { remEditingId = btn.dataset.id; renderRemTable(); }); });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { remEditingId = null; renderRemTable(); }); });
+  tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveRemRow(btn.dataset.id)); });
 }
 
 async function saveRemRow(id) {
-  const due      = document.getElementById(`rem-edit-due-${id}`)?.value;
-  const event    = document.getElementById(`rem-edit-event-${id}`)?.value;
-  const detail   = document.getElementById(`rem-edit-detail-${id}`)?.value.trim();
-  const priority = document.getElementById(`rem-edit-priority-${id}`)?.value;
-  const done     = document.getElementById(`rem-edit-done-${id}`)?.checked;
-  const admin    = document.getElementById(`rem-edit-admin-${id}`)?.checked;
-  const saveBtn   = document.querySelector(`.ca-btn-save[data-id="${id}"]`);
-  const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
-  if (saveBtn)   saveBtn.disabled   = true;
-  if (cancelBtn) cancelBtn.disabled = true;
+  const due = document.getElementById(`rem-edit-due-${id}`)?.value; const event = document.getElementById(`rem-edit-event-${id}`)?.value;
+  const detail = document.getElementById(`rem-edit-detail-${id}`)?.value.trim(); const priority = document.getElementById(`rem-edit-priority-${id}`)?.value;
+  const done = document.getElementById(`rem-edit-done-${id}`)?.checked; const admin = document.getElementById(`rem-edit-admin-${id}`)?.checked;
+  const saveBtn = document.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
   try {
-    const resp = await fetch('/api/reminders', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        itemId: id,
-        fields: {
-          Duedate:              due ? due + 'T00:00:00Z' : null,
-          Event:                event || null,
-          Brief:                detail || null,
-          Priority:             priority || null,
-          'Completed_x003f_':   done,
-          CompletedMirror:      done ? 'Yes' : 'No',
-          'Admin_x003f_':       admin,
-        },
-      }),
-    });
+    const resp = await fetch('/api/reminders', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, fields: { Duedate: due ? due + 'T00:00:00Z' : null, Event: event || null, Brief: detail || null, Priority: priority || null, 'Completed_x003f_': done, CompletedMirror: done ? 'Yes' : 'No', 'Admin_x003f_': admin } }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = remActions.findIndex(a => a.id === id);
-    if (idx !== -1) {
-      const f = remActions[idx].fields || {};
-      f['Duedate']          = due ? due + 'T00:00:00Z' : null;
-      f['Event']            = event;
-      f['Brief']            = detail;
-      f['Priority']         = priority;
-      f['Completed_x003f_'] = done;
-      f['Admin_x003f_']     = admin;
-    }
-    remEditingId = null;
-    renderRemTable();
-  } catch (err) {
-    if (saveBtn)   saveBtn.disabled   = false;
-    if (cancelBtn) cancelBtn.disabled = false;
-    alert('Save failed: ' + err.message);
-  }
+    if (idx !== -1) { const f = remActions[idx].fields || {}; f['Duedate'] = due ? due + 'T00:00:00Z' : null; f['Event'] = event; f['Brief'] = detail; f['Priority'] = priority; f['Completed_x003f_'] = done; f['Admin_x003f_'] = admin; }
+    remEditingId = null; renderRemTable();
+  } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
 }
 
 function initAddRemPanel() {
-  const today = new Date().toISOString().slice(0,10);
-  document.getElementById('rem-add-duedate').value = today;
-  const btn = document.getElementById('rem-add-submit');
-  const newBtn = btn.cloneNode(true);
-  btn.parentNode.replaceChild(newBtn, btn);
+  const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
+  const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
 }
 
 async function submitAddReminder() {
-  const msg      = document.getElementById('rem-add-msg');
-  const btn      = document.getElementById('rem-add-submit');
-  const ref      = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
-  const duedate  = document.getElementById('rem-add-duedate').value;
-  const event    = document.getElementById('rem-add-event').value;
-  const priority = document.getElementById('rem-add-priority').value;
-  const detail   = document.getElementById('rem-add-detail').value.trim();
-  const admin    = document.getElementById('rem-add-admin').checked;
-  const email    = document.getElementById('rem-add-email').checked;
+  const msg = document.getElementById('rem-add-msg'); const btn = document.getElementById('rem-add-submit');
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const duedate = document.getElementById('rem-add-duedate').value; const event = document.getElementById('rem-add-event').value;
+  const priority = document.getElementById('rem-add-priority').value; const detail = document.getElementById('rem-add-detail').value.trim();
+  const admin = document.getElementById('rem-add-admin').checked; const email = document.getElementById('rem-add-email').checked;
   if (!duedate) { msg.className = 'edit-msg err'; msg.textContent = 'Due date required.'; return; }
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/reminders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ref,
-        title: (caseFields?.['CaseNameForOpenCases'] || ref) + '-' + ref,
-        duedate: duedate + 'T00:00:00Z',
-        event, priority, detail, admin,
-        emailReminder: email, completed: false,
-      }),
-    });
+    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseFields?.['CaseNameForOpenCases'] || ref) + '-' + ref, duedate: duedate + 'T00:00:00Z', event, priority, detail, admin, emailReminder: email, completed: false }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
-    remActions.unshift({ id: created.id, fields: {
-      Duedate: duedate + 'T00:00:00Z', Event: event,
-      Brief: detail, Priority: priority,
-      'Completed_x003f_': false, 'Admin_x003f_': admin,
-      Ourreference_x0028_text_x0029_: ref,
-    }});
-    document.getElementById('rem-add-detail').value  = '';
-    document.getElementById('rem-add-admin').checked = false;
-    document.getElementById('rem-add-email').checked = false;
+    remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: event, Brief: detail, Priority: priority, 'Completed_x003f_': false, 'Admin_x003f_': admin, Ourreference_x0028_text_x0029_: ref } });
+    document.getElementById('rem-add-detail').value = ''; document.getElementById('rem-add-admin').checked = false; document.getElementById('rem-add-email').checked = false;
     document.getElementById('rem-add-duedate').value = new Date().toISOString().slice(0,10);
     msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Added';
-    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
-    renderRemTable();
-  } catch (err) {
-    msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message;
-  } finally { btn.disabled = false; }
+    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderRemTable();
+  } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
+  finally { btn.disabled = false; }
 }
 
-let caActions    = [];
-let caEditingId  = null;
-let caLoaded     = false;
-let caSchedule   = new Set();
+let caActions = []; let caEditingId = null; let caLoaded = false; let caSchedule = new Set();
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  if (btn.dataset.tab === 'caseactions') {
-    btn.addEventListener('click', () => {
-      if (!caLoaded) { caLoaded = true; loadCaseActions(); }
-    });
-  }
-  if (btn.dataset.tab === 'reminders') {
-    btn.addEventListener('click', () => {
-      if (!remLoaded) { remLoaded = true; loadReminders(); }
-    });
-  }
+  if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (!caLoaded) { caLoaded = true; loadCaseActions(); } }); }
+  if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
 });
 
 async function loadCaseActions() {
-  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
-  if (!ref) return;
-  document.getElementById('ca-loading').style.display = 'block';
-  document.getElementById('ca-empty').style.display   = 'none';
-  document.getElementById('ca-tbody').innerHTML = '';
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
+  document.getElementById('ca-loading').style.display = 'block'; document.getElementById('ca-empty').style.display = 'none'; document.getElementById('ca-tbody').innerHTML = '';
   try {
-    const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref));
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    caActions = data.value || [];
-    renderCaTable();
-    initAddActionPanel();
-    // Deep-link: open specific action in edit mode if ?action= param present
+    const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json(); caActions = data.value || []; renderCaTable(); initAddActionPanel();
     const deepActionId = new URLSearchParams(window.location.search).get('action');
     if (deepActionId && caActions.some(a => a.id === deepActionId)) {
-      caEditingId = deepActionId;
-      renderCaTable();
-      // Scroll to the editing row
-      setTimeout(() => {
-        const tr = document.querySelector(`tr[data-id="${deepActionId}"]`);
-        if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      caEditingId = deepActionId; renderCaTable();
+      setTimeout(() => { const tr = document.querySelector(`tr[data-id="${deepActionId}"]`); if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
     }
-  } catch (err) {
-    document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message;
-  }
+  } catch (err) { document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message; }
 }
 
 function renderCaTable() {
-  const tbody   = document.getElementById('ca-tbody');
-  const loading = document.getElementById('ca-loading');
-  const empty   = document.getElementById('ca-empty');
-  const summary = document.getElementById('ca-summary');
-
-  loading.style.display = 'none';
-  tbody.innerHTML = '';
-
+  const tbody = document.getElementById('ca-tbody'); const loading = document.getElementById('ca-loading'); const empty = document.getElementById('ca-empty'); const summary = document.getElementById('ca-summary');
+  loading.style.display = 'none'; tbody.innerHTML = '';
   if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; return; }
   empty.style.display = 'none';
-
   const totalHrs = caActions.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
-  const totalAmt = caActions.reduce((s, a) => {
-    const f   = a.fields || {};
-    const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
-    const val = !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0);
-    return s + val;
-  }, 0);
-  summary.textContent = caActions.length + ' actions · ' + fmtN(totalHrs, 2) + ' hrs · ' + fmt(totalAmt);
-
+  const totalAmt = caActions.reduce((s, a) => { const f = a.fields || {}; const amt = parseFloat(f['Num_BillableAmount_x00a3_']); const val = !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0); return s + val; }, 0);
+  summary.textContent = caActions.length + ' actions \u00b7 ' + fmtN(totalHrs, 2) + ' hrs \u00b7 ' + fmt(totalAmt);
   caActions.forEach(action => {
-    const f      = action.fields || {};
-    const id     = action.id;
-    const hrs    = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
-    const rate   = parseFloat(f['field_6']) || 0;
-    const amt    = (() => { const a = parseFloat(f['Num_BillableAmount_x00a3_']); return (!isNaN(a) && a > 0) ? a : hrs * rate; })();
-    const billed   = !!(f['Billed_x003f_']);
-    const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
-    const dateStr  = fmtDate(f['field_12'] || f['field_1']);
-    const byName   = f['Completedby_x0028_text_x0029_'] || f['field_18'] || '';
-    const workDone = f['field_2'] || '';
-    const isEditing = caEditingId === id;
-
-    const tr = document.createElement('tr');
-    tr.dataset.id = id;
-    tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
-
+    const f = action.fields || {}; const id = action.id;
+    const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0;
+    const amt = (() => { const a = parseFloat(f['Num_BillableAmount_x00a3_']); return (!isNaN(a) && a > 0) ? a : hrs * rate; })();
+    const billed = !!(f['Billed_x003f_']); const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
+    const dateStr = fmtDate(f['field_12'] || f['field_1']); const byName = f['Completedby_x0028_text_x0029_'] || f['field_18'] || ''; const workDone = f['field_2'] || '';
+    const isEditing = caEditingId === id; const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
     if (isEditing) {
-      tr.innerHTML = `
-        <td class="ca-cell">${escHtml(dateStr)}</td>
-        <td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
-        <td class="ca-cell ca-cell-wd">
-          <textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea>
-        </td>
-        <td class="ca-cell ca-right">
-          <input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" />
-        </td>
-        <td class="ca-cell ca-right">
-          <input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" />
-        </td>
+      tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
+        <td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea></td>
+        <td class="ca-cell ca-right"><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></td>
+        <td class="ca-cell ca-right"><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></td>
         <td class="ca-cell ca-mono ca-right">${fmt(amt)}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-edit-bill" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>
-        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
-        <td class="ca-cell ca-actions">
-          <button class="ca-btn-save" data-id="${id}">✓</button>
-          <button class="ca-btn-cancel" data-id="${id}">×</button>
-        </td>`;
+        <td class="ca-cell ca-actions"><button class="ca-btn-save" data-id="${id}">\u2713</button><button class="ca-btn-cancel" data-id="${id}">\u00d7</button></td>`;
     } else {
-      tr.innerHTML = `
-        <td class="ca-cell">${escHtml(dateStr)}</td>
-        <td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
-        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '…' : workDone)}</td>
-        <td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>
-        <td class="ca-cell ca-mono ca-right">${rate ? '£' + fmtN(rate, 2) : '−'}</td>
-        <td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '−'}</td>
-        <td class="ca-cell ca-center">${billable ? '✔' : '<span style="color:#991B1B;">✗</span>'}</td>
-        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '−'}</td>
+      tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
+        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>
+        <td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td><td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>
+        <td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>
+        <td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>
+        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
-        <td class="ca-cell ca-actions">
-          <button class="ca-btn-edit" data-id="${id}">✏️</button>
-        </td>`;
+        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
   });
-
-  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => {
-    btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); });
-  });
-  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => {
-    btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); });
-  });
-  tbody.querySelectorAll('.ca-btn-save').forEach(btn => {
-    btn.addEventListener('click', () => saveCaRow(btn.dataset.id));
-  });
-  tbody.querySelectorAll('.ca-sched-check').forEach(chk => {
-    chk.addEventListener('change', () => {
-      if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id);
-    });
-  });
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); }); });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); }); });
+  tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
+  tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
 }
 
 async function saveCaRow(id) {
-  const wd       = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim()  || '';
-  const hrs      = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value)  || 0;
-  const rate     = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
-  const billEl   = document.querySelector(`.ca-edit-bill[data-id="${id}"]`);
-  const billable = billEl ? billEl.checked : undefined;
-  const saveBtn   = document.querySelector(`.ca-btn-save[data-id="${id}"]`);
-  const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
-  if (saveBtn)   saveBtn.disabled   = true;
-  if (cancelBtn) cancelBtn.disabled = true;
+  const wd = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
+  const hrs = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value) || 0;
+  const rate = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const billEl = document.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
+  const saveBtn = document.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
   try {
-    const resp = await fetch('/api/caseactions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, billable }),
-    });
+    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, billable }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = caActions.findIndex(a => a.id === id);
-    if (idx !== -1) {
-      const f = caActions[idx].fields || {};
-      f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs;
-      f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate;
-      if (billable !== undefined) f['Billable_x003f_'] = billable;
-    }
-    caEditingId = null;
-    renderCaTable();
-  } catch (err) {
-    if (saveBtn)   saveBtn.disabled   = false;
-    if (cancelBtn) cancelBtn.disabled = false;
-    alert('Save failed: ' + err.message);
-  }
+    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (billable !== undefined) f['Billable_x003f_'] = billable; }
+    caEditingId = null; renderCaTable();
+  } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
 }
 
 function initAddActionPanel() {
   const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('ca-add-dateentered').value  = today;
-  document.getElementById('ca-add-dateworkdone').value = today;
-  const caseRate = parseFloat(caseFields?.['RateForCase']) || '';
-  document.getElementById('ca-add-rate').value = caseRate;
+  document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
+  const caseRate = parseFloat(caseFields?.['RateForCase']) || ''; document.getElementById('ca-add-rate').value = caseRate;
   const nameEl = document.getElementById('ca-add-completedby');
-  if (switcherCallerName) {
-    for (const opt of nameEl.options) {
-      if (opt.value === switcherCallerName) { nameEl.value = switcherCallerName; break; }
-    }
-  }
-  const billEl    = document.getElementById('ca-add-billable');
-  const billLabel = document.getElementById('ca-add-billable-label');
+  if (switcherCallerName) { for (const opt of nameEl.options) { if (opt.value === switcherCallerName) { nameEl.value = switcherCallerName; break; } } }
+  const billEl = document.getElementById('ca-add-billable'); const billLabel = document.getElementById('ca-add-billable-label');
   billEl.addEventListener('change', () => { billLabel.textContent = billEl.checked ? 'Yes' : 'No'; });
-  const submitBtn = document.getElementById('ca-add-submit');
-  const newBtn = submitBtn.cloneNode(true);
-  submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+  const submitBtn = document.getElementById('ca-add-submit'); const newBtn = submitBtn.cloneNode(true); submitBtn.parentNode.replaceChild(newBtn, submitBtn);
   newBtn.addEventListener('click', submitAddAction);
 }
 
 async function submitAddAction() {
-  const msg      = document.getElementById('ca-add-msg');
-  const btn      = document.querySelector('#tab-caseactions .btn-edit-save');
-  const ref      = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
-  const workDone  = document.getElementById('ca-add-workdone').value.trim();
-  const timeSpent = parseFloat(document.getElementById('ca-add-timespent').value);
-  const rate      = parseFloat(document.getElementById('ca-add-rate').value) || 0;
-  const brief     = document.getElementById('ca-add-brief').value;
-  const completedBy = document.getElementById('ca-add-completedby').value;
-  const billable  = document.getElementById('ca-add-billable').checked;
-  const dateEntered  = document.getElementById('ca-add-dateentered').value;
-  const dateWorkDone = document.getElementById('ca-add-dateworkdone').value;
-
-  if (!workDone)   { msg.className = 'edit-msg err'; msg.textContent = 'Work Done is required.'; return; }
+  const msg = document.getElementById('ca-add-msg'); const btn = document.querySelector('#tab-caseactions .btn-edit-save');
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const workDone = document.getElementById('ca-add-workdone').value.trim(); const timeSpent = parseFloat(document.getElementById('ca-add-timespent').value);
+  const rate = parseFloat(document.getElementById('ca-add-rate').value) || 0; const brief = document.getElementById('ca-add-brief').value;
+  const completedBy = document.getElementById('ca-add-completedby').value; const billable = document.getElementById('ca-add-billable').checked;
+  const dateEntered = document.getElementById('ca-add-dateentered').value; const dateWorkDone = document.getElementById('ca-add-dateworkdone').value;
+  if (!workDone) { msg.className = 'edit-msg err'; msg.textContent = 'Work Done is required.'; return; }
   if (!timeSpent || isNaN(timeSpent) || timeSpent <= 0) { msg.className = 'edit-msg err'; msg.textContent = 'Time Spent must be > 0.'; return; }
-  if (!completedBy){ msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
-
-  if (btn) btn.disabled = true;
-  msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+  if (!completedBy) { msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
+  if (btn) btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/caseactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ref, caseName: caseFields?.['CaseNameForOpenCases'] || '',
-        dateEntered:  dateEntered  ? dateEntered  + 'T00:00:00Z' : new Date().toISOString(),
-        dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(),
-        brief, completedBy, email: switcherCallerEmail || '',
-        rate, timeSpent, workDone, billable,
-      }),
-    });
+    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseFields?.['CaseNameForOpenCases'] || '', dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
-    caActions.unshift({ id: created.id, fields: {
-      field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent,
-      field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z',
-      field_16: ref, field_18: switcherCallerEmail || '',
-      Completedby_x0028_text_x0029_: completedBy,
-      'Billable_x003f_': billable, 'Billed_x003f_': false,
-      TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate,
-    }});
-    document.getElementById('ca-add-workdone').value  = '';
-    document.getElementById('ca-add-timespent').value = '';
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('ca-add-dateentered').value  = today;
-    document.getElementById('ca-add-dateworkdone').value = today;
-    msg.className = 'edit-msg ok'; msg.textContent = '✓ Added';
-    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000);
-    renderCaTable();
-  } catch (err) {
-    msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message;
-  } finally {
-    if (btn) btn.disabled = false;
-  }
+    caActions.unshift({ id: created.id, fields: { field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent, field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z', field_16: ref, field_18: switcherCallerEmail || '', Completedby_x0028_text_x0029_: completedBy, 'Billable_x003f_': billable, 'Billed_x003f_': false, TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate } });
+    document.getElementById('ca-add-workdone').value = ''; document.getElementById('ca-add-timespent').value = '';
+    const today = new Date().toISOString().slice(0, 10); document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
+    msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Added'; setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderCaTable();
+  } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
+  finally { if (btn) btn.disabled = false; }
 }
 </script>
 </body>
