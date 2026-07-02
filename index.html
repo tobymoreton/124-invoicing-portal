@@ -443,15 +443,6 @@ async function load() {
     // Add Finance nav link for admins
     if (isAdmin) {
       const navRight = document.getElementById('nav-right');
-      if (navRight && !navRight.querySelector('[href="/finance.html"]')) {
-        const a = document.createElement('a');
-        a.href = '/finance.html';
-        a.textContent = 'Finance';
-        a.style.cssText = 'font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:5px;transition:all .18s ease;';
-        a.onmouseover = function(){ this.style.borderColor='var(--gold)'; this.style.color='var(--gold)'; this.style.background='rgba(201,168,76,.08)'; };
-        a.onmouseout  = function(){ this.style.borderColor='rgba(201,168,76,.3)'; this.style.color='rgba(201,168,76,.85)'; this.style.background=''; };
-        navRight.insertBefore(a, navRight.firstChild);
-      }
       if (navRight && !navRight.querySelector('[href="/admin.html"]')) {
         const aa = document.createElement('a');
         aa.href = '/admin.html';
@@ -460,6 +451,15 @@ async function load() {
         aa.onmouseover = function(){ this.style.borderColor='var(--gold)'; this.style.color='var(--gold)'; this.style.background='rgba(201,168,76,.08)'; };
         aa.onmouseout  = function(){ this.style.borderColor='rgba(201,168,76,.3)'; this.style.color='rgba(201,168,76,.85)'; this.style.background=''; };
         navRight.insertBefore(aa, navRight.firstChild);
+      }
+      if (navRight && !navRight.querySelector('[href="/finance.html"]')) {
+        const a = document.createElement('a');
+        a.href = '/finance.html';
+        a.textContent = 'Finance';
+        a.style.cssText = 'font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:5px;transition:all .18s ease;';
+        a.onmouseover = function(){ this.style.borderColor='var(--gold)'; this.style.color='var(--gold)'; this.style.background='rgba(201,168,76,.08)'; };
+        a.onmouseout  = function(){ this.style.borderColor='rgba(201,168,76,.3)'; this.style.color='rgba(201,168,76,.85)'; this.style.background=''; };
+        navRight.insertBefore(a, navRight.firstChild);
       }
     }
 
