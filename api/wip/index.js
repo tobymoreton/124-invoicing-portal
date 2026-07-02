@@ -30,7 +30,14 @@ const { URL } = require('url');
 const LIST_GUID = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
-const SELECT_FIELDS = [
+// NOTE: Do NOT restrict to a $select list on this tenant.
+// Boolean fields (Billable_x003f_, Billed_x003f_) are silently dropped from
+// Graph responses when explicitly named in $expand=fields($select=...).
+// Restriction removed 2026-07-01 — use $expand=fields (all fields) instead.
+// Confirmed pattern: same fix applied to /api/coa and /api/caseactions.
+// SELECT_FIELDS constant retained here as documentation of which fields are
+// consumed by the normalise() function, but it is NOT passed to Graph.
+const SELECT_FIELDS_DOC = [
   'id',
   'Completedby_x0028_text_x0029_', // Draftsman name (text mirror of User field)
   'field_18',                       // Email (text) — draftsman email
@@ -40,10 +47,10 @@ const SELECT_FIELDS = [
   'TimeSpentMirror',                // Hours spent (Number mirror)
   'field_6',                        // Rate £/hr
   'Num_BillableAmount_x00a3_',      // WIP value £ — only populated post-billing; compute from TimeSpentMirror × field_6 for unbilled
-  'field_2',                       // Work done (Note) — free-text description
-  'Billable_x003f_',                // Billable? boolean (indexed)
-  'Billed_x003f_',                  // Billed? boolean (indexed)
-].join(',');
+  'field_2',                        // Work done (Note) — free-text description
+  'Billable_x003f_',                // Billable? boolean (indexed) — NOT reliable in $select on this tenant
+  'Billed_x003f_',                  // Billed? boolean (indexed) — NOT reliable in $select on this tenant
+];
 
 const ADMIN_EMAILS = [
   'toby@tmclegal.co.uk',
@@ -160,8 +167,10 @@ async function fetchAllWIP(token) {
 
   const filter = encodeURIComponent(wipFilter);
 
+  // $expand=fields with no $select — booleans drop silently when named in $select on this tenant.
+  // Server-side $filter on Billed_x003f_ still works (it’s an indexed field query, not a response field).
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields($select=${SELECT_FIELDS})&$filter=${filter}&$top=999&$orderby=fields/field_12 desc`;
+               `?$expand=fields&$filter=${filter}&$top=999&$orderby=fields/field_12 desc`;
 
   let url = base;
   let all = [];
