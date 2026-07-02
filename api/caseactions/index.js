@@ -145,6 +145,7 @@ module.exports = async function (context, req) {
         field_18: b.email || callerEmail,
         Completedby_x0028_text_x0029_: b.completedBy || '',
         Casename_x0028_text_x0029_:    b.caseName    || '',
+        TimeSpentMirror: timeSpent,  // PA mirror field — also write here so COA/WIP don't need to wait for PA run
         'Billable_x003f_': b.billable === false ? false : true,
         'Billed_x003f_':   false,
       };
