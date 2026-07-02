@@ -2752,6 +2752,10 @@ async function initSwitcher() {
       const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
       return (nameL  && (assigned.includes(nameL)   || coAssigned.includes(nameL)))
           || (emailL && (assigned.includes(emailL)  || coAssigned.includes(emailL)));
+    }).sort((a, b) => {
+      const na = ((a.fields||{})['CaseNameForOpenCases']||(a.fields||{})['Title']||'').toLowerCase();
+      const nb = ((b.fields||{})['CaseNameForOpenCases']||(b.fields||{})['Title']||'').toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
     });
     renderSwitcherList('');
   } catch(e) { document.getElementById('switcher-list').innerHTML = '<div class="switcher-empty">Could not load cases</div>'; }
