@@ -2403,7 +2403,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
     'BottomLine':'f-BottomLine','LikelyTopEnd':'f-LikelyTopEnd',
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
     'Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
-    // TODO: add 'ClientPaidExpenses':'f-ClientPaidExpenses' once SP column is created on Cases list
+    'ClientPaidExpenses':'f-ClientPaidExpenses',
     'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
