@@ -450,6 +450,9 @@ async function init() {
   initCaseSearch();
   initListeners();
   preloadCases();  // background — no await
+
+  const urlRef = (new URLSearchParams(window.location.search).get('ref') || '').trim();
+  if (urlRef) autoSelectByRef(urlRef);
 }
 
 // ── Preload all open cases into cache ────────────────────
@@ -461,6 +464,30 @@ function preloadCases() {
       _cacheReady = true;
     })
     .catch(() => { /* silent — typeahead falls back to live search */ });
+}
+
+// ── Auto-select a case from a ?ref= URL param (used when opened from case.html) ──
+async function autoSelectByRef(ref) {
+  el('case-search').placeholder = 'Loading case ' + ref + '…';
+  el('case-search').disabled = true;
+  try {
+    const r = await fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const match = (data.value || []).find(item =>
+      (item.fields?.Ourreference_x0028_text_x0029_ || '').toString().trim() === ref
+    );
+    if (match) {
+      pickCase(match.fields || {}, match.id || '');
+    } else {
+      el('case-search').placeholder = 'Case ' + ref + ' not found — search manually…';
+    }
+  } catch (err) {
+    el('case-search').placeholder = 'Search by case name or reference…';
+    console.error('Auto-select by ref failed:', err.message);
+  } finally {
+    el('case-search').disabled = false;
+  }
 }
 
 // ── Case typeahead ────────────────────────────────────────

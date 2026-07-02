@@ -1300,7 +1300,15 @@
     </div><!-- /tab-caseactions -->
 
     <div class="tab-panel" id="tab-invoicing">
-      <div class="coming-soon"><div class="icon">💰</div><h3>Invoicing</h3><p>Coming soon.</p></div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Invoicing</span></div>
+        <div class="card-body" style="text-align:center;padding:56px 24px;">
+          <div style="font-size:36px;margin-bottom:14px;opacity:.6;">💰</div>
+          <h3 style="font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:10px;">Create Draft Invoice</h3>
+          <p style="font-size:14px;color:var(--grey-mid);margin-bottom:22px;">Open the Invoice Create portal, pre-loaded for this case.</p>
+          <button class="btn-pdf" id="btn-open-invoice-create" style="width:auto;padding:13px 32px;display:inline-flex;">Open Invoice Create Portal</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -2243,6 +2251,10 @@ function openDocOverlay(url, label) { document.getElementById('doc-overlay-title
 function closeDocOverlay() { document.getElementById('doc-overlay').classList.remove('open'); document.getElementById('doc-overlay-iframe').src = 'about:blank'; }
 document.getElementById('doc-overlay-close').addEventListener('click', closeDocOverlay);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocOverlay(); });
+document.getElementById('btn-open-invoice-create')?.addEventListener('click', () => {
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  openDocOverlay('/invoice-create.html?ref=' + encodeURIComponent(ref), 'Create Draft Invoice');
+});
 
 loadCase();
 
