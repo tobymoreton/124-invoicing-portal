@@ -138,18 +138,6 @@
       <button class="refresh-btn" id="refresh-btn" onclick="loadBalance(true)">
         <span class="refresh-icon">↻</span> Refresh
       </button>
-
-      <!-- Set balance — Toby only -->
-      <div class="set-balance-row" id="set-balance-row" style="display:none;">
-        <div class="set-balance-label">Set Balance</div>
-        <div class="set-balance-controls">
-          <span class="set-balance-prefix">£</span>
-          <input type="number" id="set-balance-input" class="set-balance-input"
-            step="0.01" min="0" placeholder="0.00" />
-          <button class="refresh-btn" id="set-balance-btn" onclick="setBalance()" style="margin-top:0;">Set</button>
-        </div>
-        <div id="set-balance-msg" class="set-balance-msg" style="display:none;"></div>
-      </div>
     </div>
 
     <!-- Phase 2 placeholder -->
@@ -191,46 +179,6 @@
 <script>
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 let callerEmail = null;
-
-async function setBalance() {
-  const input = document.getElementById('set-balance-input');
-  const btn   = document.getElementById('set-balance-btn');
-  const msg   = document.getElementById('set-balance-msg');
-  const val   = parseFloat(input.value);
-  if (isNaN(val) || val < 0) {
-    msg.textContent = 'Enter a valid balance.';
-    msg.style.color = '#991B1B';
-    msg.style.display = '';
-    return;
-  }
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  msg.style.display = 'none';
-  try {
-    const r = await fetch('/api/aureli', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ balance: val.toFixed(2) }),
-    });
-    if (!r.ok) throw new Error(await r.text() || 'HTTP ' + r.status);
-    const data = await r.json();
-    document.getElementById('balance-figure').textContent = data.formatted;
-    document.getElementById('balance-figure').className = 'balance-figure';
-    document.getElementById('balance-as-of').textContent = fmtAsOf(data.asOf);
-    document.getElementById('stale-badge').style.display = 'none';
-    msg.textContent = '✓ Balance updated';
-    msg.style.color = 'var(--green)';
-    msg.style.display = '';
-    setTimeout(() => { msg.style.display = 'none'; }, 3000);
-  } catch (err) {
-    msg.textContent = 'Error: ' + err.message;
-    msg.style.color = '#991B1B';
-    msg.style.display = '';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Set';
-  }
-}
 
 async function getCallerEmail() {
   try {
@@ -286,9 +234,6 @@ async function loadBalance(forceRefresh) {
     meta.textContent = fmtAsOf(data.asOf);
     if (data.stale) stale.style.display = '';
 
-    const setInput = document.getElementById('set-balance-input');
-    if (setInput && data.balance != null) setInput.value = data.balance.toFixed(2);
-
   } catch (err) {
     fig.textContent = '£—';
     fig.className   = 'balance-figure stale';
@@ -311,9 +256,6 @@ async function init() {
   }
 
   document.getElementById('main-content').style.display = '';
-  if (email === 'toby@tmclegal.co.uk') {
-    document.getElementById('set-balance-row').style.display = '';
-  }
   loadBalance(false);
 }
 
