@@ -240,6 +240,7 @@ function graphGet(url, token) {
         try { resolve(JSON.parse(data)); } catch (e) { reject(new Error(`JSON parse: ${e.message}`)); }
       });
     });
+    req.setTimeout(20000, () => { req.destroy(new Error('Graph GET timeout (20s) — SP may be throttling')); });
     req.on('error', reject);
     req.end();
   });
