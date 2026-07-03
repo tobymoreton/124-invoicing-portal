@@ -294,6 +294,10 @@
           <option value="Pending assignment">Pending assignment</option>
           <option value="In billing">In billing</option>
           <option value="Pending billing">Pending billing</option>
+          <option value="Awaiting client approval">Awaiting client approval</option>
+          <option value="Served by client">Served by client</option>
+          <option value="In negotiation (served informally)">In negotiation (served informally)</option>
+          <option value="In negotiation (served formally)">In negotiation (served formally)</option>
           <option value="In budgeting">In budgeting</option>
           <option value="Settled">Settled</option>
         </select>
@@ -681,7 +685,8 @@ async function loadCases(){
 
 function renderCases(q){
   const tbody=document.getElementById('cases-tbody');
-  let base=showClosed?rawCases:allCases;
+  const closedBase=rawCases.filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
+  let base=showClosed?closedBase:allCases;
   if(stageFilter) base=base.filter(c=>(c.fields['StatusMirror']||'')===stageFilter);
   const filtered=q?base.filter(c=>{
     const name=(c.fields['CaseNameForOpenCases']||c.fields['Title']||'').toLowerCase();
@@ -741,6 +746,8 @@ document.getElementById('search').addEventListener('input',e=>renderCases(e.targ
 document.getElementById('status-filter').addEventListener('change',e=>{stageFilter=e.target.value;renderCases(document.getElementById('search').value.trim());});
 document.getElementById('btn-closed-toggle').addEventListener('click',()=>{
   showClosed=!showClosed;
+  stageFilter='';
+  document.getElementById('status-filter').value='';
   const btn=document.getElementById('btn-closed-toggle');
   btn.textContent=showClosed?'Hide Closed':'Show Closed';
   btn.classList.toggle('active',showClosed);
