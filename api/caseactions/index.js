@@ -82,23 +82,35 @@ module.exports = async function (context, req) {
                  + `?$expand=fields`
                  + `&$top=999`;
 
-      let url = base;
-      let all = [];
-      while (url) {
-        const page = await graphGet(url, token);
-        all = all.concat(page.value || []);
-        url = page['@odata.nextLink'] || null;
-      }
+      let filtered = [];
 
-      // all=1 mode: return every UNBILLED entry across all cases in a single
-      // list walk. The dashboard previously fired one call per case (~38 calls),
-      // each walking the whole TT2 list — that throttled Graph and produced
-      // intermittent 500s. One call replaces all of them.
-      const filtered = allMode
-        ? all.filter(item => item.fields?.['Billed_x003f_'] !== true)
-        : all.filter(item =>
-            (item.fields?.['field_16'] || '').toString().trim() === ref
-          );
+      if (!allMode && ref) {
+        // Per-case fast path: server-side $filter on field_16 (requires column indexed in SP).
+        // Falls back automatically to full list scan if Graph returns 400 (not yet indexed).
+        try {
+          const escapedRef = ref.replace(/'/g, "''");
+          let url = base + `&$filter=fields/field_16 eq '${escapedRef}'`;
+          while (url) {
+            const page = await graphGet(url, token);
+            filtered = filtered.concat(page.value || []);
+            url = page['@odata.nextLink'] || null;
+          }
+        } catch (filterErr) {
+          context.log.warn('field_16 filter failed (not indexed?), falling back to full scan:', filterErr.message);
+          filtered = [];
+          let url = base;
+          let all = [];
+          while (url) { const page = await graphGet(url, token); all = all.concat(page.value || []); url = page['@odata.nextLink'] || null; }
+          filtered = all.filter(item => (item.fields?.['field_16'] || '').toString().trim() === ref);
+        }
+      } else {
+        // all=1 mode: walk entire list, return every UNBILLED entry across all cases.
+        // The dashboard uses one call here rather than per-case calls that throttle Graph.
+        let url = base;
+        let all = [];
+        while (url) { const page = await graphGet(url, token); all = all.concat(page.value || []); url = page['@odata.nextLink'] || null; }
+        filtered = all.filter(item => item.fields?.['Billed_x003f_'] !== true);
+      }
 
       filtered.sort((a, b) => {
         const da = new Date(a.fields?.['field_12'] || a.fields?.['field_1'] || 0);
