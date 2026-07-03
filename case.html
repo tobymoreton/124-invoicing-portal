@@ -1253,6 +1253,12 @@
           </div>
         </div>
         <div style="width:320px;flex-shrink:0;">
+          <div class="card" id="ca-wip-card" style="margin-bottom:16px;">
+            <div class="card-head"><span class="card-title">Unbilled WIP</span></div>
+            <div id="ca-wip-body" style="padding:18px 24px;min-height:56px;display:flex;align-items:center;">
+              <span style="font-size:13px;color:var(--grey-mid);">Loading…</span>
+            </div>
+          </div>
           <div class="card">
             <div class="card-head"><span class="card-title">Add Action</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
@@ -2384,7 +2390,7 @@ async function loadCaseActions() {
 function renderCaTable() {
   const tbody = document.getElementById('ca-tbody'); const loading = document.getElementById('ca-loading'); const empty = document.getElementById('ca-empty'); const summary = document.getElementById('ca-summary');
   loading.style.display = 'none'; tbody.innerHTML = '';
-  if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; return; }
+  if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; renderWipBox(); return; }
   empty.style.display = 'none';
   const totalHrs = caActions.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
   const totalAmt = caActions.reduce((s, a) => { const f = a.fields || {}; const amt = parseFloat(f['Num_BillableAmount_x00a3_']); const val = !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0); return s + val; }, 0);
@@ -2424,6 +2430,32 @@ function renderCaTable() {
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
+  renderWipBox();
+}
+
+function renderWipBox() {
+  const body = document.getElementById('ca-wip-body'); if (!body) return;
+  const unbilled = caActions.filter(a => { const f = a.fields || {}; return !f['Billed_x003f_'] && (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) > 0; });
+  if (!unbilled.length) { body.innerHTML = '<span style="font-size:13px;color:var(--grey-mid);">No unbilled time on this case.</span>'; return; }
+  const totalAmt = unbilled.reduce((s, a) => { const f = a.fields || {}; const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0; const stored = parseFloat(f['Num_BillableAmount_x00a3_']); return s + (!isNaN(stored) && stored > 0 ? stored : hrs * rate); }, 0);
+  const totalHrs = unbilled.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
+  const byPerson = {};
+  unbilled.forEach(a => {
+    const f = a.fields || {}; const name = (f['Completedby_x0028_text_x0029_'] || f['field_18'] || 'Unknown').split(' ')[0];
+    const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0;
+    const stored = parseFloat(f['Num_BillableAmount_x00a3_']); const val = !isNaN(stored) && stored > 0 ? stored : hrs * rate;
+    if (!byPerson[name]) byPerson[name] = { hrs: 0, amt: 0 };
+    byPerson[name].hrs += hrs; byPerson[name].amt += val;
+  });
+  const people = Object.entries(byPerson).sort((a, b) => b[1].amt - a[1].amt);
+  let html = `<div style="width:100%;"><div style="font-size:24px;font-weight:700;color:var(--navy);font-family:'IBM Plex Mono',monospace;line-height:1;">${fmt(totalAmt)}</div><div style="font-size:12px;color:var(--grey-mid);margin-top:4px${people.length > 1 ? ';margin-bottom:12px' : ''};"> ${fmtN(totalHrs, 2)} hrs \u00b7 ${unbilled.length} action${unbilled.length !== 1 ? 's' : ''} unbilled</div>`;
+  if (people.length > 1) {
+    html += '<div style="border-top:1px solid var(--grey-light);padding-top:10px;display:flex;flex-direction:column;gap:5px;">';
+    people.forEach(([name, d]) => { html += `<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--navy-mid);">${escHtml(name)}</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--navy);">${fmt(d.amt)} <span style="color:var(--grey-mid);">${fmtN(d.hrs,2)}h</span></span></div>`; });
+    html += '</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
 }
 
 async function saveCaRow(id) {
