@@ -2364,7 +2364,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
 async function loadCaseActions() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
-  document.getElementById('ca-loading').style.display = 'block'; document.getElementById('ca-empty').style.display = 'none'; document.getElementById('ca-tbody').innerHTML = '';
+  const caLoadingEl = document.getElementById('ca-loading'); caLoadingEl.style.display = 'block'; caLoadingEl.textContent = 'Loading actions…'; document.getElementById('ca-empty').style.display = 'none'; document.getElementById('ca-tbody').innerHTML = '';
   try {
     const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json(); caActions = data.value || []; renderCaTable(); initAddActionPanel();
@@ -2373,7 +2373,7 @@ async function loadCaseActions() {
       caEditingId = deepActionId; renderCaTable();
       setTimeout(() => { const tr = document.querySelector(`tr[data-id="${deepActionId}"]`); if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
     }
-  } catch (err) { document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message; }
+  } catch (err) { caLoaded = false; document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message + ' — click the tab again to retry'; }
 }
 
 function renderCaTable() {
