@@ -169,8 +169,9 @@ module.exports = async function (context, req) {
 
       const fields = {};
       if (b.workDone  !== undefined) fields['field_2'] = b.workDone;
-      if (b.timeSpent !== undefined) fields['field_3'] = parseFloat(b.timeSpent) || 0;
+      if (b.timeSpent !== undefined) { fields['field_3'] = parseFloat(b.timeSpent) || 0; fields['TimeSpentMirror'] = parseFloat(b.timeSpent) || 0; }
       if (b.rate      !== undefined) fields['field_6'] = parseFloat(b.rate)      || 0;
+      if (b.brief     !== undefined) fields['field_9'] = b.brief;
       if (b.billable  !== undefined) fields['Billable_x003f_'] = !!b.billable;
 
       if (Object.keys(fields).length === 0) {
