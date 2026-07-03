@@ -1231,7 +1231,7 @@
             <div>
               <table class="ca-table" id="ca-table">
                 <colgroup>
-                  <col class="ca-col-date"/><col class="ca-col-by"/>
+                  <col class="ca-col-date"/><col class="ca-col-by"/><col style="width:80px;"/>
                   <col/>
                   <col class="ca-col-hrs"/><col class="ca-col-rate"/><col class="ca-col-amt"/>
                   <col class="ca-col-bil"/><col class="ca-col-bld"/>
@@ -2365,15 +2365,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function loadCaseActions() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
   const caLoadingEl = document.getElementById('ca-loading'); caLoadingEl.style.display = 'block'; caLoadingEl.textContent = 'Loading actions…'; document.getElementById('ca-empty').style.display = 'none'; document.getElementById('ca-tbody').innerHTML = '';
+  const controller = new AbortController(); const fetchTimeout = setTimeout(() => controller.abort(), 30000);
   try {
-    const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref), { signal: controller.signal }); clearTimeout(fetchTimeout); if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json(); caActions = data.value || []; renderCaTable(); initAddActionPanel();
     const deepActionId = new URLSearchParams(window.location.search).get('action');
     if (deepActionId && caActions.some(a => a.id === deepActionId)) {
       caEditingId = deepActionId; renderCaTable();
       setTimeout(() => { const tr = document.querySelector(`tr[data-id="${deepActionId}"]`); if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
     }
-  } catch (err) { caLoaded = false; document.getElementById('ca-loading').textContent = 'Failed to load actions: ' + err.message + ' — click the tab again to retry'; }
+  } catch (err) { clearTimeout(fetchTimeout); caLoaded = false; document.getElementById('ca-loading').textContent = (err.name === 'AbortError' ? 'Timed out after 30s — click the tab again to retry' : 'Failed to load actions: ' + err.message + ' — click the tab again to retry'); }
 }
 
 function renderCaTable() {
