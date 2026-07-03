@@ -109,6 +109,11 @@
     .search-wrap input:focus{border-color:var(--gold);}
     .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--grey-mid);font-size:13px;pointer-events:none;}
     .filter-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .filter-select{padding:8px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;cursor:pointer;transition:border-color .18s ease;}
+    .filter-select:focus{border-color:var(--gold);}
+    .filter-toggle-btn{padding:8px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--grey-mid);background:var(--white);cursor:pointer;transition:all .18s ease;white-space:nowrap;}
+    .filter-toggle-btn:hover{border-color:var(--navy);color:var(--navy);}
+    .filter-toggle-btn.active{background:var(--navy);color:var(--gold);border-color:var(--navy);}
 
     /* Status chips */
     .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
@@ -284,6 +289,15 @@
           <span class="search-icon">&#128269;</span>
           <input type="text" id="search" placeholder="Search cases&hellip;" autocomplete="off" />
         </div>
+        <select id="status-filter" class="filter-select">
+          <option value="">All stages</option>
+          <option value="Pending assignment">Pending assignment</option>
+          <option value="In billing">In billing</option>
+          <option value="Pending billing">Pending billing</option>
+          <option value="In budgeting">In budgeting</option>
+          <option value="Settled">Settled</option>
+        </select>
+        <button id="btn-closed-toggle" class="filter-toggle-btn">Show Closed</button>
       </div>
     </div>
     <div class="table-card">
@@ -489,6 +503,9 @@
 
 <script>
 let allCases = [];
+let rawCases = [];
+let stageFilter = '';
+let showClosed = false;
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function stripHtml(s){return (s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
@@ -645,11 +662,12 @@ async function loadCases(){
     const r=await fetch('/api/cases?preload=1');
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data=await r.json();
-    allCases=(data.value||[]).filter(c=>{
+    rawCases=(data.value||[]);
+    rawCases.sort((a,b)=>(b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''));
+    allCases=rawCases.filter(c=>{
       const s=(c.fields['StatusMirror']||'').toLowerCase();
       return s!=='closed'&&s!=='settled';
     });
-    allCases.sort((a,b)=>(b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''));
     document.getElementById('state-loading').style.display='none';
     document.getElementById('cases-section').style.display='block';
     document.getElementById('page-sub').textContent=allCases.length+' open cases';
@@ -663,14 +681,16 @@ async function loadCases(){
 
 function renderCases(q){
   const tbody=document.getElementById('cases-tbody');
-  const filtered=q?allCases.filter(c=>{
+  let base=showClosed?rawCases:allCases;
+  if(stageFilter) base=base.filter(c=>(c.fields['StatusMirror']||'')===stageFilter);
+  const filtered=q?base.filter(c=>{
     const name=(c.fields['CaseNameForOpenCases']||c.fields['Title']||'').toLowerCase();
     const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
     const firm=(c.fields['Firm_x0028_text_x0029_']||'').toLowerCase();
     const fe=(c.fields['assignedToTextValue']||'').toLowerCase();
     const ql=q.toLowerCase();
     return name.includes(ql)||ref.includes(ql)||firm.includes(ql)||fe.includes(ql);
-  }):allCases;
+  }):base;
 
   document.getElementById('cases-meta').textContent=filtered.length+' case'+(filtered.length!==1?'s':'')+(q?' matching "'+q+'"':'');
   tbody.innerHTML='';
@@ -718,6 +738,14 @@ function renderCases(q){
 }
 
 document.getElementById('search').addEventListener('input',e=>renderCases(e.target.value.trim()));
+document.getElementById('status-filter').addEventListener('change',e=>{stageFilter=e.target.value;renderCases(document.getElementById('search').value.trim());});
+document.getElementById('btn-closed-toggle').addEventListener('click',()=>{
+  showClosed=!showClosed;
+  const btn=document.getElementById('btn-closed-toggle');
+  btn.textContent=showClosed?'Hide Closed':'Show Closed';
+  btn.classList.toggle('active',showClosed);
+  renderCases(document.getElementById('search').value.trim());
+});
 
 // ── Admin Reminders ────────────────────────────────────────────────────────
 let adminReminders = [];
