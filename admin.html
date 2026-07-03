@@ -123,6 +123,7 @@
     .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
     .s-served-client{background:#DCFCE7;color:#14532D;}
     .s-negotiation{background:#FFF7ED;color:#9A3412;}
+    .s-pending-replies{background:#EEF2FF;color:#3730A3;}
     .s-budgeting{background:#E0F2FE;color:#075985;}
     .s-assessment{background:#FEF2F2;color:#991B1B;}
     .s-settled{background:var(--green-pale);color:var(--green);}
@@ -298,6 +299,7 @@
           <option value="Served by client">Served by client</option>
           <option value="In negotiation (served informally)">In negotiation (served informally)</option>
           <option value="In negotiation (served formally)">In negotiation (served formally)</option>
+          <option value="Pending Replies">Pending Replies</option>
           <option value="In budgeting">In budgeting</option>
           <option value="Settled">Settled</option>
         </select>
@@ -352,6 +354,7 @@
             <option>Awaiting client approval</option><option>Served by client</option>
             <option>In negotiation (served informally)</option>
             <option>In negotiation (served formally)</option>
+            <option>Pending Replies</option>
             <option>In budgeting</option><option>Settled</option>
           </select>
         </div>
@@ -521,6 +524,7 @@ function statusClass(s){
   if(sl==='awaiting client approval') return 's-awaiting-client';
   if(sl==='served by client') return 's-served-client';
   if(sl.startsWith('in negotiation')) return 's-negotiation';
+  if(sl==='pending replies') return 's-pending-replies';
   if(sl==='in budgeting') return 's-budgeting';
   if(sl.includes('assessment')||sl.includes('detailed')) return 's-assessment';
   if(sl==='settled') return 's-settled';
