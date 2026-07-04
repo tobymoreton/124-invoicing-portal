@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Today — TMC Legal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --navy:#001B44;--navy-mid:#253A60;--gold:#B59A6A;--gold-pale:#F0E6C8;
+      --cream:#F5F2EB;--cream-dark:#ECE8DF;--white:#FFFFFF;
+      --grey-mid:#6B7280;--grey-light:#E5E1D6;--grey-faint:#F0EDE6;
+      --green:#065F46;--green-pale:#ECFDF5;
+      --overdue:#991B1B;--overdue-bg:#FEF2F2;
+      --amber:#92400E;--amber-bg:#FFFBEB;
+      --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
+      --radius:6px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* ── Nav ── */
+    .nav{background:var(--navy);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+    .nav-brand{display:flex;align-items:baseline;gap:14px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:16px;background:rgba(201,168,76,.35);align-self:center;}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(245,242,235,.65);}
+    .nav-right{display:flex;align-items:center;gap:12px;}
+    .nav-jump{font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:13px;color:rgba(201,168,76,.85);text-decoration:none;transition:all .18s ease;border:1px solid rgba(201,168,76,.3);border-radius:5px;padding:7px 16px;}
+    .nav-jump:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+
+    /* ── Greeting banner ── */
+    .greeting-bar{background:var(--navy);border-top:1px solid rgba(201,168,76,.18);padding:22px 28px 24px;}
+    .greeting-text{font-family:'Spectral',serif;font-weight:300;font-size:28px;color:var(--white);line-height:1.2;}
+    .greeting-date{font-size:11.5px;color:rgba(201,168,76,.65);letter-spacing:.07em;text-transform:uppercase;margin-top:5px;}
+
+    /* ── Main layout ── */
+    .page-body{padding:24px 28px 40px;display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;max-width:1400px;}
+    @media(max-width:960px){.page-body{grid-template-columns:1fr;}}
+
+    /* ── Section cards ── */
+    .section-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;}
+    .section-card:last-child{margin-bottom:0;}
+    .section-head{padding:13px 20px;border-bottom:1px solid var(--grey-light);display:flex;align-items:center;justify-content:space-between;}
+    .section-title{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--navy);}
+    .section-badge{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--grey-mid);}
+    .section-badge.urgent{color:var(--overdue);font-weight:600;}
+
+    /* ── Reminder rows ── */
+    .rem-group{border-bottom:1px solid var(--grey-light);}
+    .rem-group:last-child{border-bottom:none;}
+    .rem-group-head{padding:7px 20px 6px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;}
+    .rem-group-head.overdue{background:var(--overdue-bg);color:var(--overdue);}
+    .rem-group-head.today{background:var(--amber-bg);color:var(--amber);}
+    .rem-group-head.upcoming{background:var(--grey-faint);color:var(--grey-mid);}
+    .rem-row{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:start;padding:11px 20px;border-bottom:1px solid var(--grey-light);transition:background .12s ease;}
+    .rem-row:hover{background:var(--grey-faint);}
+    .rem-row:last-child{border-bottom:none;}
+    .rem-case{font-size:12px;font-weight:600;color:var(--navy);margin-bottom:1px;}
+    .rem-event{font-size:12.5px;color:var(--navy-mid);}
+    .rem-detail{font-size:11px;color:var(--grey-mid);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .rem-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;padding-top:1px;}
+    .rem-due{font-size:11px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+    .rem-due.overdue{color:var(--overdue);font-weight:600;}
+    .rem-due.today{color:var(--amber);font-weight:600;}
+    .rem-due.upcoming{color:var(--grey-mid);}
+    .open-link{font-size:11px;font-weight:500;color:var(--gold);text-decoration:none;white-space:nowrap;}
+    .open-link:hover{color:var(--navy);}
+
+    /* ── WIP rows ── */
+    .wip-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--grey-light);transition:background .12s ease;}
+    .wip-row:hover{background:var(--grey-faint);}
+    .wip-row:last-child{border-bottom:none;}
+    .wip-case{font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .wip-ref{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--grey-mid);}
+    .wip-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--navy);white-space:nowrap;text-align:right;}
+    .wip-hrs{font-size:10px;color:var(--grey-mid);text-align:right;}
+    .wip-total-row{padding:11px 20px;background:var(--cream-dark);border-top:2px solid var(--navy);display:flex;justify-content:space-between;align-items:center;}
+    .wip-total-label{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);}
+    .wip-total-val{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:500;color:var(--navy);}
+    .wip-dash-link{display:block;padding:9px 20px;text-align:center;font-size:11.5px;color:var(--gold);text-decoration:none;border-top:1px solid var(--grey-light);font-weight:500;}
+    .wip-dash-link:hover{background:var(--grey-faint);}
+
+    /* ── Attention rows ── */
+    .att-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--grey-light);transition:background .12s ease;}
+    .att-row:hover{background:var(--grey-faint);}
+    .att-row:last-child{border-bottom:none;}
+    .att-case{font-size:12px;font-weight:600;color:var(--navy);}
+    .att-meta{font-size:11px;color:var(--grey-mid);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .att-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+    .status-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;letter-spacing:.03em;white-space:nowrap;}
+    .s-pending-assignment{background:#FFF8D6;color:#854D0E;}
+    .s-pending-billing{background:#EFF6FF;color:#1E40AF;}
+    .s-in-billing{background:#DBEAFE;color:#1D4ED8;}
+
+    /* ── States ── */
+    .state-empty{padding:26px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
+    .state-empty.all-clear{color:var(--green);}
+    .skeleton{height:13px;background:linear-gradient(90deg,var(--grey-light) 25%,var(--grey-faint) 50%,var(--grey-light) 75%);background-size:200%;animation:shimmer 1.4s infinite;border-radius:3px;margin:10px 20px;}
+    @keyframes shimmer{0%{background-position:200%}100%{background-position:-200%}}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <div class="nav-divider"></div>
+    <span class="nav-title">Today</span>
+  </div>
+  <div class="nav-right" id="nav-right">
+    <a href="/index.html" class="nav-jump">&larr; Dashboard</a>
+    <a href="/cases.html" class="nav-jump">My Cases</a>
+  </div>
+</nav>
+
+<div class="greeting-bar">
+  <div class="greeting-text" id="greeting">Loading&hellip;</div>
+  <div class="greeting-date" id="today-date"></div>
+</div>
+
+<div class="page-body">
+
+  <!-- ═══ LEFT: Reminders ═══ -->
+  <div>
+    <div class="section-card">
+      <div class="section-head">
+        <span class="section-title">📋 Reminders</span>
+        <span class="section-badge" id="rem-badge"></span>
+      </div>
+      <div id="rem-body">
+        <div class="skeleton" style="width:65%;"></div>
+        <div class="skeleton" style="width:80%;"></div>
+        <div class="skeleton" style="width:50%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RIGHT: WIP + Attention ═══ -->
+  <div>
+    <div class="section-card">
+      <div class="section-head">
+        <span class="section-title">💷 My Unbilled WIP</span>
+        <span class="section-badge" id="wip-badge"></span>
+      </div>
+      <div id="wip-body">
+        <div class="skeleton"></div>
+        <div class="skeleton" style="width:70%;"></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-head">
+        <span class="section-title">⚡ Needs Attention</span>
+        <span class="section-badge" id="att-badge"></span>
+      </div>
+      <div id="att-body">
+        <div class="skeleton"></div>
+        <div class="skeleton" style="width:65%;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+const ATTENTION_STAGES = new Set(['pending assignment','pending billing','in billing']);
+
+const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+const fmt = n => n != null ? '\u00a3' + Number(n).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '\u2014';
+const fmtDate = v => { if (!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
+const truncate = (s, n) => s && s.length > n ? s.slice(0,n) + '\u2026' : (s || '');
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+async function getCallerEmail() {
+  try {
+    const preview = sessionStorage.getItem('__PREVIEW_AS');
+    if (preview) return preview.toLowerCase();
+    const r = await fetch('/.auth/me');
+    if (!r.ok) return null;
+    const d = await r.json();
+    const pr = d.clientPrincipal || {};
+    if (pr.userDetails) return pr.userDetails.toLowerCase();
+    const c = (pr.claims || []).find(c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn');
+    return c ? c.val.toLowerCase() : null;
+  } catch { return null; }
+}
+
+// ── Greeting ──────────────────────────────────────────────────────────────
+function renderGreeting(email) {
+  const h = new Date().getHours();
+  const salutation = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const first = email ? email.split('@')[0].split('.')[0] : '';
+  const name = first ? first.charAt(0).toUpperCase() + first.slice(1) : '';
+  document.getElementById('greeting').textContent = salutation + (name ? ', ' + name + '.' : '.');
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+
+// ── Reminders ─────────────────────────────────────────────────────────────
+function renderReminders(reminders, callerEmail, caseNames, caseAssignees, isAdmin) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 7);
+  const todayTs = today.getTime();
+
+  // Filter to this user's relevant reminders
+  const mine = reminders.filter(r => {
+    const f = r.fields || {};
+    if ((f.CompletedMirror || '') === 'Yes') return false;
+    if (isAdmin) return true;
+    const ref = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+    const remindee = (f['Add_x0020_a_x0020_remindee_x0020'] || '').toLowerCase();
+    const assignee = (caseAssignees[ref] || '').toLowerCase();
+    // Show if: explicitly remindee, or case is assigned to them, or case has no assignee (shared pool)
+    if (remindee) return remindee === callerEmail;
+    return !assignee || assignee === callerEmail;
+  });
+
+  const overdue   = mine.filter(r => { const d = new Date(r.fields?.Duedate); return !isNaN(d) && d < today; })
+                        .sort((a,b) => new Date(a.fields.Duedate) - new Date(b.fields.Duedate));
+  const dueToday  = mine.filter(r => { const d = new Date(r.fields?.Duedate); return !isNaN(d) && d.getTime() === todayTs; });
+  const upcoming  = mine.filter(r => { const d = new Date(r.fields?.Duedate); return !isNaN(d) && d > today && d <= weekEnd; })
+                        .sort((a,b) => new Date(a.fields.Duedate) - new Date(b.fields.Duedate));
+
+  const urgentCount = overdue.length + dueToday.length;
+  const badge = document.getElementById('rem-badge');
+  if (urgentCount > 0) {
+    badge.textContent = urgentCount + ' action' + (urgentCount > 1 ? 's' : '') + ' needed';
+    badge.classList.add('urgent');
+  } else if (upcoming.length) {
+    badge.textContent = upcoming.length + ' this week';
+  } else {
+    badge.textContent = 'all clear';
+  }
+
+  if (!urgentCount && !upcoming.length) {
+    document.getElementById('rem-body').innerHTML =
+      '<div class="state-empty all-clear">\u2705 Nothing overdue or due this week.</div>';
+    return;
+  }
+
+  const makeRows = (items, cls) => items.map(r => {
+    const f = r.fields || {};
+    const ref = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+    const dueDate = new Date(f.Duedate);
+    const daysAgo = Math.round((today - dueDate) / 86400000);
+    const dueTxt = cls === 'overdue'
+      ? (daysAgo === 0 ? 'Today' : daysAgo + 'd overdue')
+      : cls === 'today' ? 'Due today'
+      : fmtDate(f.Duedate);
+    const caseName = truncate(caseNames[ref] || ref || '\u2014', 52);
+    return `<div class="rem-row">
+      <div>
+        <div class="rem-case">${esc(caseName)}</div>
+        <div class="rem-event">${esc(f.Event || 'Reminder')}</div>
+        ${f.Brief ? `<div class="rem-detail">${esc(f.Brief)}</div>` : ''}
+      </div>
+      <div class="rem-right">
+        <span class="rem-due ${cls}">${esc(dueTxt)}</span>
+        ${ref ? `<a href="/case.html?ref=${encodeURIComponent(ref)}" class="open-link">Open \u2192</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  let html = '';
+  if (overdue.length) {
+    html += `<div class="rem-group"><div class="rem-group-head overdue">\ud83d\udd34 Overdue \u2014 ${overdue.length} reminder${overdue.length > 1 ? 's' : ''}</div>${makeRows(overdue, 'overdue')}</div>`;
+  }
+  if (dueToday.length) {
+    html += `<div class="rem-group"><div class="rem-group-head today">\ud83d\udfe1 Due today \u2014 ${dueToday.length} reminder${dueToday.length > 1 ? 's' : ''}</div>${makeRows(dueToday, 'today')}</div>`;
+  }
+  if (upcoming.length) {
+    html += `<div class="rem-group"><div class="rem-group-head upcoming">This week \u2014 ${upcoming.length} upcoming</div>${makeRows(upcoming, 'upcoming')}</div>`;
+  }
+
+  document.getElementById('rem-body').innerHTML = html;
+}
+
+// ── WIP ───────────────────────────────────────────────────────────────────
+function renderWip(wipItems, callerEmail) {
+  const mine = (Array.isArray(wipItems) ? wipItems : [])
+    .filter(item => (item.Email || '').toLowerCase() === callerEmail && (item.WIPValue || 0) > 0);
+
+  if (!mine.length) {
+    document.getElementById('wip-body').innerHTML = '<div class="state-empty">No unbilled time recorded.</div>';
+    document.getElementById('wip-badge').textContent = '\u00a30.00';
+    return;
+  }
+
+  // Group by case ref
+  const byCaseRef = {};
+  mine.forEach(item => {
+    const ref = item.OurRef || '';
+    if (!byCaseRef[ref]) byCaseRef[ref] = { name: item.CaseName || ref || '\u2014', hrs: 0, val: 0 };
+    byCaseRef[ref].hrs += item.HoursSpent || 0;
+    byCaseRef[ref].val += item.WIPValue || 0;
+  });
+
+  const entries = Object.entries(byCaseRef).sort((a, b) => b[1].val - a[1].val);
+  const grandTotal = entries.reduce((s, [, v]) => s + v.val, 0);
+  document.getElementById('wip-badge').textContent = fmt(grandTotal);
+
+  const rows = entries.map(([ref, { name, hrs, val }]) =>
+    `<div class="wip-row">
+      <div style="min-width:0;">
+        <div class="wip-case">${esc(truncate(name, 32))}</div>
+        ${ref ? `<div class="wip-ref">${esc(ref)}</div>` : ''}
+      </div>
+      <div>
+        <div class="wip-val">${fmt(val)}</div>
+        <div class="wip-hrs">${hrs.toFixed(2)}h</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('wip-body').innerHTML =
+    rows +
+    `<div class="wip-total-row"><span class="wip-total-label">Total Unbilled</span><span class="wip-total-val">${fmt(grandTotal)}</span></div>` +
+    `<a href="/index.html" class="wip-dash-link">Full WIP schedule \u2192</a>`;
+}
+
+// ── Needs Attention ───────────────────────────────────────────────────────
+function renderAttention(cases, callerEmail, isAdmin) {
+  const stageClass = s => {
+    const sl = s.toLowerCase();
+    if (sl === 'pending assignment') return 's-pending-assignment';
+    if (sl === 'pending billing')   return 's-pending-billing';
+    if (sl === 'in billing')        return 's-in-billing';
+    return '';
+  };
+
+  const relevant = cases.filter(c => {
+    const f = c.fields || {};
+    const stage = (f.StatusMirror || '').toLowerCase();
+    if (!ATTENTION_STAGES.has(stage)) return false;
+    if (isAdmin) return true;
+    const assigned = (f.assignedToTextValue || '').toLowerCase();
+    return !assigned || assigned === callerEmail;
+  }).sort((a, b) => {
+    // Sort: Pending assignment first, then Pending billing, then by date desc
+    const sa = (a.fields?.StatusMirror || '').toLowerCase();
+    const sb = (b.fields?.StatusMirror || '').toLowerCase();
+    if (sa === 'pending assignment' && sb !== 'pending assignment') return -1;
+    if (sb === 'pending assignment' && sa !== 'pending assignment') return 1;
+    return (b.fields?.DateReceived || '').localeCompare(a.fields?.DateReceived || '');
+  });
+
+  document.getElementById('att-badge').textContent = relevant.length
+    ? relevant.length + ' case' + (relevant.length > 1 ? 's' : '')
+    : 'none';
+
+  if (!relevant.length) {
+    document.getElementById('att-body').innerHTML = '<div class="state-empty">No cases currently need your attention.</div>';
+    return;
+  }
+
+  const rows = relevant.slice(0, 12).map(c => {
+    const f = c.fields || {};
+    const ref = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+    const name = truncate(f.CaseNameForOpenCases || f.Title || ref || '\u2014', 36);
+    const stage = f.StatusMirror || '\u2014';
+    const firm = truncate(f['Firm_x0028_text_x0029_'] || '', 26);
+    const assigned = f.assignedToTextValue || '';
+    const assignedDisplay = assigned
+      ? assigned.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      : 'Unassigned';
+    return `<div class="att-row">
+      <div style="min-width:0;">
+        <div class="att-case">${esc(name)}</div>
+        <div class="att-meta">${esc(assignedDisplay)}${firm ? ' \u00b7 ' + esc(firm) : ''}</div>
+      </div>
+      <div class="att-right">
+        <span class="status-badge ${stageClass(stage)}">${esc(stage)}</span>
+        ${ref ? `<a href="/case.html?ref=${encodeURIComponent(ref)}" class="open-link">Open \u2192</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const extra = relevant.length > 12
+    ? `<div class="state-empty" style="padding:10px 20px;font-size:11.5px;">\u2026and ${relevant.length - 12} more. <a href="/admin.html" style="color:var(--gold);">View all in Admin \u2192</a></div>`
+    : '';
+
+  document.getElementById('att-body').innerHTML = rows + extra;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const callerEmail = await getCallerEmail();
+    const isAdmin = ADMIN_EMAILS.includes(callerEmail || '');
+
+    renderGreeting(callerEmail);
+
+    // Dynamic nav for admins
+    if (isAdmin) {
+      const nr = document.getElementById('nav-right');
+      const addLink = (href, txt) => {
+        if (nr.querySelector(`[href="${href}"]`)) return;
+        const a = document.createElement('a'); a.href = href; a.textContent = txt; a.className = 'nav-jump';
+        nr.insertBefore(a, nr.firstChild);
+      };
+      addLink('/finance.html', 'Finance');
+      addLink('/admin.html', '\u2190 Admin');
+    }
+
+    // Parallel data fetch
+    const [remRes, wipRaw, caseRes] = await Promise.all([
+      fetch('/api/reminders?all=1&open=1').then(r => r.ok ? r.json() : { value: [] }).catch(() => ({ value: [] })),
+      fetch('/api/wip').then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch('/api/cases?preload=1').then(r => r.ok ? r.json() : { value: [] }).catch(() => ({ value: [] })),
+    ]);
+
+    const reminders = remRes.value || [];
+    const wipItems  = Array.isArray(wipRaw) ? wipRaw : (wipRaw.value || []);
+    const cases     = caseRes.value || [];
+
+    // Build lookup tables from cases data
+    const caseNames     = {};
+    const caseAssignees = {};
+    cases.forEach(c => {
+      const f = c.fields || {};
+      const ref = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+      if (!ref) return;
+      caseNames[ref]     = f.CaseNameForOpenCases || f.Title || ref;
+      caseAssignees[ref] = (f.assignedToTextValue || '').toLowerCase();
+    });
+
+    // Render all sections
+    renderReminders(reminders, callerEmail, caseNames, caseAssignees, isAdmin);
+    renderWip(wipItems, callerEmail);
+    renderAttention(cases, callerEmail, isAdmin);
+
+  } catch (err) {
+    console.error('Today page error:', err);
+    ['rem-body', 'wip-body', 'att-body'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="state-empty">Error loading data. Please refresh.</div>';
+    });
+  }
+})();
+</script>
+
+</body>
+</html>
