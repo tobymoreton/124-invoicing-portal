@@ -142,6 +142,11 @@
       color:var(--grey-mid);white-space:nowrap;padding-top:2px;min-width:68px;
     }
     .rem-date.overdue{color:var(--red);}
+    .rem-band-head{padding:5px 18px 4px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--grey-light);}
+    .rem-band-head.band-overdue{background:rgba(153,27,27,.07);color:var(--red);}
+    .rem-band-head.band-today{background:rgba(146,64,14,.06);color:#92400E;}
+    .rem-band-head.band-week{background:var(--grey-faint);color:var(--grey-mid);}
+    .rem-band-head.band-later{background:var(--grey-faint);color:var(--grey-mid);}
     .rem-body{min-width:0;flex:1;}
     .rem-event{font-size:12.5px;font-weight:600;color:var(--navy);line-height:1.3;}
     .rem-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -305,7 +310,7 @@
         <div class="stat-card-accent"></div>
         <div class="stat-card-label">My WIP Value</div>
         <div class="stat-card-value" id="stat-wip" style="font-size:28px;margin-top:4px;">&mdash;</div>
-        <div class="stat-card-sub">unbilled hours × rate</div>
+        <div class="stat-card-sub">unbilled hours &times; rate</div>
       </div>
       <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
@@ -330,7 +335,7 @@
     <!-- Action buttons -->
     <div class="dash-actions">
       <a href="/invoice-create.html" class="btn-dash-action" style="margin-right:auto;text-decoration:none;">+ New Invoice Draft</a>
-      <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">☕</span> Daily Briefing</button>
+      <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">&#x2615;</span> Daily Briefing</button>
       <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
       <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
     </div>
@@ -409,7 +414,7 @@
 <div class="briefing-modal-overlay" id="modal-briefing">
   <div class="briefing-modal">
     <div class="briefing-modal-head">
-      <span class="briefing-modal-title">☕ Daily Briefing</span>
+      <span class="briefing-modal-title">&#x2615; Daily Briefing</span>
       <button class="briefing-modal-close" id="btn-briefing-close">&times;</button>
     </div>
     <div class="briefing-body" id="briefing-body">
@@ -427,7 +432,7 @@
 <div class="briefing-modal-overlay" id="modal-all-actions">
   <div class="briefing-modal" style="max-width:860px;">
     <div class="briefing-modal-head">
-      <span class="briefing-modal-title">⏳ All Actions</span>
+      <span class="briefing-modal-title">&#x23F3; All Actions</span>
       <button class="briefing-modal-close" id="btn-all-actions-close">&times;</button>
     </div>
     <div id="modal-actions-list" style="max-height:72vh;overflow-y:auto;"></div>
@@ -438,7 +443,7 @@
 <div class="briefing-modal-overlay" id="modal-all-reminders">
   <div class="briefing-modal" style="max-width:860px;">
     <div class="briefing-modal-head">
-      <span class="briefing-modal-title">⏰ All Open Reminders</span>
+      <span class="briefing-modal-title">&#x23F0; All Open Reminders</span>
       <button class="briefing-modal-close" id="btn-all-reminders-close">&times;</button>
     </div>
     <div id="modal-reminders-list" style="max-height:72vh;overflow-y:auto;"></div>
@@ -473,7 +478,7 @@
       </div>
       <div class="dm-row">
         <div class="dm-field">
-          <label>Rate (£/hr)</label>
+          <label>Rate (&pound;/hr)</label>
           <input type="number" id="ca-rate" step="1" min="0" placeholder="0" />
         </div>
         <div class="dm-field" style="justify-content:flex-end;flex-direction:row;align-items:center;gap:10px;padding-top:20px;">
@@ -551,7 +556,7 @@ let activeFilter = null; // 'all'|'overdue'|'no-reminder'|{stage:'...'}
 
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
 const REM_EVENTS = [
-  'Approve Bill','CCMC','Chase Chambers','Chase Client','Chase HJA – Emailed 7 days ago',
+  'Approve Bill','CCMC','Chase Chambers','Chase Client','Chase HJA \u2013 Emailed 7 days ago',
   'Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer',
   'Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies',
   'Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice',
@@ -641,7 +646,6 @@ async function loadIdentity(){
       callerName=NAME_DISPLAY[local]||user.userDetails;
       document.getElementById('user-name').textContent=callerName||callerEmail;
       isAdmin=ADMIN_EMAILS.includes(callerEmail);
-      // Toby-only quick link to the Invoice Portal (index.html)
       if(callerEmail==='toby@tmclegal.co.uk'){
         const nl=document.getElementById('nav-links');
         if(nl&&!document.getElementById('nav-invoice-portal')){
@@ -661,7 +665,6 @@ async function loadIdentity(){
 async function loadReminders(cases){
   const refs=cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean);
   if(!refs.length){allReminders=[];return;}
-  // Fetch all reminders in parallel, one call per case ref
   const results=await Promise.allSettled(
     refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1')
       .then(r=>r.ok?r.json():{value:[]})
@@ -678,26 +681,17 @@ async function loadReminders(cases){
 // ── Render stat cards ──────────────────────────────────────────────────────
 function renderStats(){
   const today=new Date(); today.setHours(0,0,0,0);
-
-  // Open cases
   document.getElementById('stat-total').textContent=myCases.length;
   const taskCounts={};
   myCases.forEach(c=>{const t=c.fields['Task']||'Other';taskCounts[t]=(taskCounts[t]||0)+1;});
   const topTasks=Object.entries(taskCounts).sort((a,b)=>b[1]-a[1]).slice(0,3)
     .map(([t,n])=>n+' '+t).join(' \u00b7 ');
   document.getElementById('stat-total-sub').textContent=topTasks||'';
-
-  // WIP — set from wipTotal loaded in init
   document.getElementById('stat-wip').textContent=wipTotal>0?fmt(wipTotal):'\u2014';
-
-  // Invoiced this month — set from invoicedThisMonth loaded in init
   document.getElementById('stat-invoiced').textContent=invoicedThisMonth>0?fmt(invoicedThisMonth):'\u2014';
-
-  // WIP this period — computed from allActions (all unbilled TT2 rows already in memory)
   const now2=new Date();
   const yr2=now2.getFullYear(),mo2=now2.getMonth();
-  // Week: Mon–Sun containing today
-  const dow=now2.getDay(); // 0=Sun
+  const dow=now2.getDay();
   const diffToMon=dow===0?6:dow-1;
   const weekStart=new Date(now2); weekStart.setHours(0,0,0,0); weekStart.setDate(weekStart.getDate()-diffToMon);
   const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
@@ -730,7 +724,6 @@ function renderStagePanel(){
   const sorted=Object.entries(stageCounts).filter(([stage])=>stage!=='Pending billing').sort((a,b)=>b[1]-a[1]);
   const maxCount=Math.max(...sorted.map(([,n])=>n),pendingBillingCount,1);
   document.getElementById('stage-panel-count').textContent=(sorted.length+1)+' stages';
-
   const el=document.getElementById('stage-list');
   if(!sorted.length&&!pendingBillingCount){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases</div>';return;}
   const pbPct=Math.round((pendingBillingCount/maxCount)*100);
@@ -751,7 +744,6 @@ function renderStagePanel(){
       '<span class="stage-count">'+pendingBillingCount+'</span>'+
     '</div>';
   sorted.forEach(([stage,count])=>{
-    const costs=stageCosts[stage];
     const pct=Math.round((count/maxCount)*100);
     const row=document.createElement('div');
     row.className='stage-row';
@@ -764,11 +756,9 @@ function renderStagePanel(){
     row.addEventListener('click',()=>showCaseList({stage},stage,count+' case'+(count!==1?'s':'')));
     el.appendChild(row);
   });
-  // Wire Pending billing pinned row
   document.getElementById('stage-row-pending-billing').addEventListener('click',()=>{
     showCaseList({stage:'Pending billing'},'Pending billing',pendingBillingCount+' case'+(pendingBillingCount!==1?'s':''));
   });
-  // Wire All Cases row after DOM insertion
   document.getElementById('stage-row-all').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
     showCaseList('all','All Open Cases',myCases.length+' case'+(myCases.length!==1?'s':''));
@@ -797,6 +787,8 @@ async function markRemDone(remId, rowEl){
 // ── Render reminders panel ─────────────────────────────────────────────────
 function renderRemPanel(){
   const today=new Date(); today.setHours(0,0,0,0);
+  const todayTs=today.getTime();
+  const weekEnd=new Date(today); weekEnd.setDate(weekEnd.getDate()+7);
   const open=allReminders
     .filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes')
     .sort((a,b)=>{
@@ -805,6 +797,11 @@ function renderRemPanel(){
       return da-db;
     });
 
+  const overdue  =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d<today;});
+  const dueToday =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d.getTime()===todayTs;});
+  const thisWeek =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d>today&&d<=weekEnd;});
+  const later    =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return !d||d>weekEnd;});
+
   document.getElementById('rem-panel-count').textContent=open.length;
   const el=document.getElementById('rem-panel-list');
   if(!open.length){
@@ -812,53 +809,57 @@ function renderRemPanel(){
     return;
   }
   el.innerHTML='';
-  open.forEach(r=>{
+
+  const makeRow=r=>{
     const f=r.fields||{};
     const dueDate=f['Duedate']?new Date(f['Duedate']):null;
-    const overdue=dueDate&&dueDate<today;
+    const isOverdue=dueDate&&dueDate<today;
     const pri=f['Priority']||'';
     const priBadge=pri==='High'?'<span class="rem-pri-badge pri-high">H</span>'
       :pri==='Low'?'<span class="rem-pri-badge pri-low">L</span>'
       :pri==='Medium'?'<span class="rem-pri-badge pri-medium">M</span>':'';
     const detail=stripHtml(f['Brief']||'');
     const row=document.createElement('div');
-    row.className='rem-row'+(overdue?' overdue':'');
+    row.className='rem-row'+(isOverdue?' overdue':'');
     row.innerHTML=
-      '<div class="rem-date'+(overdue?' overdue':'')+'">'+
-        (dueDate?escHtml(fmtDateShort(dueDate.toISOString())):'No date')+
-      '</div>'+
+      '<div class="rem-date'+(isOverdue?' overdue':'') +'">'+(dueDate?escHtml(fmtDateShort(dueDate.toISOString())):'No date')+'</div>'+
       '<div class="rem-body">'+
         '<div class="rem-event">'+escHtml(f['Event']||'Reminder')+'</div>'+
         '<div class="rem-case">'+escHtml(r._caseName||r._caseRef)+'</div>'+
         (detail?'<div class="rem-detail">'+escHtml(detail.length>80?detail.slice(0,80)+'\u2026':detail)+'</div>':'')+
       '</div>'+
       priBadge+
-      '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ Done</button>';
-    row.querySelector('.rem-done-btn').addEventListener('click',e=>{
-      e.stopPropagation();
-      markRemDone(r.id,row);
-    });
-    row.addEventListener('click',()=>{
-      window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';
-    });
-    el.appendChild(row);
-  });
+      '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">\u2713 Done</button>';
+    row.querySelector('.rem-done-btn').addEventListener('click',e=>{e.stopPropagation();markRemDone(r.id,row);});
+    row.addEventListener('click',()=>{window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';});
+    return row;
+  };
+
+  const addBand=(items,cls,label)=>{
+    if(!items.length) return;
+    const head=document.createElement('div');
+    head.className='rem-band-head '+cls;
+    head.textContent=label+' ('+items.length+')';
+    el.appendChild(head);
+    items.forEach(r=>el.appendChild(makeRow(r)));
+  };
+
+  addBand(overdue,  'band-overdue', '\ud83d\udd34 Overdue');
+  addBand(dueToday, 'band-today',   '\ud83d\udfe1 Due today');
+  addBand(thisWeek, 'band-week',    'This week');
+  addBand(later,    'band-later',   'Later');
 }
 
 // ── Show case list ─────────────────────────────────────────────────────────
 function showCaseList(filter, title, meta){
   activeFilter=filter;
-
-  // Highlight active card
   document.querySelectorAll('.stat-card').forEach(c=>c.classList.remove('active'));
   if(filter==='all')         document.getElementById('card-total').classList.add('active');
-  if(filter==='overdue')     document.getElementById('card-overdue').classList.add('active');
-  if(filter==='no-reminder') document.getElementById('card-no-reminder').classList.add('active');
-
+  if(filter==='overdue')     document.getElementById('card-overdue')?.classList.add('active');
+  if(filter==='no-reminder') document.getElementById('card-no-reminder')?.classList.add('active');
   document.getElementById('case-list-title').textContent=title;
   document.getElementById('case-list-meta').textContent=meta||'';
   document.getElementById('case-list-section').classList.add('visible');
-
   const today=new Date(); today.setHours(0,0,0,0);
   const openRem=allReminders.filter(r=>(r.fields?.['CompletedMirror']||'')!=='Yes');
   const overdueRefs=new Set(
@@ -866,7 +867,6 @@ function showCaseList(filter, title, meta){
            .map(r=>r._caseRef)
   );
   const refsWithOpenRem=new Set(openRem.map(r=>r._caseRef));
-
   let subset;
   if(filter==='all'){
     subset=myCases;
@@ -879,14 +879,11 @@ function showCaseList(filter, title, meta){
   } else {
     subset=myCases;
   }
-
-  // Sort: alphabetical by case name
   subset=[...subset].sort((a,b)=>{
     const aName=(a.fields['CaseNameForOpenCases']||a.fields['Title']||a.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
     const bName=(b.fields['CaseNameForOpenCases']||b.fields['Title']||b.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
     return aName.localeCompare(bName);
   });
-
   renderCaseTable(subset);
   document.getElementById('case-list-section').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -912,7 +909,6 @@ function renderCaseTable(cases){
     const lastRemShort=lastRem.length>80?lastRem.slice(0,80)+'\u2026':lastRem;
     const costs=computeTotalCosts(f);
     const costsFmt=costs>0?fmt(costs):'\u2014';
-
     const tr=document.createElement('tr');
     tr.innerHTML=
       '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
@@ -924,7 +920,6 @@ function renderCaseTable(cases){
       '<td><span class="td-ref">'+escHtml(costsFmt)+'</span></td>'+
       '<td>'+(lastRemShort?'<span class="td-reminder" title="'+escHtml(lastRem)+'">'+escHtml(lastRemShort)+'</span>':'<span style="color:var(--grey-light);">\u2014</span>')+'</td>'+
       '<td><a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a></td>';
-
     tr.addEventListener('click',function(e){
       if(e.target.closest('.td-status')){openStatusEdit(e.target.closest('.td-status'));return;}
       if(e.target.tagName!=='A'){
@@ -973,7 +968,6 @@ function openStatusEdit(td){
       const found=allCases.find(x=>x.id===itemId);
       if(found) found.fields['StatusMirror']=newVal;
       restore(newVal);
-      // Refresh stage panel
       renderStagePanel();
     }catch(err){
       console.error('Status update failed:',err.message);
@@ -989,16 +983,11 @@ function openStatusEdit(td){
 async function loadActions(cases){
   const refSet=new Set(cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean));
   if(!refSet.size){allActions=[];return;}
-  // Map ref -> case name for display
   const nameByRef={};
   cases.forEach(c=>{
     const r=c.fields['Ourreference_x0028_text_x0029_'];
     if(r) nameByRef[r]=c.fields['CaseNameForOpenCases']||r;
   });
-  // ONE call fetches every unbilled TT2 row across all cases, then filter to
-  // this draftsman's refs client-side. Replaces the old 38-calls-each-
-  // walking-the-whole-list pattern that throttled Graph and returned partial
-  // results (some 200s, some 500s).
   try{
     const r=await fetch('/api/caseactions?all=1');
     const data=r.ok?await r.json():{value:[]};
@@ -1013,7 +1002,6 @@ async function loadActions(cases){
   }catch{
     allActions=[];
   }
-  // Sort by date desc
   allActions.sort((a,b)=>{
     const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
     const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
@@ -1039,9 +1027,9 @@ function renderActionsPanel(){
     const row=document.createElement('div');
     row.className='ca-panel-row';
     row.innerHTML=
-      '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'—')+'</div>'+
+      '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
       '<div class="ca-panel-body">'+
-        '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'…':wd||'—')+'</div>'+
+        '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'\u2026':wd||'\u2014')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
       (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
@@ -1065,10 +1053,8 @@ function populateCasePickers(){
   }).join('');
   document.getElementById('ca-case-ref').innerHTML='<option value="">Select a case&hellip;</option>'+opts;
   document.getElementById('rem-case-ref').innerHTML='<option value="">Select a case&hellip;</option>'+opts;
-  // Populate reminder events
   const evOpts=REM_EVENTS.map(e=>'<option value="'+escHtml(e)+'">'+escHtml(e)+'</option>').join('');
   document.getElementById('rem-event').innerHTML='<option value="">Select event&hellip;</option>'+evOpts;
-  // Default date to today
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('ca-date').value=today;
   document.getElementById('rem-due').value=today;
@@ -1100,20 +1086,18 @@ async function saveAction(){
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
   const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
-  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving…';
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ref,workDone:wd,timeSpent:hrs,rate,billable,date,email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
-    // Add to local array and re-render
     const created=await r.json().catch(()=>({}));
     allActions.unshift({...created,_caseRef:ref,_caseName:caseName,WorkDone:wd,DateWorkDone:date,WIPValue:hrs*rate});
     renderActionsPanel();
-    msg.className='dm-save-msg ok';msg.textContent='✓ Saved';
+    msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-action'),1000);
-    // Reset form
     document.getElementById('ca-work-done').value='';
     document.getElementById('ca-hours').value='';
     document.getElementById('ca-rate').value='';
@@ -1135,7 +1119,7 @@ async function saveReminder(){
   const priority=document.getElementById('rem-priority').value;
   const detail=document.getElementById('rem-detail').value.trim();
   const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
-  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving…';
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/reminders',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -1143,12 +1127,11 @@ async function saveReminder(){
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
-    // Add to local reminders and re-render
     allReminders.push({...created,_caseRef:ref,_caseName:caseName,
       fields:{Event:event,Duedate:due?due+'T00:00:00Z':null,Priority:priority,Brief:detail,CompletedMirror:'No'}});
     renderRemPanel();
     renderStats();
-    msg.className='dm-save-msg ok';msg.textContent='✓ Saved';
+    msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-reminder'),1000);
     document.getElementById('rem-event').value='';
     document.getElementById('rem-detail').value='';
@@ -1160,7 +1143,7 @@ async function saveReminder(){
 // ── WIP period card helpers ────────────────────────────────────────────────
 function updateWipPeriodCard(){
   const val=wipPeriod==='month'?wipThisMonth:wipThisWeek;
-  document.getElementById('stat-wip-period').textContent=val>0?fmt(val):'—';
+  document.getElementById('stat-wip-period').textContent=val>0?fmt(val):'\u2014';
   document.getElementById('stat-wip-period-sub').textContent=
     wipPeriod==='month'?'unbilled, current month':'unbilled, this week';
 }
@@ -1176,19 +1159,12 @@ let briefingLoaded = false;
 let briefingText   = '';
 
 function renderBriefing(text){
-  // SP field may contain HTML entities (&amp; &quot; &#NNN;) — decode them first
   const decoded = text
-    .replace(/&amp;/g,'&')
-    .replace(/&lt;/g,'<')
-    .replace(/&gt;/g,'>')
-    .replace(/&quot;/g,'"')
-    .replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n)))
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n)))
     .replace(/&nbsp;/g,' ');
-  // Strip any genuine HTML tags for safety
   const safe = decoded.replace(/<[^>]*>/g,'');
-  // Escape only < > & for HTML injection safety (NOT quotes, NOT high-codepoint Unicode/emoji)
   function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  // Process line by line so headings and paragraphs don't interfere with each other
   const lines = safe.split('\n');
   const out = [];
   let inPara = false;
@@ -1200,15 +1176,13 @@ function renderBriefing(text){
     const hr = line.match(/^---+$/);
     const li = line.match(/^[\*\-] (.+)/);
     const blank = line.trim()==='';
-    if(inPara && (h1||h2||h3||hr||blank)){
-      out.push('</p>'); inPara=false;
-    }
+    if(inPara && (h1||h2||h3||hr||blank)){ out.push('</p>'); inPara=false; }
     if(h3){ out.push('<h3>'+inlineEsc(h3[1])+'</h3>'); }
     else if(h2){ out.push('<h2>'+inlineEsc(h2[1])+'</h2>'); }
     else if(h1){ out.push('<h1>'+inlineEsc(h1[1])+'</h1>'); }
     else if(hr){ out.push('<hr>'); }
     else if(li){ out.push('<li>'+inlineEsc(li[1])+'</li>'); }
-    else if(blank){ /* gap handled above */ }
+    else if(blank){ /* gap */ }
     else{
       if(!inPara){ out.push('<p>'); inPara=true; }
       else out.push('<br>');
@@ -1216,13 +1190,9 @@ function renderBriefing(text){
     }
   }
   if(inPara) out.push('</p>');
-  // Wrap consecutive li in ul
-  let html = out.join('')
-    .replace(/(<li>[\s\S]*?<\/li>)+/g, s=>'<ul>'+s+'</ul>');
-  return html;
+  return out.join('').replace(/(<li>[\s\S]*?<\/li>)+/g, s=>'<ul>'+s+'</ul>');
 }
 function inlineEsc(s){
-  // Escape HTML-unsafe chars, apply inline markdown, preserve emoji
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\*\*(.+?)\*\*/g,(_,t)=>'<strong>'+t+'</strong>')
     .replace(/\*(.+?)\*/g,(_,t)=>'<em>'+t+'</em>');
@@ -1240,11 +1210,7 @@ async function openBriefing(){
     briefingText = data.briefing || '';
     briefingLoaded = true;
     const content = document.getElementById('briefing-content');
-    if(!briefingText){
-      content.innerHTML = '<p style="color:var(--grey-mid);font-style:italic;">No briefing available for today.</p>';
-    } else {
-      content.innerHTML = renderBriefing(briefingText);
-    }
+    content.innerHTML = briefingText ? renderBriefing(briefingText) : '<p style="color:var(--grey-mid);font-style:italic;">No briefing available for today.</p>';
     document.getElementById('briefing-loading').style.display='none';
     content.style.display='block';
     document.getElementById('briefing-as-of').textContent =
@@ -1253,10 +1219,8 @@ async function openBriefing(){
     document.getElementById('briefing-loading').textContent = 'Failed to load briefing: '+err.message;
   }
 }
-
 function closeBriefing(){
   document.getElementById('modal-briefing').classList.remove('open');
-  // Reset so re-open always re-renders with latest content
   briefingLoaded=false;
 }
 
@@ -1326,7 +1290,7 @@ function openAllRemindersModal(){
       row.className='rem-row'+(overdue?' overdue':'');
       row.style.padding='10px 24px';
       row.innerHTML=
-        '<div class="rem-date'+(overdue?' overdue':'')+'">'+(dueDate?escHtml(fmtDateShort(dueDate.toISOString())):'No date')+'</div>'+
+        '<div class="rem-date'+(overdue?' overdue':'') +'">'+(dueDate?escHtml(fmtDateShort(dueDate.toISOString())):'No date')+'</div>'+
         '<div class="rem-body">'+
           '<div class="rem-event">'+escHtml(f['Event']||'Reminder')+'</div>'+
           '<div class="rem-case">'+escHtml(r._caseName||r._caseRef)+'</div>'+
@@ -1371,23 +1335,14 @@ function wireCards(){
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — background refresh keeps data current regardless
-
-function cacheKey(){
-  return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon');
-}
+const CACHE_TTL_MS = 30 * 60 * 1000;
+function cacheKey(){ return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon'); }
 function writeCache(){
-  try{
-    sessionStorage.setItem(cacheKey(), JSON.stringify({
-      cachedAt: Date.now(),
-      allCases, wipTotal, invoicedThisMonth, allReminders, allActions,
-    }));
-  }catch{/*quota or unavailable — silently skip*/}
+  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders,allActions})); }catch{}
 }
 function readCache(){
   try{
-    const raw=sessionStorage.getItem(cacheKey());
-    if(!raw) return null;
+    const raw=sessionStorage.getItem(cacheKey()); if(!raw) return null;
     const c=JSON.parse(raw);
     if(Date.now()-c.cachedAt>CACHE_TTL_MS) return null;
     return c;
@@ -1405,7 +1360,6 @@ async function fetchAllData(){
   const data=await casesResp.json();
   allCases=data.value||[];
   myCases=allCases.filter(c=>matchesAssigned(c.fields));
-
   if(wipResp&&wipResp.ok){
     const wipData=await wipResp.json();
     const wipItems=Array.isArray(wipData)?wipData:(wipData.value||[]);
@@ -1413,42 +1367,29 @@ async function fetchAllData(){
       .filter(w=>!callerEmail||!w.Email||(w.Email||'').toLowerCase()===callerEmail)
       .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
   }
-
   if(invResp&&invResp.ok){
     const invData=await invResp.json();
     const invItems=Array.isArray(invData)?invData:(invData.value||[]);
-    const now=new Date();
-    const yr=now.getFullYear(); const mo=now.getMonth();
+    const now=new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
     invoicedThisMonth=invItems.filter(inv=>{
-      if(inv.Cancelled) return false;
-      if(!inv.InvoiceDate) return false;
+      if(inv.Cancelled||!inv.InvoiceDate) return false;
       if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
       const d=new Date(inv.InvoiceDate);
       return d.getFullYear()===yr&&d.getMonth()===mo;
     }).reduce((s,inv)=>s+(inv.Net||0),0);
   }
-
-  // Reminders and actions deferred — fetched after initial render
 }
 
 async function fetchSecondaryData(){
-  await Promise.all([
-    loadReminders(myCases),
-    loadActions(myCases),
-  ]);
+  await Promise.all([loadReminders(myCases),loadActions(myCases)]);
 }
 
 function applyDataAndRender(){
-  document.getElementById('page-sub').textContent=
-    myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
+  document.getElementById('page-sub').textContent=myCases.length+' open case'+(myCases.length!==1?'s':'')+' assigned to you';
   document.getElementById('state-loading').style.display='none';
   document.getElementById('dashboard').style.display='block';
-  renderStats();
-  renderStagePanel();
-  renderRemPanel();
-  renderActionsPanel();
-  populateCasePickers();
-  wireCards();
+  renderStats(); renderStagePanel(); renderRemPanel(); renderActionsPanel();
+  populateCasePickers(); wireCards();
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -1457,37 +1398,22 @@ async function init(){
   try{
     const cached=readCache();
     if(cached){
-      // Render from cache immediately
-      allCases=cached.allCases||[];
-      wipTotal=cached.wipTotal||0;
+      allCases=cached.allCases||[]; wipTotal=cached.wipTotal||0;
       invoicedThisMonth=cached.invoicedThisMonth||0;
-      allReminders=cached.allReminders||[];
-      allActions=cached.allActions||[];
+      allReminders=cached.allReminders||[]; allActions=cached.allActions||[];
       myCases=allCases.filter(c=>matchesAssigned(c.fields));
       applyDataAndRender();
-      // Silently refresh all data in background
-      fetchAllData()
-        .then(()=>fetchSecondaryData())
-        .then(()=>{
-          writeCache();
-          renderStats();
-          renderStagePanel();
-          renderRemPanel();
-          renderActionsPanel();
-          populateCasePickers();
-        }).catch(()=>{/*background refresh failed — cached data still shown*/});
+      fetchAllData().then(()=>fetchSecondaryData()).then(()=>{
+        writeCache(); renderStats(); renderStagePanel();
+        renderRemPanel(); renderActionsPanel(); populateCasePickers();
+      }).catch(()=>{});
     } else {
-      // Cold load — render dashboard as soon as cases/wip/invoices arrive (~1-2s)
-      // then load reminders + actions in background
       await fetchAllData();
       applyDataAndRender();
       fetchSecondaryData().then(()=>{
-        writeCache();
-        renderStats();
-        renderRemPanel();
-        renderActionsPanel();
-        populateCasePickers();
-      }).catch(()=>{/*secondary load failed — panels stay empty*/});
+        writeCache(); renderStats(); renderRemPanel();
+        renderActionsPanel(); populateCasePickers();
+      }).catch(()=>{});
     }
   }catch(err){
     document.getElementById('state-loading').innerHTML=
