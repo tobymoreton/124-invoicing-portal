@@ -127,7 +127,7 @@
     .s-default{background:var(--grey-faint);color:var(--grey-mid);}
 
     /* Reminders panel */
-    .rem-list{padding:4px 0;max-height:360px;overflow-y:auto;}
+    .rem-list{padding:4px 0;max-height:640px;overflow-y:auto;}
     .rem-row{
       display:flex;align-items:flex-start;gap:12px;
       padding:10px 18px;border-bottom:1px solid var(--grey-faint);
@@ -994,7 +994,6 @@ async function loadActions(cases){
     const rows=Array.isArray(data)?data:(data.value||[]);
     allActions=rows
       .filter(a=>refSet.has((a.fields?.['field_16']||'').toString().trim()))
-      .filter(a=>a.fields?.['Billed_x003f_']!==true)
       .map(a=>{
         const ref=(a.fields?.['field_16']||'').toString().trim();
         return {...a,_caseRef:ref,_caseName:nameByRef[ref]||ref};
