@@ -1481,7 +1481,14 @@ async function loadCase() {
     renderInterestTab();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
-    setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
+    // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
+    const _deepAction = new URLSearchParams(window.location.search).get('action');
+    if (_deepAction) {
+      const _caBtn = document.querySelector('.tab-btn[data-tab="caseactions"]');
+      if (_caBtn) setTimeout(() => { _caBtn.click(); }, 300);
+    } else {
+      setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
+    }
   } catch (err) {
     showError('Error loading case', err.message);
   }
