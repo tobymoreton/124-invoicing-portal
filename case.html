@@ -626,8 +626,8 @@
     <!-- ════════ CASE OVERVIEW TAB ════════ -->
     <div class="tab-panel active" id="tab-overview">
       <div class="quick-action-bar">
-        <button class="btn-qa btn-qa-reminder" id="btn-goto-reminder">🔔 Add Reminder</button>
-        <button class="btn-qa btn-qa-action" id="btn-goto-action">⚡ Add Action</button>
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-ov-edit">✏️ Edit</button>
@@ -720,6 +720,10 @@
 
     <!-- ════════ SETTLEMENT TAB ════════ -->
     <div class="tab-panel" id="tab-settlement">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-sett-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-sett-save">✓ Save Changes</button>
@@ -814,6 +818,10 @@
 
     <!-- ════════ OFFERS TAB ════════ -->
     <div class="tab-panel" id="tab-offers">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-offers-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-offers-save">✓ Save Changes</button>
@@ -944,6 +952,10 @@
 
     <!-- ════════ OPPONENT & COURT TAB ════════ -->
     <div class="tab-panel" id="tab-opponent">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-op-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-op-save">✓ Save Changes</button>
@@ -993,6 +1005,10 @@
 
     <!-- ════════ COSTS CLAIMED TAB ════════ -->
     <div class="tab-panel" id="tab-costs">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-costs-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-costs-save">✓ Save Changes</button>
@@ -1085,6 +1101,10 @@
 
     <!-- ════════ INTEREST TAB ════════ -->
     <div class="tab-panel" id="tab-interest">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-int-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-int-save">✓ Save Changes</button>
@@ -1137,6 +1157,10 @@
 
     <!-- ════════ INTERIM PAYMENTS TAB ════════ -->
     <div class="tab-panel" id="tab-interim">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-ip-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-ip-save">✓ Save Changes</button>
@@ -1159,6 +1183,10 @@
     </div>
 
     <div class="tab-panel" id="tab-expenses">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
     </div>
 
@@ -1325,6 +1353,10 @@
     </div><!-- /tab-caseactions -->
 
     <div class="tab-panel" id="tab-invoicing">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Invoicing</span></div>
         <div class="card-body" style="text-align:center;padding:56px 24px;">
@@ -1396,8 +1428,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
 });
-document.getElementById('btn-goto-reminder').addEventListener('click', () => { document.querySelector('.tab-btn[data-tab="reminders"]').click(); });
-document.getElementById('btn-goto-action').addEventListener('click', () => { document.querySelector('.tab-btn[data-tab="caseactions"]').click(); });
+document.querySelector('.content').addEventListener('click', e => { const b = e.target.closest('[data-goto-tab]'); if (b) document.querySelector('.tab-btn[data-tab="' + b.dataset.gotoTab + '"]').click(); });
 
 async function loadCourts() {
   try {
