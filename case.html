@@ -425,6 +425,17 @@
     .edit-msg{font-size:13px;color:var(--grey-mid);}
     .edit-msg.ok{color:var(--green);font-weight:500;}
     .edit-msg.err{color:#991B1B;}
+    .quick-action-bar{display:flex;gap:12px;margin-bottom:16px;}
+    .btn-qa{
+      flex:1;padding:14px 24px;border:none;border-radius:var(--radius-sm);
+      font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
+      cursor:pointer;transition:all .2s ease;letter-spacing:.02em;
+      box-shadow:0 2px 8px rgba(27,42,74,.15);
+    }
+    .btn-qa-reminder{background:var(--navy);color:var(--gold);}
+    .btn-qa-reminder:hover{background:var(--navy-mid);transform:translateY(-1px);box-shadow:0 4px 14px rgba(27,42,74,.30);}
+    .btn-qa-action{background:var(--gold);color:var(--navy);}
+    .btn-qa-action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 14px rgba(181,154,106,.40);}
     .ov-select{
       padding:7px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);
       font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--navy);
@@ -614,6 +625,10 @@
 
     <!-- ════════ CASE OVERVIEW TAB ════════ -->
     <div class="tab-panel active" id="tab-overview">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" id="btn-goto-reminder">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" id="btn-goto-action">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-ov-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-ov-save">✓ Save Changes</button>
@@ -1381,6 +1396,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
 });
+document.getElementById('btn-goto-reminder').addEventListener('click', () => { document.querySelector('.tab-btn[data-tab="reminders"]').click(); });
+document.getElementById('btn-goto-action').addEventListener('click', () => { document.querySelector('.tab-btn[data-tab="caseactions"]').click(); });
 
 async function loadCourts() {
   try {
@@ -1433,6 +1450,7 @@ async function loadCase() {
     renderInterestTab();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
+    setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
   } catch (err) {
     showError('Error loading case', err.message);
   }
@@ -2365,26 +2383,27 @@ async function submitAddReminder() {
   finally { btn.disabled = false; }
 }
 
-let caActions = []; let caEditingId = null; let caLoaded = false; let caSchedule = new Set();
+let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching = false; let caSchedule = new Set();
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (!caLoaded) { caLoaded = true; loadCaseActions(); } }); }
+  if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (caLoaded) { renderCaTable(); initAddActionPanel(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
 });
 
 async function loadCaseActions() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
+  if (caFetching || caLoaded) return; caFetching = true;
   const caLoadingEl = document.getElementById('ca-loading'); caLoadingEl.style.display = 'block'; caLoadingEl.textContent = 'Loading actions…'; document.getElementById('ca-empty').style.display = 'none'; document.getElementById('ca-tbody').innerHTML = '';
   const controller = new AbortController(); const fetchTimeout = setTimeout(() => controller.abort(), 30000);
   try {
     const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref), { signal: controller.signal }); clearTimeout(fetchTimeout); if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json(); caActions = data.value || []; renderCaTable(); initAddActionPanel();
+    const data = await resp.json(); caActions = data.value || []; caLoaded = true; caFetching = false; renderCaTable(); initAddActionPanel();
     const deepActionId = new URLSearchParams(window.location.search).get('action');
     if (deepActionId && caActions.some(a => a.id === deepActionId)) {
       caEditingId = deepActionId; renderCaTable();
       setTimeout(() => { const tr = document.querySelector(`tr[data-id="${deepActionId}"]`); if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
     }
-  } catch (err) { clearTimeout(fetchTimeout); caLoaded = false; document.getElementById('ca-loading').textContent = (err.name === 'AbortError' ? 'Timed out after 30s — click the tab again to retry' : 'Failed to load actions: ' + err.message + ' — click the tab again to retry'); }
+  } catch (err) { clearTimeout(fetchTimeout); caFetching = false; caLoaded = false; document.getElementById('ca-loading').textContent = (err.name === 'AbortError' ? 'Timed out after 30s — click the tab again to retry' : 'Failed to load actions: ' + err.message + ' — click the tab again to retry'); }
 }
 
 function renderCaTable() {
