@@ -95,7 +95,8 @@ module.exports = async function (context, req) {
     // ── GET: fetch all reminders, filter client-side by case ref ─────────
     if (method === 'GET') {
       const ref = (req.query.ref || '').trim();
-      if (!ref) { context.res = { status: 400, body: 'Missing ref' }; return; }
+      const allMode = req.query.all === '1';
+      if (!ref && !allMode) { context.res = { status: 400, body: 'Missing ref (or all=1)' }; return; }
 
       const openOnly = req.query.open === '1';
 
@@ -109,7 +110,7 @@ module.exports = async function (context, req) {
         const data = await graphGet(url, token);
         (data.value || []).forEach(item => {
           const f = item.fields || {};
-          if ((f['Ourreference_x0028_text_x0029_'] || '').trim() === ref) items.push(item);
+          if (allMode || (f['Ourreference_x0028_text_x0029_'] || '').trim() === ref) items.push(item);
         });
         url = data['@odata.nextLink'] || null;
       }
