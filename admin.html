@@ -218,7 +218,7 @@
   </div>
   <div class="nav-links">
     <a href="/cases.html" class="nav-link nav-link-outline">My Cases &rarr;</a>
-    <a href="/" class="nav-link nav-link-outline">Invoices &rarr;</a>
+    <a href="/" class="nav-link nav-link-outline" id="nav-invoices-link">Invoices &rarr;</a>
   </div>
 </nav>
 
@@ -934,6 +934,20 @@ async function assignCase(caseId,ref,email,rowEl,selEl){
 
 // Set today as default date for booking in
 document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
+
+// Hide the Invoices nav link unless the caller is Toby or Danielle
+(async function gateInvoicesLink(){
+  const link=document.getElementById('nav-invoices-link');
+  if(!link) return;
+  try{
+    const r=await fetch('/.auth/me');
+    const data=r.ok?await r.json():null;
+    const user=data&&(data.clientPrincipal||(Array.isArray(data)?data[0]?.clientPrincipal:null));
+    const email=(user&&user.userDetails?user.userDetails:'').toLowerCase();
+    const allowed=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
+    if(!allowed.includes(email)) link.remove();
+  }catch(e){ link.remove(); }
+})();
 
 loadCases();
 </script>

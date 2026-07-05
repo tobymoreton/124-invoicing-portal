@@ -800,14 +800,14 @@ async function loadIdentity(){
       callerName=NAME_DISPLAY[local]||user.userDetails;
       document.getElementById('user-name').textContent=callerName||callerEmail;
       isAdmin=ADMIN_EMAILS.includes(callerEmail);
-      if(callerEmail==='toby@tmclegal.co.uk'){
+      if(callerEmail==='toby@tmclegal.co.uk'||callerEmail==='danielle@tmclegal.co.uk'||callerEmail==='lesley@tmclegal.co.uk'){
         const nl=document.getElementById('nav-links');
         if(nl&&!document.getElementById('nav-invoice-portal')){
           const a=document.createElement('a');
           a.id='nav-invoice-portal';
           a.href='/index.html';
           a.className='nav-link';
-          a.textContent='Invoice Portal \u2192';
+          a.textContent='Invoices \u2192';
           nl.appendChild(a);
         }
       }
