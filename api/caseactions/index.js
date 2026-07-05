@@ -120,6 +120,22 @@ module.exports = async function (context, req) {
         filtered = all.filter(item => item.fields?.['Billed_x003f_'] !== true);
       }
 
+      // ── Optional 'since' narrowing (additive, non-breaking) ─────────────────
+      // Omit to preserve current behaviour (fetch everything). Pass an ISO date
+      // (e.g. ?since=2026-01-01) to narrow to actions on/after that date — for
+      // future use by any view that doesn't need full history (e.g. a paged or
+      // date-scoped dashboard), without changing what existing callers get.
+      const sinceParam = (req.query.since || '').trim();
+      if (sinceParam) {
+        const sinceDate = new Date(sinceParam);
+        if (!isNaN(sinceDate)) {
+          filtered = filtered.filter(item => {
+            const d = new Date(item.fields?.['field_12'] || item.fields?.['field_1'] || 0);
+            return d >= sinceDate;
+          });
+        }
+      }
+
       filtered.sort((a, b) => {
         const da = new Date(a.fields?.['field_12'] || a.fields?.['field_1'] || 0);
         const db = new Date(b.fields?.['field_12'] || b.fields?.['field_1'] || 0);
