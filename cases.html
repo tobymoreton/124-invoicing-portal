@@ -348,8 +348,8 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div class="stat-card-label" style="margin-bottom:0;">WIP This Period<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About WIP This Period"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Unbilled WIP from case actions dated in the current month; switch to this week with the toggle. Click for a per-case breakdown.</span></button></div>
           <div style="display:flex;gap:4px;">
-            <button id="wip-toggle-month" class="wip-toggle active" onclick="setWipPeriod('month')">Month</button>
-            <button id="wip-toggle-week" class="wip-toggle" onclick="setWipPeriod('week')">Week</button>
+            <button id="wip-toggle-month" class="wip-toggle active" onclick="event.stopPropagation();setWipPeriod('month')">Month</button>
+            <button id="wip-toggle-week" class="wip-toggle" onclick="event.stopPropagation();setWipPeriod('week')">Week</button>
           </div>
         </div>
         <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
