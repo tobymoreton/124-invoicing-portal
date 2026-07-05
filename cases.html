@@ -1105,7 +1105,7 @@ function renderActionsPanel(){
     row.innerHTML=
       '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
       '<div class="ca-panel-body">'+
-        (bs?'<span class="ca-brief-chip" style="background:'+bs.bg+';color:'+bs.c+';display:block;">'+(bs.e?bs.e+' ':'')+escHtml(bs.label)+'</span>':'')+
+        (bs?'<span class="ca-brief-chip" style="background:'+bs.bg+';color:'+bs.c+';display:block;">'+(bs.e?bs.e+' ':'')+escHtml(brief)+'</span>':'')+
         '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'\u2026':wd||'\u2014')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
