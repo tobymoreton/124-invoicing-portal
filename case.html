@@ -146,23 +146,22 @@
       .tab-bar{padding:0 6px;}
       .tab-btn{padding:0 7px;height:38px;font-size:10.5px;letter-spacing:0;}
     }
-    .tab-btn:nth-child(odd){background:rgba(255,255,255,.05);}
-    .tab-btn:nth-child(even){background:rgba(0,0,0,.12);}
+    .tab-btn:focus:not(:focus-visible){outline:none;}
     .tab-btn::after{
       content:'';position:absolute;bottom:0;left:50%;right:50%;
       height:3px;background:var(--gold);border-radius:2px 2px 0 0;
       transition:left .2s ease,right .2s ease;
     }
-    .tab-btn:hover{color:var(--white);}
-    .tab-btn.active{color:var(--white);font-weight:600;}
+    .tab-btn:hover{color:var(--white);background:rgba(255,255,255,.04);}
+    .tab-btn.active{color:var(--white);font-weight:600;background:rgba(181,154,106,.08);}
     .tab-btn.active::after{left:0;right:0;}
     .tab-bar-secondary{
-      background:rgba(22,38,63,.82);border-top:1px solid rgba(201,168,76,.2);
-      padding:0 32px;display:flex;justify-content:center;gap:2px;
+      background:var(--navy);border-top:1px solid rgba(201,168,76,.2);
+      padding:0 32px;display:flex;justify-content:center;overflow-x:auto;gap:2px;
     }
-    .tab-bar-secondary .tab-btn{height:38px;font-size:11px;padding:0 16px;}
-    @media(max-width:1400px){ .tab-bar-secondary{padding:0 10px;} .tab-bar-secondary .tab-btn{height:36px;font-size:10.5px;padding:0 12px;} }
-    @media(max-width:1150px){ .tab-bar-secondary{padding:0 6px;} .tab-bar-secondary .tab-btn{height:34px;font-size:10px;padding:0 9px;} }
+    .tab-bar-secondary::-webkit-scrollbar{display:none;}
+    @media(max-width:1400px){ .tab-bar-secondary{padding:0 10px;} }
+    @media(max-width:1150px){ .tab-bar-secondary{padding:0 6px;} }
 
     /* ── Content & layout ────────────────────── */
     .content{max-width:1200px;margin:0 auto;padding:28px 28px 56px;}
