@@ -97,6 +97,14 @@
     .panel-head{background:var(--navy);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
     .panel-title{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(245,242,235,.65);}
     .panel-count{font-size:11px;font-weight:600;color:var(--gold);background:rgba(201,168,76,.15);padding:2px 8px;border-radius:10px;}
+    .info-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer;color:var(--gold-mid);border-radius:50%;position:relative;flex-shrink:0;vertical-align:middle;transition:color .15s ease,background .15s ease;}
+    .info-btn:hover,.info-btn:focus-visible{color:var(--navy);background:var(--gold-pale);outline:none;}
+    .info-btn svg{width:15px;height:15px;display:block;}
+    .panel-head .info-btn{color:var(--gold);}
+    .info-tip{position:absolute;z-index:120;top:calc(100% + 8px);right:0;width:250px;max-width:78vw;background:var(--navy);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;line-height:1.55;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:6px;border:1px solid rgba(201,168,76,.35);box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility .15s;pointer-events:none;}
+    .info-btn:hover .info-tip,.info-btn:focus-visible .info-tip,.info-btn.info-open .info-tip{opacity:1;visibility:visible;transform:translateY(0);}
+    .info-btn.info-left .info-tip{left:0;right:auto;}
+    .stat-card{overflow:visible;}
 
     /* Stage breakdown */
     .stage-list{padding:4px 0;}
@@ -316,20 +324,20 @@
     <div class="stat-cards">
       <div class="stat-card" id="card-total" data-filter="all">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">Open Cases</div>
+        <div class="stat-card-label">Open Cases<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About Open Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The number of open cases assigned to you. Click to list them all; the line below shows your most common tasks.</span></button></div>
         <div class="stat-card-value" id="stat-total">0</div>
         <div class="stat-card-sub" id="stat-total-sub"></div>
       </div>
       <div class="stat-card" id="card-wip">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">My WIP Value</div>
+        <div class="stat-card-label">My WIP Value<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About My WIP Value"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your total unbilled work-in-progress: unbilled hours times rate across your cases. Click for a per-case breakdown.</span></button></div>
         <div class="stat-card-value" id="stat-wip" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">unbilled hours &times; rate</div>
         <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">Invoiced This Month</div>
+        <div class="stat-card-label">Invoiced This Month<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About Invoiced This Month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The net value you have invoiced this calendar month (excludes cancelled invoices). Click for a per-invoice breakdown.</span></button></div>
         <div class="stat-card-value" id="stat-invoiced" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">net, current calendar month</div>
         <div class="stat-card-hint">click for breakdown</div>
@@ -337,7 +345,7 @@
       <div class="stat-card" id="card-wip-period">
         <div class="stat-card-accent"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="stat-card-label" style="margin-bottom:0;">WIP This Period</div>
+          <div class="stat-card-label" style="margin-bottom:0;">WIP This Period<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About WIP This Period"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Unbilled WIP from case actions dated in the current month; switch to this week with the toggle. Click for a per-case breakdown.</span></button></div>
           <div style="display:flex;gap:4px;">
             <button id="wip-toggle-month" class="wip-toggle active" onclick="setWipPeriod('month')">Month</button>
             <button id="wip-toggle-week" class="wip-toggle" onclick="setWipPeriod('week')">Week</button>
@@ -349,7 +357,7 @@
       </div>
       <div class="stat-card" id="card-4pct">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">4% of O/Standing PC Claimed</div>
+        <div class="stat-card-label">4% of O/Standing PC Claimed<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About 4% of Outstanding PC Claimed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">4% of the outstanding profit costs claimed across your cases, excluding cases already invoiced with a drafting fee. Click for a per-case breakdown.</span></button></div>
         <div class="stat-card-value" id="stat-4pct" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">excludes cases already invoiced</div>
         <div class="stat-card-hint">click for breakdown</div>
@@ -370,7 +378,7 @@
       <!-- Stage breakdown -->
       <div class="panel">
         <div class="panel-head">
-          <span class="panel-title">By Stage</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">By Stage</span><button type="button" class="info-btn info-left" aria-label="About By Stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open cases grouped by stage. Click a stage to list those cases; All Cases and Pending billing are pinned at the top.</span></button></span>
           <span class="panel-count" id="stage-panel-count"></span>
         </div>
         <div class="stage-list" id="stage-list">
@@ -381,7 +389,7 @@
       <!-- Case Actions -->
       <div class="panel">
         <div class="panel-head">
-          <span class="panel-title">Case Actions</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Recent time and actions across your cases. Search by case name or work done, and click an entry to edit it.</span></button></span>
           <span class="panel-count" id="ca-panel-count"></span>
         </div>
         <div class="ca-panel-search-row">
@@ -395,7 +403,7 @@
       <!-- Reminders -->
       <div class="panel">
         <div class="panel-head">
-          <span class="panel-title">Open Reminders</span>
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">Open Reminders</span><button type="button" class="info-btn info-left" aria-label="About Open Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open reminders, banded by overdue, due today, this week and later. Tick Done to complete one.</span></button></span>
           <span class="panel-count" id="rem-panel-count"></span>
         </div>
         <div class="rem-list" id="rem-panel-list">
@@ -1806,6 +1814,17 @@ async function init(){
       '<h3 style="color:#991B1B;">Error loading cases</h3><p style="margin-top:8px;color:var(--grey-mid);">'+escHtml(err.message)+'</p>';
   }
 }
+
+document.querySelectorAll('.info-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const wasOpen = btn.classList.contains('info-open');
+    document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open'));
+    if (!wasOpen) btn.classList.add('info-open');
+  });
+});
+document.addEventListener('click', () => document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')); });
 
 init();
 </script>

@@ -197,6 +197,7 @@
     .info-btn svg{width:15px;height:15px;display:block;}
     .info-tip{position:absolute;z-index:60;top:calc(100% + 8px);right:0;width:260px;max-width:78vw;background:var(--navy);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;line-height:1.55;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:6px;border:1px solid rgba(201,168,76,.35);box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility .15s;pointer-events:none;}
     .info-btn:hover .info-tip,.info-btn:focus-visible .info-tip,.info-btn.info-open .info-tip{opacity:1;visibility:visible;transform:translateY(0);}
+    .info-btn.info-left .info-tip{left:0;right:auto;}
 
     /* ── Form fields ─────────────────────────── */
     .field{display:flex;flex-direction:column;gap:7px;}
@@ -687,7 +688,7 @@
       </div>
       <div class="card">
         <div class="card-head">
-          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">➡️ Current Position</span><button type="button" class="info-btn" aria-label="About Current Position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">A free-text note on where the case currently stands, shown with the date it was last updated.</span></button></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">➡️ Current Position</span><button type="button" class="info-btn info-left" aria-label="About Current Position"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">A free-text note on where the case currently stands, shown with the date it was last updated.</span></button></span>
           <span style="font-size:11px;color:var(--grey-mid);" id="ov-cpupdated"></span>
         </div>
         <div class="card-body">
@@ -1229,7 +1230,7 @@
         <div style="flex:1;min-width:0;">
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Reminders</span><button type="button" class="info-btn" aria-label="About Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">All reminders logged against this case, with due dates and priority.</span></button></span>
+              <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Reminders</span><button type="button" class="info-btn info-left" aria-label="About Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">All reminders logged against this case, with due dates and priority.</span></button></span>
               <span id="rem-summary" style="font-size:12px;color:var(--grey-mid);"></span>
             </div>
             <div>
@@ -1301,7 +1302,7 @@
         <div style="flex:1;min-width:0;">
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
-              <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
+              <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
               <span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span>
             </div>
             <div>
