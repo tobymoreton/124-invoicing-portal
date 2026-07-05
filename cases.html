@@ -1045,7 +1045,12 @@ function renderActionsPanel(){
 
 // ── Populate case pickers ───────────────────────────────────────────
 function populateCasePickers(){
-  const opts=myCases.map(c=>{
+  const sortedCases=[...myCases].sort((a,b)=>{
+    const an=(a.fields['CaseNameForOpenCases']||a.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
+    const bn=(b.fields['CaseNameForOpenCases']||b.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
+    return an.localeCompare(bn);
+  });
+  const opts=sortedCases.map(c=>{
     const ref=c.fields['Ourreference_x0028_text_x0029_']||'';
     const name=c.fields['CaseNameForOpenCases']||ref;
     return '<option value="'+escHtml(ref)+'">'+escHtml(name)+'</option>';
@@ -1081,6 +1086,7 @@ async function saveAction(){
   if(!ref){msg.className='dm-save-msg err';msg.textContent='Please select a case.';return;}
   if(!wd){msg.className='dm-save-msg err';msg.textContent='Work done is required.';return;}
   const hrs=parseFloat(document.getElementById('ca-hours').value)||0;
+  if(hrs<=0){msg.className='dm-save-msg err';msg.textContent='Time Spent must be greater than 0.';return;}
   const rate=parseFloat(document.getElementById('ca-rate').value)||0;
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
@@ -1089,7 +1095,7 @@ async function saveAction(){
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,workDone:wd,timeSpent:hrs,rate,billable,date,email:callerEmail,completedBy:callerName}),
+      body:JSON.stringify({ref,caseName,workDone:wd,timeSpent:hrs,rate,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
