@@ -203,6 +203,7 @@
     .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
+    .ca-brief-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:.03em;padding:1px 7px;border-radius:6px;margin-bottom:3px;white-space:nowrap;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ca-panel-list{max-height:640px;overflow-y:auto;}
     /* Action buttons */
@@ -466,6 +467,10 @@
         <label>Work Done *</label>
         <textarea id="ca-work-done" placeholder="Describe the work&hellip;"></textarea>
       </div>
+      <div class="dm-field">
+        <label>Brief</label>
+        <select id="ca-brief"></select>
+      </div>
       <div class="dm-row">
         <div class="dm-field">
           <label>Date</label>
@@ -625,6 +630,18 @@ const BRIEF_OPTIONS = [
   'Routine telephone call','Timed letter/email','Timed telephone call',
   'Teams/Zoom call','In person hearing','Remote hearing','Mediation',
 ];
+const BRIEF_STYLES = {
+  'Preparation/Perusal':      {e:'\uD83D\uDCCB',bg:'#EDE9FE',c:'#5B21B6',label:'Prep/Perusal'},
+  'Routine letter/email out': {e:'\u2709\uFE0F',bg:'#FEF9C3',c:'#92400E',label:'Letter out'},
+  'Incoming email':           {e:'\uD83D\uDCE5',bg:'#DCFCE7',c:'#166534',label:'Email in'},
+  'Routine telephone call':   {e:'\uD83D\uDCDE',bg:'#FFEDD5',c:'#9A3412',label:'Telephone'},
+  'Timed letter/email':       {e:'\u23F1\uFE0F',bg:'#FEF3C7',c:'#713F12',label:'Timed letter'},
+  'Timed telephone call':     {e:'\u23F1\uFE0F',bg:'#FFE4E6',c:'#9F1239',label:'Timed call'},
+  'Teams/Zoom call':          {e:'\uD83D\uDCF9',bg:'#DBEAFE',c:'#1E40AF',label:'Teams/Zoom'},
+  'In person hearing':        {e:'\u2696\uFE0F',bg:'#FCE7F3',c:'#9D174D',label:'In person'},
+  'Remote hearing':           {e:'\uD83D\uDCBB',bg:'#F3E8FF',c:'#6B21A8',label:'Remote hearing'},
+  'Mediation':                {e:'\uD83E\uDD1D',bg:'#CCFBF1',c:'#0F766E',label:'Mediation'},
+};
 const NAME_DISPLAY = {
   joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',
   julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley',
@@ -1080,11 +1097,15 @@ function renderActionsPanel(){
     const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
     const rate=parseFloat(a.fields?.['field_6'])||0;
     const val=hrs*rate;
+    const brief=a.fields?.['field_9']||'';
+    const bs=BRIEF_STYLES[brief];
     const row=document.createElement('div');
     row.className='ca-panel-row';
+    if(bs) row.style.borderLeft='3px solid '+bs.c;
     row.innerHTML=
       '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
       '<div class="ca-panel-body">'+
+        (bs?'<span class="ca-brief-chip" style="background:'+bs.bg+';color:'+bs.c+';display:block;">'+(bs.e?bs.e+' ':'')+escHtml(bs.label)+'</span>':'')+
         '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'\u2026':wd||'\u2014')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
@@ -1185,6 +1206,7 @@ function populateCasePickers(){
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('ca-date').value=today;
   document.getElementById('rem-due').value=today;
+  document.getElementById('ca-brief').innerHTML=BRIEF_OPTIONS.map(o=>'<option value="'+escHtml(o)+'">'+escHtml(o)+'</option>').join('');
 }
 
 // ── Modal helpers ───────────────────────────────────────────────────
@@ -1214,6 +1236,7 @@ async function saveAction(){
   const rate=parseFloat(document.getElementById('ca-rate').value)||0;
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
+  const brief=document.getElementById('ca-brief').value||'Preparation/Perusal';
   const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
   const caseItem=myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref);
   const caseItemId=caseItem?.id||null;
@@ -1221,7 +1244,7 @@ async function saveAction(){
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
+      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,brief,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
@@ -1233,6 +1256,7 @@ async function saveAction(){
     document.getElementById('ca-hours').value='';
     document.getElementById('ca-rate').value='';
     document.getElementById('ca-billable').checked=true;
+    document.getElementById('ca-brief').value=BRIEF_OPTIONS[0];
   }catch(err){
     msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;
   }finally{btn.disabled=false;}
