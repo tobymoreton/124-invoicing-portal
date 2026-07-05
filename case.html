@@ -2556,7 +2556,7 @@ async function submitAddAction() {
   if (!completedBy) { msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
   if (btn) btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseFields?.['CaseNameForOpenCases'] || '', dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
+    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseFields?.['CaseNameForOpenCases'] || '', caseItemId, dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
     caActions.unshift({ id: created.id, fields: { field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent, field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z', field_16: ref, field_18: switcherCallerEmail || '', Completedby_x0028_text_x0029_: completedBy, 'Billable_x003f_': billable, 'Billed_x003f_': false, TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate } });
