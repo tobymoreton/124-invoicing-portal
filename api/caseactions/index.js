@@ -142,8 +142,17 @@ module.exports = async function (context, req) {
         if (db - da !== 0) return db - da;
         // Tie-break: field_12 (Date Work Done) is stored as midnight-only (T00:00:00Z), so
         // every action logged on the same calendar day has an identical timestamp here.
-        // Break the tie on SharePoint item ID descending — ID always increases with creation
-        // order, so the most recently added action for that day sorts to the top.
+        // Prefer the real creation timestamp (CreatedUTC, added 2026-07-05 — stamped
+        // server-side on POST, never influenced by client input) when BOTH rows have it.
+        // Rows created before this field existed won't have it, so fall back to SharePoint
+        // item ID descending — ID always increases with creation order, so it remains a
+        // correct proxy for those older rows.
+        const caU = a.fields?.['CreatedUTC'];
+        const cbU = b.fields?.['CreatedUTC'];
+        if (caU && cbU) {
+          const diff = new Date(cbU) - new Date(caU);
+          if (diff !== 0) return diff;
+        }
         return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
       });
 
@@ -192,6 +201,10 @@ module.exports = async function (context, req) {
         Completedby_x0028_text_x0029_: b.completedBy || '',
         Casename_x0028_text_x0029_:    b.caseName    || '',
         TimeSpentMirror: timeSpent,
+        // CreatedUTC — true server-side creation timestamp. Unlike field_1 (Date Entered),
+        // which the caller/UI can backdate, this is always `now` and never client-influenced.
+        // Confirmed internal name matches the display name (Toby, 2026-07-05).
+        CreatedUTC: now,
         // Billable_x003f_ and Billed_x003f_ deliberately omitted — boolean writes unreliable on this tenant
       };
 
@@ -225,6 +238,11 @@ module.exports = async function (context, req) {
         return;
       }
 
+      // Audit trail — stamp on every successful edit. Confirmed internal names match
+      // display names (Toby, 2026-07-05).
+      fields['LastEditedByEmail'] = callerEmail;
+      fields['LastEditedUTC']     = new Date().toISOString();
+
       const patchUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items/${itemId}/fields`;
       await graphPatch(patchUrl, token, fields);
 
@@ -240,6 +258,9 @@ module.exports = async function (context, req) {
     if (req.method === 'DELETE') {
       const itemId = ((req.body || {}).itemId || '').toString().trim();
       if (!itemId) { context.res = { status: 400, body: 'Missing itemId' }; return; }
+      // Audit — the item is gone after delete so there's no field to stamp; log to
+      // Azure Function logs (Application Insights) instead.
+      context.log('AUDIT caseactions DELETE — itemId=' + itemId + ' deletedBy=' + callerEmail + ' at=' + new Date().toISOString());
       const deleteUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items/${itemId}`;
       await graphDelete(deleteUrl, token);
       context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deleted: true, itemId }) };
