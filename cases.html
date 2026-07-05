@@ -538,12 +538,63 @@
   </div>
 </div>
 
+<!-- Edit Action Modal -->
+<div class="dash-modal-overlay" id="modal-edit-action">
+  <div class="dash-modal" style="max-width:580px;">
+    <div class="dash-modal-head">
+      <span class="dash-modal-title" id="edit-ca-title">Edit Action</span>
+      <button class="dash-modal-close" data-close="modal-edit-action">&times;</button>
+    </div>
+    <div class="dash-modal-body">
+      <div class="dm-field">
+        <label>Case</label>
+        <div id="edit-ca-case" style="font-size:13px;font-weight:600;color:var(--navy);padding:4px 0;"></div>
+      </div>
+      <div class="dm-row">
+        <div class="dm-field" style="flex:2;">
+          <label>Brief</label>
+          <select id="edit-ca-brief"></select>
+        </div>
+        <div class="dm-field">
+          <label>Date</label>
+          <input type="date" id="edit-ca-date" />
+        </div>
+      </div>
+      <div class="dm-field">
+        <label>Work Done *</label>
+        <textarea id="edit-ca-workdone" rows="3" placeholder="Work done description&hellip;"></textarea>
+      </div>
+      <div class="dm-row">
+        <div class="dm-field">
+          <label>Hours</label>
+          <input type="number" id="edit-ca-hours" step="0.1" min="0.1" placeholder="0.0" />
+        </div>
+        <div class="dm-field">
+          <label>Rate (&pound;/hr)</label>
+          <input type="number" id="edit-ca-rate" step="1" min="0" placeholder="0" />
+        </div>
+        <div class="dm-field" style="justify-content:flex-end;flex-direction:row;align-items:center;gap:8px;padding-top:20px;">
+          <label style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;">Billable?</label>
+          <input type="checkbox" id="edit-ca-billable" style="width:18px;height:18px;accent-color:var(--navy);" />
+        </div>
+      </div>
+    </div>
+    <div class="dash-modal-footer">
+      <span class="dm-save-msg" id="edit-ca-msg"></span>
+      <a id="edit-ca-open-link" href="#" class="dm-btn dm-btn-secondary" style="text-decoration:none;margin-right:auto;">Open Case &rarr;</a>
+      <button class="dm-btn dm-btn-secondary" data-close="modal-edit-action">Cancel</button>
+      <button class="dm-btn dm-btn-primary" id="edit-ca-save">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let allCases     = [];
 let myCases      = [];
 let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
 let allActions   = [];   // flat array of TT2 rows across all my cases
+let editingAction = null; // action currently open in edit modal
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
 let wipThisMonth = 0;  // unbilled WIP value from actions this calendar month
@@ -567,6 +618,11 @@ const REM_EVENTS = [
   'Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally',
   'Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget',
   'Start Precedent R','Start Replies','Without Prejudice call',
+];
+const BRIEF_OPTIONS = [
+  'Preparation/Perusal','Routine letter/email out','Incoming email',
+  'Routine telephone call','Timed letter/email','Timed telephone call',
+  'Teams/Zoom call','In person hearing','Remote hearing','Mediation',
 ];
 const NAME_DISPLAY = {
   joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',
@@ -1032,15 +1088,65 @@ function renderActionsPanel(){
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
       (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
-    row.addEventListener('click',()=>{
-      try{
-        const caseObj=allCases.find(x=>x.fields['Ourreference_x0028_text_x0029_']===a._caseRef);
-        if(caseObj) sessionStorage.setItem('tmc_case_'+a._caseRef, JSON.stringify({id:caseObj.id,fields:caseObj.fields,cachedAt:Date.now()}));
-      }catch(ex){}
-      window.location.href='case.html?ref='+encodeURIComponent(a._caseRef)+'&action='+encodeURIComponent(a.id)+'#tab-actions';
-    });
+    row.addEventListener('click', () => openEditActionModal(a));
     el.appendChild(row);
   });
+}
+
+// ── Open / save edit action modal ─────────────────────────────────────────
+function openEditActionModal(a){
+  editingAction=a;
+  const f=a.fields||{};
+  const date=(f['field_12']||f['field_1']||'').slice(0,10);
+  const wd=(f['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  const hrs=parseFloat(f['TimeSpentMirror']||f['field_3'])||0;
+  const rate=parseFloat(f['field_6'])||0;
+  const brief=f['field_9']||'Preparation/Perusal';
+  const billable=f['Billable_x003f_']!==false;
+  document.getElementById('edit-ca-title').textContent='Edit \u2014 '+(a._caseName||a._caseRef);
+  document.getElementById('edit-ca-case').textContent=a._caseName||a._caseRef;
+  document.getElementById('edit-ca-workdone').value=wd;
+  document.getElementById('edit-ca-date').value=date;
+  document.getElementById('edit-ca-hours').value=hrs||'';
+  document.getElementById('edit-ca-rate').value=rate||'';
+  document.getElementById('edit-ca-billable').checked=billable;
+  document.getElementById('edit-ca-msg').textContent='';
+  const briefSel=document.getElementById('edit-ca-brief');
+  briefSel.innerHTML=BRIEF_OPTIONS.map(o=>'<option value="'+escHtml(o)+'"'+(o===brief?' selected':'')+'>'+escHtml(o)+'</option>').join('');
+  const link=document.getElementById('edit-ca-open-link');
+  link.href='case.html?ref='+encodeURIComponent(a._caseRef)+'&action='+encodeURIComponent(a.id)+'#tab-actions';
+  openModal('modal-edit-action');
+}
+
+async function saveEditAction(){
+  const msg=document.getElementById('edit-ca-msg');
+  const btn=document.getElementById('edit-ca-save');
+  if(!editingAction) return;
+  const wd=document.getElementById('edit-ca-workdone').value.trim();
+  if(!wd){msg.className='dm-save-msg err';msg.textContent='Work done is required.';return;}
+  const hrs=parseFloat(document.getElementById('edit-ca-hours').value)||0;
+  if(hrs<=0){msg.className='dm-save-msg err';msg.textContent='Hours must be > 0.';return;}
+  const rate=parseFloat(document.getElementById('edit-ca-rate').value)||0;
+  const brief=document.getElementById('edit-ca-brief').value;
+  const date=document.getElementById('edit-ca-date').value;
+  const billable=document.getElementById('edit-ca-billable').checked;
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
+  try{
+    const r=await fetch('/api/caseactions',{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:editingAction.id,workDone:wd,timeSpent:hrs,rate,brief,billable,
+        ...(date?{dateWorkDone:date+'T00:00:00Z'}:{})}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const f=editingAction.fields=editingAction.fields||{};
+    f['field_2']=wd; f['field_3']=hrs; f['TimeSpentMirror']=hrs;
+    f['field_6']=rate; f['field_9']=brief; f['Billable_x003f_']=billable;
+    if(date) f['field_12']=date+'T00:00:00Z';
+    renderActionsPanel();
+    msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
+    setTimeout(()=>closeModal('modal-edit-action'),900);
+  }catch(err){msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;}
+  finally{btn.disabled=false;}
 }
 
 // ── Populate case pickers ───────────────────────────────────────────
@@ -1068,7 +1174,8 @@ function populateCasePickers(){
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
-  document.getElementById(id==='modal-action'?'ca-msg':'rem-msg').textContent='';
+  const msgId=id==='modal-action'?'ca-msg':id==='modal-edit-action'?'edit-ca-msg':'rem-msg';
+  const msgEl=document.getElementById(msgId); if(msgEl) msgEl.textContent='';
 }
 document.querySelectorAll('[data-close]').forEach(btn=>{
   btn.addEventListener('click',()=>closeModal(btn.dataset.close));
@@ -1339,6 +1446,7 @@ function wireCards(){
   document.getElementById('btn-add-reminder').addEventListener('click',()=>openModal('modal-reminder'));
   document.getElementById('ca-save').addEventListener('click',saveAction);
   document.getElementById('rem-save').addEventListener('click',saveReminder);
+  document.getElementById('edit-ca-save').addEventListener('click',saveEditAction);
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
