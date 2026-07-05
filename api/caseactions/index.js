@@ -146,10 +146,13 @@ module.exports = async function (context, req) {
       const dateEntered  = b.dateEntered  ? new Date(b.dateEntered).toISOString()  : now;
       const dateWorkDone = b.dateWorkDone ? new Date(b.dateWorkDone).toISOString() : now;
 
+      context.log('POST caseactions: ref=', ref, 'caseItemId=', b.caseItemId);
+
       const fields = {
         Title:    b.caseName || ref,
-        // CaseName is a SP Lookup column (required). Set it by passing the integer SP item ID of the Case record.
-        ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { CaseName: parseInt(b.caseItemId) } : {}),
+        // CaseName is a SP Lookup column (required). Graph requires LookupId suffix to write lookup fields.
+        // Diagnostic: confirm caseItemId received; if still failing, check b.caseItemId in Azure logs.
+        ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { CaseNameLookupId: parseInt(b.caseItemId) } : {}),
         field_1:  dateEntered,
         field_2:  workDone,
         field_3:  timeSpent,
