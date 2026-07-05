@@ -123,7 +123,12 @@ module.exports = async function (context, req) {
       filtered.sort((a, b) => {
         const da = new Date(a.fields?.['field_12'] || a.fields?.['field_1'] || 0);
         const db = new Date(b.fields?.['field_12'] || b.fields?.['field_1'] || 0);
-        return db - da;
+        if (db - da !== 0) return db - da;
+        // Tie-break: field_12 (Date Work Done) is stored as midnight-only (T00:00:00Z), so
+        // every action logged on the same calendar day has an identical timestamp here.
+        // Break the tie on SharePoint item ID descending — ID always increases with creation
+        // order, so the most recently added action for that day sorts to the top.
+        return (parseInt(b.id, 10) || 0) - (parseInt(a.id, 10) || 0);
       });
 
       context.res = {
