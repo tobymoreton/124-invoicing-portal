@@ -64,7 +64,7 @@
     .state-loading h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:8px;}
 
     /* ── Stat cards ── */
-    .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+    .stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;}
     @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr);}}
     .stat-card{
       background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);
@@ -331,6 +331,12 @@
         <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub" id="stat-wip-period-sub">unbilled, current month</div>
       </div>
+      <div class="stat-card" id="card-4pct">
+        <div class="stat-card-accent"></div>
+        <div class="stat-card-label">4% of PC Claimed</div>
+        <div class="stat-card-value" id="stat-4pct" style="font-size:28px;margin-top:4px;">&mdash;</div>
+        <div class="stat-card-sub" id="stat-4pct-sub">est. TMC drafting fee</div>
+      </div>
     </div>
 
     <!-- Action buttons -->
@@ -594,6 +600,33 @@
   </div>
 </div>
 
+<!-- 4% PC Breakdown Modal -->
+<div class="briefing-modal-overlay" id="modal-4pct">
+  <div class="briefing-modal" style="max-width:720px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">4% Drafting Fee Breakdown</span>
+      <button class="briefing-modal-close" id="btn-4pct-close">&times;</button>
+    </div>
+    <div style="max-height:62vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead>
+          <tr>
+            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
+            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">PC Claimed</th>
+            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">4% Fee</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-4pct"></tbody>
+        <tfoot id="tfoot-4pct"></tfoot>
+      </table>
+    </div>
+    <div class="briefing-footer">
+      <span class="briefing-as-of">Excludes cases where drafting fee already invoiced &middot; Click a row to open the case.</span>
+      <button class="dm-btn dm-btn-secondary" id="btn-4pct-close2">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let allCases     = [];
@@ -603,6 +636,8 @@ let allActions   = [];   // flat array of TT2 rows across all my cases
 let editingAction = null; // action currently open in edit modal
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
+let allInvoices  = [];   // Invoice Library records — used to exclude cases where drafting fee is already invoiced
+let pcBreakdown  = [];   // breakdown rows for 4% PC modal: [{name,ref,pc}]
 let wipThisMonth = 0;  // unbilled WIP value from actions this calendar month
 let wipThisWeek  = 0;  // unbilled WIP value from actions this Mon–Sun week
 let wipPeriod    = 'month'; // 'month' | 'week'
@@ -782,6 +817,29 @@ function renderStats(){
     if(d>=weekStart&&d<weekEnd) wipThisWeek+=val;
   });
   updateWipPeriodCard();
+  // ── 4% of PC Claimed (excl. cases where drafting fee already invoiced) ──────
+  const draftingInvoicedRefs=new Set(
+    allInvoices
+      .filter(inv=>!inv.Cancelled && parseFloat(inv.DraftingFeeElement||0)>0)
+      .map(inv=>(inv.Ourref||'').trim())
+  );
+  let totalPC=0; let pcCount=0;
+  pcBreakdown=[];
+  myCases.forEach(c=>{
+    const ref=c.fields['Ourreference_x0028_text_x0029_']||'';
+    if(draftingInvoicedRefs.has(ref)) return; // drafting fee already invoiced
+    const pc=parseFloat(c.fields['ProfitCostsClaimed_x0028_Ex_x002'])||0;
+    if(pc>0){
+      totalPC+=pc;pcCount++;
+      const name=c.fields['CaseNameForOpenCases']||c.fields['Title']||ref;
+      pcBreakdown.push({name,ref,pc});
+    }
+  });
+  pcBreakdown.sort((a,b)=>b.pc-a.pc);
+  document.getElementById('stat-4pct').textContent=totalPC>0?fmt(totalPC*0.04):'\u2014';
+  document.getElementById('stat-4pct-sub').textContent=pcCount>0
+    ?'4% of '+fmt(totalPC)+' PC ('+pcCount+' case'+(pcCount!==1?'s':'')+')'  
+    :'no PC entered yet';
 }
 
 // ── Render stage breakdown ─────────────────────────────────────────────────
@@ -1475,6 +1533,40 @@ function openAllRemindersModal(){
 }
 
 // ── Wire up stat cards ─────────────────────────────────────────────────────
+// ── 4% PC Breakdown modal ─────────────────────────────────────────────────────────────────
+function openPcBreakdown(){
+  const tbody=document.getElementById('tbody-4pct');
+  const tfoot=document.getElementById('tfoot-4pct');
+  tbody.innerHTML='';
+  if(!pcBreakdown.length){
+    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases with PC entered yet.</td></tr>';
+  } else {
+    pcBreakdown.forEach(row=>{
+      const tr=document.createElement('tr');
+      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
+      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
+      tr.addEventListener('mouseout', ()=>tr.style.background='');
+      tr.innerHTML=
+        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
+        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+fmt(row.pc)+'</td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.pc*0.04)+'</td>';
+      tr.addEventListener('click',()=>{
+        document.getElementById('modal-4pct').classList.remove('open');
+        window.location.href='case.html?ref='+encodeURIComponent(row.ref);
+      });
+      tbody.appendChild(tr);
+    });
+    const tot=pcBreakdown.reduce((s,r)=>s+r.pc,0);
+    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
+      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+pcBreakdown.length+' case'+(pcBreakdown.length!==1?'s':'')+', uninvoiced fee)</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+fmt(tot)+'</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(tot*0.04)+'</td>'+
+      '</tr>';
+  }
+  document.getElementById('modal-4pct').classList.add('open');
+}
+
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
@@ -1493,13 +1585,17 @@ function wireCards(){
   document.getElementById('rem-save').addEventListener('click',saveReminder);
   document.getElementById('edit-ca-save').addEventListener('click',saveEditAction);
   document.getElementById('edit-ca-delete').addEventListener('click',deleteEditAction);
+  document.getElementById('card-4pct').addEventListener('click',openPcBreakdown);
+  document.getElementById('btn-4pct-close').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
+  document.getElementById('btn-4pct-close2').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
+  document.getElementById('modal-4pct').addEventListener('click',e=>{if(e.target===document.getElementById('modal-4pct'))document.getElementById('modal-4pct').classList.remove('open');});
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
 const CACHE_TTL_MS = 30 * 60 * 1000;
 function cacheKey(){ return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon'); }
 function writeCache(){
-  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders,allActions})); }catch{}
+  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allInvoices,allReminders,allActions})); }catch{}
 }
 function readCache(){
   try{
@@ -1531,6 +1627,7 @@ async function fetchAllData(){
   if(invResp&&invResp.ok){
     const invData=await invResp.json();
     const invItems=Array.isArray(invData)?invData:(invData.value||[]);
+    allInvoices=invItems; // store for 4% PC drafting-fee exclusion
     const now=new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
     invoicedThisMonth=invItems.filter(inv=>{
       if(inv.Cancelled||!inv.InvoiceDate) return false;
@@ -1561,6 +1658,7 @@ async function init(){
     if(cached){
       allCases=cached.allCases||[]; wipTotal=cached.wipTotal||0;
       invoicedThisMonth=cached.invoicedThisMonth||0;
+      allInvoices=cached.allInvoices||[];
       allReminders=cached.allReminders||[]; allActions=cached.allActions||[];
       myCases=allCases.filter(c=>matchesAssigned(c.fields));
       applyDataAndRender();
