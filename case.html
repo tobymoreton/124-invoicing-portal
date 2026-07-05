@@ -2557,6 +2557,9 @@ function renderEmailsTable() {
     const brief = f['field_9'] || '';
     const bs = EMAIL_STYLES[brief.trim().toLowerCase()] || { bg: 'transparent', c: 'var(--grey-mid)' };
     const emailEvent = f['EmailEvent'] || '';
+    const emailEventHtml = (emailEvent && emailEvent.trim().toLowerCase() !== 'unclassified')
+      ? `<span style="display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:8px;white-space:nowrap;background:var(--gold-pale);color:var(--navy-mid);">${escHtml(emailEvent)}</span>`
+      : '';
     const workDone = f['field_2'] || '';
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
     const rate = parseFloat(f['field_6']) || 0;
@@ -2569,7 +2572,7 @@ function renderEmailsTable() {
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
         + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
         + `<td class="ca-cell"><select class="ca-edit-brief" data-id="${id}" style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;padding:2px 4px;width:100%;">${['Preparation/Perusal','Routine letter/email out','Incoming email','Routine telephone call','Timed letter/email','Timed telephone call','Teams/Zoom call','In person hearing','Remote hearing','Mediation'].map(v => '<option' + (v===brief?' selected':'') + '>' + v + '</option>').join('')}</select></td>`
-        + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
+        + `<td class="ca-cell" style="font-size:11px;">${emailEventHtml}</td>`
         + `<td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea></td>`
         + `<td class="ca-cell ca-right"><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></td>`
         + `<td class="ca-cell ca-right"><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></td>`
@@ -2580,7 +2583,7 @@ function renderEmailsTable() {
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
         + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
         + `<td class="ca-cell"><span style="display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap;background:${bs.bg};color:${bs.c};" title="${escHtml(brief)}">${escHtml(brief)}</span></td>`
-        + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
+        + `<td class="ca-cell" style="font-size:11px;">${emailEventHtml}</td>`
         + `<td class="ca-cell ca-cell-wd">${escHtml(workDone)}</td>`
         + `<td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>`
         + `<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>`
