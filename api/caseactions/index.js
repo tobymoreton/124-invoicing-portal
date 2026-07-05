@@ -75,6 +75,21 @@ module.exports = async function (context, req) {
 
     // ── GET ──────────────────────────────────────────────────────────────────
     if (req.method === 'GET') {
+      // ── Diagnostic: ?schema=1 returns TT2 column internal names — use to find correct lookup field name
+      if (req.query.schema === '1') {
+        const schemaUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/columns`;
+        const schema = await graphGet(schemaUrl, token);
+        const cols = (schema.value || []).map(c => ({
+          internalName: c.name,
+          displayName:  c.displayName,
+          required:     c.required,
+          isLookup:     !!c.lookup,
+          lookupList:   c.lookup?.listId || null,
+        })).sort((a, b) => (a.displayName||'').localeCompare(b.displayName||''));
+        context.res = { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }, body: JSON.stringify(cols, null, 2) };
+        return;
+      }
+
       const ref     = (req.query.ref || '').trim();
       const allMode = (req.query.all || '') === '1';
       if (!ref && !allMode) { context.res = { status: 400, body: 'Missing required param: ref (or all=1)' }; return; }
@@ -150,9 +165,9 @@ module.exports = async function (context, req) {
 
       const fields = {
         Title:    b.caseName || ref,
-        // CaseName is a SP Lookup column (required). Graph requires LookupId suffix to write lookup fields.
-        // Diagnostic: confirm caseItemId received; if still failing, check b.caseItemId in Azure logs.
-        ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { CaseNameLookupId: parseInt(b.caseItemId) } : {}),
+        // Case_x0020_Name is a SP Lookup column (required). SP internal name confirmed from FldEditEx URL: Field=Case_x0020_Name
+        // Graph requires LookupId suffix: Case_x0020_NameLookupId
+        ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { 'Case_x0020_NameLookupId': parseInt(b.caseItemId) } : {}),
         field_1:  dateEntered,
         field_2:  workDone,
         field_3:  timeSpent,
@@ -174,7 +189,7 @@ module.exports = async function (context, req) {
       context.res = {
         status: 201,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: created.id, fields: created.fields }),
+        body: JSON.stringify({ id: created.id, fields: created.fields, _debug: { caseItemId: b.caseItemId, fieldsSent: Object.keys(fields) } }),
       };
       return;
     }
