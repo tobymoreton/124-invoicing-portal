@@ -1402,7 +1402,7 @@
         <div>
           <table class="ca-table" id="em-table">
             <colgroup>
-              <col class="ca-col-date"/><col class="ca-col-by"/><col style="width:130px;"/><col style="width:140px;"/>
+              <col class="ca-col-date"/><col class="ca-col-by"/><col style="width:130px;"/><col style="width:170px;"/>
               <col/>
               <col class="ca-col-hrs"/><col class="ca-col-rate"/><col class="ca-col-amt"/>
               <col class="ca-col-bil"/><col class="ca-col-act"/>
@@ -2558,7 +2558,7 @@ function renderEmailsTable() {
     const bs = EMAIL_STYLES[brief.trim().toLowerCase()] || { bg: 'transparent', c: 'var(--grey-mid)' };
     const emailEvent = f['EmailEvent'] || '';
     const emailEventHtml = (emailEvent && emailEvent.trim().toLowerCase() !== 'unclassified')
-      ? `<span style="display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:8px;white-space:nowrap;background:var(--gold-pale);color:var(--navy-mid);">${escHtml(emailEvent)}</span>`
+      ? `<span style="display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:8px;white-space:normal;word-break:break-word;line-height:1.3;background:var(--gold-pale);color:var(--navy-mid);">${escHtml(emailEvent)}</span>`
       : '';
     const workDone = f['field_2'] || '';
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
