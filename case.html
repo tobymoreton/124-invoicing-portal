@@ -616,6 +616,7 @@
 
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="overview">Case Overview</button>
+    <button class="tab-btn" data-tab="bookingin">Client Info</button>
     <button class="tab-btn" data-tab="costs">Costs Claimed</button>
     <button class="tab-btn" data-tab="opponent">Opponent &amp; Court</button>
     <button class="tab-btn" data-tab="reminders">Reminders</button>
@@ -866,6 +867,10 @@
 
     <!-- ════════ BOOKING IN TAB ════════ -->
     <div class="tab-panel" id="tab-bookingin">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
       <div class="edit-bar">
         <button class="btn-edit" id="btn-bi-edit">✏️ Edit</button>
         <button class="btn-edit-save" id="btn-bi-save">✓ Save Changes</button>
