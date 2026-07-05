@@ -2381,7 +2381,7 @@ function renderSwitcherList(q) {
     const f = c.fields || {}; const ref = f['Ourreference_x0028_text_x0029_'] || ''; const name = f['CaseNameForOpenCases'] || f['Title'] || ref; const firm = f['Firm_x0028_text_x0029_'] || '';
     const div = document.createElement('div'); div.className = 'switcher-item' + (ref === currentRef ? ' current' : ''); div.setAttribute('role', 'option');
     div.innerHTML = '<span class="switcher-item-name">' + escHtml(name) + '</span><span class="switcher-item-meta">' + escHtml(ref) + (firm ? ' · ' + escHtml(firm) : '') + '</span>';
-    if (ref !== currentRef) { div.addEventListener('click', () => { window.location.href = 'case.html?ref=' + encodeURIComponent(ref); }); }
+    if (ref !== currentRef) { div.addEventListener('click', () => { const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab; window.location.href = 'case.html?ref=' + encodeURIComponent(ref) + (activeTab ? '#tab-' + activeTab : ''); }); }
     list.appendChild(div);
   });
 }
@@ -2532,6 +2532,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
 });
+
+// Activate the tab named in the URL hash (e.g. #tab-emails), if present — used by "Switch case"
+// (preserves the tab you were on) and by deep-links from elsewhere in the portal.
+(function activateTabFromHash() {
+  const hash = (window.location.hash || '').replace(/^#/, '');
+  if (!hash.startsWith('tab-')) return;
+  const target = document.querySelector('.tab-btn[data-tab="' + hash.slice(4) + '"]');
+  if (target) target.click();
+})();
 
 const EMAIL_BRIEFS = ['routine letter/email out', 'incoming email', 'timed letter/email'];
 const EMAIL_STYLES = {
