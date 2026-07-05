@@ -192,6 +192,11 @@
     }
     .card-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--navy-mid);}
     .card-body{padding:24px;}
+    .info-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer;color:var(--gold-mid);border-radius:50%;position:relative;flex-shrink:0;transition:color .15s ease,background .15s ease;}
+    .info-btn:hover,.info-btn:focus-visible{color:var(--navy);background:var(--gold-pale);outline:none;}
+    .info-btn svg{width:15px;height:15px;display:block;}
+    .info-tip{position:absolute;z-index:60;top:calc(100% + 8px);right:0;width:260px;max-width:78vw;background:var(--navy);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;line-height:1.55;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:6px;border:1px solid rgba(201,168,76,.35);box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility .15s;pointer-events:none;}
+    .info-btn:hover .info-tip,.info-btn:focus-visible .info-tip,.info-btn.info-open .info-tip{opacity:1;visibility:visible;transform:translateY(0);}
 
     /* ── Form fields ─────────────────────────── */
     .field{display:flex;flex-direction:column;gap:7px;}
@@ -755,7 +760,7 @@
         <span class="edit-msg" id="msg-sett"></span>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Settlement Details</span></div>
+        <div class="card-head"><span class="card-title">Settlement Details</span><button type="button" class="info-btn" aria-label="About Settlement Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The core settlement figures for this case. Click Edit to change the date of settlement and total, plus the case and client references. The TMC reference is set at booking-in and is fixed here.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
             <div class="field full"><label>Case Name</label><input type="text" id="f-CaseNameForOpenCases" disabled /></div>
@@ -768,7 +773,7 @@
       </div>
       <div class="two-col">
         <div class="card">
-          <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
+          <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span><button type="button" class="info-btn" aria-label="About Liabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The paying party's liabilities (VAT-inclusive). Click Edit to enter figures. 'From Claimed' pulls counsel's fees across from the Costs Claimed tab; 'Calculate' totals your case actions for the costs of assessment, either unbilled-only or all billable, and caps the result automatically.</span></button></div>
           <dl class="liab-grid">
             <div class="liab-row"><dt>Disbursements inc VAT</dt><dd><span class="liab-static" id="r-Disbursements">—</span></dd></div>
             <div class="liab-row">
@@ -798,7 +803,7 @@
           </dl>
         </div>
         <div class="card">
-          <div class="card-head"><span class="card-title">Interest Summary</span></div>
+          <div class="card-head"><span class="card-title">Interest Summary</span><button type="button" class="info-btn" aria-label="About Interest Summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">A read-only snapshot of interest for this case, calculated from the Interest tab's inputs. Change the figures on that tab, not here.</span></button></div>
           <div class="card-body" style="padding:0 22px;">
             <div class="interest-row"><span>Interest Calculated On</span><span id="r-InterestOn">—</span></div>
             <div class="interest-row"><span>Authority to Assess</span><span id="r-AuthToAssess">—</span></div>
@@ -809,7 +814,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Recovery</span></div>
+        <div class="card-head"><span class="card-title">Recovery</span><button type="button" class="info-btn" aria-label="About Recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your profit-costs recovery after the drafting fee. Ticking 'Include TMC time in fee base?' bases the drafting fee on drawn costs rather than net recovery; the figures here recalculate live.</span></button></div>
         <div style="padding:16px 22px 0;">
           <div class="recovery-highlight">
             <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
@@ -2363,6 +2368,16 @@ function openDocOverlay(url, label) { document.getElementById('doc-overlay-title
 function closeDocOverlay() { document.getElementById('doc-overlay').classList.remove('open'); document.getElementById('doc-overlay-iframe').src = 'about:blank'; }
 document.getElementById('doc-overlay-close').addEventListener('click', closeDocOverlay);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocOverlay(); });
+document.querySelectorAll('.info-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const wasOpen = btn.classList.contains('info-open');
+    document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open'));
+    if (!wasOpen) btn.classList.add('info-open');
+  });
+});
+document.addEventListener('click', () => document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')); });
 document.getElementById('btn-open-invoice-create')?.addEventListener('click', () => {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
   openDocOverlay('/invoice-create.html?ref=' + encodeURIComponent(ref), 'Create Draft Invoice');
