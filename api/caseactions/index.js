@@ -158,8 +158,8 @@ module.exports = async function (context, req) {
         Completedby_x0028_text_x0029_: b.completedBy || '',
         Casename_x0028_text_x0029_:    b.caseName    || '',
         TimeSpentMirror: timeSpent,  // PA mirror field — also write here so COA/WIP don't need to wait for PA run
-        'Billable_x003f_': b.billable === false ? false : true,
-        'Billed_x003f_':   false,
+        // NOTE: Billable_x003f_ and Billed_x003f_ deliberately omitted — boolean writes via Graph are unreliable
+        // on this tenant and may trigger SP-side deletion. SP column defaults (Billable=Yes, Billed=No) apply.
       };
 
       const createUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`;
