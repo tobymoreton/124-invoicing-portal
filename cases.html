@@ -1091,11 +1091,13 @@ async function saveAction(){
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
   const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+  const caseItem=myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref);
+  const caseItemId=caseItem?.id||null;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,caseName,workDone:wd,timeSpent:hrs,rate,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
+      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
