@@ -205,6 +205,12 @@
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ca-panel-list{max-height:640px;overflow-y:auto;}
+    .ca-panel-search-row{padding:8px 18px;border-bottom:1px solid var(--grey-faint);background:var(--white);}
+    .ca-panel-search{width:100%;padding:6px 10px;border:1.5px solid rgba(27,42,74,.15);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:var(--navy);outline:none;transition:border-color .15s ease;}
+    .ca-panel-search:focus{border-color:var(--gold);}
+    .ca-panel-loadmore{padding:10px 18px;text-align:center;}
+    .ca-panel-loadmore button{padding:6px 14px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:transparent;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s ease;}
+    .ca-panel-loadmore button:hover{background:var(--navy);color:var(--gold);}
     /* Action buttons */
     .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;align-items:center;}
     .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
@@ -359,6 +365,9 @@
         <div class="panel-head">
           <span class="panel-title">Case Actions</span>
           <span class="panel-count" id="ca-panel-count"></span>
+        </div>
+        <div class="ca-panel-search-row">
+          <input type="text" id="ca-panel-search" class="ca-panel-search" placeholder="Search case or work done\u2026" />
         </div>
         <div class="ca-panel-list" id="ca-panel-list">
           <div class="ca-panel-empty">Loading actions&hellip;</div>
@@ -1071,15 +1080,34 @@ async function loadActions(cases){
 }
 
 // ── Render actions panel ─────────────────────────────────────────────
+let caSearchTerm='';
+let caVisibleCount=40;
+const CA_PAGE_SIZE=40;
+
 function renderActionsPanel(){
   const el=document.getElementById('ca-panel-list');
-  document.getElementById('ca-panel-count').textContent=allActions.length;
   if(!allActions.length){
+    document.getElementById('ca-panel-count').textContent='0';
     el.innerHTML='<div class="ca-panel-empty">No actions recorded.</div>';
     return;
   }
+  const term=caSearchTerm;
+  const filtered=term
+    ? allActions.filter(a=>{
+        const caseName=(a._caseName||a._caseRef||'').toLowerCase();
+        const wd=(a.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').toLowerCase();
+        return caseName.includes(term)||wd.includes(term);
+      })
+    : allActions;
+  document.getElementById('ca-panel-count').textContent=
+    term ? filtered.length+' of '+allActions.length : allActions.length;
+  if(!filtered.length){
+    el.innerHTML='<div class="ca-panel-empty">No actions match \u201c'+escHtml(caSearchTerm)+'\u201d.</div>';
+    return;
+  }
   el.innerHTML='';
-  allActions.forEach(a=>{
+  const visible=filtered.slice(0,caVisibleCount);
+  visible.forEach(a=>{
     const date=a.fields?.['field_12']||a.fields?.['field_1']||'';
     const wd=(a.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
     const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
@@ -1097,6 +1125,14 @@ function renderActionsPanel(){
     row.addEventListener('click', () => openEditActionModal(a));
     el.appendChild(row);
   });
+  if(filtered.length>caVisibleCount){
+    const remaining=filtered.length-caVisibleCount;
+    const more=document.createElement('div');
+    more.className='ca-panel-loadmore';
+    more.innerHTML='<button type="button">Show '+Math.min(remaining,CA_PAGE_SIZE)+' more ('+remaining+' remaining)</button>';
+    more.querySelector('button').addEventListener('click',()=>{caVisibleCount+=CA_PAGE_SIZE;renderActionsPanel();});
+    el.appendChild(more);
+  }
 }
 
 // ── Open / save edit action modal ─────────────────────────────────────────
@@ -1470,6 +1506,12 @@ function wireCards(){
   document.getElementById('rem-save').addEventListener('click',saveReminder);
   document.getElementById('edit-ca-save').addEventListener('click',saveEditAction);
   document.getElementById('edit-ca-delete').addEventListener('click',deleteEditAction);
+  const caSearchEl=document.getElementById('ca-panel-search');
+  if(caSearchEl) caSearchEl.addEventListener('input',e=>{
+    caSearchTerm=e.target.value.trim().toLowerCase();
+    caVisibleCount=CA_PAGE_SIZE;
+    renderActionsPanel();
+  });
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
