@@ -198,6 +198,7 @@
     .info-tip{position:absolute;z-index:60;top:calc(100% + 8px);right:0;width:260px;max-width:78vw;background:var(--navy);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;line-height:1.55;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:6px;border:1px solid rgba(201,168,76,.35);box-shadow:var(--shadow-lg);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility .15s;pointer-events:none;}
     .info-btn:hover .info-tip,.info-btn:focus-visible .info-tip,.info-btn.info-open .info-tip{opacity:1;visibility:visible;transform:translateY(0);}
     .info-btn.info-left .info-tip{left:0;right:auto;}
+    #tab-emails .card{overflow:visible;}
 
     /* ── Form fields ─────────────────────────── */
     .field{display:flex;flex-direction:column;gap:7px;}
@@ -2530,11 +2531,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
 });
 
-const EMAIL_BRIEFS = ['Routine letter/email out', 'Incoming email', 'Timed letter/email'];
+const EMAIL_BRIEFS = ['routine letter/email out', 'incoming email', 'timed letter/email'];
 function renderEmailsTable() {
   const tbody = document.getElementById('em-tbody'); if (!tbody) return;
   const loadingEl = document.getElementById('em-loading'); const emptyEl = document.getElementById('em-empty'); const summary = document.getElementById('em-summary');
-  const emails = caActions.filter(a => EMAIL_BRIEFS.includes(a.fields?.['field_9'] || ''));
+  const emails = caActions.filter(a => EMAIL_BRIEFS.includes((a.fields?.['field_9'] || '').trim().toLowerCase()));
   if (loadingEl) loadingEl.style.display = 'none';
   tbody.innerHTML = '';
   if (!emails.length) { if (emptyEl) emptyEl.style.display = 'block'; if (summary) summary.textContent = ''; return; }
