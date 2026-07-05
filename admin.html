@@ -864,14 +864,18 @@ function renderUnassignedCases(){
     const firm=f['Firm_x0028_text_x0029_']||'';
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
+    const laip=f['InterPartesorLegalAid']||'';
+    const laipBadge=laip.toLowerCase().includes('legal aid')?'LA':laip.toLowerCase().includes('inter partes')?'IP':'';
+    const laipStyle=laipBadge==='LA'?'background:#DCFCE7;color:#14532D;':'background:#DBEAFE;color:#1E40AF;';
     const row=document.createElement('div');
     row.className='ar-row';
     row.innerHTML=
       '<div class="ar-date uc-date">'+(dateRec?escHtml(dateRec)+'<div class="uc-rec-label">Received</div>':'\u2014')+'</div>'+
       '<div class="ar-body">'+
-        '<div class="ar-event">'+escHtml(name)+'</div>'+
-        '<div class="ar-case">'+escHtml(ref)+(firm?' \u00b7 '+escHtml(firm):'')+'</div>'+
+        '<div class="ar-event">'+escHtml(firm||name)+'</div>'+
+        '<div class="ar-case">'+escHtml(name)+'</div>'+
       '</div>'+
+      (laipBadge?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;'+laipStyle+'">'+laipBadge+'</span>':'')+
       (task?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;">'+escHtml(task)+'</span>':'')+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
         '<option value="">Assign to\u2026</option>'+
