@@ -64,7 +64,7 @@
     .state-loading h3{font-family:'Spectral',serif;font-weight:300;font-size:22px;color:var(--navy);margin-bottom:8px;}
 
     /* ── Stat cards ── */
-    .stat-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;}
+    .stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
     @media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr);}}
     .stat-card{
       background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);
@@ -77,7 +77,6 @@
     .stat-card-label{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:10px;}
     .stat-card-value{font-family:'Spectral',serif;font-weight:300;font-size:38px;color:var(--navy);line-height:1;}
     .stat-card-sub{font-size:11.5px;color:var(--grey-mid);margin-top:6px;}
-    .stat-card-hint{font-size:10px;color:var(--grey-mid);font-style:italic;text-align:center;margin-top:6px;opacity:.65;}
     .stat-card.danger .stat-card-value{color:var(--red);}
     .stat-card.danger .stat-card-label{color:var(--red);}
     .stat-card-accent{position:absolute;top:0;left:0;width:3px;height:100%;background:var(--gold);opacity:0;transition:opacity .18s ease;}
@@ -204,7 +203,6 @@
     .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
-    .ca-brief-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:.03em;padding:1px 7px;border-radius:6px;margin-bottom:3px;white-space:nowrap;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ca-panel-list{max-height:640px;overflow-y:auto;}
     /* Action buttons */
@@ -307,21 +305,18 @@
         <div class="stat-card-label">Open Cases</div>
         <div class="stat-card-value" id="stat-total">0</div>
         <div class="stat-card-sub" id="stat-total-sub"></div>
-        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-wip">
         <div class="stat-card-accent"></div>
         <div class="stat-card-label">My WIP Value</div>
         <div class="stat-card-value" id="stat-wip" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">unbilled hours &times; rate</div>
-        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
         <div class="stat-card-label">Invoiced This Month</div>
         <div class="stat-card-value" id="stat-invoiced" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">net, current calendar month</div>
-        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-wip-period">
         <div class="stat-card-accent"></div>
@@ -334,14 +329,6 @@
         </div>
         <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub" id="stat-wip-period-sub">unbilled, current month</div>
-        <div class="stat-card-hint">click for breakdown</div>
-      </div>
-      <div class="stat-card" id="card-4pct">
-        <div class="stat-card-accent"></div>
-        <div class="stat-card-label">4% of O/STANDING PC CLAIMED</div>
-        <div class="stat-card-value" id="stat-4pct" style="font-size:28px;margin-top:4px;">&mdash;</div>
-        <div class="stat-card-sub" id="stat-4pct-sub">est. TMC drafting fee</div>
-        <div class="stat-card-hint">click for breakdown</div>
       </div>
     </div>
 
@@ -479,10 +466,6 @@
         <label>Work Done *</label>
         <textarea id="ca-work-done" placeholder="Describe the work&hellip;"></textarea>
       </div>
-      <div class="dm-field">
-        <label>Brief</label>
-        <select id="ca-brief"></select>
-      </div>
       <div class="dm-row">
         <div class="dm-field">
           <label>Date</label>
@@ -606,108 +589,6 @@
   </div>
 </div>
 
-<!-- 4% PC Breakdown Modal -->
-<div class="briefing-modal-overlay" id="modal-4pct">
-  <div class="briefing-modal" style="max-width:720px;">
-    <div class="briefing-modal-head">
-      <span class="briefing-modal-title">4% Drafting Fee Breakdown</span>
-      <button class="briefing-modal-close" id="btn-4pct-close">&times;</button>
-    </div>
-    <div style="max-height:62vh;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-        <thead>
-          <tr>
-            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
-            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">PC Claimed</th>
-            <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">4% Fee</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-4pct"></tbody>
-        <tfoot id="tfoot-4pct"></tfoot>
-      </table>
-    </div>
-    <div class="briefing-footer">
-      <span class="briefing-as-of">Excludes cases where drafting fee already invoiced &middot; Click a row to open the case.</span>
-      <button class="dm-btn dm-btn-secondary" id="btn-4pct-close2">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- WIP Value Breakdown Modal -->
-<div class="briefing-modal-overlay" id="modal-wip">
-  <div class="briefing-modal" style="max-width:720px;">
-    <div class="briefing-modal-head">
-      <span class="briefing-modal-title">WIP Value Breakdown</span>
-      <button class="briefing-modal-close" id="btn-wip-close">&times;</button>
-    </div>
-    <div style="max-height:62vh;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-        <thead><tr>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Unbilled Hrs</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">WIP Value</th>
-        </tr></thead>
-        <tbody id="tbody-wip"></tbody>
-        <tfoot id="tfoot-wip"></tfoot>
-      </table>
-    </div>
-    <div class="briefing-footer">
-      <span class="briefing-as-of">All unbilled actions &middot; Click a row to open the case.</span>
-      <button class="dm-btn dm-btn-secondary" id="btn-wip-close2">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- Invoiced This Month Breakdown Modal -->
-<div class="briefing-modal-overlay" id="modal-invoiced">
-  <div class="briefing-modal" style="max-width:720px;">
-    <div class="briefing-modal-head">
-      <span class="briefing-modal-title">Invoiced This Month</span>
-      <button class="briefing-modal-close" id="btn-invoiced-close">&times;</button>
-    </div>
-    <div style="max-height:62vh;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-        <thead><tr>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Invoice #</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Net</th>
-        </tr></thead>
-        <tbody id="tbody-invoiced"></tbody>
-        <tfoot id="tfoot-invoiced"></tfoot>
-      </table>
-    </div>
-    <div class="briefing-footer">
-      <span class="briefing-as-of">Your invoices, current calendar month &middot; Click a row to open the case.</span>
-      <button class="dm-btn dm-btn-secondary" id="btn-invoiced-close2">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- WIP This Period Breakdown Modal -->
-<div class="briefing-modal-overlay" id="modal-wip-period">
-  <div class="briefing-modal" style="max-width:720px;">
-    <div class="briefing-modal-head">
-      <span class="briefing-modal-title" id="modal-wip-period-title">WIP This Period Breakdown</span>
-      <button class="briefing-modal-close" id="btn-wip-period-close">&times;</button>
-    </div>
-    <div style="max-height:62vh;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
-        <thead><tr>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Hrs</th>
-          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Value</th>
-        </tr></thead>
-        <tbody id="tbody-wip-period"></tbody>
-        <tfoot id="tfoot-wip-period"></tfoot>
-      </table>
-    </div>
-    <div class="briefing-footer">
-      <span class="briefing-as-of" id="wip-period-note">Click a row to open the case.</span>
-      <button class="dm-btn dm-btn-secondary" id="btn-wip-period-close2">Close</button>
-    </div>
-  </div>
-</div>
-
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let allCases     = [];
@@ -717,8 +598,6 @@ let allActions   = [];   // flat array of TT2 rows across all my cases
 let editingAction = null; // action currently open in edit modal
 let wipTotal     = 0;    // draftsman's unbilled WIP value
 let invoicedThisMonth = 0; // draftsman's Net invoiced current calendar month
-let allInvoices  = [];   // Invoice Library records — used to exclude cases where drafting fee is already invoiced
-let pcBreakdown  = [];   // breakdown rows for 4% PC modal: [{name,ref,pc}]
 let wipThisMonth = 0;  // unbilled WIP value from actions this calendar month
 let wipThisWeek  = 0;  // unbilled WIP value from actions this Mon–Sun week
 let wipPeriod    = 'month'; // 'month' | 'week'
@@ -746,18 +625,6 @@ const BRIEF_OPTIONS = [
   'Routine telephone call','Timed letter/email','Timed telephone call',
   'Teams/Zoom call','In person hearing','Remote hearing','Mediation',
 ];
-const BRIEF_STYLES = {
-  'Preparation/Perusal':      {e:'\uD83D\uDCCB',bg:'#EDE9FE',c:'#5B21B6',label:'Prep/Perusal'},
-  'Routine letter/email out': {e:'\u2709\uFE0F',bg:'#FEF9C3',c:'#92400E',label:'Letter out'},
-  'Incoming email':           {e:'\uD83D\uDCE5',bg:'#DCFCE7',c:'#166534',label:'Email in'},
-  'Routine telephone call':   {e:'\uD83D\uDCDE',bg:'#FFEDD5',c:'#9A3412',label:'Telephone'},
-  'Timed letter/email':       {e:'\u23F1\uFE0F',bg:'#FEF3C7',c:'#713F12',label:'Timed letter'},
-  'Timed telephone call':     {e:'\u23F1\uFE0F',bg:'#FFE4E6',c:'#9F1239',label:'Timed call'},
-  'Teams/Zoom call':          {e:'\uD83D\uDCF9',bg:'#DBEAFE',c:'#1E40AF',label:'Teams/Zoom'},
-  'In person hearing':        {e:'\u2696\uFE0F',bg:'#FCE7F3',c:'#9D174D',label:'In person'},
-  'Remote hearing':           {e:'\uD83D\uDCBB',bg:'#F3E8FF',c:'#6B21A8',label:'Remote hearing'},
-  'Mediation':                {e:'\uD83E\uDD1D',bg:'#CCFBF1',c:'#0F766E',label:'Mediation'},
-};
 const NAME_DISPLAY = {
   joanna:'Joanna',tracy:'Tracy',kelly:'Kelly',tom:'Tom',
   julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley',
@@ -898,29 +765,6 @@ function renderStats(){
     if(d>=weekStart&&d<weekEnd) wipThisWeek+=val;
   });
   updateWipPeriodCard();
-  // ── 4% of PC Claimed (excl. cases where drafting fee already invoiced) ──────
-  const draftingInvoicedRefs=new Set(
-    allInvoices
-      .filter(inv=>!inv.Cancelled && parseFloat(inv.DraftingFeeElement||0)>0)
-      .map(inv=>(inv.Ourref||'').trim())
-  );
-  let totalPC=0; let pcCount=0;
-  pcBreakdown=[];
-  myCases.forEach(c=>{
-    const ref=c.fields['Ourreference_x0028_text_x0029_']||'';
-    if(draftingInvoicedRefs.has(ref)) return; // drafting fee already invoiced
-    const pc=parseFloat(c.fields['ProfitCostsClaimed_x0028_Ex_x002'])||0;
-    if(pc>0){
-      totalPC+=pc;pcCount++;
-      const name=c.fields['CaseNameForOpenCases']||c.fields['Title']||ref;
-      pcBreakdown.push({name,ref,pc});
-    }
-  });
-  pcBreakdown.sort((a,b)=>b.pc-a.pc);
-  document.getElementById('stat-4pct').textContent=totalPC>0?fmt(totalPC*0.04):'\u2014';
-  document.getElementById('stat-4pct-sub').textContent=pcCount>0
-    ?'4% of '+fmt(totalPC)+' PC ('+pcCount+' case'+(pcCount!==1?'s':'')+')'  
-    :'no PC entered yet';
 }
 
 // ── Render stage breakdown ─────────────────────────────────────────────────
@@ -1217,11 +1061,12 @@ async function loadActions(cases){
   allActions.sort((a,b)=>{
     const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
     const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
-    if(da!==db) return db.localeCompare(da);
-    // Same date: most recently created item first
-    const ca=a.fields?.['Created']||'';
-    const cb=b.fields?.['Created']||'';
-    return cb.localeCompare(ca);
+    const cmp=db.localeCompare(da);
+    if(cmp!==0) return cmp;
+    // Tie-break: field_12 is stored as midnight-only (T00:00:00Z), so same-day actions tie here.
+    // Break on SharePoint item ID descending so the most recently added action for that day
+    // appears at the top (matches the fix in /api/caseactions).
+    return (parseInt(b.id,10)||0)-(parseInt(a.id,10)||0);
   });
 }
 
@@ -1240,15 +1085,11 @@ function renderActionsPanel(){
     const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
     const rate=parseFloat(a.fields?.['field_6'])||0;
     const val=hrs*rate;
-    const brief=a.fields?.['field_9']||'';
-    const bs=BRIEF_STYLES[brief];
     const row=document.createElement('div');
     row.className='ca-panel-row';
-    if(bs) row.style.borderLeft='3px solid '+bs.c;
     row.innerHTML=
       '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
       '<div class="ca-panel-body">'+
-        (bs?'<span class="ca-brief-chip" style="background:'+bs.bg+';color:'+bs.c+';display:block;">'+(bs.e?bs.e+' ':'')+escHtml(brief)+'</span>':'')+
         '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'\u2026':wd||'\u2014')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
@@ -1349,7 +1190,6 @@ function populateCasePickers(){
   const today=new Date().toISOString().slice(0,10);
   document.getElementById('ca-date').value=today;
   document.getElementById('rem-due').value=today;
-  document.getElementById('ca-brief').innerHTML=BRIEF_OPTIONS.map(o=>'<option value="'+escHtml(o)+'">'+escHtml(o)+'</option>').join('');
 }
 
 // ── Modal helpers ───────────────────────────────────────────────────
@@ -1379,7 +1219,6 @@ async function saveAction(){
   const rate=parseFloat(document.getElementById('ca-rate').value)||0;
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
-  const brief=document.getElementById('ca-brief').value||'Preparation/Perusal';
   const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
   const caseItem=myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref);
   const caseItemId=caseItem?.id||null;
@@ -1387,7 +1226,7 @@ async function saveAction(){
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,brief,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
+      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,billable,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
@@ -1399,7 +1238,6 @@ async function saveAction(){
     document.getElementById('ca-hours').value='';
     document.getElementById('ca-rate').value='';
     document.getElementById('ca-billable').checked=true;
-    document.getElementById('ca-brief').value=BRIEF_OPTIONS[0];
   }catch(err){
     msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;
   }finally{btn.disabled=false;}
@@ -1614,175 +1452,6 @@ function openAllRemindersModal(){
 }
 
 // ── Wire up stat cards ─────────────────────────────────────────────────────
-// ── WIP Value breakdown ─────────────────────────────────────────────────────────────────
-function openWipBreakdown(){
-  const tbody=document.getElementById('tbody-wip');
-  const tfoot=document.getElementById('tfoot-wip');
-  tbody.innerHTML='';
-  const map={};
-  allActions.forEach(a=>{
-    const ref=a._caseRef||'';
-    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
-    const rate=parseFloat(a.fields?.['field_6'])||0;
-    const val=hrs*rate;
-    if(!map[ref]) map[ref]={name:a._caseName||ref,ref,hrs:0,val:0};
-    map[ref].hrs+=hrs; map[ref].val+=val;
-  });
-  const rows=Object.values(map).filter(r=>r.val>0).sort((a,b)=>b.val-a.val);
-  if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No unbilled actions.</td></tr>';
-  } else {
-    rows.forEach(row=>{
-      const tr=document.createElement('tr');
-      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
-      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
-      tr.addEventListener('mouseout',()=>tr.style.background='');
-      tr.innerHTML=
-        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
-        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+( Math.round(row.hrs*10)/10).toFixed(1)+'</td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.val)+'</td>';
-      tr.addEventListener('click',()=>{document.getElementById('modal-wip').classList.remove('open');window.location.href='case.html?ref='+encodeURIComponent(row.ref);});
-      tbody.appendChild(tr);
-    });
-    const totH=rows.reduce((s,r)=>s+r.hrs,0);
-    const totV=rows.reduce((s,r)=>s+r.val,0);
-    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
-      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' case'+(rows.length!==1?'s':'')+')</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+( Math.round(totH*10)/10).toFixed(1)+'</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(totV)+'</td></tr>';
-  }
-  document.getElementById('modal-wip').classList.add('open');
-}
-
-// ── Invoiced This Month breakdown ───────────────────────────────────────────────────────
-function openInvoicedBreakdown(){
-  const tbody=document.getElementById('tbody-invoiced');
-  const tfoot=document.getElementById('tfoot-invoiced');
-  tbody.innerHTML='';
-  const now=new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
-  const rows=allInvoices.filter(inv=>{
-    if(inv.Cancelled||!inv.InvoiceDate) return false;
-    if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
-    const d=new Date(inv.InvoiceDate);
-    return d.getFullYear()===yr&&d.getMonth()===mo;
-  }).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
-  if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No invoices issued this month.</td></tr>';
-  } else {
-    rows.forEach(inv=>{
-      const ref=(inv.Ourref||'').trim();
-      const name=inv.Casename||ref;
-      const invoiceNo=inv.OrderDetails||'\u2014';
-      const net=inv.Net||0;
-      const tr=document.createElement('tr');
-      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
-      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
-      tr.addEventListener('mouseout',()=>tr.style.background='');
-      tr.innerHTML=
-        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(name)+'</div>'+
-        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(ref)+'</div></td>'+
-        '<td style="padding:11px 20px;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+escHtml(String(invoiceNo))+'</td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(net)+'</td>';
-      tr.addEventListener('click',()=>{document.getElementById('modal-invoiced').classList.remove('open');if(ref) window.location.href='case.html?ref='+encodeURIComponent(ref);});
-      tbody.appendChild(tr);
-    });
-    const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
-    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
-      '<td colspan="2" style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+')</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(tot)+'</td></tr>';
-  }
-  document.getElementById('modal-invoiced').classList.add('open');
-}
-
-// ── WIP This Period breakdown ───────────────────────────────────────────────────────────────
-function openWipPeriodBreakdown(){
-  const tbody=document.getElementById('tbody-wip-period');
-  const tfoot=document.getElementById('tfoot-wip-period');
-  tbody.innerHTML='';
-  const now=new Date();
-  const yr=now.getFullYear(); const mo=now.getMonth();
-  const dow=now.getDay(); const diffToMon=dow===0?6:dow-1;
-  const weekStart=new Date(now); weekStart.setHours(0,0,0,0); weekStart.setDate(weekStart.getDate()-diffToMon);
-  const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
-  const isPeriodMonth=wipPeriod==='month';
-  document.getElementById('modal-wip-period-title').textContent='WIP This '+(isPeriodMonth?'Month':'Week')+' Breakdown';
-  document.getElementById('wip-period-note').textContent='Unbilled, '+(isPeriodMonth?'current month':'this week')+' \u00b7 Click a row to open the case.';
-  const map={};
-  allActions.forEach(a=>{
-    const dateStr=a.fields?.['field_12']||a.fields?.['field_1']||'';
-    if(!dateStr) return;
-    const d=new Date(dateStr); if(isNaN(d)) return;
-    const inPeriod=isPeriodMonth?(d.getFullYear()===yr&&d.getMonth()===mo):(d>=weekStart&&d<weekEnd);
-    if(!inPeriod) return;
-    const ref=a._caseRef||'';
-    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
-    const rate=parseFloat(a.fields?.['field_6'])||0;
-    const val=hrs*rate;
-    if(!map[ref]) map[ref]={name:a._caseName||ref,ref,hrs:0,val:0};
-    map[ref].hrs+=hrs; map[ref].val+=val;
-  });
-  const rows=Object.values(map).filter(r=>r.val>0).sort((a,b)=>b.val-a.val);
-  if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No unbilled actions in this period.</td></tr>';
-  } else {
-    rows.forEach(row=>{
-      const tr=document.createElement('tr');
-      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
-      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
-      tr.addEventListener('mouseout',()=>tr.style.background='');
-      tr.innerHTML=
-        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
-        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+(Math.round(row.hrs*10)/10).toFixed(1)+'</td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.val)+'</td>';
-      tr.addEventListener('click',()=>{document.getElementById('modal-wip-period').classList.remove('open');window.location.href='case.html?ref='+encodeURIComponent(row.ref);});
-      tbody.appendChild(tr);
-    });
-    const totH=rows.reduce((s,r)=>s+r.hrs,0);
-    const totV=rows.reduce((s,r)=>s+r.val,0);
-    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
-      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' case'+(rows.length!==1?'s':'')+')</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+(Math.round(totH*10)/10).toFixed(1)+'</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(totV)+'</td></tr>';
-  }
-  document.getElementById('modal-wip-period').classList.add('open');
-}
-
-// ── 4% PC Breakdown modal ─────────────────────────────────────────────────────────────────
-function openPcBreakdown(){
-  const tbody=document.getElementById('tbody-4pct');
-  const tfoot=document.getElementById('tfoot-4pct');
-  tbody.innerHTML='';
-  if(!pcBreakdown.length){
-    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases with PC entered yet.</td></tr>';
-  } else {
-    pcBreakdown.forEach(row=>{
-      const tr=document.createElement('tr');
-      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
-      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
-      tr.addEventListener('mouseout', ()=>tr.style.background='');
-      tr.innerHTML=
-        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
-        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+fmt(row.pc)+'</td>'+
-        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.pc*0.04)+'</td>';
-      tr.addEventListener('click',()=>{
-        document.getElementById('modal-4pct').classList.remove('open');
-        window.location.href='case.html?ref='+encodeURIComponent(row.ref);
-      });
-      tbody.appendChild(tr);
-    });
-    const tot=pcBreakdown.reduce((s,r)=>s+r.pc,0);
-    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
-      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+pcBreakdown.length+' case'+(pcBreakdown.length!==1?'s':'')+', uninvoiced fee)</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+fmt(tot)+'</td>'+
-      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(tot*0.04)+'</td>'+
-      '</tr>';
-  }
-  document.getElementById('modal-4pct').classList.add('open');
-}
-
 function wireCards(){
   document.getElementById('card-total').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
@@ -1801,29 +1470,13 @@ function wireCards(){
   document.getElementById('rem-save').addEventListener('click',saveReminder);
   document.getElementById('edit-ca-save').addEventListener('click',saveEditAction);
   document.getElementById('edit-ca-delete').addEventListener('click',deleteEditAction);
-  document.getElementById('card-4pct').addEventListener('click',openPcBreakdown);
-  document.getElementById('btn-4pct-close').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
-  document.getElementById('btn-4pct-close2').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
-  document.getElementById('modal-4pct').addEventListener('click',e=>{if(e.target===document.getElementById('modal-4pct'))document.getElementById('modal-4pct').classList.remove('open');});
-  document.getElementById('card-wip').addEventListener('click',openWipBreakdown);
-  document.getElementById('btn-wip-close').addEventListener('click',()=>document.getElementById('modal-wip').classList.remove('open'));
-  document.getElementById('btn-wip-close2').addEventListener('click',()=>document.getElementById('modal-wip').classList.remove('open'));
-  document.getElementById('modal-wip').addEventListener('click',e=>{if(e.target===document.getElementById('modal-wip'))document.getElementById('modal-wip').classList.remove('open');});
-  document.getElementById('card-invoiced').addEventListener('click',openInvoicedBreakdown);
-  document.getElementById('btn-invoiced-close').addEventListener('click',()=>document.getElementById('modal-invoiced').classList.remove('open'));
-  document.getElementById('btn-invoiced-close2').addEventListener('click',()=>document.getElementById('modal-invoiced').classList.remove('open'));
-  document.getElementById('modal-invoiced').addEventListener('click',e=>{if(e.target===document.getElementById('modal-invoiced'))document.getElementById('modal-invoiced').classList.remove('open');});
-  document.getElementById('card-wip-period').addEventListener('click',openWipPeriodBreakdown);
-  document.getElementById('btn-wip-period-close').addEventListener('click',()=>document.getElementById('modal-wip-period').classList.remove('open'));
-  document.getElementById('btn-wip-period-close2').addEventListener('click',()=>document.getElementById('modal-wip-period').classList.remove('open'));
-  document.getElementById('modal-wip-period').addEventListener('click',e=>{if(e.target===document.getElementById('modal-wip-period'))document.getElementById('modal-wip-period').classList.remove('open');});
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
 const CACHE_TTL_MS = 30 * 60 * 1000;
 function cacheKey(){ return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon'); }
 function writeCache(){
-  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allInvoices,allReminders,allActions})); }catch{}
+  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders,allActions})); }catch{}
 }
 function readCache(){
   try{
@@ -1855,7 +1508,6 @@ async function fetchAllData(){
   if(invResp&&invResp.ok){
     const invData=await invResp.json();
     const invItems=Array.isArray(invData)?invData:(invData.value||[]);
-    allInvoices=invItems; // store for 4% PC drafting-fee exclusion
     const now=new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
     invoicedThisMonth=invItems.filter(inv=>{
       if(inv.Cancelled||!inv.InvoiceDate) return false;
@@ -1886,7 +1538,6 @@ async function init(){
     if(cached){
       allCases=cached.allCases||[]; wipTotal=cached.wipTotal||0;
       invoicedThisMonth=cached.invoicedThisMonth||0;
-      allInvoices=cached.allInvoices||[];
       allReminders=cached.allReminders||[]; allActions=cached.allActions||[];
       myCases=allCases.filter(c=>matchesAssigned(c.fields));
       applyDataAndRender();
