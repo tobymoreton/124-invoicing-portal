@@ -25,7 +25,8 @@
  *   Billed_x003f_                 — Billed? (Boolean) — filter client-side only
  *   Num_BillableAmount_x00a3_     — Billable Amount £ (Currency)
  *   TimeSpentMirror               — Time Spent mirror (Number)
- *   Casename_x0028_text_x0029_    — Case name (Text)
+ *   CaseName                       — Case Name (Lookup → Cases list; written as integer SP item ID)
+ *   Casename_x0028_text_x0029_    — Case name text mirror (separate column)
  */
 
 const https   = require('https');
@@ -147,6 +148,8 @@ module.exports = async function (context, req) {
 
       const fields = {
         Title:    b.caseName || ref,
+        // CaseName is a SP Lookup column (required). Set it by passing the integer SP item ID of the Case record.
+        ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { CaseName: parseInt(b.caseItemId) } : {}),
         field_1:  dateEntered,
         field_2:  workDone,
         field_3:  timeSpent,
