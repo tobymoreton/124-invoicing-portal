@@ -1078,7 +1078,11 @@ async function loadActions(cases){
   allActions.sort((a,b)=>{
     const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
     const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
-    return db.localeCompare(da);
+    if(da!==db) return db.localeCompare(da);
+    // Same date: most recently created item first
+    const ca=a.fields?.['Created']||'';
+    const cb=b.fields?.['Created']||'';
+    return cb.localeCompare(ca);
   });
 }
 
