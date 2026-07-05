@@ -1073,8 +1073,15 @@ async function loadActions(cases){
     const cmp=db.localeCompare(da);
     if(cmp!==0) return cmp;
     // Tie-break: field_12 is stored as midnight-only (T00:00:00Z), so same-day actions tie here.
-    // Break on SharePoint item ID descending so the most recently added action for that day
-    // appears at the top (matches the fix in /api/caseactions).
+    // Prefer CreatedUTC (added 2026-07-05, stamped server-side on POST) when both rows have it;
+    // fall back to SharePoint item ID descending for rows created before this field existed
+    // (matches the fix in /api/caseactions).
+    const caU=a.fields?.['CreatedUTC'];
+    const cbU=b.fields?.['CreatedUTC'];
+    if(caU&&cbU){
+      const diff=new Date(cbU)-new Date(caU);
+      if(diff!==0) return diff;
+    }
     return (parseInt(b.id,10)||0)-(parseInt(a.id,10)||0);
   });
 }
