@@ -582,6 +582,7 @@
     <div class="dash-modal-footer">
       <span class="dm-save-msg" id="edit-ca-msg"></span>
       <a id="edit-ca-open-link" href="#" class="dm-btn dm-btn-secondary" style="text-decoration:none;margin-right:auto;">Open Case &rarr;</a>
+      <button class="dm-btn" id="edit-ca-delete" style="background:transparent;color:var(--red);border:1.5px solid var(--red);">Delete</button>
       <button class="dm-btn dm-btn-secondary" data-close="modal-edit-action">Cancel</button>
       <button class="dm-btn dm-btn-primary" id="edit-ca-save">Save Changes</button>
     </div>
@@ -1149,6 +1150,22 @@ async function saveEditAction(){
   finally{btn.disabled=false;}
 }
 
+async function deleteEditAction(){
+  if(!editingAction) return;
+  if(!confirm('Delete this action? This cannot be undone.')) return;
+  const msg=document.getElementById('edit-ca-msg');
+  const btn=document.getElementById('edit-ca-delete');
+  btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Deleting…';
+  try{
+    const r=await fetch('/api/caseactions',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:editingAction.id})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    allActions=allActions.filter(a=>a.id!==editingAction.id);
+    renderActionsPanel();renderStats();
+    closeModal('modal-edit-action');
+  }catch(err){msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;}
+  finally{btn.disabled=false;}
+}
+
 // ── Populate case pickers ───────────────────────────────────────────
 function populateCasePickers(){
   const sortedCases=[...myCases].sort((a,b)=>{
@@ -1447,6 +1464,7 @@ function wireCards(){
   document.getElementById('ca-save').addEventListener('click',saveAction);
   document.getElementById('rem-save').addEventListener('click',saveReminder);
   document.getElementById('edit-ca-save').addEventListener('click',saveEditAction);
+  document.getElementById('edit-ca-delete').addEventListener('click',deleteEditAction);
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
