@@ -1748,8 +1748,8 @@ function renderDocumentBar() {
     notes: f['Notes'] || '',
   }).toString();
   const biUrl = '/booking-in-sheet.html?' + biParams;
+  const ackBtnHtml = '<a class="doc-btn" href="' + BLUE + '/builder.html?' + 'firm=' + enc(firm) + '&matter=' + enc(matter) + '&yourref=' + enc(yourRef) + '&ourref=' + enc(ourRef) + '" target="_blank" rel="noopener">Acknowledgment</a>';
   const links = [
-    { label: 'Acknowledgment', url: BLUE + '/builder.html?' + 'firm=' + enc(firm) + '&matter=' + enc(matter) + '&yourref=' + enc(yourRef) + '&ourref=' + enc(ourRef) },
     { label: 'Informal Service', url: ICY + '/builder.html?' + 'MatterName=' + enc(matter) + '&FeeEarner=' + enc(feeEarner) + '&Draftsman=' + enc(draftsman) + '&CaseRef=' + enc(yourRef) + '&TMCRef=' + enc(ourRef) },
     { label: 'Formal Service', url: ICY + '/builder.html?' + 'template=FormalServiceNonHJA' + '&OppoFirm=' + enc(oppoFirm) + '&OppoAddress1=' + enc(oppoA1) + '&OppoAddress2=' + enc(oppoA2) + '&OppoAddress3=' + enc(oppoA3) + '&OppoAddress4=' + enc(oppoA4) + '&OppoAddress5=' + enc(oppoA5) + '&YourRef=' + enc(oppoRef) + '&OurRef=' + enc(ourRef) + '&FullCaseName=' + enc(fullCaseName) + '&Firm=' + enc(firm) + '&TotalInterest=' + enc(totalInterest) + '&DailyRatePeriod4=' + enc(dailyRate) },
     { label: 'Inter Partes Memo', url: ICY + '/builder.html?' + 'MatterName=' + enc(matter) + '&FeeEarner=' + enc(feeEarner) + '&Draftsman=' + enc(draftsman) + '&CaseRef=' + enc(yourRef) + '&TMCRef=' + enc(ourRef) },
@@ -1758,8 +1758,7 @@ function renderDocumentBar() {
   ];
   const biBtnHtml = '<a class="doc-btn" href="' + biUrl + '" target="_blank" rel="noopener">📋 Booking In Sheet</a>';
   const linkHtmls = links.map(u => '<button class="doc-btn" data-url="' + u.url + '">' + u.label + '</button>');
-  linkHtmls.splice(1, 0, biBtnHtml);
-  bar.innerHTML = linkHtmls.join('');
+  bar.innerHTML = [ackBtnHtml, biBtnHtml, ...linkHtmls].join('');
   bar.querySelectorAll('.doc-btn[data-url]').forEach(btn => { btn.addEventListener('click', () => openDocOverlay(btn.dataset.url, btn.textContent)); });
 }
 
