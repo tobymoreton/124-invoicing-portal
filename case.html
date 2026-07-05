@@ -1393,7 +1393,30 @@
         <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
         <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
-      <div class="coming-soon"><div class="icon">📧</div><h3>Emails</h3><p>Coming soon.</p></div>
+      <div class="card">
+        <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">📧 Emails</span><button type="button" class="info-btn info-left" aria-label="About Emails"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Case Actions whose Brief is a letter or email (Routine letter/email out, Incoming email, Timed letter/email), shown with the Email Event category. Log new entries from the Case Actions tab.</span></button></span>
+          <span id="em-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+        </div>
+        <div>
+          <table class="ca-table" id="em-table">
+            <colgroup>
+              <col class="ca-col-date"/><col class="ca-col-by"/><col style="width:130px;"/><col style="width:140px;"/>
+              <col/>
+              <col class="ca-col-hrs"/><col class="ca-col-rate"/><col class="ca-col-amt"/>
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Date</th><th>By</th><th>Brief</th><th>Email Event</th><th>Work Done</th>
+                <th class="ca-right">Hrs</th><th class="ca-right">Rate</th><th class="ca-right">Amt</th>
+              </tr>
+            </thead>
+            <tbody id="em-tbody"></tbody>
+          </table>
+        </div>
+        <div id="em-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading emails&hellip;</div>
+        <div id="em-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No emails found for this case.</div>
+      </div>
     </div>
     <div class="tab-panel" id="tab-attachments">
       <div class="quick-action-bar">
@@ -2503,8 +2526,44 @@ let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (caLoaded) { renderCaTable(); initAddActionPanel(); } else if (!caFetching) { loadCaseActions(); } }); }
+  if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
 });
+
+const EMAIL_BRIEFS = ['Routine letter/email out', 'Incoming email', 'Timed letter/email'];
+function renderEmailsTable() {
+  const tbody = document.getElementById('em-tbody'); if (!tbody) return;
+  const loadingEl = document.getElementById('em-loading'); const emptyEl = document.getElementById('em-empty'); const summary = document.getElementById('em-summary');
+  const emails = caActions.filter(a => EMAIL_BRIEFS.includes(a.fields?.['field_9'] || ''));
+  if (loadingEl) loadingEl.style.display = 'none';
+  tbody.innerHTML = '';
+  if (!emails.length) { if (emptyEl) emptyEl.style.display = 'block'; if (summary) summary.textContent = ''; return; }
+  if (emptyEl) emptyEl.style.display = 'none';
+  const totalHrs = emails.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
+  if (summary) summary.textContent = emails.length + ' email' + (emails.length !== 1 ? 's' : '') + ' \u00b7 ' + fmtN(totalHrs, 2) + ' hrs';
+  emails.forEach(a => {
+    const f = a.fields || {};
+    const dateStr = fmtDate(f['field_12'] || f['field_1']);
+    const byName = (f['Completedby_x0028_text_x0029_'] || f['field_18'] || '').split(' ')[0];
+    const brief = f['field_9'] || '';
+    const emailEvent = f['EmailEvent'] || '';
+    const workDone = f['field_2'] || '';
+    const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+    const rate = parseFloat(f['field_6']) || 0;
+    const amtRaw = parseFloat(f['Num_BillableAmount_x00a3_']);
+    const amt = (!isNaN(amtRaw) && amtRaw > 0) ? amtRaw : hrs * rate;
+    const tr = document.createElement('tr'); tr.className = 'ca-row';
+    tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
+      + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
+      + `<td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(brief)}">${escHtml(brief)}</td>`
+      + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
+      + `<td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>`
+      + `<td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>`
+      + `<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>`
+      + `<td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
 
 async function loadCaseActions() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
@@ -2513,7 +2572,7 @@ async function loadCaseActions() {
   const controller = new AbortController(); const fetchTimeout = setTimeout(() => controller.abort(), 30000);
   try {
     const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref), { signal: controller.signal }); clearTimeout(fetchTimeout); if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json(); caActions = data.value || []; caLoaded = true; caFetching = false; renderCaTable(); initAddActionPanel();
+    const data = await resp.json(); caActions = data.value || []; caLoaded = true; caFetching = false; renderCaTable(); initAddActionPanel(); renderEmailsTable();
     const deepActionId = new URLSearchParams(window.location.search).get('action');
     if (deepActionId && caActions.some(a => a.id === deepActionId)) {
       caEditingId = deepActionId; renderCaTable();
