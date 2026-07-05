@@ -77,6 +77,7 @@
     .stat-card-label{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:10px;}
     .stat-card-value{font-family:'Spectral',serif;font-weight:300;font-size:38px;color:var(--navy);line-height:1;}
     .stat-card-sub{font-size:11.5px;color:var(--grey-mid);margin-top:6px;}
+    .stat-card-hint{font-size:10px;color:var(--grey-mid);font-style:italic;text-align:center;margin-top:6px;opacity:.65;}
     .stat-card.danger .stat-card-value{color:var(--red);}
     .stat-card.danger .stat-card-label{color:var(--red);}
     .stat-card-accent{position:absolute;top:0;left:0;width:3px;height:100%;background:var(--gold);opacity:0;transition:opacity .18s ease;}
@@ -306,18 +307,21 @@
         <div class="stat-card-label">Open Cases</div>
         <div class="stat-card-value" id="stat-total">0</div>
         <div class="stat-card-sub" id="stat-total-sub"></div>
+        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-wip">
         <div class="stat-card-accent"></div>
         <div class="stat-card-label">My WIP Value</div>
         <div class="stat-card-value" id="stat-wip" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">unbilled hours &times; rate</div>
+        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
         <div class="stat-card-label">Invoiced This Month</div>
         <div class="stat-card-value" id="stat-invoiced" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub">net, current calendar month</div>
+        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-wip-period">
         <div class="stat-card-accent"></div>
@@ -330,12 +334,14 @@
         </div>
         <div class="stat-card-value" id="stat-wip-period" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub" id="stat-wip-period-sub">unbilled, current month</div>
+        <div class="stat-card-hint">click for breakdown</div>
       </div>
       <div class="stat-card" id="card-4pct">
         <div class="stat-card-accent"></div>
-        <div class="stat-card-label">4% of PC Claimed</div>
+        <div class="stat-card-label">4% of O/STANDING PC CLAIMED</div>
         <div class="stat-card-value" id="stat-4pct" style="font-size:28px;margin-top:4px;">&mdash;</div>
         <div class="stat-card-sub" id="stat-4pct-sub">est. TMC drafting fee</div>
+        <div class="stat-card-hint">click for breakdown</div>
       </div>
     </div>
 
@@ -623,6 +629,81 @@
     <div class="briefing-footer">
       <span class="briefing-as-of">Excludes cases where drafting fee already invoiced &middot; Click a row to open the case.</span>
       <button class="dm-btn dm-btn-secondary" id="btn-4pct-close2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- WIP Value Breakdown Modal -->
+<div class="briefing-modal-overlay" id="modal-wip">
+  <div class="briefing-modal" style="max-width:720px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">WIP Value Breakdown</span>
+      <button class="briefing-modal-close" id="btn-wip-close">&times;</button>
+    </div>
+    <div style="max-height:62vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead><tr>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Unbilled Hrs</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">WIP Value</th>
+        </tr></thead>
+        <tbody id="tbody-wip"></tbody>
+        <tfoot id="tfoot-wip"></tfoot>
+      </table>
+    </div>
+    <div class="briefing-footer">
+      <span class="briefing-as-of">All unbilled actions &middot; Click a row to open the case.</span>
+      <button class="dm-btn dm-btn-secondary" id="btn-wip-close2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoiced This Month Breakdown Modal -->
+<div class="briefing-modal-overlay" id="modal-invoiced">
+  <div class="briefing-modal" style="max-width:720px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title">Invoiced This Month</span>
+      <button class="briefing-modal-close" id="btn-invoiced-close">&times;</button>
+    </div>
+    <div style="max-height:62vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead><tr>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Invoice #</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Net</th>
+        </tr></thead>
+        <tbody id="tbody-invoiced"></tbody>
+        <tfoot id="tfoot-invoiced"></tfoot>
+      </table>
+    </div>
+    <div class="briefing-footer">
+      <span class="briefing-as-of">Your invoices, current calendar month &middot; Click a row to open the case.</span>
+      <button class="dm-btn dm-btn-secondary" id="btn-invoiced-close2">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- WIP This Period Breakdown Modal -->
+<div class="briefing-modal-overlay" id="modal-wip-period">
+  <div class="briefing-modal" style="max-width:720px;">
+    <div class="briefing-modal-head">
+      <span class="briefing-modal-title" id="modal-wip-period-title">WIP This Period Breakdown</span>
+      <button class="briefing-modal-close" id="btn-wip-period-close">&times;</button>
+    </div>
+    <div style="max-height:62vh;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <thead><tr>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:left;">Case</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Hrs</th>
+          <th style="background:var(--navy);color:rgba(245,242,235,.65);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;padding:10px 20px;text-align:right;">Value</th>
+        </tr></thead>
+        <tbody id="tbody-wip-period"></tbody>
+        <tfoot id="tfoot-wip-period"></tfoot>
+      </table>
+    </div>
+    <div class="briefing-footer">
+      <span class="briefing-as-of" id="wip-period-note">Click a row to open the case.</span>
+      <button class="dm-btn dm-btn-secondary" id="btn-wip-period-close2">Close</button>
     </div>
   </div>
 </div>
@@ -1533,6 +1614,141 @@ function openAllRemindersModal(){
 }
 
 // ── Wire up stat cards ─────────────────────────────────────────────────────
+// ── WIP Value breakdown ─────────────────────────────────────────────────────────────────
+function openWipBreakdown(){
+  const tbody=document.getElementById('tbody-wip');
+  const tfoot=document.getElementById('tfoot-wip');
+  tbody.innerHTML='';
+  const map={};
+  allActions.forEach(a=>{
+    const ref=a._caseRef||'';
+    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+    const rate=parseFloat(a.fields?.['field_6'])||0;
+    const val=hrs*rate;
+    if(!map[ref]) map[ref]={name:a._caseName||ref,ref,hrs:0,val:0};
+    map[ref].hrs+=hrs; map[ref].val+=val;
+  });
+  const rows=Object.values(map).filter(r=>r.val>0).sort((a,b)=>b.val-a.val);
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No unbilled actions.</td></tr>';
+  } else {
+    rows.forEach(row=>{
+      const tr=document.createElement('tr');
+      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
+      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
+      tr.addEventListener('mouseout',()=>tr.style.background='');
+      tr.innerHTML=
+        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
+        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+( Math.round(row.hrs*10)/10).toFixed(1)+'</td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.val)+'</td>';
+      tr.addEventListener('click',()=>{document.getElementById('modal-wip').classList.remove('open');window.location.href='case.html?ref='+encodeURIComponent(row.ref);});
+      tbody.appendChild(tr);
+    });
+    const totH=rows.reduce((s,r)=>s+r.hrs,0);
+    const totV=rows.reduce((s,r)=>s+r.val,0);
+    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
+      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' case'+(rows.length!==1?'s':'')+')</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+( Math.round(totH*10)/10).toFixed(1)+'</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(totV)+'</td></tr>';
+  }
+  document.getElementById('modal-wip').classList.add('open');
+}
+
+// ── Invoiced This Month breakdown ───────────────────────────────────────────────────────
+function openInvoicedBreakdown(){
+  const tbody=document.getElementById('tbody-invoiced');
+  const tfoot=document.getElementById('tfoot-invoiced');
+  tbody.innerHTML='';
+  const now=new Date(); const yr=now.getFullYear(); const mo=now.getMonth();
+  const rows=allInvoices.filter(inv=>{
+    if(inv.Cancelled||!inv.InvoiceDate) return false;
+    if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
+    const d=new Date(inv.InvoiceDate);
+    return d.getFullYear()===yr&&d.getMonth()===mo;
+  }).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No invoices issued this month.</td></tr>';
+  } else {
+    rows.forEach(inv=>{
+      const ref=(inv.Ourref||'').trim();
+      const name=inv.Casename||ref;
+      const invoiceNo=inv.OrderDetails||'\u2014';
+      const net=inv.Net||0;
+      const tr=document.createElement('tr');
+      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
+      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
+      tr.addEventListener('mouseout',()=>tr.style.background='');
+      tr.innerHTML=
+        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(name)+'</div>'+
+        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(ref)+'</div></td>'+
+        '<td style="padding:11px 20px;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+escHtml(String(invoiceNo))+'</td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(net)+'</td>';
+      tr.addEventListener('click',()=>{document.getElementById('modal-invoiced').classList.remove('open');if(ref) window.location.href='case.html?ref='+encodeURIComponent(ref);});
+      tbody.appendChild(tr);
+    });
+    const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
+    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
+      '<td colspan="2" style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+')</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(tot)+'</td></tr>';
+  }
+  document.getElementById('modal-invoiced').classList.add('open');
+}
+
+// ── WIP This Period breakdown ───────────────────────────────────────────────────────────────
+function openWipPeriodBreakdown(){
+  const tbody=document.getElementById('tbody-wip-period');
+  const tfoot=document.getElementById('tfoot-wip-period');
+  tbody.innerHTML='';
+  const now=new Date();
+  const yr=now.getFullYear(); const mo=now.getMonth();
+  const dow=now.getDay(); const diffToMon=dow===0?6:dow-1;
+  const weekStart=new Date(now); weekStart.setHours(0,0,0,0); weekStart.setDate(weekStart.getDate()-diffToMon);
+  const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
+  const isPeriodMonth=wipPeriod==='month';
+  document.getElementById('modal-wip-period-title').textContent='WIP This '+(isPeriodMonth?'Month':'Week')+' Breakdown';
+  document.getElementById('wip-period-note').textContent='Unbilled, '+(isPeriodMonth?'current month':'this week')+' \u00b7 Click a row to open the case.';
+  const map={};
+  allActions.forEach(a=>{
+    const dateStr=a.fields?.['field_12']||a.fields?.['field_1']||'';
+    if(!dateStr) return;
+    const d=new Date(dateStr); if(isNaN(d)) return;
+    const inPeriod=isPeriodMonth?(d.getFullYear()===yr&&d.getMonth()===mo):(d>=weekStart&&d<weekEnd);
+    if(!inPeriod) return;
+    const ref=a._caseRef||'';
+    const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+    const rate=parseFloat(a.fields?.['field_6'])||0;
+    const val=hrs*rate;
+    if(!map[ref]) map[ref]={name:a._caseName||ref,ref,hrs:0,val:0};
+    map[ref].hrs+=hrs; map[ref].val+=val;
+  });
+  const rows=Object.values(map).filter(r=>r.val>0).sort((a,b)=>b.val-a.val);
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="3" style="padding:28px;text-align:center;color:var(--grey-mid);font-size:13px;">No unbilled actions in this period.</td></tr>';
+  } else {
+    rows.forEach(row=>{
+      const tr=document.createElement('tr');
+      tr.style.cssText='border-bottom:1px solid var(--grey-faint);cursor:pointer;transition:background .1s;';
+      tr.addEventListener('mouseover',()=>tr.style.background='rgba(201,168,76,.04)');
+      tr.addEventListener('mouseout',()=>tr.style.background='');
+      tr.innerHTML=
+        '<td style="padding:11px 20px;"><div style="font-weight:600;color:var(--navy);">'+escHtml(row.name)+'</div>'+
+        '<div style="font-size:11px;font-family:\'IBM Plex Mono\',monospace;color:var(--grey-mid);margin-top:2px;">'+escHtml(row.ref)+'</div></td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;color:var(--navy-mid);">'+(Math.round(row.hrs*10)/10).toFixed(1)+'</td>'+
+        '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(row.val)+'</td>';
+      tr.addEventListener('click',()=>{document.getElementById('modal-wip-period').classList.remove('open');window.location.href='case.html?ref='+encodeURIComponent(row.ref);});
+      tbody.appendChild(tr);
+    });
+    const totH=rows.reduce((s,r)=>s+r.hrs,0);
+    const totV=rows.reduce((s,r)=>s+r.val,0);
+    tfoot.innerHTML='<tr style="background:var(--grey-faint);border-top:2px solid var(--grey-light);">'+
+      '<td style="padding:11px 20px;font-weight:700;color:var(--navy);">Total ('+rows.length+' case'+(rows.length!==1?'s':'')+')</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--navy);">'+(Math.round(totH*10)/10).toFixed(1)+'</td>'+
+      '<td style="padding:11px 20px;text-align:right;font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:#B8962E;">'+fmt(totV)+'</td></tr>';
+  }
+  document.getElementById('modal-wip-period').classList.add('open');
+}
+
 // ── 4% PC Breakdown modal ─────────────────────────────────────────────────────────────────
 function openPcBreakdown(){
   const tbody=document.getElementById('tbody-4pct');
@@ -1589,6 +1805,18 @@ function wireCards(){
   document.getElementById('btn-4pct-close').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
   document.getElementById('btn-4pct-close2').addEventListener('click',()=>document.getElementById('modal-4pct').classList.remove('open'));
   document.getElementById('modal-4pct').addEventListener('click',e=>{if(e.target===document.getElementById('modal-4pct'))document.getElementById('modal-4pct').classList.remove('open');});
+  document.getElementById('card-wip').addEventListener('click',openWipBreakdown);
+  document.getElementById('btn-wip-close').addEventListener('click',()=>document.getElementById('modal-wip').classList.remove('open'));
+  document.getElementById('btn-wip-close2').addEventListener('click',()=>document.getElementById('modal-wip').classList.remove('open'));
+  document.getElementById('modal-wip').addEventListener('click',e=>{if(e.target===document.getElementById('modal-wip'))document.getElementById('modal-wip').classList.remove('open');});
+  document.getElementById('card-invoiced').addEventListener('click',openInvoicedBreakdown);
+  document.getElementById('btn-invoiced-close').addEventListener('click',()=>document.getElementById('modal-invoiced').classList.remove('open'));
+  document.getElementById('btn-invoiced-close2').addEventListener('click',()=>document.getElementById('modal-invoiced').classList.remove('open'));
+  document.getElementById('modal-invoiced').addEventListener('click',e=>{if(e.target===document.getElementById('modal-invoiced'))document.getElementById('modal-invoiced').classList.remove('open');});
+  document.getElementById('card-wip-period').addEventListener('click',openWipPeriodBreakdown);
+  document.getElementById('btn-wip-period-close').addEventListener('click',()=>document.getElementById('modal-wip-period').classList.remove('open'));
+  document.getElementById('btn-wip-period-close2').addEventListener('click',()=>document.getElementById('modal-wip-period').classList.remove('open'));
+  document.getElementById('modal-wip-period').addEventListener('click',e=>{if(e.target===document.getElementById('modal-wip-period'))document.getElementById('modal-wip-period').classList.remove('open');});
 }
 
 // ── Session cache ─────────────────────────────────────────────────────────
