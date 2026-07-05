@@ -458,6 +458,19 @@
     }
     .ov-date:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.15);}
     .edit-mode .ov-editable{padding:6px 8px!important;}
+    /* Edit-mode: highlight all editable fields blue; focused field goes gold to stand out */
+    .tab-panel.editing input:not([readonly]):not([disabled]),
+    .tab-panel.editing select:not([disabled]),
+    .tab-panel.editing textarea:not([disabled]){
+      border-color:#3b82f6;
+      box-shadow:0 0 0 3px rgba(59,130,246,.18);
+    }
+    .tab-panel.editing input:not([readonly]):not([disabled]):focus,
+    .tab-panel.editing select:not([disabled]):focus,
+    .tab-panel.editing textarea:not([disabled]):focus{
+      border-color:var(--gold);
+      box-shadow:0 0 0 3px rgba(201,168,76,.30);
+    }
 
     /* ── Coming soon / states ────────────────── */
     .coming-soon{padding:72px 0;text-align:center;color:var(--grey-mid);}
@@ -1841,6 +1854,7 @@ function makeDateInput(id, isoVal) {
 
 function ovSetEditMode() {
   const f = caseFields;
+  document.getElementById('tab-overview').classList.add('editing');
   document.getElementById('btn-ov-edit').style.display   = 'none';
   document.getElementById('btn-ov-save').style.display   = 'inline-flex';
   document.getElementById('btn-ov-cancel').style.display = 'inline-flex';
@@ -1869,6 +1883,7 @@ function ovSetEditMode() {
 }
 
 function ovSetReadMode() {
+  document.getElementById('tab-overview').classList.remove('editing');
   document.getElementById('btn-ov-edit').style.display   = 'inline-flex';
   document.getElementById('btn-ov-save').style.display   = 'none';
   document.getElementById('btn-ov-cancel').style.display = 'none';
@@ -1992,6 +2007,7 @@ function tabSetEditMode(prefix, tabId) {
   saveBtn.style.display = 'inline-flex'; saveBtn.disabled = false;
   document.getElementById('btn-' + prefix + '-cancel').style.display = 'inline-flex';
   tabEnableFields(tabId);
+  document.getElementById(tabId).classList.add('editing');
 }
 function tabSetReadMode(prefix, tabId) {
   document.getElementById('btn-' + prefix + '-edit').style.display   = 'inline-flex';
@@ -2000,6 +2016,7 @@ function tabSetReadMode(prefix, tabId) {
   document.getElementById('msg-' + prefix).textContent = '';
   document.getElementById('msg-' + prefix).className = 'edit-msg';
   tabDisableFields(tabId);
+  document.getElementById(tabId).classList.remove('editing');
 }
 
 // Offers
