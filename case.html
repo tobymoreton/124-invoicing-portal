@@ -1405,11 +1405,13 @@
               <col class="ca-col-date"/><col class="ca-col-by"/><col style="width:130px;"/><col style="width:140px;"/>
               <col/>
               <col class="ca-col-hrs"/><col class="ca-col-rate"/><col class="ca-col-amt"/>
+              <col class="ca-col-bil"/><col class="ca-col-act"/>
             </colgroup>
             <thead>
               <tr>
                 <th>Date</th><th>By</th><th>Brief</th><th>Email Event</th><th>Work Done</th>
                 <th class="ca-right">Hrs</th><th class="ca-right">Rate</th><th class="ca-right">Amt</th>
+                <th class="ca-center">Bill.</th><th></th>
               </tr>
             </thead>
             <tbody id="em-tbody"></tbody>
@@ -2532,6 +2534,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 const EMAIL_BRIEFS = ['routine letter/email out', 'incoming email', 'timed letter/email'];
+const EMAIL_STYLES = {
+  'routine letter/email out': { bg: '#FEF9C3', c: '#713F12' },
+  'incoming email':           { bg: '#F3E8FF', c: '#6B21A8' },
+  'timed letter/email':       { bg: '#FFEDD5', c: '#9A3412' },
+};
 function renderEmailsTable() {
   const tbody = document.getElementById('em-tbody'); if (!tbody) return;
   const loadingEl = document.getElementById('em-loading'); const emptyEl = document.getElementById('em-empty'); const summary = document.getElementById('em-summary');
@@ -2544,26 +2551,48 @@ function renderEmailsTable() {
   if (summary) summary.textContent = emails.length + ' email' + (emails.length !== 1 ? 's' : '') + ' \u00b7 ' + fmtN(totalHrs, 2) + ' hrs';
   emails.forEach(a => {
     const f = a.fields || {};
+    const id = a.id;
     const dateStr = fmtDate(f['field_12'] || f['field_1']);
     const byName = (f['Completedby_x0028_text_x0029_'] || f['field_18'] || '').split(' ')[0];
     const brief = f['field_9'] || '';
+    const bs = EMAIL_STYLES[brief.trim().toLowerCase()] || { bg: 'transparent', c: 'var(--grey-mid)' };
     const emailEvent = f['EmailEvent'] || '';
     const workDone = f['field_2'] || '';
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
     const rate = parseFloat(f['field_6']) || 0;
     const amtRaw = parseFloat(f['Num_BillableAmount_x00a3_']);
     const amt = (!isNaN(amtRaw) && amtRaw > 0) ? amtRaw : hrs * rate;
-    const tr = document.createElement('tr'); tr.className = 'ca-row';
-    tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
-      + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
-      + `<td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(brief)}">${escHtml(brief)}</td>`
-      + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
-      + `<td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>`
-      + `<td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>`
-      + `<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>`
-      + `<td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>`;
+    const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
+    const isEditing = caEditingId === id;
+    const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = 'ca-row'; tr.style.borderLeft = '3px solid ' + bs.c;
+    if (isEditing) {
+      tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
+        + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
+        + `<td class="ca-cell"><select class="ca-edit-brief" data-id="${id}" style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;padding:2px 4px;width:100%;">${['Preparation/Perusal','Routine letter/email out','Incoming email','Routine telephone call','Timed letter/email','Timed telephone call','Teams/Zoom call','In person hearing','Remote hearing','Mediation'].map(v => '<option' + (v===brief?' selected':'') + '>' + v + '</option>').join('')}</select></td>`
+        + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
+        + `<td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea></td>`
+        + `<td class="ca-cell ca-right"><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></td>`
+        + `<td class="ca-cell ca-right"><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></td>`
+        + `<td class="ca-cell ca-mono ca-right">${fmt(amt)}</td>`
+        + `<td class="ca-cell ca-center"><input type="checkbox" class="ca-edit-bill" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>`
+        + `<td class="ca-cell ca-actions"><button class="ca-btn-save" data-id="${id}">\u2713</button><button class="ca-btn-cancel" data-id="${id}">\u00d7</button></td>`;
+    } else {
+      tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td>`
+        + `<td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName)}</td>`
+        + `<td class="ca-cell"><span style="display:inline-block;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap;background:${bs.bg};color:${bs.c};" title="${escHtml(brief)}">${escHtml(brief)}</span></td>`
+        + `<td class="ca-cell" style="font-size:11px;">${emailEvent ? escHtml(emailEvent) : '\u2014'}</td>`
+        + `<td class="ca-cell ca-cell-wd">${escHtml(workDone)}</td>`
+        + `<td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>`
+        + `<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>`
+        + `<td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>`
+        + `<td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>`
+        + `<td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
+    }
     tbody.appendChild(tr);
   });
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderEmailsTable(); renderCaTable(); }); });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderEmailsTable(); renderCaTable(); }); });
+  tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
 }
 
 async function loadCaseActions() {
@@ -2621,8 +2650,8 @@ function renderCaTable() {
     }
     tbody.appendChild(tr);
   });
-  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); }); });
-  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); }); });
+  tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); renderEmailsTable(); }); });
+  tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
   renderWipBox();
@@ -2654,19 +2683,20 @@ function renderWipBox() {
 }
 
 async function saveCaRow(id) {
-  const wd = document.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
-  const hrs = parseFloat(document.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value) || 0;
-  const rate = parseFloat(document.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
-  const briefEl = document.querySelector(`.ca-edit-brief[data-id="${id}"]`); const brief = briefEl ? briefEl.value : undefined;
-  const billEl = document.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
-  const saveBtn = document.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = document.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  const scope = document.querySelector('.tab-panel.active') || document;
+  const wd = scope.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
+  const hrs = parseFloat(scope.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value) || 0;
+  const rate = parseFloat(scope.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const briefEl = scope.querySelector(`.ca-edit-brief[data-id="${id}"]`); const brief = briefEl ? briefEl.value : undefined;
+  const billEl = scope.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
+  const saveBtn = scope.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = scope.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
   if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
   try {
     const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = caActions.findIndex(a => a.id === id);
     if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; }
-    caEditingId = null; renderCaTable();
+    caEditingId = null; renderCaTable(); renderEmailsTable();
   } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
 }
 
