@@ -5,6 +5,7 @@
  * GET  ?ref={ourRef}   — fetch all TT2 entries for a case ref
  * POST (body)          — add a new TT2 entry
  * PATCH (body)         — edit Work Done / Time Spent / Rate on an existing TT2 entry
+ * DELETE (body)        — delete a TT2 entry by itemId
  *
  * Auth: @tmclegal.co.uk domain check on all methods.
  *
@@ -25,7 +26,7 @@
  *   Billed_x003f_                 — Billed? (Boolean) — filter client-side only
  *   Num_BillableAmount_x00a3_     — Billable Amount £ (Currency)
  *   TimeSpentMirror               — Time Spent mirror (Number)
- *   CaseName                       — Case Name (Lookup → Cases list; written as integer SP item ID)
+ *   Case_x0020_Name               — Case Name (Lookup → Cases list; written as Case_x0020_NameLookupId: integer SP item ID)
  *   Casename_x0028_text_x0029_    — Case name text mirror (separate column)
  */
 
@@ -35,10 +36,6 @@ const { URL } = require('url');
 const TT2_GUID      = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const SITE_PATH     = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
-
-// No $select on fields expand — boolean fields (Billable_x003f_, Billed_x003f_) are
-// not reliably returned when named in $select via Graph. Fetching all fields ensures
-// booleans come through. Per-case TT2 item count is small so no perf concern.
 
 function getCallerEmail(req) {
   try {
@@ -75,7 +72,6 @@ module.exports = async function (context, req) {
 
     // ── GET ──────────────────────────────────────────────────────────────────
     if (req.method === 'GET') {
-      // ── Diagnostic: ?schema=1 returns TT2 column internal names — use to find correct lookup field name
       if (req.query.schema === '1') {
         const schemaUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/columns`;
         const schema = await graphGet(schemaUrl, token);
@@ -101,8 +97,6 @@ module.exports = async function (context, req) {
       let filtered = [];
 
       if (!allMode && ref) {
-        // Per-case fast path: server-side $filter on field_16 (requires column indexed in SP).
-        // Falls back automatically to full list scan if Graph returns 400 (not yet indexed).
         try {
           const escapedRef = ref.replace(/'/g, "''");
           let url = base + `&$filter=fields/field_16 eq '${escapedRef}'`;
@@ -112,7 +106,7 @@ module.exports = async function (context, req) {
             url = page['@odata.nextLink'] || null;
           }
         } catch (filterErr) {
-          context.log.warn('field_16 filter failed (not indexed?), falling back to full scan:', filterErr.message);
+          context.log.warn('field_16 filter failed, falling back to full scan:', filterErr.message);
           filtered = [];
           let url = base;
           let all = [];
@@ -120,8 +114,6 @@ module.exports = async function (context, req) {
           filtered = all.filter(item => (item.fields?.['field_16'] || '').toString().trim() === ref);
         }
       } else {
-        // all=1 mode: walk entire list, return every UNBILLED entry across all cases.
-        // The dashboard uses one call here rather than per-case calls that throttle Graph.
         let url = base;
         let all = [];
         while (url) { const page = await graphGet(url, token); all = all.concat(page.value || []); url = page['@odata.nextLink'] || null; }
@@ -165,8 +157,8 @@ module.exports = async function (context, req) {
 
       const fields = {
         Title:    b.caseName || ref,
-        // Case_x0020_Name is a SP Lookup column (required). SP internal name confirmed from FldEditEx URL: Field=Case_x0020_Name
-        // Graph requires LookupId suffix: Case_x0020_NameLookupId
+        // Case_x0020_Name is a required SP Lookup column. SP internal name: Case_x0020_Name (confirmed from FldEditEx URL).
+        // Graph requires LookupId suffix. caseItemId = SP integer item ID of the Cases list record.
         ...(b.caseItemId && !isNaN(parseInt(b.caseItemId)) ? { 'Case_x0020_NameLookupId': parseInt(b.caseItemId) } : {}),
         field_1:  dateEntered,
         field_2:  workDone,
@@ -178,9 +170,8 @@ module.exports = async function (context, req) {
         field_18: b.email || callerEmail,
         Completedby_x0028_text_x0029_: b.completedBy || '',
         Casename_x0028_text_x0029_:    b.caseName    || '',
-        TimeSpentMirror: timeSpent,  // PA mirror field — also write here so COA/WIP don't need to wait for PA run
-        // NOTE: Billable_x003f_ and Billed_x003f_ deliberately omitted — boolean writes via Graph are unreliable
-        // on this tenant and may trigger SP-side deletion. SP column defaults (Billable=Yes, Billed=No) apply.
+        TimeSpentMirror: timeSpent,
+        // Billable_x003f_ and Billed_x003f_ deliberately omitted — boolean writes unreliable on this tenant
       };
 
       const createUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`;
@@ -194,7 +185,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // ── PATCH — edit Work Done / Time Spent / Rate ───────────────────────────
+    // ── PATCH — edit existing TT2 entry ─────────────────────────────────────
     if (req.method === 'PATCH') {
       const b      = req.body || {};
       const itemId = (b.itemId || '').toString().trim();
@@ -206,6 +197,7 @@ module.exports = async function (context, req) {
       if (b.rate      !== undefined) fields['field_6'] = parseFloat(b.rate)      || 0;
       if (b.brief     !== undefined) fields['field_9'] = b.brief;
       if (b.billable  !== undefined) fields['Billable_x003f_'] = !!b.billable;
+      if (b.dateWorkDone !== undefined) fields['field_12'] = b.dateWorkDone;
 
       if (Object.keys(fields).length === 0) {
         context.res = { status: 400, body: 'No editable fields provided' };
@@ -220,6 +212,16 @@ module.exports = async function (context, req) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ok: true }),
       };
+      return;
+    }
+
+    // ── DELETE — remove TT2 item ─────────────────────────────────────────────
+    if (req.method === 'DELETE') {
+      const itemId = ((req.body || {}).itemId || '').toString().trim();
+      if (!itemId) { context.res = { status: 400, body: 'Missing itemId' }; return; }
+      const deleteUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items/${itemId}`;
+      await graphDelete(deleteUrl, token);
+      context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deleted: true, itemId }) };
       return;
     }
 
@@ -274,7 +276,7 @@ function graphGet(url, token) {
         try { resolve(JSON.parse(data)); } catch (e) { reject(new Error(`JSON parse: ${e.message}`)); }
       });
     });
-    req.setTimeout(20000, () => { req.destroy(new Error('Graph GET timeout (20s) — SP may be throttling')); });
+    req.setTimeout(20000, () => { req.destroy(new Error('Graph GET timeout (20s)')); });
     req.on('error', reject);
     req.end();
   });
@@ -318,6 +320,25 @@ function graphPatch(url, token, body) {
     });
     req.on('error', reject);
     req.write(bodyStr);
+    req.end();
+  });
+}
+
+function graphDelete(url, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname, path: u.pathname + u.search, method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    }, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode >= 400) { reject(new Error(`Graph DELETE ${res.statusCode}: ${data.slice(0,300)}`)); return; }
+        resolve({});
+      });
+    });
+    req.on('error', reject);
     req.end();
   });
 }
