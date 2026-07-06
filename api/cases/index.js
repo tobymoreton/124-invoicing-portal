@@ -19,6 +19,7 @@ const { URL } = require('url');
 
 const LIST_GUID = 'ae420bda-e550-499c-b337-90e4f33617c1';
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const CLIENT_FIRMS_GUID = '901e8cbd-8760-4051-9eb0-0d5c0db1c06d';
 
 const ADMIN_EMAILS = [
   'toby@tmclegal.co.uk',
@@ -38,6 +39,7 @@ const SELECT_FIELDS = [
   'VatOnDraftingFee_x003f_',
   'TimedWorkLineOverride',
   'Firm_x0028_text_x0029_',
+  'FirmLookupId',
   'Address1_x0028_text_x0029_',
   'Address2_x0028_text_x0029_',
   'Address3_x0028_text_x0029_',
@@ -116,6 +118,7 @@ const SELECT_FIELDS = [
   'Work_x0020_In_x0020_Progress',
   'Add_x0020_To_x0020_Title',
   'Notes',
+  'draftingNotes',
   'Acknowledgmentemail',
   'PrimaryFundingType',
   'CaseTrack',
@@ -245,6 +248,8 @@ async function getAllOpenCases(token) {
     return status !== 'closed';
   });
 
+  await resolveMissingFirms(token, open);
+
   return {
     value: open.map(function(item) {
       return { id: item.id, fields: item.fields || {} };
@@ -274,11 +279,54 @@ async function searchCases(token, q, top, includeAll) {
     return title.indexOf(q) !== -1 || ref.indexOf(q) !== -1;
   });
 
+  var sliced = matches.slice(0, top);
+  await resolveMissingFirms(token, sliced);
+
   return {
-    value: matches.slice(0, top).map(function(item) {
+    value: sliced.map(function(item) {
       return { id: item.id, fields: item.fields || {} };
     }),
   };
+}
+
+// Resolve blank Firm text mirrors directly from the Firm Lookup id via the Client Firms list.
+// Infowise-created cases do not get Firm_x0028_text_x0029_ populated until the item is re-saved
+// (the PA mirror flow fires on save). This fills the firm name at read time from the raw Firm
+// Lookup id (FirmLookupId), removing that re-save dependency for the firm name specifically.
+// Safe by construction: only fills where the mirror is blank; never overwrites an existing value.
+// Silent no-op if FirmLookupId is absent or the Client Firms fetch fails (degrades to blank firm).
+async function resolveMissingFirms(token, items) {
+  try {
+    var needed = false;
+    (items || []).forEach(function(item) {
+      var f = item.fields || {};
+      var mirror = (f['Firm_x0028_text_x0029_'] || '').trim();
+      if (!mirror && f.FirmLookupId) needed = true;
+    });
+    if (!needed) return;
+
+    var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + CLIENT_FIRMS_GUID + '/items'
+            + '?$expand=fields($select=Title)&$top=999';
+    var byId = {};
+    while (url) {
+      var page = await graphGet(url, token);
+      (page.value || []).forEach(function(fi) {
+        byId[String(fi.id)] = ((fi.fields || {}).Title || '').trim();
+      });
+      url = page['@odata.nextLink'] || null;
+    }
+
+    (items || []).forEach(function(item) {
+      var f = item.fields || {};
+      var mirror = (f['Firm_x0028_text_x0029_'] || '').trim();
+      if (!mirror && f.FirmLookupId) {
+        var name = byId[String(f.FirmLookupId)];
+        if (name) f['Firm_x0028_text_x0029_'] = name;
+      }
+    });
+  } catch (e) {
+    // Silent no-op - keep the request succeeding with a blank firm rather than erroring.
+  }
 }
 
 function getToken(tenantId, clientId, clientSecret) {
