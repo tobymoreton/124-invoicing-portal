@@ -892,10 +892,18 @@ function renderUnassignedCases(){
         '<option value="tom@tmclegal.co.uk">Tom</option>'+
         '<option value="julie@tmclegal.co.uk">Julie</option>'+
         '<option value="daniel@tmclegal.co.uk">Daniel</option>'+
-      '</select>';
+      '</select>'+
+      '<button type="button" class="uc-delete-btn" title="Delete this case record" style="flex-shrink:0;margin-top:2px;margin-left:6px;padding:4px 9px;border:1.5px solid rgba(153,27,27,.3);border-radius:var(--radius-sm);background:var(--white);color:var(--red);font-size:12px;cursor:pointer;">&#128465;</button>';
     const ucSel=row.querySelector('.uc-assign-sel');
     ucSel.addEventListener('click',e=>e.stopPropagation());
     ucSel.addEventListener('change',()=>{ if(!ucSel.value) return; assignCase(c.id,ref,ucSel.value,row,ucSel); });
+    const ucDel=row.querySelector('.uc-delete-btn');
+    ucDel.addEventListener('click',e=>{
+      e.stopPropagation();
+      const label=(name&&name!=='???-???-'+ref)?name:('item '+ref);
+      if(!confirm('Permanently delete '+label+'?\n\nThis cannot be undone — it removes the record from SharePoint entirely, not just this list.')) return;
+      deleteCase(c.id,row);
+    });
     row.addEventListener('click',()=>{
       try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
       window.location.href='case.html?ref='+encodeURIComponent(ref);
@@ -934,6 +942,33 @@ async function assignCase(caseId,ref,email,rowEl,selEl){
     if(!errSpan){errSpan=document.createElement('span');errSpan.className='uc-assign-err';errSpan.style.cssText='font-size:11px;color:#991B1B;flex-shrink:0;margin-left:4px;';rowEl.appendChild(errSpan);}
     errSpan.textContent='Save failed';
     setTimeout(()=>{errSpan.textContent='';},3000);
+  }
+}
+
+// ── Delete case (Management only — server enforces this too) ────────────
+async function deleteCase(caseId,rowEl){
+  rowEl.style.opacity='0.45';
+  rowEl.style.pointerEvents='none';
+  try{
+    const r=await fetch('/api/caseupdate',{
+      method:'DELETE',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:caseId}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+    allCases=allCases.filter(c=>c.id!==caseId);
+    rawCases=rawCases.filter(c=>c.id!==caseId);
+    rowEl.style.transition='opacity 0.35s ease';
+    rowEl.style.opacity='0';
+    setTimeout(()=>{
+      rowEl.remove();
+      const rem=document.getElementById('uc-list').querySelectorAll('.ar-row').length;
+      document.getElementById('uc-count').textContent=rem;
+      if(!rem) document.getElementById('uc-list').innerHTML='<div class="ar-empty">No unassigned cases — all allocated!</div>';
+    },350);
+  }catch(err){
+    rowEl.style.opacity='';
+    rowEl.style.pointerEvents='';
+    alert('Failed to delete: '+err.message);
   }
 }
 
