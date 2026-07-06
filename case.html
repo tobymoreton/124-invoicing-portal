@@ -1236,7 +1236,10 @@
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
               <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Reminders</span><button type="button" class="info-btn info-left" aria-label="About Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">All reminders logged against this case, with due dates and priority.</span></button></span>
-              <span id="rem-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+              <span style="display:inline-flex;align-items:center;gap:12px;">
+                <span id="rem-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+                <button type="button" id="btn-rem-close" style="display:none;font-size:11.5px;font-weight:600;color:var(--navy);background:var(--white);border:1px solid rgba(27,42,74,.25);border-radius:var(--radius-sm);padding:4px 11px;cursor:pointer;">&larr; Close</button>
+              </span>
             </div>
             <div>
               <table class="ca-table" id="rem-table">
@@ -1605,6 +1608,12 @@ async function loadCase() {
       if (_caBtn) setTimeout(() => { _caBtn.click(); }, 300);
     } else {
       setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
+    }
+    // If deep-linking to a specific reminder, auto-switch to Reminders tab and open it in edit mode
+    const _deepReminder = new URLSearchParams(window.location.search).get('reminder');
+    if (_deepReminder) {
+      const _remBtn = document.querySelector('.tab-btn[data-tab="reminders"]');
+      if (_remBtn) setTimeout(() => { _remBtn.click(); }, 300);
     }
   } catch (err) {
     showError('Error loading case', err.message);
@@ -2462,6 +2471,9 @@ function openDocOverlay(url, label) { document.getElementById('doc-overlay-title
 function closeDocOverlay() { document.getElementById('doc-overlay').classList.remove('open'); document.getElementById('doc-overlay-iframe').src = 'about:blank'; }
 document.getElementById('doc-overlay-close').addEventListener('click', closeDocOverlay);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocOverlay(); });
+document.getElementById('btn-rem-close')?.addEventListener('click', () => {
+  if (window.history.length > 1) { window.history.back(); } else { window.location.href = 'cases.html'; }
+});
 document.querySelectorAll('.info-btn').forEach(btn => {
   btn.addEventListener('click', e => {
     e.stopPropagation();
@@ -2479,15 +2491,23 @@ document.getElementById('btn-open-invoice-create')?.addEventListener('click', ()
 
 loadCase();
 
-let remActions = []; let remEditingId = null; let remLoaded = false;
+let remActions = []; let remEditingId = null; let remLoaded = false; let remFetching = false;
 
 async function loadReminders() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim(); if (!ref) return;
+  if (remFetching || remLoaded) return; remFetching = true;
   document.getElementById('rem-loading').style.display = 'block'; document.getElementById('rem-empty').style.display = 'none'; document.getElementById('rem-tbody').innerHTML = '';
   try {
     const resp = await fetch('/api/reminders?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json(); remActions = data.value || []; renderRemTable(); initAddRemPanel();
-  } catch (err) { document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message; }
+    const data = await resp.json(); remActions = data.value || []; remLoaded = true; remFetching = false;
+    const deepReminderId = new URLSearchParams(window.location.search).get('reminder');
+    if (deepReminderId && remActions.some(r => r.id === deepReminderId)) { remEditingId = deepReminderId; }
+    renderRemTable(); initAddRemPanel();
+    if (deepReminderId) {
+      const btnClose = document.getElementById('btn-rem-close'); if (btnClose) btnClose.style.display = 'inline-flex';
+      setTimeout(() => { const tr = document.querySelector(`tr[data-id="${deepReminderId}"]`); if (tr) tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+    }
+  } catch (err) { remFetching = false; remLoaded = false; document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message; }
 }
 
 const REM_EVENTS = ['Approve Bill','CCMC','Chase Chambers','Chase Client','Chase HJA \u2013 Emailed 7 days ago','Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer','Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies','Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice','Issue Invoice - Draft done','Issue Part 8','Lodge completed bill','Make Offer','Mediation','Meeting','Points of Dispute due','Prepare for CCMC','Prepare for Detailed Assessment','Prepare for Mediation','Prepare for Without Prejudice call','Relay offer to Client','Replies due','Request Detailed Assessment','Request Provisional Assessment','Review','Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally','Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget','Start Precedent R','Start Replies','Without Prejudice call'];
@@ -2581,7 +2601,7 @@ let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (caLoaded) { renderCaTable(); initAddActionPanel(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
-  if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (!remLoaded) { remLoaded = true; loadReminders(); } }); }
+  if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (remLoaded) { renderRemTable(); } else if (!remFetching) { loadReminders(); } }); }
 });
 
 // Activate the tab named in the URL hash (e.g. #tab-emails), if present — used by "Switch case"

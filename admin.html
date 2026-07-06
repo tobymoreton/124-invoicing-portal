@@ -771,19 +771,24 @@ async function loadAdminReminders(){
   const listEl=document.getElementById('ar-list');
   const refs=allCases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean);
   if(!refs.length){ listEl.innerHTML='<div class="ar-empty">No open cases.</div>'; document.getElementById('ar-count').textContent='0'; return; }
-  // One fetch per open case ref (no bulk reminders endpoint), aggregate results
-  const results=await Promise.allSettled(
-    refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1')
-      .then(r=>r.ok?r.json():{value:[]})
-      .then(data=>{
-        const c=allCases.find(x=>x.fields['Ourreference_x0028_text_x0029_']===ref);
-        const caseName=c&&c.fields?(c.fields['CaseNameForOpenCases']||c.fields['Title']||ref):ref;
-        return (data.value||[]).map(item=>({...item,_caseRef:ref,_caseName:caseName}));
-      })
-      .catch(()=>[])
-    )
-  );
-  const all=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
+  const refSet=new Set(refs);
+  const nameByRef={};
+  allCases.forEach(c=>{
+    const ref=c.fields['Ourreference_x0028_text_x0029_'];
+    if(ref) nameByRef[ref]=c.fields['CaseNameForOpenCases']||c.fields['Title']||ref;
+  });
+  // Single bulk fetch (server paginates internally) instead of one request per open case.
+  let all=[];
+  try{
+    const r=await fetch('/api/reminders?all=1&open=1');
+    const data=r.ok?await r.json():{value:[]};
+    all=(data.value||[])
+      .filter(item=>refSet.has((item.fields?.['Ourreference_x0028_text_x0029_']||'').trim()))
+      .map(item=>{
+        const ref=(item.fields?.['Ourreference_x0028_text_x0029_']||'').trim();
+        return {...item,_caseRef:ref,_caseName:nameByRef[ref]||ref};
+      });
+  }catch(e){ all=[]; }
   // Admin-flagged and still open
   adminReminders=all.filter(r=>{
     const f=r.fields||{};
@@ -828,7 +833,7 @@ function renderAdminReminders(){
     row.querySelector('.ar-done').addEventListener('click',e=>{ e.stopPropagation(); markAdminRemDone(r.id,row); });
     row.addEventListener('click',()=>{
       try{ const c=allCases.find(x=>x.fields['Ourreference_x0028_text_x0029_']===r._caseRef); if(c) sessionStorage.setItem('tmc_case_'+r._caseRef, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
-      window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';
+      window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'&reminder='+encodeURIComponent(r.id)+'#tab-reminders';
     });
     listEl.appendChild(row);
   });

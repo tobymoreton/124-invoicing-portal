@@ -1009,7 +1009,7 @@ function renderRemPanel(){
       priBadge+
       '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">\u2713 Done</button>';
     row.querySelector('.rem-done-btn').addEventListener('click',e=>{e.stopPropagation();markRemDone(r.id,row);});
-    row.addEventListener('click',()=>{window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';});
+    row.addEventListener('click',()=>{window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'&reminder='+encodeURIComponent(r.id)+'#tab-reminders';});
     return row;
   };
 
@@ -1605,7 +1605,7 @@ function openAllRemindersModal(){
       });
       row.addEventListener('click',()=>{
         document.getElementById('modal-all-reminders').classList.remove('open');
-        window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'#tab-reminders';
+        window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'&reminder='+encodeURIComponent(r.id)+'#tab-reminders';
       });
       el.appendChild(row);
     });
