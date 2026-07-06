@@ -356,6 +356,7 @@
     .vat-pct-row label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;padding-left:4px;}
     .vat-pct-input{width:80px!important;}
     .vat-pct-row span{font-size:13px;color:var(--grey-mid);font-weight:600;padding-right:4px;}
+    .input-blank-warn{border-color:#DC2626!important;box-shadow:0 0 0 2px rgba(220,38,38,.35),0 0 10px rgba(220,38,38,.45)!important;background:#FEF2F2!important;}
 
     /* ── Liabilities editable fields ───────────── */
     .liab-grid{display:grid;grid-template-columns:1fr auto;align-items:center;}
@@ -652,6 +653,7 @@
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
     <button class="tab-btn" data-tab="noterefine">noteRefine</button>
     <button class="tab-btn" data-tab="incamera">inCamera</button>
+    <button class="tab-btn" data-tab="notes">Notes</button>
   </div>
 
   <div class="content">
@@ -1459,6 +1461,29 @@
       </div>
     </div><!-- /tab-incamera -->
 
+    <!-- ════════ NOTES TAB ════════ -->
+    <div class="tab-panel" id="tab-notes">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
+      <div class="edit-bar">
+        <button class="btn-edit" id="btn-notes-edit">✏️ Edit</button>
+        <button class="btn-edit-save" id="btn-notes-save">✓ Save Changes</button>
+        <button class="btn-edit-cancel" id="btn-notes-cancel">Cancel</button>
+        <span class="edit-msg" id="msg-notes"></span>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Notes</span><button type="button" class="info-btn" aria-label="About Notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Free-text notes for this case, and separate drafting notes.</span></button></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field full"><label>Notes</label><textarea id="nt-Notes" rows="8" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea></div>
+            <div class="field full"><label>Drafting Notes</label><textarea id="nt-DraftingNotes" rows="8" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-notes -->
+
   </div>
 </div>
 
@@ -1570,6 +1595,7 @@ async function loadCase() {
     renderOffersTab();
     renderCostsTab();
     renderInterestTab();
+    renderNotesTab();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
     // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
@@ -2006,6 +2032,8 @@ function renderCostsTab() {
   setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
   setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']); setNum('fc-Counsel', f['CounselsFeesClaimed']);
   setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
+  const vatPctRaw = f['VAT_x0020__x0025__x0020_Claimed'];
+  document.getElementById('fc-VatPct')?.classList.toggle('input-blank-warn', vatPctRaw === null || vatPctRaw === undefined || vatPctRaw === '');
   setNum('fc-LAPC', f['LegalAidOnlyProfitCosts']); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
   const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const disb = parseFloat(f['DisbursementsClaimed']) || 0; const vatDisb = parseFloat(f['VATonDisbursements']) || 0; const counsel = parseFloat(f['CounselsFeesClaimed']) || 0;
@@ -2036,6 +2064,12 @@ function renderInterestTab() {
   setDate('fi-IPD1', f['InterimPaymentDate1']); setDate('fi-IPD2', f['InterimPaymentDate2']); setDate('fi-IPD3', f['InterimPaymentDate3']);
 }
 
+function renderNotesTab() {
+  const f = caseFields;
+  const ntEl = document.getElementById('nt-Notes'); if (ntEl) ntEl.value = f['Notes'] || '';
+  const dnEl = document.getElementById('nt-DraftingNotes'); if (dnEl) dnEl.value = f['draftingNotes'] || '';
+}
+
 const TAB_FIELDS = {
   'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox], #btn-import-counsel, #btn-calc-coa',
   'tab-offers':     '#tab-offers input:not([readonly]), #tab-offers select, #tab-offers input[type=checkbox]',
@@ -2044,6 +2078,7 @@ const TAB_FIELDS = {
   'tab-costs':      '#tab-costs input:not([readonly]), #tab-costs select, #tab-costs input[type=checkbox]',
   'tab-interest':   '#tab-interest input:not([readonly]), #tab-interest select',
   'tab-interim':    '#tab-interim input:not([readonly]), #tab-interim select',
+  'tab-notes':      '#tab-notes textarea:not([readonly])',
 };
 
 function tabEnableFields(tabId) { document.querySelectorAll(TAB_FIELDS[tabId]).forEach(el => el.disabled = false); }
@@ -2255,6 +2290,20 @@ document.getElementById('btn-int-save').addEventListener('click', async () => {
   else btn.disabled = false;
 });
 
+// Notes
+document.getElementById('btn-notes-edit').addEventListener('click', () => tabSetEditMode('notes','tab-notes'));
+document.getElementById('btn-notes-cancel').addEventListener('click', () => { renderNotesTab(); tabSetReadMode('notes','tab-notes'); });
+document.getElementById('btn-notes-save').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-notes-save'); const msg = document.getElementById('msg-notes');
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  const fields = {
+    Notes: document.getElementById('nt-Notes').value || null,
+    draftingNotes: document.getElementById('nt-DraftingNotes').value || null,
+  };
+  await doSave(fields, btn, msg, 'edit-msg');
+  if (msg.className.includes('ok')) { renderNotesTab(); tabSetReadMode('notes','tab-notes'); } else btn.disabled = false;
+});
+
 async function doSave(fields, btn, msg, msgClass) {
   const cls = msgClass || 'save-msg';
   try {
@@ -2406,6 +2455,8 @@ function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.val
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
 function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
+
+document.getElementById('fc-VatPct')?.addEventListener('input', e => { e.target.classList.toggle('input-blank-warn', e.target.value.trim() === ''); });
 
 function openDocOverlay(url, label) { document.getElementById('doc-overlay-title').textContent = label; document.getElementById('doc-overlay-iframe').src = url; document.getElementById('doc-overlay').classList.add('open'); }
 function closeDocOverlay() { document.getElementById('doc-overlay').classList.remove('open'); document.getElementById('doc-overlay-iframe').src = 'about:blank'; }
