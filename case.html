@@ -625,7 +625,7 @@
 <div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
 <div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
-<div id="app">
+<div id="app" style="display:none">
   <div class="case-header">
     <div class="case-ref" id="hdr-ref"></div>
     <div class="case-name" id="hdr-name"></div>
@@ -1936,6 +1936,7 @@ function makeDateInput(id, isoVal) {
 
 function ovSetEditMode() {
   const f = caseFields;
+  if (!f) return; // No case loaded (e.g. bad ?ref=) - nothing to edit
   document.getElementById('tab-overview').classList.add('editing');
   document.getElementById('btn-ov-edit').style.display   = 'none';
   document.getElementById('btn-ov-save').style.display   = 'inline-flex';
