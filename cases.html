@@ -386,7 +386,7 @@
       <!-- Stage breakdown -->
       <div class="panel">
         <div class="panel-head">
-          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">By Stage</span><button type="button" class="info-btn info-left" aria-label="About By Stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open cases grouped by stage. Click a stage to list those cases; All Cases and Pending billing are pinned at the top.</span></button></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">By Stage</span><button type="button" class="info-btn info-left" aria-label="About By Stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open cases grouped by stage. Click a stage to list those cases; All Cases is pinned at the top.</span></button></span>
           <span class="panel-count" id="stage-panel-count"></span>
         </div>
         <div class="stage-list" id="stage-list">
@@ -897,14 +897,11 @@ function renderStagePanel(){
     stageCounts[s]=(stageCounts[s]||0)+1;
     stageCosts[s]=(stageCosts[s]||0)+computeTotalCosts(c.fields);
   });
-  if(!('Pending billing' in stageCounts)) stageCounts['Pending billing']=0;
-  const pendingBillingCount=stageCounts['Pending billing'];
-  const sorted=Object.entries(stageCounts).filter(([stage])=>stage!=='Pending billing').sort((a,b)=>b[1]-a[1]);
-  const maxCount=Math.max(...sorted.map(([,n])=>n),pendingBillingCount,1);
+  const sorted=Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]);
+  const maxCount=Math.max(...sorted.map(([,n])=>n),1);
   document.getElementById('stage-panel-count').textContent=(sorted.length+1)+' stages';
   const el=document.getElementById('stage-list');
-  if(!sorted.length&&!pendingBillingCount){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases</div>';return;}
-  const pbPct=Math.round((pendingBillingCount/maxCount)*100);
+  if(!sorted.length){el.innerHTML='<div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">No cases</div>';return;}
   el.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 18px 6px;border-bottom:1px solid var(--grey-light);">'+
       '<span style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--grey-mid);flex:1;">Stage</span>'+
@@ -915,11 +912,6 @@ function renderStagePanel(){
       '<div class="stage-row-left"><span class="status-chip s-default" style="background:var(--navy);color:var(--gold);">All Cases</span></div>'+
       '<div class="stage-bar-wrap"><div class="stage-bar" style="width:100%"></div></div>'+
       '<span class="stage-count">'+myCases.length+'</span>'+
-    '</div>'+
-    '<div class="stage-row" id="stage-row-pending-billing" style="border-bottom:1px solid var(--grey-light);">'+
-      '<div class="stage-row-left"><span class="status-chip '+statusClass('Pending billing')+'">Pending billing</span></div>'+
-      '<div class="stage-bar-wrap"><div class="stage-bar" style="width:'+pbPct+'%"></div></div>'+
-      '<span class="stage-count">'+pendingBillingCount+'</span>'+
     '</div>';
   sorted.forEach(([stage,count])=>{
     const pct=Math.round((count/maxCount)*100);
@@ -933,9 +925,6 @@ function renderStagePanel(){
       '<span class="stage-count">'+count+'</span>';
     row.addEventListener('click',()=>showCaseList({stage},stage,count+' case'+(count!==1?'s':'')));
     el.appendChild(row);
-  });
-  document.getElementById('stage-row-pending-billing').addEventListener('click',()=>{
-    showCaseList({stage:'Pending billing'},'Pending billing',pendingBillingCount+' case'+(pendingBillingCount!==1?'s':''));
   });
   document.getElementById('stage-row-all').addEventListener('click',()=>{
     if(activeFilter==='all'){hideCaseList();return;}
