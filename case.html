@@ -1831,8 +1831,9 @@ document.getElementById('bi-fe-add-save').addEventListener('click', async () => 
   const name  = (first + ' ' + last).trim();
   if (!name) { msg.textContent = 'Name required'; return; }
   const btn = document.getElementById('bi-fe-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
+  const linkedFirm = (document.getElementById('bi-Firm').value || '').trim();
   try {
-    const resp = await fetch('/api/reflists?list=feeearners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firstName: first || null, lastName: last || null }) });
+    const resp = await fetch('/api/reflists?list=feeearners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firstName: first || null, lastName: last || null, notes: linkedFirm ? ('Linked to: ' + linkedFirm + ' (pending SharePoint Firm link)') : null }) });
     if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add fee earners');
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     if (refFeeEarners) { refFeeEarners.push({ name: name, firmId: null }); refFeeEarners.sort((a, b) => a.name.localeCompare(b.name)); }
@@ -1842,6 +1843,7 @@ document.getElementById('bi-fe-add-save').addEventListener('click', async () => 
     feSel.value = name;
     document.getElementById('bi-fe-add-first').value = ''; document.getElementById('bi-fe-add-last').value = '';
     feAddShow(false);
+    if (linkedFirm) { msg.className = ''; setTimeout(() => { const m = document.getElementById('msg-bi'); if (m) { m.textContent = 'Added ' + name + ' \u2014 remember to link them to ' + linkedFirm + ' in SharePoint (Fee Earners list).'; m.className = 'edit-msg ok'; } }, 50); }
   } catch (err) { msg.textContent = err.message; }
   finally { btn.disabled = false; }
 });
