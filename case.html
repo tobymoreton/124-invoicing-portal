@@ -633,6 +633,14 @@
     <div class="case-meta" id="hdr-meta"></div>
   </div>
 
+  <div id="bill-drafted-banner" style="display:none;margin:14px 32px 0;padding:14px 22px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15),0 0 18px rgba(220,38,38,.30);align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-weight:700;color:#991B1B;font-size:13.5px;">\u26a0\ufe0f Please complete Bill Drafted By</span>
+    <select id="bill-drafted-select" style="padding:8px 12px;border:1.5px solid #DC2626;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;">
+      <option value="">\u2014 select \u2014</option>
+    </select>
+    <span id="bill-drafted-msg" style="font-size:12px;color:#991B1B;"></span>
+  </div>
+
   <div class="doc-bar" id="doc-bar"></div>
 
   <div class="tab-bar">
@@ -1617,6 +1625,7 @@ async function loadCase() {
     renderCostsTab();
     renderInterestTab();
     renderNotesTab();
+    updateBillDraftedBanner();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display     = 'block';
     // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
@@ -2005,6 +2014,43 @@ function renderDocumentBar() {
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
+
+// Bill Drafted By banner — shown across every tab (sits outside .tab-panel so it
+// isn't tied to any one tab) whenever Total IP Profit Costs > 0 and BillDraftedByText
+// is blank. BillDraftedByText is a plain text mirror of the real Person-type column
+// Bill_x0020_drafted_x0020_by, which Graph app-only auth cannot reliably read or write.
+function updateBillDraftedBanner() {
+  const banner = document.getElementById('bill-drafted-banner');
+  if (!banner) return;
+  const totalPC = (computed && computed.totalIPPC) || 0;
+  const drafted = (caseFields && caseFields['BillDraftedByText']) || '';
+  if (totalPC > 0 && !drafted) {
+    const sel = document.getElementById('bill-drafted-select');
+    if (sel.children.length <= 1) {
+      TEAM_MEMBERS.forEach(name => { const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });
+    }
+    sel.value = '';
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+document.getElementById('bill-drafted-select').addEventListener('change', async function() {
+  const val = this.value;
+  const msg = document.getElementById('bill-drafted-msg');
+  if (!val || !caseItemId) return;
+  this.disabled = true; msg.textContent = 'Saving\u2026';
+  try {
+    const resp = await fetch('/api/caseupdate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: caseItemId, fields: { BillDraftedByText: val } }) });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    caseFields['BillDraftedByText'] = val;
+    msg.textContent = '';
+    updateBillDraftedBanner();
+  } catch (err) {
+    msg.textContent = 'Failed: ' + err.message;
+    this.disabled = false;
+  }
+});
 const STATUS_VALUES = [
   'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
   'In negotiation (served informally)','In negotiation (served formally)',
@@ -2398,7 +2444,7 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('costs','tab-costs'); }
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
   else btn.disabled = false;
 });
 
