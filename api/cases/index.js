@@ -97,6 +97,7 @@ const SELECT_FIELDS = [
   'NonVatableCounselFees',
   'NonVatableLAAPC',
   'ClientPaidExpenses',
+  'BillDraftedByText',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
   // Recovery
