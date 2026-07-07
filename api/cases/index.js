@@ -134,7 +134,9 @@ const SELECT_FIELDS = [
   'Casetype',
   // Opponent & Court tab
   'Opponentreference',
+  'opponentReference2',
   'opponentFirmMirror',
+  'OpponentFirm2Mirror',
   'ServiceEmail',
   'CourtName_Text',
   'Division',
