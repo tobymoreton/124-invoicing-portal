@@ -441,13 +441,18 @@
     .edit-msg.ok{color:var(--green);font-weight:500;}
     .edit-msg.err{color:#991B1B;}
     .quick-action-bar{display:flex;gap:12px;margin-bottom:16px;}
+    .shimmer{position:relative;overflow:hidden;}
+    .shimmer::after{content:'';position:absolute;top:0;left:-75%;width:50%;height:100%;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);transform:skewX(-20deg);animation:shimmer 3.2s ease-in-out infinite;pointer-events:none;}
+    @keyframes shimmer{0%{left:-75%;}60%{left:125%;}100%{left:125%;}}
     .btn-qa{
+      position:relative;overflow:hidden;
       flex:1;padding:14px 24px;border:none;border-radius:var(--radius-sm);
       font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;
       cursor:pointer;transition:all .2s ease;letter-spacing:.02em;
       box-shadow:0 2px 8px rgba(27,42,74,.15);
     }
     .btn-qa-reminder{background:var(--navy);color:var(--gold);}
+    .btn-qa::after{content:'';position:absolute;top:0;left:-75%;width:50%;height:100%;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);transform:skewX(-20deg);animation:shimmer 3.2s ease-in-out infinite;pointer-events:none;}
     .btn-qa-reminder:hover{background:var(--navy-mid);transform:translateY(-1px);box-shadow:0 4px 14px rgba(27,42,74,.30);}
     .btn-qa-action{background:var(--gold);color:var(--navy);}
     .btn-qa-action:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 4px 14px rgba(181,154,106,.40);}
@@ -668,15 +673,15 @@
   <div class="content">
 
     <div id="assign-strip" class="quick-action-bar" style="gap:12px;">
-      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
+      <div class="shimmer" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
         <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Assigned To</span>
         <select id="strip-assigned-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
       </div>
-      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--gold);box-shadow:0 2px 8px rgba(181,154,106,.30);">
+      <div class="shimmer" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--gold);box-shadow:0 2px 8px rgba(181,154,106,.30);">
         <span style="color:var(--navy);font-size:13px;font-weight:600;white-space:nowrap;">Co-Assigned</span>
         <select id="strip-coassigned-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(27,42,74,.3);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
       </div>
-      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
+      <div class="shimmer" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
         <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Status</span>
         <select id="strip-status-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
       </div>
