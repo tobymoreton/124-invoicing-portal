@@ -91,6 +91,12 @@ const SELECT_FIELDS = [
   'VATonDisbursements',
   'Costsofassessment',
   'OtherTMCInvoices_ex_x0020_bill',
+  'NonVatableProfitCosts',
+  'OtherTMCPCVatable',
+  'OtherTMCFeesVatable',
+  'NonVatableCounselFees',
+  'NonVatableLAAPC',
+  'ClientPaidExpenses',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
   // Recovery
