@@ -939,7 +939,8 @@
         <div class="card-head"><span class="card-title">Case Details</span><button type="button" class="info-btn" aria-label="About Case Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Core booking-in details: references, dates, turnaround and work in progress. Click Edit to change.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field full"><label>Case Name</label><input type="text" id="bi-CaseName" disabled /></div>
+            <div class="field full"><label>Case Title Override</label><input type="text" id="bi-CaseName" disabled /></div>
+            <div class="field full"><label>Full Case Name</label><input type="text" id="bi-FullCaseName" readonly /></div>
             <div class="field"><label>Date Received</label><input type="date" id="bi-DateReceived" disabled /></div>
             <div class="field"><label>Turnaround</label>
               <select id="bi-Turnaround" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
@@ -1896,6 +1897,7 @@ function renderBookingInTab() {
   setDate('bi-DateReceived', f['DateReceived']);
   document.getElementById('bi-OurRef').value = f['Ourreference_x0028_text_x0029_'] || '';
   document.getElementById('bi-CaseName').value = f['CaseNameForOpenCases'] || '';
+  document.getElementById('bi-FullCaseName').value = f['fullCaseNameMirror'] || '';
   document.getElementById('bi-ClientRef').value = f['ClientCaseReference'] || '';
   const ta = f['Turnaround_x0020__x0001f3af_'] || '';
   const taEl = document.getElementById('bi-Turnaround');
