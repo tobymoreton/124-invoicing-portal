@@ -1048,9 +1048,12 @@ function showCaseList(filter, title, meta){
     subset=myCases;
   }
   subset=[...subset].sort((a,b)=>{
-    const aName=(a.fields['CaseNameForOpenCases']||a.fields['Title']||a.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
-    const bName=(b.fields['CaseNameForOpenCases']||b.fields['Title']||b.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
-    return aName.localeCompare(bName);
+    const da=a.fields['DateReceived']?new Date(a.fields['DateReceived']):null;
+    const db=b.fields['DateReceived']?new Date(b.fields['DateReceived']):null;
+    if(da&&db) return da-db;
+    if(da) return -1;
+    if(db) return 1;
+    return 0;
   });
   renderCaseTable(subset);
   document.getElementById('case-list-section').scrollIntoView({behavior:'smooth',block:'start'});
