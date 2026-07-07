@@ -1656,11 +1656,11 @@ function computeFigures() {
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed'])             || 0;
   const nonVatCounsel  = parseFloat(f['NonVatableCounselFees'])          || 0;
-  const vatableCounsel = Math.max(0, counselClaimed - nonVatCounsel);
+  const vatableCounsel = round2(Math.max(0, counselClaimed - nonVatCounsel));
   const otherTMCPC     = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__'])|| 0;
   const laProfitCosts  = parseFloat(f['LegalAidOnlyProfitCosts'])         || 0;
   const nonVatLAPC     = parseFloat(f['NonVatableLAAPC'])         || 0;
-  const vatableLAPC    = Math.max(0, laProfitCosts - nonVatLAPC);
+  const vatableLAPC    = round2(Math.max(0, laProfitCosts - nonVatLAPC));
   const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
@@ -2132,7 +2132,7 @@ function renderCostsTab() {
   const f = caseFields; const c = computed;
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
-  const vatablePC       = Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC);
+  const vatablePC       = round2(Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC));
   const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   setNum('fc-PCexTMC-vat', vatablePC); setNum('fc-PCexTMC-nonvat', nonVatablePC);
@@ -2140,13 +2140,13 @@ function renderCostsTab() {
   setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
   setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']);
   const nonVatCounsel  = parseFloat(f['NonVatableCounselFees']) || 0;
-  const vatableCounsel = Math.max(0, (parseFloat(f['CounselsFeesClaimed']) || 0) - nonVatCounsel);
+  const vatableCounsel = round2(Math.max(0, (parseFloat(f['CounselsFeesClaimed']) || 0) - nonVatCounsel));
   setNum('fc-Counsel-vat', vatableCounsel); setNum('fc-Counsel-nonvat', nonVatCounsel);
   setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
   const vatPctRaw = f['VAT_x0020__x0025__x0020_Claimed'];
   document.getElementById('fc-VatPct')?.classList.toggle('input-blank-warn', vatPctRaw === null || vatPctRaw === undefined || vatPctRaw === '');
   const nonVatLAPC  = parseFloat(f['NonVatableLAAPC']) || 0;
-  const vatableLAPC = Math.max(0, (parseFloat(f['LegalAidOnlyProfitCosts']) || 0) - nonVatLAPC);
+  const vatableLAPC = round2(Math.max(0, (parseFloat(f['LegalAidOnlyProfitCosts']) || 0) - nonVatLAPC));
   setNum('fc-LAPC-vat', vatableLAPC); setNum('fc-LAPC-nonvat', nonVatLAPC); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
   const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const disb = parseFloat(f['DisbursementsClaimed']) || 0; const vatDisb = parseFloat(f['VATonDisbursements']) || 0; const counsel = parseFloat(f['CounselsFeesClaimed']) || 0;
@@ -2576,6 +2576,7 @@ function stripHtml(s) {
 function setText(id, val)  { const e = document.getElementById(id); if (e) e.textContent = val; }
 function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.value = val || ''; }
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
+function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
