@@ -668,9 +668,24 @@
   <div class="content">
 
     <div id="assign-strip" class="quick-action-bar" style="gap:12px;">
-      <div style="flex:1;padding:14px 24px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 2px 8px rgba(27,42,74,.15);text-align:center;">Assigned To: <strong id="strip-assigned">—</strong></div>
-      <div style="flex:1;padding:14px 24px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 2px 8px rgba(27,42,74,.15);text-align:center;">Co-Assigned: <strong id="strip-coassigned">—</strong></div>
-      <div style="flex:1;padding:14px 24px;border-radius:var(--radius-sm);background:var(--gold);color:var(--navy);font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 2px 8px rgba(181,154,106,.30);text-align:center;">Status: <strong id="strip-status">—</strong></div>
+      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
+        <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Assigned To</span>
+        <select id="strip-assigned-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--gold);box-shadow:0 2px 8px rgba(181,154,106,.30);">
+        <span style="color:var(--navy);font-size:13px;font-weight:600;white-space:nowrap;">Co-Assigned</span>
+        <select id="strip-coassigned-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(27,42,74,.3);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
+        <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Status</span>
+        <select id="strip-status-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
+      </div>
+      <span id="strip-msg" style="align-self:center;font-size:12px;color:var(--grey-mid);white-space:nowrap;"></span>
+    </div>
+    <div id="assign-strip-old" style="display:none;">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(27,42,74,.15);">Assigned To <select id="strip-assigned" style="padding:6px 10px;border:1px solid rgba(201,168,76,.4);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select></div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(27,42,74,.15);">Co-Assigned <select id="strip-coassigned" style="padding:6px 10px;border:1px solid rgba(201,168,76,.4);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select></div>
+      <div style="flex:1.4;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(27,42,74,.15);">Status <select id="strip-status" style="padding:6px 10px;border:1px solid rgba(201,168,76,.4);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;max-width:280px;"></select></div>
     </div>
 
     <!-- ════════ CASE OVERVIEW TAB ════════ -->
@@ -1957,12 +1972,44 @@ function renderOpponentTab() {
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
 }
 
+function renderAssignStrip() {
+  const f = caseFields; if (!f) return;
+  const fill = (selId, cur, opts, isStatus) => {
+    const sel = document.getElementById(selId); if (!sel) return;
+    sel.innerHTML = '';
+    const blank = document.createElement('option'); blank.value = ''; blank.textContent = isStatus ? '\u2014 select \u2014' : '\u2014 none \u2014'; sel.appendChild(blank);
+    const curL = (cur || '').toLowerCase(); let matched = !curL;
+    opts.forEach(o => {
+      const val = isStatus ? o : (TEAM_EMAILS[o] || o);
+      const opt = document.createElement('option'); opt.value = val; opt.textContent = o;
+      if (curL && (curL === val.toLowerCase() || (!isStatus && curL.includes(o.toLowerCase())))) { opt.selected = true; matched = true; }
+      sel.appendChild(opt);
+    });
+    if (!matched && cur) { const o = document.createElement('option'); o.value = cur; o.textContent = cur; o.selected = true; sel.appendChild(o); }
+  };
+  fill('strip-assigned-sel',   f['assignedToTextValue'], TEAM_MEMBERS, false);
+  fill('strip-coassigned-sel', f['coAssignedMirror'],    TEAM_MEMBERS, false);
+  fill('strip-status-sel',     f['StatusMirror'],        STATUS_VALUES, true);
+}
+async function stripSave(fields, selEl) {
+  const msg = document.getElementById('strip-msg');
+  selEl.disabled = true; if (msg) msg.textContent = 'Saving\u2026';
+  try {
+    const resp = await fetch('/api/caseupdate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ itemId: caseItemId, fields }) });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    Object.assign(caseFields, fields);
+    if (msg) { msg.textContent = '\u2713 Saved'; setTimeout(() => { msg.textContent = ''; }, 2500); }
+    renderHeader(); renderOverviewTab();
+  } catch (err) { if (msg) msg.textContent = 'Failed: ' + err.message; }
+  selEl.disabled = false;
+}
+document.getElementById('strip-assigned-sel').addEventListener('change', function(){ if (this.value) stripSave({ assignedToTextValue: this.value, AssignedToMirror: this.value }, this); });
+document.getElementById('strip-coassigned-sel').addEventListener('change', function(){ stripSave({ coAssignedMirror: this.value || null }, this); });
+document.getElementById('strip-status-sel').addEventListener('change', function(){ if (this.value) stripSave({ StatusMirror: this.value }, this); });
+
 function renderHeader() {
   const f = caseFields;
-  const stripName = v => { if (!v) return '—'; const s = String(v); return s.includes('@') ? s.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : s; };
-  const se = document.getElementById('strip-assigned');   if (se) se.textContent = stripName(f['assignedToTextValue']);
-  const sc = document.getElementById('strip-coassigned'); if (sc) sc.textContent = stripName(f['coAssignedMirror']);
-  const ss = document.getElementById('strip-status');     if (ss) ss.textContent = f['StatusMirror'] || '—';
+  renderAssignStrip();
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
   document.getElementById('hdr-name').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
   document.getElementById('hdr-meta').textContent = [f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']].filter(Boolean).join(' · ');
