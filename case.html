@@ -1073,6 +1073,13 @@
         <button class="btn-edit-cancel" id="btn-costs-cancel">Cancel</button>
         <span class="edit-msg" id="msg-costs"></span>
       </div>
+      <div id="costs-bdb-row" style="display:flex;align-items:center;gap:12px;margin:0 0 16px;padding:12px 18px;background:var(--white);border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);flex-wrap:wrap;">
+        <span style="font-weight:600;font-size:13px;color:var(--navy);">Bill Drafted By</span>
+        <select id="costs-bdb-select" style="padding:8px 12px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;">
+          <option value="">— select —</option>
+        </select>
+        <span id="costs-bdb-msg" style="font-size:12px;color:var(--grey-mid);"></span>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Inter Partes — Costs Claimed</span><button type="button" class="info-btn" aria-label="About Costs Claimed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The costs claimed against the paying party: profit costs, TMC drafting, other TMC PC, disbursements and their VAT, counsel's fees and the VAT percent. Click Edit to enter figures; totals calculate below.</span></button></div>
         <table class="costs-entry-table">
@@ -2023,6 +2030,7 @@ const TEAM_EMAILS = { Joanna:'joanna@tmclegal.co.uk', Tracy:'tracy@tmclegal.co.u
 function updateBillDraftedBanner() {
   const banner = document.getElementById('bill-drafted-banner');
   if (!banner) return;
+  updateCostsBdbRow();
   const totalPC = (computed && computed.totalIPPC) || 0;
   const drafted = (caseFields && caseFields['BillDraftedByText']) || '';
   if (totalPC > 0 && !drafted) {
@@ -2036,21 +2044,41 @@ function updateBillDraftedBanner() {
     banner.style.display = 'none';
   }
 }
-document.getElementById('bill-drafted-select').addEventListener('change', async function() {
-  const val = this.value;
-  const msg = document.getElementById('bill-drafted-msg');
+function updateCostsBdbRow() {
+  const row = document.getElementById('costs-bdb-row');
+  if (!row) return;
+  const sel = document.getElementById('costs-bdb-select');
+  if (sel.children.length <= 1) {
+    TEAM_MEMBERS.forEach(name => { const o = document.createElement('option'); o.value = TEAM_EMAILS[name] || name; o.textContent = name; sel.appendChild(o); });
+  }
+  const totalPC = (computed && computed.totalIPPC) || 0;
+  const drafted = (caseFields && caseFields['BillDraftedByText']) || '';
+  sel.value = drafted || '';
+  const glow = totalPC > 0 && !drafted;
+  row.style.border = glow ? '2px solid #DC2626' : '1.5px solid var(--grey-light)';
+  row.style.background = glow ? '#FEF2F2' : 'var(--white)';
+  row.style.boxShadow = glow ? '0 0 0 3px rgba(220,38,38,.15),0 0 18px rgba(220,38,38,.30)' : 'none';
+}
+async function saveBdb(val, msgEl, selEl) {
   if (!val || !caseItemId) return;
-  this.disabled = true; msg.textContent = 'Saving\u2026';
+  selEl.disabled = true; msgEl.textContent = 'Saving\u2026';
   try {
     const resp = await fetch('/api/caseupdate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: caseItemId, fields: { BillDraftedByText: val } }) });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     caseFields['BillDraftedByText'] = val;
-    msg.textContent = '';
+    msgEl.textContent = '\u2713 Saved';
+    setTimeout(() => { msgEl.textContent = ''; }, 3000);
     updateBillDraftedBanner();
   } catch (err) {
-    msg.textContent = 'Failed: ' + err.message;
-    this.disabled = false;
+    msgEl.textContent = 'Failed: ' + err.message;
   }
+  selEl.disabled = false;
+}
+document.getElementById('bill-drafted-select').addEventListener('change', function() {
+  saveBdb(this.value, document.getElementById('bill-drafted-msg'), this);
+});
+document.getElementById('costs-bdb-select').addEventListener('change', function() {
+  saveBdb(this.value, document.getElementById('costs-bdb-msg'), this);
 });
 const STATUS_VALUES = [
   'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
