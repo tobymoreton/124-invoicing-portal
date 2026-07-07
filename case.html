@@ -1103,24 +1103,6 @@
               <td class="tbl-computed" id="cv-pcNonVatInc">—</td>
             </tr>
             <tr>
-              <td class="row-label">TMC Drafting Time</td>
-              <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
-              <td class="tbl-computed" id="cv-vatTMC-row">—</td>
-              <td class="tbl-computed" id="cv-tmcInc">—</td>
-            </tr>
-            <tr>
-              <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
-              <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
-              <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
-              <td class="tbl-computed" id="cv-otherTMCInc">—</td>
-            </tr>
-            <tr>
-              <td class="row-label">Disbursements Claimed</td>
-              <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" disabled /></td>
-              <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" disabled /></td>
-              <td class="tbl-computed" id="cv-disbInc">—</td>
-            </tr>
-            <tr>
               <td class="row-label">Counsel's Fees Claimed (Vatable)</td>
               <td><input type="number" id="fc-Counsel-vat" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
@@ -1132,8 +1114,26 @@
               <td class="tbl-computed">&mdash;</td>
               <td class="tbl-computed" id="cv-counselNonVatInc">&mdash;</td>
             </tr>
+            <tr>
+              <td class="row-label">Disbursements Claimed</td>
+              <td><input type="number" id="fc-Disb" class="tbl-input" step="0.01" disabled /></td>
+              <td><input type="number" id="fc-VatDisb" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-disbInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">TMC Drafting Time</td>
+              <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatTMC-row">—</td>
+              <td class="tbl-computed" id="cv-tmcInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+              <td><input type="number" id="fc-OtherTMCPC" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
+              <td class="tbl-computed" id="cv-otherTMCInc">—</td>
+            </tr>
             <tr class="other-row">
-              <td class="row-label">Other TMC Fees — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+              <td class="row-label">Other TMC Fees (ie invoices previously rendered) — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
               <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
               <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
