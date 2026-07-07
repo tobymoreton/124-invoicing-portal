@@ -1768,7 +1768,7 @@ async function loadFirmFeRefData() {
     const [fr, fer] = await Promise.all([fetch('/api/clients'), fetch('/api/reflists?list=feeearners')]);
     const fd  = fr.ok  ? await fr.json()  : { value: [] };
     const fed = fer.ok ? await fer.json() : { value: [] };
-    refFirms = (fd.value || []).map(i => ({ id: String(i.id), name: ((i.fields || {}).Title || '').trim() })).filter(x => x.name);
+    refFirms = (fd.value || []).map(i => ({ id: String(i.id), name: ((i.fields || {}).Title || '').trim(), address1: ((i.fields || {}).AddressLine1 || '').trim() })).filter(x => x.name);
     refFeeEarners = (fed.value || []).map(i => ({ name: ((i.fields || {}).Title || '').trim(), firmId: (i.fields && i.fields.FirmLookupId != null) ? String(i.fields.FirmLookupId) : null })).filter(x => x.name);
     refFeeEarners.sort((a, b) => a.name.localeCompare(b.name));
   } catch (e) { refFirms = refFirms || []; refFeeEarners = refFeeEarners || []; }
@@ -1778,6 +1778,20 @@ function fillRefSelect(sel, names, current) {
   const blank = document.createElement('option'); blank.value = ''; blank.textContent = '\u2014 select \u2014'; sel.appendChild(blank);
   let hasCurrent = !current;
   names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; if (n === current) { o.selected = true; hasCurrent = true; } sel.appendChild(o); });
+  if (!hasCurrent) { const o = document.createElement('option'); o.value = current; o.textContent = current; o.selected = true; sel.appendChild(o); }
+}
+// Firm select shows "Name \u2014 Address line 1" but option.value stays the plain firm
+// name, since that's what gets written to the Firm_x0028_text_x0029_ mirror.
+function fillFirmSelect(sel, firms, current) {
+  sel.innerHTML = '';
+  const blank = document.createElement('option'); blank.value = ''; blank.textContent = '\u2014 select \u2014'; sel.appendChild(blank);
+  let hasCurrent = !current;
+  firms.forEach(fm => {
+    const o = document.createElement('option'); o.value = fm.name;
+    o.textContent = fm.address1 ? (fm.name + ' \u2014 ' + fm.address1) : fm.name;
+    if (fm.name === current) { o.selected = true; hasCurrent = true; }
+    sel.appendChild(o);
+  });
   if (!hasCurrent) { const o = document.createElement('option'); o.value = current; o.textContent = current; o.selected = true; sel.appendChild(o); }
 }
 function filterFeeEarnerOptions() {
@@ -1793,7 +1807,7 @@ async function populateFirmFeSelects(firmVal, feVal) {
   fillRefSelect(firmSel, [], firmVal); fillRefSelect(feSel, [], feVal);
   firmSel.onchange = filterFeeEarnerOptions;
   await loadFirmFeRefData();
-  fillRefSelect(firmSel, (refFirms || []).map(x => x.name), firmVal);
+  fillFirmSelect(firmSel, refFirms || [], firmVal);
   filterFeeEarnerOptions();
 }
 
