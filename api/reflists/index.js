@@ -88,13 +88,16 @@ function buildFields(list, body) {
   const f = {};
   if (list === 'feeearners') {
     if (body.title      != null) f['Title']                           = body.title;
-    if (body.firstName  != null) f['Fee_x0020_earner_x0020_first_x00'] = body.firstName;
-    if (body.lastName   != null) f['Fee_x0020_earner_x0020_last_x002'] = body.lastName;
+    // First/Last name are SP Calculated columns on this list (formula-derived
+    // from Title, e.g. '=LEFT(Title,FIND(" ",Title)-1)') - Graph returns 403
+    // accessDenied on any attempt to write them directly. Do NOT write them;
+    // they populate automatically from Title the moment it's set.
     if (body.email      != null) f['Email']                           = body.email;
     if (body.directLine != null) f['Directline']                      = body.directLine;
     if (body.status     != null) f['Status']                          = body.status;
     if (body.notes      != null) f['Notes']                           = body.notes;
     if (body.qualified  != null) f['Dateofqualification']             = body.qualified;
+    if (body.firmToLink != null) f['FirmToLink']                       = body.firmToLink;
     // Field names confirmed from live Graph data 2026-06-30 (record 'Abbie Roberts').
     // 'Experience' internal name not yet confirmed (no populated record) - omitted
     // from write until verified.
