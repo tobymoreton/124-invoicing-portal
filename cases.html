@@ -436,6 +436,7 @@
             <thead>
               <tr>
                 <th>Case</th>
+                <th>Received</th>
                 <th>Client</th>
                 <th>Stage</th>
                 <th>Task</th>
@@ -1073,12 +1074,14 @@ function renderCaseTable(cases){
     const status=f['StatusMirror']||'\u2014';
     const task =f['Task']||'';
     const lastRem=stripHtml(f['Last_x0020_Reminder']||'');
+    const dateReceived=fmtDateShort(f['DateReceived'])||'\u2014';
     const lastRemShort=lastRem.length>80?lastRem.slice(0,80)+'\u2026':lastRem;
     const costs=computeTotalCosts(f);
     const costsFmt=costs>0?fmt(costs):'\u2014';
     const tr=document.createElement('tr');
     tr.innerHTML=
       '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
+      '<td><span style="font-size:12.5px;color:var(--navy);">'+escHtml(dateReceived)+'</span></td>'+
       '<td><span style="font-size:12.5px;color:var(--navy);">'+escHtml(firm||'\u2014')+'</span></td>'+
       '<td class="td-status" data-item-id="'+c.id+'" data-current-status="'+escHtml(status)+'">'+
         '<span class="status-chip '+statusClass(status)+'" title="Click to change">'+escHtml(status)+'</span>'+
