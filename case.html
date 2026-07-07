@@ -927,8 +927,8 @@
           <div class="detail-grid">
             <div class="field"><label id="bi-FirstName-label">First Name</label><input type="text" id="bi-FirstName" disabled /></div>
             <div class="field"><label id="bi-Surname-label">Surname</label><input type="text" id="bi-Surname" disabled /></div>
-            <div class="field"><label>Fee Earner</label><input type="text" id="bi-FeeEarner" disabled /></div>
-            <div class="field"><label>Firm</label><input type="text" id="bi-Firm" disabled /></div>
+            <div class="field"><label>Fee Earner</label><select id="bi-FeeEarner" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;"></select></div>
+            <div class="field"><label>Firm</label><select id="bi-Firm" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;"></select></div>
             <div class="field checkbox-field" style="margin-top:8px;">
               <input type="checkbox" id="bi-Andothers" disabled />
               <label for="bi-Andothers">More than one Claimant?</label>
@@ -1733,6 +1733,48 @@ function computeDueDate(dateReceivedISO, turnaround) {
   return d;
 }
 
+// Firm + Fee Earner constrained dropdowns (Client Info tab).
+// Firm options come from /api/clients (Client Firms list); Fee Earner options from
+// /api/reflists?list=feeearners, filtered to the selected firm via FirmLookupId.
+// Values not in the lists (legacy free-text) are kept as extra options so nothing
+// displays blank. Saving still writes the text mirrors - the underlying SP Lookup
+// fields cannot be written via Graph app-only auth.
+let refFirms = null;
+let refFeeEarners = null;
+async function loadFirmFeRefData() {
+  if (refFirms && refFeeEarners) return;
+  try {
+    const [fr, fer] = await Promise.all([fetch('/api/clients'), fetch('/api/reflists?list=feeearners')]);
+    const fd  = fr.ok  ? await fr.json()  : { value: [] };
+    const fed = fer.ok ? await fer.json() : { value: [] };
+    refFirms = (fd.value || []).map(i => ({ id: String(i.id), name: ((i.fields || {}).Title || '').trim() })).filter(x => x.name);
+    refFeeEarners = (fed.value || []).map(i => ({ name: ((i.fields || {}).Title || '').trim(), firmId: (i.fields && i.fields.FirmLookupId != null) ? String(i.fields.FirmLookupId) : null })).filter(x => x.name);
+    refFeeEarners.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) { refFirms = refFirms || []; refFeeEarners = refFeeEarners || []; }
+}
+function fillRefSelect(sel, names, current) {
+  sel.innerHTML = '';
+  const blank = document.createElement('option'); blank.value = ''; blank.textContent = '\u2014 select \u2014'; sel.appendChild(blank);
+  let hasCurrent = !current;
+  names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; if (n === current) { o.selected = true; hasCurrent = true; } sel.appendChild(o); });
+  if (!hasCurrent) { const o = document.createElement('option'); o.value = current; o.textContent = current; o.selected = true; sel.appendChild(o); }
+}
+function filterFeeEarnerOptions() {
+  const firmSel = document.getElementById('bi-Firm'); const feSel = document.getElementById('bi-FeeEarner');
+  const firm = (refFirms || []).find(x => x.name === firmSel.value);
+  let pool = refFeeEarners || [];
+  if (firm) { const matched = pool.filter(x => x.firmId === firm.id); if (matched.length) pool = matched; }
+  fillRefSelect(feSel, pool.map(x => x.name), feSel.value);
+}
+async function populateFirmFeSelects(firmVal, feVal) {
+  const firmSel = document.getElementById('bi-Firm'); const feSel = document.getElementById('bi-FeeEarner');
+  fillRefSelect(firmSel, [], firmVal); fillRefSelect(feSel, [], feVal);
+  firmSel.onchange = filterFeeEarnerOptions;
+  await loadFirmFeRefData();
+  fillRefSelect(firmSel, (refFirms || []).map(x => x.name), firmVal);
+  filterFeeEarnerOptions();
+}
+
 function renderBookingInTab() {
   const f = caseFields;
   setDate('bi-DateReceived', f['DateReceived']);
@@ -1759,8 +1801,7 @@ function renderBookingInTab() {
   const multi = !!(f['Andothers_x003f_']);
   document.getElementById('bi-FirstName').value = f['OurPartyFirstName'] || '';
   document.getElementById('bi-Surname').value = multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || '');
-  document.getElementById('bi-FeeEarner').value  = f['FeeEarner_x0028_fromFM_x0029_'] || '';
-  document.getElementById('bi-Firm').value       = f['Firm_x0028_text_x0029_'] || '';
+  populateFirmFeSelects(f['Firm_x0028_text_x0029_'] || '', f['FeeEarner_x0028_fromFM_x0029_'] || '');
   setCheck('bi-Andothers', f['Andothers_x003f_']);
   function syncPartyFields() {
     const isMulti = document.getElementById('bi-Andothers').checked;
