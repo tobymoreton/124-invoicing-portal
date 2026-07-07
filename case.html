@@ -2014,6 +2014,7 @@ function renderDocumentBar() {
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
+const TEAM_EMAILS = { Joanna:'joanna@tmclegal.co.uk', Tracy:'tracy@tmclegal.co.uk', Kelly:'kelly@tmclegal.co.uk', Tom:'tom@tmclegal.co.uk', Julie:'julie@tmclegal.co.uk', Daniel:'daniel@tmclegal.co.uk', Toby:'toby@tmclegal.co.uk' };
 
 // Bill Drafted By banner — shown across every tab (sits outside .tab-panel so it
 // isn't tied to any one tab) whenever Total IP Profit Costs > 0 and BillDraftedByText
@@ -2027,7 +2028,7 @@ function updateBillDraftedBanner() {
   if (totalPC > 0 && !drafted) {
     const sel = document.getElementById('bill-drafted-select');
     if (sel.children.length <= 1) {
-      TEAM_MEMBERS.forEach(name => { const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });
+      TEAM_MEMBERS.forEach(name => { const o = document.createElement('option'); o.value = TEAM_EMAILS[name] || name; o.textContent = name; sel.appendChild(o); });
     }
     sel.value = '';
     banner.style.display = 'flex';
