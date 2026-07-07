@@ -875,13 +875,7 @@ function renderStats(){
   const billedRefs=new Set(
     allInvoices.filter(inv=>!inv.Cancelled&&(parseFloat(inv.DraftingFeeElement)||0)>0).map(inv=>inv.Ourref)
   );
-  // Bill-drafted-by filter (not Assigned To). BillDraftedByText stores the drafter's
-  // email; cases where no bill has been drafted yet have this blank and won't match.
-  const draftedByMe=allCases.filter(c=>{
-    const bd=(c.fields['BillDraftedByText']||'').toLowerCase().trim();
-    return bd&&bd===callerEmail.toLowerCase();
-  });
-  pcBreakdown=draftedByMe
+  pcBreakdown=myCases
     .filter(c=>!billedRefs.has(c.fields['Ourreference_x0028_text_x0029_']))
     .map(c=>({
       name:c.fields['CaseNameForOpenCases']||c.fields['Ourreference_x0028_text_x0029_'],
