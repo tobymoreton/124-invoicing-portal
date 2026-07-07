@@ -166,6 +166,7 @@
     /* ── Content & layout ────────────────────── */
     .content{max-width:1200px;margin:0 auto;padding:28px 28px 56px;}
     .tab-panel{display:none;animation:fadeIn .18s ease;}
+    #tab-bookingin.editing #bi-fe-add-btn{display:inline-block !important;}
     .tab-panel.active{display:block;}
     @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
@@ -927,7 +928,16 @@
           <div class="detail-grid">
             <div class="field"><label id="bi-FirstName-label">First Name</label><input type="text" id="bi-FirstName" disabled /></div>
             <div class="field"><label id="bi-Surname-label">Surname</label><input type="text" id="bi-Surname" disabled /></div>
-            <div class="field"><label>Fee Earner</label><select id="bi-FeeEarner" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;"></select></div>
+            <div class="field"><label>Fee Earner</label><select id="bi-FeeEarner" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;"></select>
+              <button type="button" id="bi-fe-add-btn" style="display:none;margin-top:6px;background:none;border:none;color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Fee Earner</button>
+              <div id="bi-fe-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="bi-fe-add-first" placeholder="First name" style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="bi-fe-add-last" placeholder="Last name" style="flex:1;min-width:90px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <button type="button" id="bi-fe-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
+                <button type="button" id="bi-fe-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
+                <span id="bi-fe-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
+              </div>
+            </div>
             <div class="field"><label>Firm</label><select id="bi-Firm" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;"></select></div>
             <div class="field checkbox-field" style="margin-top:8px;">
               <input type="checkbox" id="bi-Andothers" disabled />
@@ -1095,10 +1105,16 @@
               <td class="tbl-computed" id="cv-disbInc">—</td>
             </tr>
             <tr>
-              <td class="row-label">Counsel's Fees Claimed</td>
-              <td><input type="number" id="fc-Counsel" class="tbl-input" step="0.01" disabled /></td>
+              <td class="row-label">Counsel's Fees Claimed (Vatable)</td>
+              <td><input type="number" id="fc-Counsel-vat" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatCounsel-row">—</td>
               <td class="tbl-computed" id="cv-counselInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">Counsel's Fees Claimed (Non-Vatable)</td>
+              <td><input type="number" id="fc-Counsel-nonvat" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed">&mdash;</td>
+              <td class="tbl-computed" id="cv-counselNonVatInc">&mdash;</td>
             </tr>
             <tr class="other-row">
               <td class="row-label">Other TMC Fees — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
@@ -1130,7 +1146,8 @@
           <table class="costs-entry-table">
             <thead><tr><th class="col-label"></th><th class="col-net">Net (£)</th></tr></thead>
             <tbody>
-              <tr><td class="row-label">LA Only Profit Costs</td><td><input type="number" id="fc-LAPC" class="tbl-input" step="0.01" disabled /></td></tr>
+              <tr><td class="row-label">LA Only Profit Costs (Vatable)</td><td><input type="number" id="fc-LAPC-vat" class="tbl-input" step="0.01" disabled /></td></tr>
+              <tr><td class="row-label">LA Only Profit Costs (Non-Vatable)</td><td><input type="number" id="fc-LAPC-nonvat" class="tbl-input" step="0.01" disabled /></td></tr>
               <tr><td class="row-label">TMC Drafting Time — LA</td><td><input type="number" id="fc-TMCDraftingLA" class="tbl-input" step="0.01" disabled /></td></tr>
             </tbody>
           </table>
@@ -1638,8 +1655,12 @@ function computeFigures() {
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed'])             || 0;
+  const nonVatCounsel  = parseFloat(f['NonVatableCounselFees'])          || 0;
+  const vatableCounsel = Math.max(0, counselClaimed - nonVatCounsel);
   const otherTMCPC     = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__'])|| 0;
   const laProfitCosts  = parseFloat(f['LegalAidOnlyProfitCosts'])         || 0;
+  const nonVatLAPC     = parseFloat(f['NonVatableLAAPC'])         || 0;
+  const vatableLAPC    = Math.max(0, laProfitCosts - nonVatLAPC);
   const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
@@ -1648,7 +1669,7 @@ function computeFigures() {
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
   const tmcPCIncVAT   = draftingTimeIP * vatHelper;
-  const counselIncVAT = counselClaimed * vatHelper;
+  const counselIncVAT = counselClaimed + vatableCounsel * vatPct;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - totalCOA - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
@@ -1663,8 +1684,8 @@ function computeFigures() {
   const totalIPPC    = claimedPC + draftingTimeIP + otherTMCPC;
   const vatableIPPC  = (claimedPC - nonVatablePC) + draftingTimeIP + (otherTMCPCVat ? otherTMCPC : 0);
   const vatOnPC      = vatableIPPC * vatPct;
-  const vatOnCounsel = counselClaimed * vatPct;
-  const vatOnLAPC    = laProfitCosts  * vatPct;
+  const vatOnCounsel = vatableCounsel * vatPct;
+  const vatOnLAPC    = vatableLAPC * vatPct;
   const totalCostsClaimed = totalIPPC + vatOnPC + disbursements + vatOnDisb + counselClaimed + vatOnCounsel;
   const totalBill    = totalCostsClaimed;
   const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
@@ -1768,12 +1789,48 @@ function filterFeeEarnerOptions() {
 }
 async function populateFirmFeSelects(firmVal, feVal) {
   const firmSel = document.getElementById('bi-Firm'); const feSel = document.getElementById('bi-FeeEarner');
+  feAddShow(false);
   fillRefSelect(firmSel, [], firmVal); fillRefSelect(feSel, [], feVal);
   firmSel.onchange = filterFeeEarnerOptions;
   await loadFirmFeRefData();
   fillRefSelect(firmSel, (refFirms || []).map(x => x.name), firmVal);
   filterFeeEarnerOptions();
 }
+
+// Quick-add Fee Earner (Client Info tab). POSTs to /api/reflists?list=feeearners.
+// Writes are gated server-side to Toby/Danielle/Lesley - a 403 is surfaced as a
+// clear message. The new record's Firm lookup CANNOT be set via Graph app-only,
+// so the new fee earner is unlinked to any firm until set in SP itself; they are
+// selected immediately here via the current-value preservation in fillRefSelect.
+function feAddShow(show) {
+  document.getElementById('bi-fe-add-form').style.display = show ? 'flex' : 'none';
+  document.getElementById('bi-fe-add-btn').style.visibility = show ? 'hidden' : '';
+  document.getElementById('bi-fe-add-msg').textContent = '';
+  if (show) document.getElementById('bi-fe-add-first').focus();
+}
+document.getElementById('bi-fe-add-btn').addEventListener('click', () => feAddShow(true));
+document.getElementById('bi-fe-add-cancel').addEventListener('click', () => feAddShow(false));
+document.getElementById('bi-fe-add-save').addEventListener('click', async () => {
+  const first = document.getElementById('bi-fe-add-first').value.trim();
+  const last  = document.getElementById('bi-fe-add-last').value.trim();
+  const msg   = document.getElementById('bi-fe-add-msg');
+  const name  = (first + ' ' + last).trim();
+  if (!name) { msg.textContent = 'Name required'; return; }
+  const btn = document.getElementById('bi-fe-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
+  try {
+    const resp = await fetch('/api/reflists?list=feeearners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firstName: first || null, lastName: last || null }) });
+    if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add fee earners');
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    if (refFeeEarners) { refFeeEarners.push({ name: name, firmId: null }); refFeeEarners.sort((a, b) => a.name.localeCompare(b.name)); }
+    const feSel = document.getElementById('bi-FeeEarner');
+    fillRefSelect(feSel, (refFeeEarners || []).map(x => x.name), name);
+    filterFeeEarnerOptions();
+    feSel.value = name;
+    document.getElementById('bi-fe-add-first').value = ''; document.getElementById('bi-fe-add-last').value = '';
+    feAddShow(false);
+  } catch (err) { msg.textContent = err.message; }
+  finally { btn.disabled = false; }
+});
 
 function renderBookingInTab() {
   const f = caseFields;
@@ -2081,11 +2138,16 @@ function renderCostsTab() {
   setNum('fc-PCexTMC-vat', vatablePC); setNum('fc-PCexTMC-nonvat', nonVatablePC);
   setCheck('fc-OtherTMCPC-vatable', otherTMCPCVat); setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
   setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
-  setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']); setNum('fc-Counsel', f['CounselsFeesClaimed']);
+  setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']);
+  const nonVatCounsel  = parseFloat(f['NonVatableCounselFees']) || 0;
+  const vatableCounsel = Math.max(0, (parseFloat(f['CounselsFeesClaimed']) || 0) - nonVatCounsel);
+  setNum('fc-Counsel-vat', vatableCounsel); setNum('fc-Counsel-nonvat', nonVatCounsel);
   setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
   const vatPctRaw = f['VAT_x0020__x0025__x0020_Claimed'];
   document.getElementById('fc-VatPct')?.classList.toggle('input-blank-warn', vatPctRaw === null || vatPctRaw === undefined || vatPctRaw === '');
-  setNum('fc-LAPC', f['LegalAidOnlyProfitCosts']); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
+  const nonVatLAPC  = parseFloat(f['NonVatableLAAPC']) || 0;
+  const vatableLAPC = Math.max(0, (parseFloat(f['LegalAidOnlyProfitCosts']) || 0) - nonVatLAPC);
+  setNum('fc-LAPC-vat', vatableLAPC); setNum('fc-LAPC-nonvat', nonVatLAPC); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
   const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const disb = parseFloat(f['DisbursementsClaimed']) || 0; const vatDisb = parseFloat(f['VATonDisbursements']) || 0; const counsel = parseFloat(f['CounselsFeesClaimed']) || 0;
   const otherTMCFeesAmt = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
@@ -2093,7 +2155,8 @@ function renderCostsTab() {
   setText('cv-pcNonVatInc', nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014'); setText('cv-vatTMC-row', fmt(tmc * vatPct)); setText('cv-tmcInc', fmt(tmc * (1 + vatPct)));
   setText('cv-vatOtherTMC-row', otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014'); setText('cv-otherTMCInc', otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
   setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014'); setText('cv-otherTMCFeesInc', otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
-  setText('cv-disbInc', fmt(disb + vatDisb)); setText('cv-vatCounsel-row', fmt(counsel * vatPct)); setText('cv-counselInc', fmt(counsel * (1 + vatPct)));
+  setText('cv-disbInc', fmt(disb + vatDisb)); setText('cv-vatCounsel-row', vatableCounsel > 0 ? fmt(vatableCounsel * vatPct) : '\u2014'); setText('cv-counselInc', fmt(vatableCounsel * (1 + vatPct)));
+  setText('cv-counselNonVatInc', nonVatCounsel > 0 ? fmt(nonVatCounsel) : '\u2014');
   setText('cc-totalIPPC', fmt(c.totalIPPC)); setText('cc-vatPC', fmt(c.vatOnPC)); setText('cc-vatCounsel', fmt(c.vatOnCounsel)); setText('cc-vatLAPC', fmt(c.vatOnLAPC)); setText('cc-totalClaimed', fmt(c.totalCostsClaimed));
 }
 
@@ -2245,8 +2308,9 @@ document.getElementById('btn-op-save').addEventListener('click', async () => {
 
 document.getElementById('btn-import-counsel').addEventListener('click', () => {
   const f = caseFields; const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+  const _nvCounsel = parseFloat(f['NonVatableCounselsFees']) || 0;
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  document.getElementById('f-Counselsfeespayable').value = Math.round(counselClaimed * (1 + vatPct) * 100) / 100 || '';
+  document.getElementById('f-Counselsfeespayable').value = Math.round((counselClaimed + Math.max(0, counselClaimed - _nvCounsel) * vatPct) * 100) / 100 || '';
 });
 
 const coaPicker = document.getElementById('coa-picker');
@@ -2300,10 +2364,18 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   fields['NonVatableProfitCosts']  = _nonVatableVal || null;
   fields['OtherTMCPCVatable']     = !!(document.getElementById('fc-OtherTMCPC-vatable')?.checked);
   fields['OtherTMCFeesVatable']   = !!(document.getElementById('fc-OtherTMCFees-vatable')?.checked);
+  const _counselVat    = parseFloat(document.getElementById('fc-Counsel-vat')?.value) || 0;
+  const _counselNonVat = parseFloat(document.getElementById('fc-Counsel-nonvat')?.value) || 0;
+  fields['CounselsFeesClaimed']    = (_counselVat + _counselNonVat) || null;
+  fields['NonVatableCounselFees'] = _counselNonVat || null;
+  const _lapcVat    = parseFloat(document.getElementById('fc-LAPC-vat')?.value) || 0;
+  const _lapcNonVat = parseFloat(document.getElementById('fc-LAPC-nonvat')?.value) || 0;
+  fields['LegalAidOnlyProfitCosts'] = (_lapcVat + _lapcNonVat) || null;
+  fields['NonVatableLAAPC'] = _lapcNonVat || null;
   for (const [sp, el] of Object.entries({
     'DraftingTimeClaimed':'fc-TMCDrafting','Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
-    'VATonDisbursements':'fc-VatDisb','CounselsFeesClaimed':'fc-Counsel','OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
-    'LegalAidOnlyProfitCosts':'fc-LAPC','TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
+    'VATonDisbursements':'fc-VatDisb','OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
+    'TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
   await doSave(fields, btn, msg, 'edit-msg');
