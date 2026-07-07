@@ -2858,6 +2858,8 @@ async function saveRemRow(id) {
 }
 
 function initAddRemPanel() {
+  const evSel = document.getElementById('rem-add-event');
+  if (evSel && evSel.dataset.filled !== '1') { evSel.innerHTML = REM_EVENTS.map(v => '<option>' + escHtml(v) + '</option>').join(''); evSel.value = 'General reminder'; evSel.dataset.filled = '1'; }
   const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
   const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
