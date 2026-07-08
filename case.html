@@ -1654,9 +1654,58 @@ async function loadCourts() {
   }
 }
 
+function renderCaseUI(firstPaint) {
+  computeFigures();
+  computeInterest();
+  renderHeader();
+  renderOverviewTab();
+  renderBookingInTab();
+  renderOpponentTab();
+  renderSettlementTab();
+  renderOffersTab();
+  renderCostsTab();
+  renderInterestTab();
+  renderNotesTab();
+  updateBillDraftedBanner();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display     = 'block';
+  if (firstPaint === false) return;
+  // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
+  const _deepAction = new URLSearchParams(window.location.search).get('action');
+  if (_deepAction) {
+    const _caBtn = document.querySelector('.tab-btn[data-tab="caseactions"]');
+    if (_caBtn) setTimeout(() => { _caBtn.click(); }, 300);
+  } else {
+    setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
+  }
+  // If deep-linking to a specific reminder, auto-switch to Reminders tab and open it in edit mode
+  const _deepReminder = new URLSearchParams(window.location.search).get('reminder');
+  if (_deepReminder) {
+    const _remBtn = document.querySelector('.tab-btn[data-tab="reminders"]');
+    if (_remBtn) setTimeout(() => { _remBtn.click(); }, 300);
+  }
+}
+
 async function loadCase() {
   const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
+
+  // Fast path: paint instantly from the dash's per-case sessionStorage cache, then revalidate in the background.
+  let painted = false;
+  try {
+    const raw = sessionStorage.getItem('tmc_case_' + ref);
+    if (raw) {
+      const c = JSON.parse(raw);
+      if (c && c.fields && c.cachedAt && (Date.now() - c.cachedAt) < 30 * 60 * 1000) {
+        caseItemId = c.id;
+        caseFields = c.fields;
+        loadCourts().catch(() => {});
+        renderCaseUI(true);
+        painted = true;
+      }
+    }
+  } catch (e) { /* ignore bad cache */ }
+
   try {
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
@@ -1667,39 +1716,13 @@ async function loadCase() {
     const match = (data.value || []).find(item =>
       (item.fields?.['Ourreference_x0028_text_x0029_'] || '').toString().trim() === ref
     );
-    if (!match) { showError('Case not found', 'No case with reference ' + ref + '.'); return; }
+    if (!match) { if (!painted) showError('Case not found', 'No case with reference ' + ref + '.'); return; }
     caseItemId = match.id;
     caseFields = match.fields || {};
-    computeFigures();
-    computeInterest();
-    renderHeader();
-    renderOverviewTab();
-    renderBookingInTab();
-    renderOpponentTab();
-    renderSettlementTab();
-    renderOffersTab();
-    renderCostsTab();
-    renderInterestTab();
-    renderNotesTab();
-    updateBillDraftedBanner();
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('app').style.display     = 'block';
-    // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
-    const _deepAction = new URLSearchParams(window.location.search).get('action');
-    if (_deepAction) {
-      const _caBtn = document.querySelector('.tab-btn[data-tab="caseactions"]');
-      if (_caBtn) setTimeout(() => { _caBtn.click(); }, 300);
-    } else {
-      setTimeout(() => { loadCaseActions(); }, 1000); // Prefetch case actions in background while user reads Overview
-    }
-    // If deep-linking to a specific reminder, auto-switch to Reminders tab and open it in edit mode
-    const _deepReminder = new URLSearchParams(window.location.search).get('reminder');
-    if (_deepReminder) {
-      const _remBtn = document.querySelector('.tab-btn[data-tab="reminders"]');
-      if (_remBtn) setTimeout(() => { _remBtn.click(); }, 300);
-    }
+    try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({ id: match.id, fields: match.fields, cachedAt: Date.now() })); } catch (e) {}
+    renderCaseUI(!painted);
   } catch (err) {
-    showError('Error loading case', err.message);
+    if (!painted) showError('Error loading case', err.message);
   }
 }
 
