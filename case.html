@@ -1147,10 +1147,16 @@
               <td class="tbl-computed" id="cv-disbInc">—</td>
             </tr>
             <tr>
-              <td class="row-label">TMC Drafting Time</td>
+              <td class="row-label">TMC Drafting Time (Vatable)</td>
               <td><input type="number" id="fc-TMCDrafting" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatTMC-row">—</td>
               <td class="tbl-computed" id="cv-tmcInc">—</td>
+            </tr>
+            <tr>
+              <td class="row-label">TMC Drafting Time (Non-Vatable)</td>
+              <td><input type="number" id="fc-TMCDrafting-nonvat" class="tbl-input" step="0.01" disabled /></td>
+              <td class="tbl-computed">&mdash;</td>
+              <td class="tbl-computed" id="cv-tmcNonVatInc">&mdash;</td>
             </tr>
             <tr>
               <td class="row-label">Other TMC Profit Costs<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCPC-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
@@ -1697,6 +1703,7 @@ function computeFigures() {
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
+  const nonVatDraftingIP = parseFloat(f['NonVatableTMCDraftingTime'])    || 0;
   const counselClaimed = parseFloat(f['CounselsFeesClaimed'])             || 0;
   const nonVatCounsel  = parseFloat(f['NonVatableCounselFees'])          || 0;
   const vatableCounsel = round2(Math.max(0, counselClaimed - nonVatCounsel));
@@ -1711,20 +1718,20 @@ function computeFigures() {
   const disbIncVAT    = disbursements + vatOnDisb;
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
-  const tmcPCIncVAT   = draftingTimeIP * vatHelper;
+  const tmcPCIncVAT   = draftingTimeIP * vatHelper + nonVatDraftingIP;
   const counselIncVAT = counselClaimed + vatableCounsel * vatPct;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - totalCOA - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
-  const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + otherTMCPC) : netBeforeDrafting;
+  const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC) : netBeforeDrafting;
   const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : _netDraftingFeeStored;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
   const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
-  const totalIPPC    = claimedPC + draftingTimeIP + otherTMCPC;
+  const totalIPPC    = claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC;
   const vatableIPPC  = (claimedPC - nonVatablePC) + draftingTimeIP + (otherTMCPCVat ? otherTMCPC : 0);
   const vatOnPC      = vatableIPPC * vatPct;
   const vatOnCounsel = vatableCounsel * vatPct;
@@ -1736,8 +1743,8 @@ function computeFigures() {
   computed = {
     offerOrSettlement, disbIncVAT, counsel, coa, clientExpenses, totalCOA, otherTMC, totalPayable,
     pcIncVAT, tmcPCIncVAT, counselIncVAT, totalClaimed,
-    claimedPC, draftingTimeIP, disbursements, counselClaimed,
-    netTotalClaimed: claimedPC + draftingTimeIP + disbursements + counselClaimed,
+    claimedPC, draftingTimeIP, nonVatDraftingIP, disbursements, counselClaimed,
+    netTotalClaimed: claimedPC + draftingTimeIP + nonVatDraftingIP + disbursements + counselClaimed,
     grossPC, netBeforeDrafting, netDraftingFee, netAfterDrafting,
     pctPC, pctBill, totalBill,
     otherTMCPC, laProfitCosts, tmcDraftingLA,
@@ -2318,7 +2325,7 @@ function renderCostsTab() {
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   setNum('fc-PCexTMC-vat', vatablePC); setNum('fc-PCexTMC-nonvat', nonVatablePC);
   setCheck('fc-OtherTMCPC-vatable', otherTMCPCVat); setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
-  setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
+  setNum('fc-TMCDrafting', f['DraftingTimeClaimed']); setNum('fc-TMCDrafting-nonvat', f['NonVatableTMCDraftingTime']); setNum('fc-OtherTMCPC', f['Other_x0020_TMC_x0020_PC_x0020__']);
   setNum('fc-Disb', f['DisbursementsClaimed']); setNum('fc-VatDisb', f['VATonDisbursements']);
   const nonVatCounsel  = parseFloat(f['NonVatableCounselFees']) || 0;
   const vatableCounsel = round2(Math.max(0, (parseFloat(f['CounselsFeesClaimed']) || 0) - nonVatCounsel));
@@ -2329,11 +2336,11 @@ function renderCostsTab() {
   const nonVatLAPC  = parseFloat(f['NonVatableLAAPC']) || 0;
   const vatableLAPC = round2(Math.max(0, (parseFloat(f['LegalAidOnlyProfitCosts']) || 0) - nonVatLAPC));
   setNum('fc-LAPC-vat', vatableLAPC); setNum('fc-LAPC-nonvat', nonVatLAPC); setNum('fc-TMCDraftingLA', f['TMC_x0020_drafting_x0020_time_x0']);
-  const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
+  const tmc = parseFloat(f['DraftingTimeClaimed']) || 0; const tmcNonVat = parseFloat(f['NonVatableTMCDraftingTime']) || 0; const otherTMC = parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const disb = parseFloat(f['DisbursementsClaimed']) || 0; const vatDisb = parseFloat(f['VATonDisbursements']) || 0; const counsel = parseFloat(f['CounselsFeesClaimed']) || 0;
   const otherTMCFeesAmt = parseFloat(f['OtherTMCInvoices_ex_x0020_bill']) || 0;
   setText('cv-vatPC-row', vatablePC > 0 ? fmt(vatablePC * vatPct) : '\u2014'); setText('cv-pcInc', fmt(vatablePC * (1 + vatPct)));
-  setText('cv-pcNonVatInc', nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014'); setText('cv-vatTMC-row', fmt(tmc * vatPct)); setText('cv-tmcInc', fmt(tmc * (1 + vatPct)));
+  setText('cv-pcNonVatInc', nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014'); setText('cv-vatTMC-row', fmt(tmc * vatPct)); setText('cv-tmcInc', fmt(tmc * (1 + vatPct))); setText('cv-tmcNonVatInc', tmcNonVat > 0 ? fmt(tmcNonVat) : '\u2014');
   setText('cv-vatOtherTMC-row', otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014'); setText('cv-otherTMCInc', otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
   setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014'); setText('cv-otherTMCFeesInc', otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
   setText('cv-disbInc', fmt(disb + vatDisb)); setText('cv-vatCounsel-row', vatableCounsel > 0 ? fmt(vatableCounsel * vatPct) : '\u2014'); setText('cv-counselInc', fmt(vatableCounsel * (1 + vatPct)));
@@ -2555,7 +2562,7 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   fields['LegalAidOnlyProfitCosts'] = (_lapcVat + _lapcNonVat) || null;
   fields['NonVatableLAAPC'] = _lapcNonVat || null;
   for (const [sp, el] of Object.entries({
-    'DraftingTimeClaimed':'fc-TMCDrafting','Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
+    'DraftingTimeClaimed':'fc-TMCDrafting','NonVatableTMCDraftingTime':'fc-TMCDrafting-nonvat','Other_x0020_TMC_x0020_PC_x0020__':'fc-OtherTMCPC','DisbursementsClaimed':'fc-Disb',
     'VATonDisbursements':'fc-VatDisb','OtherTMCInvoices_ex_x0020_bill':'fc-OtherTMCFees',
     'TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
@@ -2628,7 +2635,7 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-tmcref').textContent = f['Ourreference_x0028_text_x0029_'] || '—';
   document.getElementById('pdf-datesettled').textContent = fmtDate(f['DateSettled0']);
   document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0 ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-  document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP);
+  document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP + c.nonVatDraftingIP);
   document.getElementById('pdf-disb-net').textContent = fmt(c.disbursements); document.getElementById('pdf-counsel-net').textContent = fmt(c.counselClaimed);
   document.getElementById('pdf-totalclaimed-net').textContent = fmt(c.netTotalClaimed);
   document.getElementById('pdf-pc').textContent = fmt(c.pcIncVAT); document.getElementById('pdf-tmcpc').textContent = fmt(c.tmcPCIncVAT);
