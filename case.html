@@ -124,7 +124,15 @@
     .switcher-empty{padding:18px 14px;font-size:13px;color:var(--grey-mid);text-align:center;}
 
     /* ── Case header ─────────────────────────── */
-    .case-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);border-bottom:1px solid rgba(201,168,76,.15);padding:22px 32px;}
+    .case-header{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);border-bottom:1px solid rgba(201,168,76,.15);padding:22px 32px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;}
+    .ch-left{min-width:0;}
+    .ch-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;text-align:right;}
+    .hero-fullname{font-family:'Spectral',serif;font-style:italic;font-weight:400;font-size:15px;color:rgba(245,242,235,.82);max-width:540px;line-height:1.35;animation:fadeIn .6s ease both;}
+    .hero-clock{display:flex;flex-direction:column;align-items:flex-end;line-height:1;animation:fadeIn .8s ease both;}
+    .hc-date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.82;margin-bottom:5px;}
+    .hc-time{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;color:var(--white);letter-spacing:.04em;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(201,168,76,.22);}
+    .hc-time .c{color:var(--gold);animation:hcblink 1.6s step-start infinite;}
+    @keyframes hcblink{50%{opacity:.2;}}
     .case-ref{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-bottom:5px;opacity:.85;}
     .case-name{font-family:'Spectral',serif;font-weight:400;font-size:26px;color:var(--white);line-height:1.3;}
     .case-meta{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:5px;letter-spacing:.02em;}
@@ -633,9 +641,18 @@
 
 <div id="app" style="display:none">
   <div class="case-header">
-    <div class="case-ref" id="hdr-ref"></div>
-    <div class="case-name" id="hdr-name"></div>
-    <div class="case-meta" id="hdr-meta"></div>
+    <div class="ch-left">
+      <div class="case-ref" id="hdr-ref"></div>
+      <div class="case-name" id="hdr-name"></div>
+      <div class="case-meta" id="hdr-meta"></div>
+    </div>
+    <div class="ch-right">
+      <div class="hero-fullname" id="hdr-fullname"></div>
+      <div class="hero-clock">
+        <span class="hc-date" id="hc-date"></span>
+        <span class="hc-time" id="hc-time">--<span class="c">:</span>--<span class="c">:</span>--</span>
+      </div>
+    </div>
   </div>
 
   <div id="bill-drafted-banner" style="display:none;margin:14px 32px 0;padding:14px 22px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15),0 0 18px rgba(220,38,38,.30);align-items:center;gap:14px;flex-wrap:wrap;">
@@ -2028,12 +2045,28 @@ function caseDisplayName(f) {
   return composed || f['CaseNameForOpenCases'] || f['Title'] || ref || '';
 }
 
+let heroClockTimer = null;
+function startHeroClock() {
+  if (heroClockTimer) return;
+  const tick = () => {
+    const el = document.getElementById('hc-time'); const de = document.getElementById('hc-date');
+    if (!el) return;
+    const n = new Date(); const p = x => String(x).padStart(2, '0');
+    el.innerHTML = p(n.getHours()) + '<span class="c">:</span>' + p(n.getMinutes()) + '<span class="c">:</span>' + p(n.getSeconds());
+    if (de) de.textContent = n.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  tick(); heroClockTimer = setInterval(tick, 1000);
+}
+
 function renderHeader() {
   const f = caseFields;
   renderAssignStrip();
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
   document.getElementById('hdr-name').textContent = caseDisplayName(f) || '—';
+  const _fullName = f['fullCaseNameMirror'] || f['Fullcasenameoveride'] || '';
+  document.getElementById('hdr-fullname').textContent = _fullName;
   document.getElementById('hdr-meta').textContent = [f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']].filter(Boolean).join(' · ');
+  startHeroClock();
   document.title = (caseDisplayName(f) || 'Case') + ' — TMC Legal';
   renderDocumentBar();
 }
