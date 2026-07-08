@@ -394,6 +394,9 @@
           <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">By Stage</span><button type="button" class="info-btn info-left" aria-label="About By Stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open cases grouped by stage. Click a stage to list those cases; All Cases is pinned at the top.</span></button></span>
           <span class="panel-count" id="stage-panel-count"></span>
         </div>
+        <div class="ca-panel-search-row">
+          <input type="text" id="stage-panel-search" class="ca-panel-search" placeholder="Search case name&hellip;" />
+        </div>
         <div class="stage-list" id="stage-list">
           <div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading&hellip;</div>
         </div>
@@ -1056,19 +1059,20 @@ function showCaseList(filter, title, meta){
     subset=myCases.filter(c=>overdueRefs.has(c.fields['Ourreference_x0028_text_x0029_']));
   } else if(filter==='no-reminder'){
     subset=myCases.filter(c=>!refsWithOpenRem.has(c.fields['Ourreference_x0028_text_x0029_']));
+  } else if(filter.search){
+    subset=myCases.filter(c=>{
+      const name=(caseDisplayName(c.fields)||'').toLowerCase();
+      const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
+      return name.includes(filter.search)||ref.includes(filter.search);
+    });
   } else if(filter.stage){
     subset=myCases.filter(c=>(c.fields['StatusMirror']||'Unknown')===filter.stage);
   } else {
     subset=myCases;
   }
-  subset=[...subset].sort((a,b)=>{
-    const da=a.fields['DateReceived']?new Date(a.fields['DateReceived']):null;
-    const db=b.fields['DateReceived']?new Date(b.fields['DateReceived']):null;
-    if(da&&db) return da-db;
-    if(da) return -1;
-    if(db) return 1;
-    return 0;
-  });
+  subset=[...subset].sort((a,b)=>
+    (caseDisplayName(a.fields)||'').toLowerCase().localeCompare((caseDisplayName(b.fields)||'').toLowerCase())
+  );
   renderCaseTable(subset);
   document.getElementById('case-list-section').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1728,6 +1732,12 @@ function wireCards(){
     caSearchTerm=e.target.value.trim().toLowerCase();
     caVisibleCount=CA_PAGE_SIZE;
     renderActionsPanel();
+  });
+  const stSearchEl=document.getElementById('stage-panel-search');
+  if(stSearchEl) stSearchEl.addEventListener('input',e=>{
+    const term=e.target.value.trim();
+    if(!term){ if(activeFilter&&activeFilter.search) hideCaseList(); return; }
+    showCaseList({search:term.toLowerCase()},'Search: \u201c'+term+'\u201d','');
   });
   // Breakdown card handlers
   document.getElementById('card-wip').addEventListener('click',openWipBreakdown);
