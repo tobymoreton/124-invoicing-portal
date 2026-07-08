@@ -280,9 +280,14 @@
     .briefing-footer{padding:12px 22px;border-top:1px solid var(--grey-faint);display:flex;align-items:center;justify-content:space-between;background:var(--grey-faint);border-radius:0 0 var(--radius) var(--radius);}
     .briefing-as-of{font-size:11px;color:var(--grey-mid);font-style:italic;}
     /* Prominent briefing button */
-    .btn-briefing{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;border-radius:var(--radius-sm);border:none;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.03em;box-shadow:0 2px 8px rgba(27,42,74,.25);transition:all .18s ease;}
-    .btn-briefing:hover{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);box-shadow:0 4px 14px rgba(27,42,74,.35);transform:translateY(-1px);}
+    .btn-briefing{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;padding:9px 20px;border-radius:var(--radius-sm);border:1px solid rgba(181,154,106,.55);background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.03em;box-shadow:0 2px 8px rgba(27,42,74,.25);transition:all .18s ease;animation:briefingGlow 3.2s ease-in-out infinite;}
+    .btn-briefing::before{content:"";position:absolute;top:0;left:-150%;width:75%;height:100%;background:linear-gradient(100deg,transparent 0%,rgba(181,154,106,0) 30%,rgba(181,154,106,.55) 50%,rgba(255,240,205,.9) 55%,rgba(181,154,106,.55) 60%,transparent 100%);transform:skewX(-18deg);animation:briefingShimmer 3.2s ease-in-out infinite;pointer-events:none;}
+    .btn-briefing>*{position:relative;z-index:1;}
+    .btn-briefing:hover{background:linear-gradient(135deg,var(--navy-mid) 0%,var(--navy-light) 100%);box-shadow:0 4px 18px rgba(181,154,106,.5);transform:translateY(-1px);}
     .btn-briefing-icon{font-size:16px;line-height:1;}
+    @keyframes briefingShimmer{0%{left:-150%;}55%{left:150%;}100%{left:150%;}}
+    @keyframes briefingGlow{0%,100%{box-shadow:0 2px 8px rgba(27,42,74,.25),0 0 0 rgba(181,154,106,0);}50%{box-shadow:0 2px 10px rgba(27,42,74,.3),0 0 14px rgba(181,154,106,.45);}}
+    @media(prefers-reduced-motion:reduce){.btn-briefing,.btn-briefing::before{animation:none;}}
   </style>
 </head>
 <body>
@@ -736,9 +741,9 @@ const NAME_DISPLAY = {
   julie:'Julie',daniel:'Daniel',toby:'Toby',danielle:'Danielle',lesley:'Lesley',
 };
 const STATUS_VALUES = [
-  'Pending assignment','Pending billing','In billing','Awaiting client approval','Served by client',
+  'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
   'In negotiation (served informally)','In negotiation (served formally)',
-  'In negotiation (points of dispute received)','Pending Replies','In negotiation (replies served)',
+  'In negotiation (points of dispute received)','In negotiation (replies served)',
   'In budgeting','Awaiting provisional assessment','Pending detailed assessment',
   'Settled','Closed',
 ];
@@ -1092,8 +1097,9 @@ function renderCaseTable(cases){
       '<td>'+(task?'<span class="task-chip">'+escHtml(task)+'</span>':'\u2014')+'</td>'+
       '<td><span class="td-ref">'+escHtml(costsFmt)+'</span></td>'+
       '<td>'+(lastRemShort?'<span class="td-reminder" title="'+escHtml(lastRem)+'">'+escHtml(lastRemShort)+'</span>':'<span style="color:var(--grey-light);">\u2014</span>')+'</td>'+
-      '<td><a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a></td>';
+      '<td>'+(ref?'<a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a>':'<span class="open-btn" style="opacity:.4;cursor:not-allowed;" title="No reference assigned yet \u2014 cannot open">No ref</span>')+'</td>';
     tr.addEventListener('click',function(e){
+      if(!ref) return;
       if(e.target.closest('.td-status')){openStatusEdit(e.target.closest('.td-status'));return;}
       if(e.target.tagName!=='A'){
         try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}

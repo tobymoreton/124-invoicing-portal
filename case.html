@@ -672,7 +672,7 @@
 
   <div class="content">
 
-    <div id="assign-strip" class="quick-action-bar" style="gap:12px;">
+    <div id="assign-strip" class="quick-action-bar" style="gap:12px;position:relative;">
       <div class="shimmer" style="flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);box-shadow:0 2px 8px rgba(27,42,74,.15);">
         <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Assigned To</span>
         <select id="strip-assigned-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
@@ -685,7 +685,7 @@
         <span style="color:var(--gold);font-size:13px;font-weight:600;white-space:nowrap;">Status</span>
         <select id="strip-status-sel" style="flex:1;padding:7px 10px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select>
       </div>
-      <span id="strip-msg" style="align-self:center;font-size:12px;color:var(--grey-mid);white-space:nowrap;"></span>
+      <span id="strip-msg" style="position:absolute;right:0;top:100%;margin-top:2px;font-size:12px;color:var(--grey-mid);white-space:nowrap;"></span>
     </div>
     <div id="assign-strip-old" style="display:none;">
       <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 18px;border-radius:var(--radius-sm);background:var(--navy);color:var(--gold);font-size:13.5px;font-weight:600;box-shadow:0 2px 8px rgba(27,42,74,.15);">Assigned To <select id="strip-assigned" style="padding:6px 10px;border:1px solid rgba(201,168,76,.4);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--white);outline:none;"></select></div>
@@ -939,8 +939,7 @@
         <div class="card-head"><span class="card-title">Case Details</span><button type="button" class="info-btn" aria-label="About Case Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Core booking-in details: references, dates, turnaround and work in progress. Click Edit to change.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field full"><label>Case Title Override</label><input type="text" id="bi-CaseName" disabled /></div>
-            <div class="field full"><label>Full Case Name</label><input type="text" id="bi-FullCaseName" readonly /></div>
+            <div class="field full"><label>Case Name</label><input type="text" id="bi-CaseName" disabled /></div>
             <div class="field"><label>Date Received</label><input type="date" id="bi-DateReceived" disabled /></div>
             <div class="field"><label>Turnaround</label>
               <select id="bi-Turnaround" disabled style="padding:10px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;">
@@ -1053,13 +1052,7 @@
           <div class="detail-grid">
             <div class="field full"><label>Opponent Party Name</label><input type="text" id="op-OpponentPartyName" disabled /></div>
             <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" disabled /></div>
-            <div class="field"><label>Opponent Reference 2</label><input type="text" id="op-Opponentreference2" disabled /></div>
             <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" disabled /></div>
-            <div class="field"><label>Opponent Firm 2</label>
-              <select id="op-OpponentFirm2Mirror" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— loading firms… —</option>
-              </select>
-            </div>
             <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-MoreThanOneDef" disabled /><label for="op-MoreThanOneDef">More than one Defendant?</label></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
@@ -1615,26 +1608,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 document.querySelector('.content').addEventListener('click', e => { const b = e.target.closest('[data-goto-tab]'); if (b) document.querySelector('.tab-btn[data-tab="' + b.dataset.gotoTab + '"]').click(); });
 
-async function loadOpponentFirms2() {
-  try {
-    const resp = await fetch('/api/reflists?list=opponentfirms');
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const names = (data.value || []).map(i => ((i.fields || {}).Title || '').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
-    const sel = document.getElementById('op-OpponentFirm2Mirror');
-    const current = sel.value;
-    sel.innerHTML = '<option value="">— select firm —</option>';
-    names.forEach(name => { const o = document.createElement('option'); o.value = name; o.textContent = name; sel.appendChild(o); });
-    if (caseFields) setSelectOp('op-OpponentFirm2Mirror', caseFields['OpponentFirm2Mirror']);
-    else if (current) setSelectOp('op-OpponentFirm2Mirror', current);
-  } catch (err) {
-    console.warn('Opponent firms list failed to load:', err.message);
-    const sel = document.getElementById('op-OpponentFirm2Mirror');
-    sel.innerHTML = '<option value="">— firm list unavailable —</option>';
-    if (caseFields && caseFields['OpponentFirm2Mirror']) setSelectOp('op-OpponentFirm2Mirror', caseFields['OpponentFirm2Mirror']);
-  }
-}
-
 async function loadCourts() {
   try {
     const resp = await fetch('/api/courts');
@@ -1665,7 +1638,6 @@ async function loadCase() {
     const [caseResp] = await Promise.all([
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
       loadCourts(),
-      loadOpponentFirms2(),
     ]);
     if (!caseResp.ok) throw new Error('HTTP ' + caseResp.status);
     const data  = await caseResp.json();
@@ -1924,7 +1896,6 @@ function renderBookingInTab() {
   setDate('bi-DateReceived', f['DateReceived']);
   document.getElementById('bi-OurRef').value = f['Ourreference_x0028_text_x0029_'] || '';
   document.getElementById('bi-CaseName').value = f['CaseNameForOpenCases'] || '';
-  document.getElementById('bi-FullCaseName').value = f['fullCaseNameMirror'] || '';
   document.getElementById('bi-ClientRef').value = f['ClientCaseReference'] || '';
   const ta = f['Turnaround_x0020__x0001f3af_'] || '';
   const taEl = document.getElementById('bi-Turnaround');
@@ -1992,11 +1963,9 @@ function renderOpponentTab() {
   const f = caseFields;
   document.getElementById('op-OpponentPartyName').value  = f['OpponentPartyName']               || '';
   document.getElementById('op-Opponentreference').value  = f['Opponentreference']                || '';
-  document.getElementById('op-Opponentreference2').value = f['opponentReference2']              || '';
   document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
   setSelectOp('op-CourtName', f['CourtName_Text']);
-  setSelectOp('op-OpponentFirm2Mirror', f['OpponentFirm2Mirror']);
   document.getElementById('op-Division').value           = f['Division']                         || '';
   document.getElementById('op-ClaimNo').value            = f['ClaimNo']                          || '';
   document.getElementById('op-Addr1').value              = f['Opponent_x0020_Address_x0020_1']   || '';
@@ -2174,9 +2143,9 @@ document.getElementById('costs-bdb-select').addEventListener('change', function(
   saveBdb(this.value, document.getElementById('costs-bdb-msg'), this);
 });
 const STATUS_VALUES = [
-  'Pending assignment','Pending billing','In billing','Awaiting client approval','Served by client',
+  'Pending assignment','In billing','Pending billing','Awaiting client approval','Served by client',
   'In negotiation (served informally)','In negotiation (served formally)',
-  'In negotiation (points of dispute received)','Pending Replies','In negotiation (replies served)',
+  'In negotiation (points of dispute received)','In negotiation (replies served)',
   'In budgeting','Awaiting provisional assessment','Pending detailed assessment','Settled','Closed'
 ];
 
@@ -2494,9 +2463,7 @@ document.getElementById('btn-op-save').addEventListener('click', async () => {
   const fields = {
     OpponentPartyName: document.getElementById('op-OpponentPartyName').value || null,
     Opponentreference: document.getElementById('op-Opponentreference').value || null,
-    opponentReference2: document.getElementById('op-Opponentreference2').value || null,
     opponentFirmMirror: document.getElementById('op-opponentFirmMirror').value || null,
-    OpponentFirm2Mirror: document.getElementById('op-OpponentFirm2Mirror').value || null,
     ServiceEmail: document.getElementById('op-ServiceEmail').value || null,
     CourtName_Text: document.getElementById('op-CourtName').value || null,
     Division: document.getElementById('op-Division').value || null, ClaimNo: document.getElementById('op-ClaimNo').value || null,
@@ -2891,8 +2858,6 @@ async function saveRemRow(id) {
 }
 
 function initAddRemPanel() {
-  const evSel = document.getElementById('rem-add-event');
-  if (evSel && evSel.dataset.filled !== '1') { evSel.innerHTML = REM_EVENTS.map(v => '<option>' + escHtml(v) + '</option>').join(''); evSel.value = 'General reminder'; evSel.dataset.filled = '1'; }
   const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
   const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
