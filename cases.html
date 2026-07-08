@@ -154,7 +154,7 @@
     .rem-date.overdue{color:var(--red);}
     .rem-band-head{padding:5px 18px 4px;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--grey-light);}
     .rem-band-head.band-overdue{background:rgba(153,27,27,.07);color:var(--red);}
-    .rem-band-head.band-today{background:rgba(146,64,14,.06);color:#92400E;}
+    .rem-band-head.band-today{background:var(--green-pale);color:var(--green);}
     .rem-band-head.band-week{background:var(--grey-faint);color:var(--grey-mid);}
     .rem-band-head.band-later{background:var(--grey-faint);color:var(--grey-mid);}
     .rem-body{min-width:0;flex:1;}
@@ -978,10 +978,11 @@ function renderRemPanel(){
       return da-db;
     });
 
-  const overdue  =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d<today;});
-  const dueToday =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d.getTime()===todayTs;});
-  const thisWeek =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return d&&d>today&&d<=weekEnd;});
-  const later    =open.filter(r=>{const d=r.fields?.['Duedate']?new Date(r.fields['Duedate']):null;return !d||d>weekEnd;});
+  const dayStart=r=>{const s=r.fields?.['Duedate'];if(!s)return null;const d=new Date(s);if(isNaN(d))return null;d.setHours(0,0,0,0);return d;};
+  const overdue  =open.filter(r=>{const d=dayStart(r);return d&&d.getTime()<todayTs;});
+  const dueToday =open.filter(r=>{const d=dayStart(r);return d&&d.getTime()===todayTs;});
+  const thisWeek =open.filter(r=>{const d=dayStart(r);return d&&d.getTime()>todayTs&&d<=weekEnd;});
+  const later    =open.filter(r=>{const d=dayStart(r);return !d||d>weekEnd;});
 
   document.getElementById('rem-panel-count').textContent=open.length;
   const el=document.getElementById('rem-panel-list');
@@ -1026,7 +1027,7 @@ function renderRemPanel(){
   };
 
   addBand(overdue,  'band-overdue', '\ud83d\udd34 Overdue');
-  addBand(dueToday, 'band-today',   '\ud83d\udfe1 Due today');
+  addBand(dueToday, 'band-today',   '\ud83d\udfe2 Due today');
   addBand(thisWeek, 'band-week',    'This week');
   addBand(later,    'band-later',   'Later');
 }
