@@ -1076,7 +1076,17 @@
                 <option value="">— loading firms… —</option>
               </select>
             </div>
-            <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
+            <div class="field"><label>Opponent Caseworker</label>
+              <select id="op-OpponentCaseworker1" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— loading caseworkers… —</option>
+              </select>
+            </div>
+            <div class="field"><label>Opponent Caseworker 2</label>
+              <select id="op-OpponentCaseworker2" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— loading caseworkers… —</option>
+              </select>
+            </div>
+            <div class="field"><label>Email(s) for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-MoreThanOneDef" disabled /><label for="op-MoreThanOneDef">More than one Defendant?</label></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
           </div>
@@ -1660,6 +1670,37 @@ async function loadOpponentFirms2() {
   }
 }
 
+async function loadOpponentCaseworkers2() {
+  const sel1 = document.getElementById('op-OpponentCaseworker1');
+  const sel2 = document.getElementById('op-OpponentCaseworker2');
+  if (!sel1 && !sel2) return;
+  try {
+    const resp = await fetch('/api/reflists?list=opponentcws');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const optionsHtml = '<option value="">— select caseworker —</option>' + (data.value || [])
+      .map(it => (it.fields && it.fields.Title) || '')
+      .filter(Boolean)
+      .map(name => '<option value="' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '">' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>')
+      .join('');
+    if (sel1) sel1.innerHTML = optionsHtml;
+    if (sel2) sel2.innerHTML = optionsHtml;
+    if (caseFields) {
+      if (sel1) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
+      if (sel2) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
+    }
+  } catch (err) {
+    console.warn('Opponent caseworkers list failed to load:', err.message);
+    const unavailable = '<option value="">— caseworker list unavailable —</option>';
+    if (sel1) sel1.innerHTML = unavailable;
+    if (sel2) sel2.innerHTML = unavailable;
+    if (caseFields) {
+      if (sel1 && caseFields['opponentCaseworkerMirror']) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
+      if (sel2 && caseFields['opponentCaseworker2Mirror']) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
+    }
+  }
+}
+
 async function loadCourts() {
   try {
     const resp = await fetch('/api/courts');
@@ -1730,6 +1771,7 @@ async function loadCase() {
         caseFields = c.fields;
         loadCourts().catch(() => {});
         loadOpponentFirms2().catch(() => {});
+        loadOpponentCaseworkers2().catch(() => {});
         renderCaseUI(true);
         painted = true;
       }
@@ -1741,6 +1783,7 @@ async function loadCase() {
       fetch('/api/cases?q=' + encodeURIComponent(ref) + '&top=20&all=1'),
       loadCourts(),
       loadOpponentFirms2(),
+      loadOpponentCaseworkers2(),
     ]);
     if (!caseResp.ok) throw new Error('HTTP ' + caseResp.status);
     const data  = await caseResp.json();
@@ -2044,6 +2087,8 @@ function renderOpponentTab() {
   document.getElementById('op-Opponentreference2').value = f['opponentReference2']                || '';
   document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
   setSelectOp('op-OpponentFirm2', f['OpponentFirm2Mirror']);
+  setSelectOp('op-OpponentCaseworker1', f['opponentCaseworkerMirror']);
+  setSelectOp('op-OpponentCaseworker2', f['opponentCaseworker2Mirror']);
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
   setSelectOp('op-CourtName', f['CourtName_Text']);
   document.getElementById('op-Division').value           = f['Division']                         || '';
@@ -2603,6 +2648,8 @@ document.getElementById('btn-op-save').addEventListener('click', async () => {
     opponentReference2: document.getElementById('op-Opponentreference2').value || null,
     opponentFirmMirror: document.getElementById('op-opponentFirmMirror').value || null,
     OpponentFirm2Mirror: document.getElementById('op-OpponentFirm2').value || null,
+    opponentCaseworkerMirror: document.getElementById('op-OpponentCaseworker1').value || null,
+    opponentCaseworker2Mirror: document.getElementById('op-OpponentCaseworker2').value || null,
     ServiceEmail: document.getElementById('op-ServiceEmail').value || null,
     CourtName_Text: document.getElementById('op-CourtName').value || null,
     Division: document.getElementById('op-Division').value || null, ClaimNo: document.getElementById('op-ClaimNo').value || null,
