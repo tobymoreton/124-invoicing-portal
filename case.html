@@ -1067,7 +1067,7 @@
         <div class="card-head"><span class="card-title">Opponent</span><button type="button" class="info-btn" aria-label="About Opponent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The opponent party name, firm and reference, the email for serving the bill, and flags for multiple defendants or litigant in person. Click Edit to change.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
-            <div class="field full"><label>Opponent Party Name</label><input type="text" id="op-OpponentPartyName" disabled /></div>
+            <div class="field full"><label>Opponent Party Name(s)</label><input type="text" id="op-OpponentPartyName" disabled /></div>
             <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" disabled /></div>
             <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" disabled /></div>
             <div class="field"><label>Email for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
@@ -2022,6 +2022,27 @@ function renderOpponentTab() {
   document.getElementById('op-Addr5').value              = f['Opponent_x0020_Address_x0020_5']   || '';
   setCheck('op-MoreThanOneDef',   f['Morethanonedefendant_x003f_']);
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
+  applyOpponentBlankWarnings();
+  const _oppTab = document.getElementById('tab-opponent');
+  if (_oppTab && !_oppTab.dataset.blankWarnWired) {
+    _oppTab.dataset.blankWarnWired = '1';
+    _oppTab.addEventListener('input', applyOpponentBlankWarnings);
+    _oppTab.addEventListener('change', applyOpponentBlankWarnings);
+  }
+}
+
+function applyOpponentBlankWarnings() {
+  const f = caseFields || {};
+  const hasDoA = !!((f['DateofAuthoritytoAssess'] || '').toString().trim());
+  const warn = (id, on) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('input-blank-warn', !!on && (el.value || '').toString().trim() === '');
+  };
+  // Empty fields glow red — Address Lines 4 & 5 deliberately excluded
+  ['op-OpponentPartyName','op-Opponentreference','op-opponentFirmMirror','op-ServiceEmail','op-Division','op-Addr1','op-Addr2','op-Addr3'].forEach(id => warn(id, true));
+  // Court Name & Claim No only nag once there is a Date of Authority to Assess
+  warn('op-CourtName', hasDoA);
+  warn('op-ClaimNo',   hasDoA);
 }
 
 function renderAssignStrip() {
@@ -2068,6 +2089,17 @@ function caseDisplayName(f) {
   return composed || f['CaseNameForOpenCases'] || f['Title'] || ref || '';
 }
 
+function deriveFullCaseName(f) {
+  if (!f) return '';
+  const override = (f['Fullcasenameoveride'] || '').trim();
+  if (override) return override;
+  const multi = !!(f['Andothers_x003f_']);
+  const ours = (multi ? (f['MultiClaimants'] || '') : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ')).trim();
+  const opp = (f['OpponentPartyName'] || '').trim();
+  if (ours && opp) return ours + ' -v- ' + opp;
+  return ours || opp || '';
+}
+
 let heroClockTimer = null;
 function startHeroClock() {
   if (heroClockTimer) return;
@@ -2086,7 +2118,7 @@ function renderHeader() {
   renderAssignStrip();
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
   document.getElementById('hdr-name').textContent = caseDisplayName(f) || '—';
-  const _fullName = f['fullCaseNameMirror'] || f['Fullcasenameoveride'] || '';
+  const _fullName = deriveFullCaseName(f);
   document.getElementById('hdr-fullname').textContent = _fullName;
   document.getElementById('hdr-meta').textContent = [f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']].filter(Boolean).join(' · ');
   startHeroClock();
@@ -2106,7 +2138,7 @@ function renderDocumentBar() {
   const multi     = !!(f['Andothers_x003f_']);
   const matter    = multi ? (f['MultiClaimants'] || '') : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ');
   const caseName     = caseDisplayName(f) || matter;
-  const fullCaseName = f['fullCaseNameMirror'] || f['Fullcasenameoveride'] || matter;
+  const fullCaseName = deriveFullCaseName(f) || matter;
   const feeEarner = f['FeeEarner_x0028_fromFM_x0029_'] || '';
   const draftsman = switcherCallerName || '';
   const oppoFirm = f['opponentFirmMirror']               || '';
