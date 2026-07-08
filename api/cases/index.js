@@ -86,6 +86,7 @@ const SELECT_FIELDS = [
   'ProfitCostsatAdvisedRates',
   // Costs claimed
   'DraftingTimeClaimed',
+  'NonVatableTMCDraftingTime',
   'CounselsFeesClaimed',
   'DisbursementsClaimed',
   'VATonDisbursements',
@@ -127,16 +128,13 @@ const SELECT_FIELDS = [
   'Notes',
   'draftingNotes',
   'Acknowledgmentemail',
-  'AcknowledgmentSent',
   'PrimaryFundingType',
   'CaseTrack',
   'Task',
   'Casetype',
   // Opponent & Court tab
   'Opponentreference',
-  'opponentReference2',
   'opponentFirmMirror',
-  'OpponentFirm2Mirror',
   'ServiceEmail',
   'CourtName_Text',
   'Division',
@@ -199,6 +197,26 @@ module.exports = async function (context, req) {
   const top        = Math.min(parseInt(req.query.top, 10) || 10, 20);
   const includeAll = req.query.all === '1';
   const preload    = req.query.preload === '1';
+  const id         = (req.query.id || '').trim();
+
+  // Direct ID lookup: fallback path for cases with no assigned reference (e.g. Infowise-created
+  // cases awaiting a real TMC reference) — case.html cannot find these via ref-equality match,
+  // so this lets the portal open them by SharePoint item ID instead.
+  if (id) {
+    try {
+      const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const result = await getCaseById(token, id);
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        body: JSON.stringify(result),
+      };
+    } catch (err) {
+      context.log.error('Error fetching case by id:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
 
   // Preload mode: return all non-closed cases for client-side cache — no q required
   if (preload) {
@@ -240,6 +258,14 @@ module.exports = async function (context, req) {
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
+
+async function getCaseById(token, id) {
+  var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items/' + encodeURIComponent(id)
+          + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')';
+  var item = await graphGet(url, token);
+  await resolveMissingFirms(token, [item]);
+  return { value: [{ id: item.id, fields: item.fields || {} }] };
+}
 
 async function getAllOpenCases(token) {
   var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
