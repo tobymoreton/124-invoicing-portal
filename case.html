@@ -1097,7 +1097,7 @@
             </div>
             <div class="field"><label>Email(s) for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
-            <div class="field full" style="display:flex;gap:32px;flex-wrap:wrap;margin-top:4px;">
+            <div class="field full" style="display:flex;flex-direction:row;gap:32px;flex-wrap:wrap;margin-top:4px;">
               <div style="min-width:200px;">
                 <button type="button" id="op-firm2-add-btn" style="display:none;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Firm</button>
                 <div id="op-firm2-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -1701,6 +1701,7 @@ async function loadOpponentFirms2() {
 }
 
 let oppFirmNamesCache = [];
+let oppCaseworkersCache = []; // [{name, firm}] - firm is CaseworkerFirmText, plain text
 async function loadOpponentCaseworkers2() {
   const sel1 = document.getElementById('op-OpponentCaseworker1');
   const sel2 = document.getElementById('op-OpponentCaseworker2');
@@ -1709,17 +1710,10 @@ async function loadOpponentCaseworkers2() {
     const resp = await fetch('/api/reflists?list=opponentcws');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
-    const optionsHtml = '<option value="">— select caseworker —</option>' + (data.value || [])
-      .map(it => (it.fields && it.fields.Title) || '')
-      .filter(Boolean)
-      .map(name => '<option value="' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '">' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>')
-      .join('');
-    if (sel1) sel1.innerHTML = optionsHtml;
-    if (sel2) sel2.innerHTML = optionsHtml;
-    if (caseFields) {
-      if (sel1) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
-      if (sel2) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
-    }
+    oppCaseworkersCache = (data.value || [])
+      .map(it => ({ name: (it.fields && it.fields.Title) || '', firm: (it.fields && it.fields.CaseworkerFirmText) || '' }))
+      .filter(x => x.name);
+    filterCaseworkerOptions();
   } catch (err) {
     console.warn('Opponent caseworkers list failed to load:', err.message);
     const unavailable = '<option value="">— caseworker list unavailable —</option>';
@@ -1729,6 +1723,51 @@ async function loadOpponentCaseworkers2() {
       if (sel1 && caseFields['opponentCaseworkerMirror']) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
       if (sel2 && caseFields['opponentCaseworker2Mirror']) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
     }
+  }
+}
+
+// Confines each Caseworker dropdown to caseworkers recorded against the matching
+// Opponent Firm (Firm 1 free-text / Firm 2 dropdown), same pattern as the
+// Fee Earner-by-Firm filter on the Client Info tab. Falls back to the full
+// caseworker list if no caseworkers are recorded against that firm yet, and
+// always keeps the case's current saved value selectable even if it doesn't
+// match the current firm text (legacy / mismatched data).
+function buildCaseworkerOptionsHtml(pool, current) {
+  let html = '<option value="">— select caseworker —</option>';
+  let hasCurrent = !current;
+  pool.forEach(name => {
+    const esc = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const sel = name === current ? ' selected' : '';
+    if (name === current) hasCurrent = true;
+    html += '<option value="' + esc + '"' + sel + '>' + esc + '</option>';
+  });
+  if (!hasCurrent) {
+    const esc = current.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    html += '<option value="' + esc + '" selected>' + esc + '</option>';
+  }
+  return html;
+}
+function filterCaseworkerOptions() {
+  const sel1 = document.getElementById('op-OpponentCaseworker1');
+  const sel2 = document.getElementById('op-OpponentCaseworker2');
+  const firm1 = (document.getElementById('op-opponentFirmMirror')?.value || '').trim().toLowerCase();
+  const firm2 = (document.getElementById('op-OpponentFirm2')?.value || '').trim().toLowerCase();
+  const allNames = oppCaseworkersCache.map(c => c.name);
+  if (sel1) {
+    const cur1 = sel1.value;
+    let pool1 = firm1 ? oppCaseworkersCache.filter(c => c.firm.trim().toLowerCase() === firm1).map(c => c.name) : allNames;
+    if (!pool1.length) pool1 = allNames;
+    sel1.innerHTML = buildCaseworkerOptionsHtml(pool1, cur1);
+  }
+  if (sel2) {
+    const cur2 = sel2.value;
+    let pool2 = firm2 ? oppCaseworkersCache.filter(c => c.firm.trim().toLowerCase() === firm2).map(c => c.name) : allNames;
+    if (!pool2.length) pool2 = allNames;
+    sel2.innerHTML = buildCaseworkerOptionsHtml(pool2, cur2);
+  }
+  if (caseFields) {
+    if (sel1) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
+    if (sel2) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
   }
 }
 
@@ -1786,6 +1825,7 @@ document.getElementById('op-cw-add-save').addEventListener('click', async () => 
     if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add opponent caseworkers');
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     await loadOpponentCaseworkers2();
+    filterCaseworkerOptions();
     document.getElementById('op-OpponentCaseworker2').value = name;
     document.getElementById('op-cw-add-name').value = '';
     document.getElementById('op-cw-add-firm').value = '';
@@ -2211,8 +2251,7 @@ function renderOpponentTab() {
   document.getElementById('op-Opponentreference2').value = f['opponentReference2']                || '';
   document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
   setSelectOp('op-OpponentFirm2', f['OpponentFirm2Mirror']);
-  setSelectOp('op-OpponentCaseworker1', f['opponentCaseworkerMirror']);
-  setSelectOp('op-OpponentCaseworker2', f['opponentCaseworker2Mirror']);
+  filterCaseworkerOptions();
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
   setSelectOp('op-CourtName', f['CourtName_Text']);
   document.getElementById('op-Division').value           = f['Division']                         || '';
@@ -2223,6 +2262,10 @@ function renderOpponentTab() {
   document.getElementById('op-Addr4').value              = f['Opponent_x0020_Address_x0020_4']   || '';
   document.getElementById('op-Addr5').value              = f['Opponent_x0020_Address_x0020_5']   || '';
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
+  const _firm1El = document.getElementById('op-opponentFirmMirror');
+  const _firm2El = document.getElementById('op-OpponentFirm2');
+  if (_firm1El && !_firm1El.dataset.cwFilterWired) { _firm1El.dataset.cwFilterWired = '1'; _firm1El.addEventListener('input', filterCaseworkerOptions); }
+  if (_firm2El && !_firm2El.dataset.cwFilterWired) { _firm2El.dataset.cwFilterWired = '1'; _firm2El.addEventListener('change', filterCaseworkerOptions); }
   applyOpponentBlankWarnings();
   const _oppTab = document.getElementById('tab-opponent');
   if (_oppTab && !_oppTab.dataset.blankWarnWired) {
