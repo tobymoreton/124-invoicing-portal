@@ -1084,13 +1084,6 @@
               <select id="op-OpponentFirm2" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— loading firms… —</option>
               </select>
-              <button type="button" id="op-firm2-add-btn" style="display:none;margin-top:6px;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Firm</button>
-              <div id="op-firm2-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
-                <input type="text" id="op-firm2-add-name" placeholder="Firm name" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
-                <button type="button" id="op-firm2-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
-                <button type="button" id="op-firm2-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
-                <span id="op-firm2-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
-              </div>
             </div>
             <div class="field"><label>Opponent Caseworker</label>
               <select id="op-OpponentCaseworker1" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
@@ -1101,16 +1094,29 @@
               <select id="op-OpponentCaseworker2" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— loading caseworkers… —</option>
               </select>
-              <button type="button" id="op-cw-add-btn" style="display:none;margin-top:6px;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Caseworker</button>
-              <div id="op-cw-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
-                <input type="text" id="op-cw-add-name" placeholder="Caseworker name" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
-                <button type="button" id="op-cw-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
-                <button type="button" id="op-cw-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
-                <span id="op-cw-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
-              </div>
             </div>
             <div class="field"><label>Email(s) for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
+            <div class="field full" style="display:flex;gap:32px;flex-wrap:wrap;margin-top:4px;">
+              <div style="min-width:200px;">
+                <button type="button" id="op-firm2-add-btn" style="display:none;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Firm</button>
+                <div id="op-firm2-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
+                  <input type="text" id="op-firm2-add-name" placeholder="Firm name" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                  <button type="button" id="op-firm2-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
+                  <button type="button" id="op-firm2-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
+                  <span id="op-firm2-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
+                </div>
+              </div>
+              <div style="min-width:200px;">
+                <button type="button" id="op-cw-add-btn" style="display:none;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Caseworker</button>
+                <div id="op-cw-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
+                  <input type="text" id="op-cw-add-name" placeholder="Caseworker name" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                  <button type="button" id="op-cw-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
+                  <button type="button" id="op-cw-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
+                  <span id="op-cw-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
