@@ -688,6 +688,14 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
+function caseDisplayName(f) {
+  if (!f) return '';
+  const multi = !!(f['Andothers_x003f_']);
+  const party = (multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || '')).trim();
+  const ref   = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+  const composed = [party, ref].filter(Boolean).join('-');
+  return composed || f['CaseNameForOpenCases'] || f['Title'] || ref || '';
+}
 let allCases     = [];
 let myCases      = [];
 let allReminders = [];   // flat array of {caseRef, caseName, ...fields}
@@ -837,7 +845,7 @@ async function loadReminders(cases){
     refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1')
       .then(r=>r.ok?r.json():{value:[]})
       .then(data=>{
-        const caseName=(cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+        const caseName=caseDisplayName((cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields)||ref;
         return (data.value||[]).map(item=>({...item,_caseRef:ref,_caseName:caseName}));
       })
       .catch(()=>[])
@@ -883,7 +891,7 @@ function renderStats(){
   pcBreakdown=myCases
     .filter(c=>!billedRefs.has(c.fields['Ourreference_x0028_text_x0029_']))
     .map(c=>({
-      name:c.fields['CaseNameForOpenCases']||c.fields['Ourreference_x0028_text_x0029_'],
+      name:caseDisplayName(c.fields)||c.fields['Ourreference_x0028_text_x0029_'],
       ref:c.fields['Ourreference_x0028_text_x0029_'],
       pc:parseFloat(c.fields['ProfitCostsClaimed_x0028_Ex_x002'])||0,
     }))
@@ -1077,7 +1085,7 @@ function renderCaseTable(cases){
   cases.forEach(c=>{
     const f=c.fields;
     const ref  =f['Ourreference_x0028_text_x0029_']||'';
-    const name =f['CaseNameForOpenCases']||f['Title']||ref;
+    const name =caseDisplayName(f)||ref;
     const firm =f['Firm_x0028_text_x0029_']||'';
     const status=f['StatusMirror']||'\u2014';
     const task =f['Task']||'';
@@ -1165,7 +1173,7 @@ async function loadActions(cases){
   const nameByRef={};
   cases.forEach(c=>{
     const r=c.fields['Ourreference_x0028_text_x0029_'];
-    if(r) nameByRef[r]=c.fields['CaseNameForOpenCases']||r;
+    if(r) nameByRef[r]=caseDisplayName(c.fields)||r;
   });
   try{
     const r=await fetch('/api/caseactions?all=1');
@@ -1334,13 +1342,13 @@ async function deleteEditAction(){
 // ── Populate case pickers ───────────────────────────────────────────
 function populateCasePickers(){
   const sortedCases=[...myCases].sort((a,b)=>{
-    const an=(a.fields['CaseNameForOpenCases']||a.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
-    const bn=(b.fields['CaseNameForOpenCases']||b.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
+    const an=caseDisplayName(a.fields).toLowerCase();
+    const bn=caseDisplayName(b.fields).toLowerCase();
     return an.localeCompare(bn);
   });
   const opts=sortedCases.map(c=>{
     const ref=c.fields['Ourreference_x0028_text_x0029_']||'';
-    const name=c.fields['CaseNameForOpenCases']||ref;
+    const name=caseDisplayName(c.fields)||ref;
     return '<option value="'+escHtml(ref)+'">'+escHtml(name)+'</option>';
   }).join('');
   document.getElementById('ca-case-ref').innerHTML='<option value="">Select a case&hellip;</option>'+opts;
@@ -1381,7 +1389,7 @@ async function saveAction(){
   const rate=parseFloat(document.getElementById('ca-rate').value)||0;
   const date=document.getElementById('ca-date').value;
   const billable=document.getElementById('ca-billable').checked;
-  const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+  const caseName=caseDisplayName((myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields)||ref;
   const caseItem=myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref);
   const caseItemId=caseItem?.id||null;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
@@ -1417,7 +1425,7 @@ async function saveReminder(){
   const due=document.getElementById('rem-due').value;
   const priority=document.getElementById('rem-priority').value;
   const detail=document.getElementById('rem-detail').value.trim();
-  const caseName=(myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields?.['CaseNameForOpenCases']||ref;
+  const caseName=caseDisplayName((myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields)||ref;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/reminders',{

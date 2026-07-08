@@ -2012,13 +2012,22 @@ document.getElementById('strip-assigned-sel').addEventListener('change', functio
 document.getElementById('strip-coassigned-sel').addEventListener('change', function(){ stripSave({ coAssignedMirror: this.value || null }, this); });
 document.getElementById('strip-status-sel').addEventListener('change', function(){ if (this.value) stripSave({ StatusMirror: this.value }, this); });
 
+function caseDisplayName(f) {
+  if (!f) return '';
+  const multi = !!(f['Andothers_x003f_']);
+  const party = (multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || '')).trim();
+  const ref   = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+  const composed = [party, ref].filter(Boolean).join('-');
+  return composed || f['CaseNameForOpenCases'] || f['Title'] || ref || '';
+}
+
 function renderHeader() {
   const f = caseFields;
   renderAssignStrip();
   document.getElementById('hdr-ref').textContent  = 'Our Ref: ' + (f['Ourreference_x0028_text_x0029_'] || '');
-  document.getElementById('hdr-name').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  document.getElementById('hdr-name').textContent = caseDisplayName(f) || '—';
   document.getElementById('hdr-meta').textContent = [f['Firm_x0028_text_x0029_'], f['StatusMirror'], f['InterPartesorLegalAid']].filter(Boolean).join(' · ');
-  document.title = (f['CaseNameForOpenCases'] || 'Case') + ' — TMC Legal';
+  document.title = (caseDisplayName(f) || 'Case') + ' — TMC Legal';
   renderDocumentBar();
 }
 
@@ -2033,7 +2042,7 @@ function renderDocumentBar() {
   const yourRef   = f['ClientCaseReference']              || '';
   const multi     = !!(f['Andothers_x003f_']);
   const matter    = multi ? (f['MultiClaimants'] || '') : [f['OurPartyFirstName'], f['OurPartySurname']].filter(Boolean).join(' ');
-  const caseName     = f['CaseNameForOpenCases'] || matter;
+  const caseName     = caseDisplayName(f) || matter;
   const fullCaseName = f['fullCaseNameMirror'] || f['Fullcasenameoveride'] || matter;
   const feeEarner = f['FeeEarner_x0028_fromFM_x0029_'] || '';
   const draftsman = switcherCallerName || '';
@@ -2614,7 +2623,7 @@ async function doSave(fields, btn, msg, msgClass) {
 async function generateSettlementPDF() {
   const f = caseFields; const c = computed; const btn = document.getElementById('btn-gen-pdf');
   btn.disabled = true;
-  document.getElementById('pdf-case').textContent = f['CaseNameForOpenCases'] || f['Title'] || '—';
+  document.getElementById('pdf-case').textContent = caseDisplayName(f) || '—';
   document.getElementById('pdf-clientref').textContent = f['ClientCaseReference'] || '—';
   document.getElementById('pdf-tmcref').textContent = f['Ourreference_x0028_text_x0029_'] || '—';
   document.getElementById('pdf-datesettled').textContent = fmtDate(f['DateSettled0']);
@@ -2703,8 +2712,8 @@ async function initSwitcher() {
       const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
       return (nameL && (assigned.includes(nameL) || coAssigned.includes(nameL))) || (emailL && (assigned.includes(emailL) || coAssigned.includes(emailL)));
     }).sort((a, b) => {
-      const na = ((a.fields||{})['CaseNameForOpenCases']||(a.fields||{})['Title']||'').toLowerCase();
-      const nb = ((b.fields||{})['CaseNameForOpenCases']||(b.fields||{})['Title']||'').toLowerCase();
+      const na = caseDisplayName(a.fields||{}).toLowerCase();
+      const nb = caseDisplayName(b.fields||{}).toLowerCase();
       return na < nb ? -1 : na > nb ? 1 : 0;
     });
     renderSwitcherList('');
@@ -2716,14 +2725,14 @@ function renderSwitcherList(q) {
   const list = document.getElementById('switcher-list');
   const filtered = q ? switcherCases.filter(c => {
     const f = c.fields || {};
-    const name = (f['CaseNameForOpenCases'] || f['Title'] || '').toLowerCase();
+    const name = caseDisplayName(f).toLowerCase();
     const ref  = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
     return name.includes(q.toLowerCase()) || ref.includes(q.toLowerCase());
   }) : switcherCases;
   if (!filtered.length) { list.innerHTML = '<div class="switcher-empty">No cases found</div>'; return; }
   list.innerHTML = '';
   filtered.forEach(c => {
-    const f = c.fields || {}; const ref = f['Ourreference_x0028_text_x0029_'] || ''; const name = f['CaseNameForOpenCases'] || f['Title'] || ref; const firm = f['Firm_x0028_text_x0029_'] || '';
+    const f = c.fields || {}; const ref = f['Ourreference_x0028_text_x0029_'] || ''; const name = caseDisplayName(f) || ref; const firm = f['Firm_x0028_text_x0029_'] || '';
     const div = document.createElement('div'); div.className = 'switcher-item' + (ref === currentRef ? ' current' : ''); div.setAttribute('role', 'option');
     div.innerHTML = '<span class="switcher-item-name">' + escHtml(name) + '</span><span class="switcher-item-meta">' + escHtml(ref) + (firm ? ' · ' + escHtml(firm) : '') + '</span>';
     if (ref !== currentRef) { div.addEventListener('click', () => { const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab; window.location.href = 'case.html?ref=' + encodeURIComponent(ref) + (activeTab ? '#tab-' + activeTab : ''); }); }
@@ -2872,7 +2881,7 @@ async function submitAddReminder() {
   if (!duedate) { msg.className = 'edit-msg err'; msg.textContent = 'Due date required.'; return; }
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseFields?.['CaseNameForOpenCases'] || ref) + '-' + ref, duedate: duedate + 'T00:00:00Z', event, priority, detail, admin, emailReminder: email, completed: false }) });
+    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseDisplayName(caseFields) || ref), duedate: duedate + 'T00:00:00Z', event, priority, detail, admin, emailReminder: email, completed: false }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
     remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: event, Brief: detail, Priority: priority, 'Completed_x003f_': false, 'Admin_x003f_': admin, Ourreference_x0028_text_x0029_: ref } });
@@ -3095,7 +3104,7 @@ async function submitAddAction() {
   if (!completedBy) { msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
   if (btn) btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseFields?.['CaseNameForOpenCases'] || '', caseItemId, dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
+    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseDisplayName(caseFields), caseItemId, dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
     caActions.unshift({ id: created.id, fields: { field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent, field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z', field_16: ref, field_18: switcherCallerEmail || '', Completedby_x0028_text_x0029_: completedBy, 'Billable_x003f_': billable, 'Billed_x003f_': false, TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate } });
