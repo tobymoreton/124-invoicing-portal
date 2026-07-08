@@ -1111,6 +1111,9 @@
                 <button type="button" id="op-cw-add-btn" style="display:none;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Opponent Caseworker</button>
                 <div id="op-cw-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
                   <input type="text" id="op-cw-add-name" placeholder="Caseworker name" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                  <select id="op-cw-add-firm" style="flex:1;min-width:140px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;">
+                    <option value="">— select firm —</option>
+                  </select>
                   <button type="button" id="op-cw-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
                   <button type="button" id="op-cw-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
                   <span id="op-cw-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
@@ -1682,10 +1685,9 @@ async function loadOpponentFirms2() {
     const resp = await fetch('/api/reflists?list=opponentfirms');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
+    oppFirmNamesCache = (data.value || []).map(it => (it.fields && it.fields.Title) || '').filter(Boolean);
     sel.innerHTML = '<option value="">— select firm —</option>';
-    (data.value || []).forEach(it => {
-      const name = (it.fields && it.fields.Title) || '';
-      if (!name) return;
+    oppFirmNamesCache.forEach(name => {
       const o = document.createElement('option');
       o.value = name; o.textContent = name;
       sel.appendChild(o);
@@ -1698,6 +1700,7 @@ async function loadOpponentFirms2() {
   }
 }
 
+let oppFirmNamesCache = [];
 async function loadOpponentCaseworkers2() {
   const sel1 = document.getElementById('op-OpponentCaseworker1');
   const sel2 = document.getElementById('op-OpponentCaseworker2');
@@ -1761,22 +1764,31 @@ function opCwAddShow(show) {
   document.getElementById('op-cw-add-form').style.display = show ? 'flex' : 'none';
   document.getElementById('op-cw-add-btn').style.visibility = show ? 'hidden' : '';
   document.getElementById('op-cw-add-msg').textContent = '';
-  if (show) document.getElementById('op-cw-add-name').focus();
+  if (show) {
+    const firmSel = document.getElementById('op-cw-add-firm');
+    firmSel.innerHTML = '<option value="">— select firm —</option>' + (oppFirmNamesCache || [])
+      .map(name => '<option value="' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '">' + name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>')
+      .join('');
+    document.getElementById('op-cw-add-name').focus();
+  }
 }
 document.getElementById('op-cw-add-btn').addEventListener('click', () => opCwAddShow(true));
 document.getElementById('op-cw-add-cancel').addEventListener('click', () => opCwAddShow(false));
 document.getElementById('op-cw-add-save').addEventListener('click', async () => {
   const name = document.getElementById('op-cw-add-name').value.trim();
+  const firm = document.getElementById('op-cw-add-firm').value;
   const msg  = document.getElementById('op-cw-add-msg');
   if (!name) { msg.textContent = 'Name required'; return; }
+  if (!firm) { msg.textContent = 'Firm required — select from the list'; return; }
   const btn = document.getElementById('op-cw-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
   try {
-    const resp = await fetch('/api/reflists?list=opponentcws', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name }) });
+    const resp = await fetch('/api/reflists?list=opponentcws', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firm }) });
     if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add opponent caseworkers');
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     await loadOpponentCaseworkers2();
     document.getElementById('op-OpponentCaseworker2').value = name;
     document.getElementById('op-cw-add-name').value = '';
+    document.getElementById('op-cw-add-firm').value = '';
     opCwAddShow(false);
   } catch (err) { msg.textContent = err.message; }
   finally { btn.disabled = false; }
