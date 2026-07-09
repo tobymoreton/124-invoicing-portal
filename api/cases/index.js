@@ -129,6 +129,7 @@ const SELECT_FIELDS = [
   'draftingNotes',
   'Acknowledgmentemail',
   'AcknowledgmentSent',
+  'Deadline',
   'PrimaryFundingType',
   'CaseTrack',
   'Task',
