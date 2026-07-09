@@ -131,15 +131,22 @@ module.exports = async function (context, req) {
     // 1) Upload the bytes. Simple content PUT (suits files up to Graph's simple-upload limit;
     //    very large files would need an upload session — not implemented in v1).
     //    Same-name upload replaces + versions the existing file (SharePoint keeps history).
-    const putUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-                 + '/lists/' + LIST_GUID + '/drive/root:/' + encodeURIComponent(fileName) + ':/content';
+    // Resolve the library drive id first. /lists/{guid}/drive/root:/... is NOT a valid
+    // Graph address (400 "Resource not found for the segment 'root'"). Same fix the DELETE
+    // handler uses: address the drive canonically via /drives/{driveId}.
+    const upDriveResp = await graphGet('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+                      + '/lists/' + LIST_GUID + '/drive?$select=id', token);
+    const upDriveId = upDriveResp && upDriveResp.id;
+    if (!upDriveId) throw new Error('Could not resolve the caseAttachments drive id.');
+    const putUrl = 'https://graph.microsoft.com/v1.0/drives/' + upDriveId
+                 + '/root:/' + encodeURIComponent(fileName) + ':/content';
     const item = await graphPut(putUrl, token, buffer, ctype);
     const driveItemId = item && item.id;
     if (!driveItemId) throw new Error('Upload succeeded but no driveItem id was returned.');
 
     // 2) Resolve the backing listItem id so we can stamp the columns.
-    const liUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-                + '/lists/' + LIST_GUID + '/drive/items/' + encodeURIComponent(driveItemId)
+    const liUrl = 'https://graph.microsoft.com/v1.0/drives/' + upDriveId
+                + '/items/' + encodeURIComponent(driveItemId)
                 + '/listItem?$select=id';
     const li = await graphGet(liUrl, token);
     const listItemId = li && li.id;
