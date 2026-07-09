@@ -1576,7 +1576,7 @@
         </div>
         <div>
           <table class="ca-table" id="att-table">
-            <colgroup><col/><col style="width:200px;"/><col style="width:80px;"/><col style="width:150px;"/><col style="width:44px;"/></colgroup>
+            <colgroup><col/><col style="width:200px;"/><col style="width:80px;"/><col style="width:150px;"/><col style="width:76px;"/></colgroup>
             <thead><tr><th>Name</th><th>Type</th><th class="ca-right">Size</th><th>Modified</th><th></th></tr></thead>
             <tbody id="att-tbody"></tbody>
           </table>
@@ -3345,10 +3345,11 @@ function renderAttTable() {
       + `<td class="ca-cell">${escHtml(f.docType || '')}</td>`
       + `<td class="ca-cell ca-right">${attFmtSize(f.size)}</td>`
       + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`
-      + `<td class="ca-cell ca-center">${canDel ? `<button type="button" data-att-del="${escHtml(f.id)}" data-att-name="${escHtml(f.name || '')}" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:14px;">🗑</button>` : ''}</td>`;
+      + `<td class="ca-cell ca-center" style="white-space:nowrap;"><button type="button" data-att-ren="${escHtml(f.id)}" data-att-name="${escHtml(f.name || '')}" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:14px;">✎</button>${canDel ? `<button type="button" data-att-del="${escHtml(f.id)}" data-att-name="${escHtml(f.name || '')}" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:14px;">🗑</button>` : ''}</td>`;
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('[data-att-del]').forEach(b => b.addEventListener('click', () => attDelete(b.dataset.attDel, b.dataset.attName)));
+  tbody.querySelectorAll('[data-att-ren]').forEach(b => b.addEventListener('click', () => attRename(b.dataset.attRen, b.dataset.attName)));
 }
 
 function initAttUpload() {
@@ -3394,6 +3395,20 @@ async function attUploadFiles(fileList) {
   else if (msg && ok) { msg.textContent = 'Uploaded ' + ok + ', ' + fail + ' failed.'; msg.style.color = '#c0392b'; }
   if (btn) btn.disabled = false;
   attLoaded = false; attFetching = false; loadAttachments();
+}
+
+async function attRename(id, name) {
+  const next = prompt('Rename file to (keep the extension, e.g. .pdf):', name || '');
+  if (next == null) return;
+  const nn = next.trim();
+  if (!nn || nn === (name || '')) return;
+  try {
+    const resp = await fetch('/api/attachmentswrite?rename=1&id=' + encodeURIComponent(id), {
+      method: 'POST', headers: { 'x-file-name': encodeURIComponent(nn) }
+    });
+    if (!resp.ok) { const t = await resp.text(); throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 120)); }
+    attLoaded = false; attFetching = false; loadAttachments();
+  } catch (err) { alert('Rename failed: ' + err.message); }
 }
 
 async function attDelete(id, name) {
