@@ -175,7 +175,8 @@
     .btn-cancel:hover{border-color:var(--navy);}
 
     /* Admin Reminders + Unassigned (50/50) */
-    .dash-50{display:flex;flex-direction:column;gap:20px;margin-bottom:28px;align-items:stretch;}
+    .dash-50{display:grid;grid-template-columns:1fr 4fr;gap:20px;margin-bottom:28px;align-items:start;}
+    @media(max-width:1000px){.dash-50{grid-template-columns:1fr;}}
     .ar-panel{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid rgba(27,42,74,.08);overflow:hidden;}
     .ar-head{background:var(--navy);padding:13px 20px;display:flex;align-items:center;justify-content:space-between;}
     .ar-title{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;}
@@ -531,6 +532,18 @@ let stageFilter = '';
 let showClosed = false;
 
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Shared with case.html/cases.html: derives the live display name from the actual party fields
+// (OurPartySurname/MultiClaimants + Our Reference) rather than the stale baked
+// CaseNameForOpenCases/Title field, so names update the moment real party names are entered
+// anywhere in the portal - no more permanent '???-???-1741297' placeholders.
+function caseDisplayName(f) {
+  if (!f) return '';
+  const multi = !!(f['Andothers_x003f_']);
+  const party = (multi ? (f['MultiClaimants'] || '') : (f['OurPartySurname'] || '')).trim();
+  const ref   = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+  const composed = [party, ref].filter(Boolean).join('-');
+  return composed || f['CaseNameForOpenCases'] || f['Title'] || ref || '';
+}
 function stripHtml(s){return (s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 function statusClass(s){
   if(!s) return 's-default'; const sl=s.toLowerCase();
@@ -723,10 +736,11 @@ function renderCases(q){
   filtered.forEach(c=>{
     const f=c.fields;
     const ref=f['Ourreference_x0028_text_x0029_']||'';
-    const name=f['CaseNameForOpenCases']||f['Title']||ref;
+    const name=caseDisplayName(f);
     const firm=f['Firm_x0028_text_x0029_']||'\u2014';
-    const assigned=f['assignedToTextValue']||'\u2014';
-    const status=f['StatusMirror']||'\u2014';
+    const assignedRaw=f['assignedToTextValue']||'';
+    const assigned=assignedRaw||'\u2014';
+    const status=f['StatusMirror']||(!assignedRaw?'Pending assignment':'\u2014');
     const task=f['Task']||'';
     const lastRem=stripHtml(f['Last_x0020_Reminder']||'');
     const lastRemShort=lastRem.length>70?lastRem.slice(0,70)+'\u2026':lastRem;
@@ -882,7 +896,7 @@ function renderUnassignedCases(){
   unassigned.forEach(c=>{
     const f=c.fields;
     const ref=f['Ourreference_x0028_text_x0029_']||'';
-    const name=f['CaseNameForOpenCases']||f['Title']||ref;
+    const name=caseDisplayName(f);
     const firm=f['Firm_x0028_text_x0029_']||'';
     const fe=f['FeeEarner_x0028_fromFM_x0029_']||'';
     const ackSent=f['AcknowledgmentSent']===true||f['AcknowledgmentSent']==='Yes'||f['AcknowledgmentSent']==='true'||f['AcknowledgmentSent']===1;
