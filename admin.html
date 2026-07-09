@@ -206,6 +206,7 @@
     /* Unassigned — inline assign select */
     .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;max-width:128px;}
     .uc-assign-sel:hover,.uc-assign-sel:focus{border-color:var(--gold);}
+    .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 6px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;}
   </style>
 </head>
 <body>
@@ -877,8 +878,12 @@ function renderUnassignedCases(){
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const laip=f['InterPartesorLegalAid']||'';
-    const laipBadge=laip.toLowerCase().includes('legal aid')?'LA':laip.toLowerCase().includes('inter partes')?'IP':'';
-    const laipStyle=laipBadge==='LA'?'background:#DCFCE7;color:#14532D;':'background:#DBEAFE;color:#1E40AF;';
+    const laipOptions=['','Inter Partes','Legal Aid','Both'];
+    const laipColor=laip==='Legal Aid'?'background:#DCFCE7;color:#14532D;':laip==='Inter Partes'?'background:#DBEAFE;color:#1E40AF;':laip==='Both'?'background:#F3E8FF;color:#6B21A8;':'background:var(--grey-faint);color:var(--grey-mid);';
+    const laipSelHtml='<select class="uc-laip-sel" title="Inter Partes / Legal Aid" style="'+laipColor+'">'+
+      laipOptions.map(o=>'<option value="'+escHtml(o)+'"'+(o===laip?' selected':'')+'>'+(o||'\u2014')+'</option>').join('')+
+      (laip&&!laipOptions.includes(laip)?'<option value="'+escHtml(laip)+'" selected>'+escHtml(laip)+'</option>':'')+
+      '</select>';
     const row=document.createElement('div');
     row.className='ar-row';
     row.innerHTML=
@@ -888,7 +893,7 @@ function renderUnassignedCases(){
         '<div class="ar-case">'+escHtml(name)+'</div>'+
         (fe?'<div class="ar-detail">FE: '+escHtml(fe)+'</div>':'')+
       '</div>'+
-      (laipBadge?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;'+laipStyle+'">'+laipBadge+'</span>':'')+
+      (laipSelHtml)+
       (task?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;">'+escHtml(task)+'</span>':'')+
       '<span class="task-chip" style="flex-shrink:0;margin-top:2px;'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
@@ -906,6 +911,9 @@ function renderUnassignedCases(){
     const ucSel=row.querySelector('.uc-assign-sel');
     ucSel.addEventListener('click',e=>e.stopPropagation());
     ucSel.addEventListener('change',()=>{ if(!ucSel.value) return; assignCase(c.id,ref,ucSel.value,row,ucSel); });
+    const laipSel=row.querySelector('.uc-laip-sel');
+    laipSel.addEventListener('click',e=>e.stopPropagation());
+    laipSel.addEventListener('change',()=>{ updateLaip(c.id,laipSel.value,laipSel); });
     const ucDel=row.querySelector('.uc-delete-btn');
     ucDel.addEventListener('click',e=>{
       e.stopPropagation();
@@ -919,6 +927,28 @@ function renderUnassignedCases(){
     });
     listEl.appendChild(row);
   });
+}
+
+// ── Update Inter Partes / Legal Aid inline ────────────────────────────────
+async function updateLaip(caseId,value,selEl){
+  selEl.disabled=true;
+  const prevStyle=selEl.style.cssText;
+  try{
+    const r=await fetch('/api/caseupdate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:caseId,fields:{InterPartesorLegalAid:value||null}}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,80));
+    const caseObj=allCases.find(c=>c.id===caseId);
+    if(caseObj) caseObj.fields['InterPartesorLegalAid']=value;
+    const color=value==='Legal Aid'?'background:#DCFCE7;color:#14532D;':value==='Inter Partes'?'background:#DBEAFE;color:#1E40AF;':value==='Both'?'background:#F3E8FF;color:#6B21A8;':'background:var(--grey-faint);color:var(--grey-mid);';
+    selEl.style.cssText=color;
+  }catch(err){
+    selEl.style.cssText=prevStyle;
+    alert('Failed to update: '+err.message);
+  }finally{
+    selEl.disabled=false;
+  }
 }
 
 // ── Assign case inline ─────────────────────────────────────────────────────
