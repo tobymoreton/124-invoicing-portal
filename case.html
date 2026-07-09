@@ -1569,8 +1569,9 @@
         <div id="att-upload" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;background:rgba(181,154,106,.06);border:1px solid rgba(181,154,106,.25);border-radius:8px;">
           <span style="font-size:12px;color:var(--grey-mid);">Add file:</span>
           <select id="att-up-type" style="font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--gold);border-radius:6px;background:#fff;"></select>
-          <input type="file" id="att-up-file" style="display:none;" />
+          <input type="file" id="att-up-file" multiple style="display:none;" />
           <button type="button" id="att-up-btn" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 14px;border-radius:6px;border:none;cursor:pointer;background:var(--gold);color:#fff;font-size:12px;font-family:inherit;">⬆ Upload</button>
+          <span style="font-size:11px;color:var(--grey-mid);opacity:.75;">or drag files onto this box</span>
           <span id="att-up-msg" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
         <div>
@@ -3288,7 +3289,7 @@ let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching
 
 // --- Attachments tab (caseAttachments doc library via /api/attachments) ---
 let attFiles = []; let attLoaded = false; let attFetching = false; let attFilter = 'All';
-const ATT_DOC_TYPES = ['Instructions','Client Files','Bill and Narrative and Advice','Supporting Documents','Documents for Service'];
+const ATT_DOC_TYPES = ['Instructions','Acknowledgment','Terms and conditions','Bill','Incoming email','Outgoing email','Narrative','Advice','Authority to assess','Voucher',"Counsel's fee note"];
 const ATT_MANAGEMENT = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
 let attUploadWired = false;
 function attIsManagement() { return ATT_MANAGEMENT.includes((switcherCallerEmail || '').toLowerCase()); }
@@ -3352,31 +3353,47 @@ function renderAttTable() {
 
 function initAttUpload() {
   if (attUploadWired) return;
-  const sel = document.getElementById('att-up-type'); const fileInput = document.getElementById('att-up-file'); const btn = document.getElementById('att-up-btn');
+  const sel = document.getElementById('att-up-type'); const fileInput = document.getElementById('att-up-file'); const btn = document.getElementById('att-up-btn'); const zone = document.getElementById('att-upload');
   if (!sel || !fileInput || !btn) return;
   sel.innerHTML = ATT_DOC_TYPES.map(t => `<option>${escHtml(t)}</option>`).join('');
   btn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', async () => {
-    const file = fileInput.files && fileInput.files[0]; if (!file) return;
-    const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
-    const msg = document.getElementById('att-up-msg');
-    if (!ref) { if (msg) { msg.textContent = 'No case reference \u2014 cannot upload.'; msg.style.color = '#c0392b'; } fileInput.value = ''; return; }
-    if (msg) { msg.textContent = 'Uploading ' + file.name + '\u2026'; msg.style.color = 'var(--grey-mid)'; }
-    btn.disabled = true;
+  fileInput.addEventListener('change', () => { attUploadFiles(fileInput.files); fileInput.value = ''; });
+  if (zone) {
+    const on  = () => { zone.style.borderColor = 'var(--gold)'; zone.style.background = 'rgba(181,154,106,.16)'; };
+    const off = () => { zone.style.borderColor = 'rgba(181,154,106,.25)'; zone.style.background = 'rgba(181,154,106,.06)'; };
+    ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); on(); }));
+    ['dragleave','dragend'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); off(); }));
+    zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); off(); const dt = e.dataTransfer; if (dt && dt.files && dt.files.length) attUploadFiles(dt.files); });
+  }
+  attUploadWired = true;
+}
+
+async function attUploadFiles(fileList) {
+  const files = Array.from(fileList || []); if (!files.length) return;
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const sel = document.getElementById('att-up-type'); const btn = document.getElementById('att-up-btn'); const msg = document.getElementById('att-up-msg');
+  if (!ref) { if (msg) { msg.textContent = 'No case reference \u2014 cannot upload.'; msg.style.color = '#c0392b'; } return; }
+  const docType = sel ? sel.value : '';
+  if (btn) btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (msg) { msg.textContent = `Uploading ${i + 1}/${files.length}: ${file.name}\u2026`; msg.style.color = 'var(--grey-mid)'; }
     try {
       const resp = await fetch('/api/attachmentswrite', { method: 'POST', headers: {
         'x-file-name':    encodeURIComponent(file.name),
         'x-our-ref':      encodeURIComponent(ref),
-        'x-doc-type':     encodeURIComponent(sel.value || ''),
+        'x-doc-type':     encodeURIComponent(docType || ''),
         'x-content-type': encodeURIComponent(file.type || 'application/octet-stream'),
       }, body: file });
-      if (!resp.ok) { const t = await resp.text(); throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 120)); }
-      if (msg) { msg.textContent = 'Uploaded ' + file.name + '.'; msg.style.color = '#1e7e34'; }
-      attLoaded = false; attFetching = false; loadAttachments();
-    } catch (err) { if (msg) { msg.textContent = 'Upload failed: ' + err.message; msg.style.color = '#c0392b'; } }
-    finally { btn.disabled = false; fileInput.value = ''; }
-  });
-  attUploadWired = true;
+      if (!resp.ok) { const t = await resp.text(); throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 100)); }
+      ok++;
+    } catch (err) { fail++; if (msg) { msg.textContent = 'Failed on ' + file.name + ': ' + err.message; msg.style.color = '#c0392b'; } }
+  }
+  if (msg && !fail) { msg.textContent = 'Uploaded ' + ok + ' file' + (ok !== 1 ? 's' : '') + '.'; msg.style.color = '#1e7e34'; }
+  else if (msg && ok) { msg.textContent = 'Uploaded ' + ok + ', ' + fail + ' failed.'; msg.style.color = '#c0392b'; }
+  if (btn) btn.disabled = false;
+  attLoaded = false; attFetching = false; loadAttachments();
 }
 
 async function attDelete(id, name) {
