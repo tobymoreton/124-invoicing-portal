@@ -955,6 +955,14 @@ async function markAdminRemDone(remId,rowEl){
 function renderUnassignedCases(){
   const listEl=document.getElementById('uc-list');
   const unassigned=allCases.filter(c=>((c.fields['assignedToTextValue']||'').trim()===''));
+  unassigned.sort((a,b)=>{
+    const da=(a.fields['Deadline']||'').slice(0,10);
+    const db=(b.fields['Deadline']||'').slice(0,10);
+    if(da&&db) return da.localeCompare(db);   // both dated: earliest Deadline first
+    if(da&&!db) return -1;                     // any deadline sorts above no deadline
+    if(!da&&db) return 1;
+    return (a.fields['DateReceived']||'').localeCompare(b.fields['DateReceived']||''); // no deadline: oldest received first
+  });
   document.getElementById('uc-count').textContent=unassigned.length;
   updateHeaderStats();
   if(!unassigned.length){ listEl.innerHTML='<div class="ar-empty">No unassigned cases \u2014 all allocated!</div>'; return; }
