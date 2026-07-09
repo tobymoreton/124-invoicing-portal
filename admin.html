@@ -204,9 +204,11 @@
     .ar-empty{padding:32px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ar-loading{padding:28px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
     /* Unassigned — inline assign select */
-    .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;max-width:128px;}
+    .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;width:132px;}
     .uc-assign-sel:hover,.uc-assign-sel:focus{border-color:var(--gold);}
-    .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 6px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;}
+    .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 6px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;width:116px;text-align:center;text-align-last:center;}
+    .uc-task-chip{width:104px;text-align:center;flex-shrink:0;margin-top:2px;}
+    .uc-ack-chip{width:66px;text-align:center;flex-shrink:0;margin-top:2px;}
   </style>
 </head>
 <body>
@@ -895,8 +897,8 @@ function renderUnassignedCases(){
         (fe?'<div class="ar-detail">FE: '+escHtml(fe)+'</div>':'')+
       '</div>'+
       (laipSelHtml)+
-      (task?'<span class="task-chip" style="flex-shrink:0;margin-top:2px;">'+escHtml(task)+'</span>':'')+
-      '<span class="task-chip" style="flex-shrink:0;margin-top:2px;'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
+      (task?'<span class="task-chip uc-task-chip">'+escHtml(task)+'</span>':'<span class="uc-task-chip"></span>')+
+      '<span class="task-chip uc-ack-chip" style="'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
         '<option value="">Assign to\u2026</option>'+
         '<option value="toby@tmclegal.co.uk">Toby</option>'+
