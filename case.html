@@ -1560,7 +1560,22 @@
         <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
         <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
-      <div class="coming-soon"><div class="icon">📎</div><h3>Attachments</h3><p>Coming soon.</p></div>
+      <div class="card">
+        <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span class="card-title">📎 Attachments</span>
+          <span id="att-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+        </div>
+        <div id="att-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px;"></div>
+        <div>
+          <table class="ca-table" id="att-table">
+            <colgroup><col/><col style="width:200px;"/><col style="width:80px;"/><col style="width:150px;"/></colgroup>
+            <thead><tr><th>Name</th><th>Type</th><th class="ca-right">Size</th><th>Modified</th></tr></thead>
+            <tbody id="att-tbody"></tbody>
+          </table>
+        </div>
+        <div id="att-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading attachments&hellip;</div>
+        <div id="att-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No attachments for this case.</div>
+      </div>
     </div>
     <div class="tab-panel" id="tab-invoicing">
       <div class="quick-action-bar">
@@ -3264,10 +3279,66 @@ async function submitAddReminder() {
 
 let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching = false; let caSchedule = new Set();
 
+// --- Attachments tab (caseAttachments doc library via /api/attachments) ---
+let attFiles = []; let attLoaded = false; let attFetching = false; let attFilter = 'All';
+
+async function loadAttachments() {
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const loading = document.getElementById('att-loading'); const empty = document.getElementById('att-empty');
+  if (!ref) { attLoaded = true; if (loading) loading.style.display = 'none'; if (empty) { empty.textContent = 'No case reference yet \u2014 attachments are keyed on the Our Reference.'; empty.style.display = 'block'; } return; }
+  if (attFetching || attLoaded) return; attFetching = true;
+  if (loading) loading.style.display = 'block'; if (empty) empty.style.display = 'none';
+  const tb = document.getElementById('att-tbody'); if (tb) tb.innerHTML = '';
+  try {
+    const resp = await fetch('/api/attachments?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json(); attFiles = data.value || []; attLoaded = true; attFetching = false;
+    renderAttTable();
+  } catch (err) { attFetching = false; attLoaded = false; if (loading) loading.textContent = 'Failed to load attachments: ' + err.message; }
+}
+
+function attFmtSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function renderAttFilters() {
+  const bar = document.getElementById('att-filters'); if (!bar) return;
+  const base = 'display:inline-flex;align-items:center;height:26px;padding:0 12px;border-radius:13px;font-size:12px;cursor:pointer;border:1px solid var(--gold);background:transparent;color:var(--gold);font-family:inherit;';
+  const activeS = 'background:var(--gold);color:#fff;';
+  const types = Array.from(new Set(attFiles.map(f => (f.docType || '').trim()).filter(Boolean))).sort();
+  const chips = ['All'].concat(types);
+  bar.innerHTML = chips.map(t => {
+    const count = t === 'All' ? attFiles.length : attFiles.filter(f => (f.docType || '').trim() === t).length;
+    return `<button type="button" data-att-filter="${escHtml(t)}" style="${base}${t === attFilter ? activeS : ''}">${escHtml(t)} (${count})</button>`;
+  }).join('');
+  bar.querySelectorAll('[data-att-filter]').forEach(b => b.addEventListener('click', () => { attFilter = b.dataset.attFilter; renderAttTable(); }));
+}
+
+function renderAttTable() {
+  const tbody = document.getElementById('att-tbody'); const loading = document.getElementById('att-loading'); const empty = document.getElementById('att-empty'); const summary = document.getElementById('att-summary');
+  if (loading) loading.style.display = 'none'; if (!tbody) return; tbody.innerHTML = '';
+  if (!attFiles.length) { if (empty) { empty.textContent = 'No attachments for this case.'; empty.style.display = 'block'; } if (summary) summary.textContent = ''; const bar = document.getElementById('att-filters'); if (bar) bar.innerHTML = ''; return; }
+  if (empty) empty.style.display = 'none';
+  renderAttFilters();
+  if (summary) summary.textContent = attFiles.length + ' file' + (attFiles.length !== 1 ? 's' : '');
+  const rows = attFiles.filter(f => attFilter === 'All' || (f.docType || '').trim() === attFilter);
+  rows.forEach(f => {
+    const tr = document.createElement('tr'); tr.className = 'ca-row';
+    tr.innerHTML = `<td class="ca-cell"><a href="${escHtml(f.webUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a></td>`
+      + `<td class="ca-cell">${escHtml(f.docType || '')}</td>`
+      + `<td class="ca-cell ca-right">${attFmtSize(f.size)}</td>`
+      + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (caLoaded) { renderCaTable(); initAddActionPanel(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (remLoaded) { renderRemTable(); } else if (!remFetching) { loadReminders(); } }); }
+  if (btn.dataset.tab === 'attachments') { btn.addEventListener('click', () => { if (attLoaded) { renderAttTable(); } else if (!attFetching) { loadAttachments(); } }); }
 });
 
 // Activate the tab named in the URL hash (e.g. #tab-emails), if present — used by "Switch case"
