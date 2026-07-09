@@ -75,8 +75,13 @@ module.exports = async function (context, req) {
     }
     try {
       const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-      const url   = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-                  + '/lists/' + LIST_GUID + '/drive/items/' + encodeURIComponent(id);
+      // Resolve the library's drive id, then delete via the canonical /drives/{id}/items/{id}.
+      // (/lists/{guid}/drive/items/{id} is NOT a valid Graph address — returns 400 BadRequest.)
+      const driveResp = await graphGet('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+                      + '/lists/' + LIST_GUID + '/drive?$select=id', token);
+      const driveId = driveResp && driveResp.id;
+      if (!driveId) throw new Error('Could not resolve the caseAttachments drive id.');
+      const url = 'https://graph.microsoft.com/v1.0/drives/' + driveId + '/items/' + encodeURIComponent(id);
       await graphDelete(url, token);
       context.log('AUDIT attachment DELETE id=' + id + ' deletedBy=' + callerEmail);
       context.res = {
