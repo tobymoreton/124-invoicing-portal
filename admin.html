@@ -213,6 +213,7 @@
     .uc-deadline-label{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.75;margin-bottom:2px;}
     .uc-deadline-display{display:flex;align-items:center;gap:6px;font-size:11.5px;}
     .uc-deadline-display.uc-deadline-set{color:var(--navy);font-weight:600;}
+    .uc-deadline-display.uc-deadline-urgent{color:var(--red);}
     .uc-deadline-display.uc-deadline-unset{color:var(--grey-mid);font-style:italic;}
     .uc-deadline-edit-btn{background:none;border:none;color:var(--grey-mid);cursor:pointer;font-size:12px;padding:0;line-height:1;flex-shrink:0;}
     .uc-deadline-edit-btn:hover{color:var(--gold);}
@@ -531,6 +532,31 @@ let rawCases = [];
 let stageFilter = '';
 let showClosed = false;
 
+function isDeadlineUrgent(dateStr){
+  if(!dateStr) return false;
+  const d=new Date(dateStr+'T00:00:00'); if(isNaN(d)) return false;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=(d-today)/86400000;
+  return days<=14;
+}
+
+// Normalizes the Draftsman column display: assignedToTextValue has been set inconsistently over
+// time (portal's own Assign-to dropdown always writes an email; older/manual/Infowise entries
+// left first names or full names) - this always shows just the first name regardless of source,
+// without touching the underlying stored value.
+const EMAIL_TO_FIRSTNAME={
+  'toby@tmclegal.co.uk':'Toby','danielle@tmclegal.co.uk':'Danielle','joanna@tmclegal.co.uk':'Joanna',
+  'tracy@tmclegal.co.uk':'Tracy','kelly@tmclegal.co.uk':'Kelly','tom@tmclegal.co.uk':'Tom',
+  'julie@tmclegal.co.uk':'Julie','daniel@tmclegal.co.uk':'Daniel',
+};
+function normalizeDraftsmanName(raw){
+  if(!raw) return '';
+  const trimmed=raw.trim(); const lower=trimmed.toLowerCase();
+  if(EMAIL_TO_FIRSTNAME[lower]) return EMAIL_TO_FIRSTNAME[lower];
+  if(trimmed.includes('@')) return trimmed.split('@')[0];
+  return trimmed.split(/\s+/)[0];
+}
+
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Shared with case.html/cases.html: derives the live display name from the actual party fields
 // (OurPartySurname/MultiClaimants + Our Reference) rather than the stale baked
@@ -745,7 +771,7 @@ function renderCases(q){
     const name=caseDisplayName(f);
     const firm=f['Firm_x0028_text_x0029_']||'\u2014';
     const assignedRaw=f['assignedToTextValue']||'';
-    const assigned=assignedRaw||'\u2014';
+    const assigned=assignedRaw?normalizeDraftsmanName(assignedRaw):'\u2014';
     const status=f['StatusMirror']||(!assignedRaw?'Pending assignment':'\u2014');
     const task=f['Task']||'';
     const lastRem=stripHtml(f['Last_x0020_Reminder']||'');
@@ -911,10 +937,11 @@ function renderUnassignedCases(){
       (laip&&!laipOptions.includes(laip)?'<option value="'+escHtml(laip)+'" selected>'+escHtml(laip)+'</option>':'')+
       '</select>';
     const deadlineDisplayText = deadlineRaw ? new Date(deadlineRaw+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'Standard turnaround';
+    const deadlineUrgent = isDeadlineUrgent(deadlineRaw);
     const deadlineWrapHtml =
       '<div class="uc-deadline-wrap">'+
         '<div class="uc-deadline-label">Deadline</div>'+
-        '<div class="uc-deadline-display '+(deadlineRaw?'uc-deadline-set':'uc-deadline-unset')+'">'+
+        '<div class="uc-deadline-display '+(deadlineRaw?(deadlineUrgent?'uc-deadline-urgent':'uc-deadline-set'):'uc-deadline-unset')+'">'+
           '<span class="uc-deadline-text">'+deadlineDisplayText+'</span>'+
           '<button type="button" class="uc-deadline-edit-btn" title="Edit deadline">\u270e</button>'+
         '</div>'+
@@ -971,7 +998,9 @@ function renderUnassignedCases(){
       const val=deadlineInput.value;
       const textEl=deadlineDisplay.querySelector('.uc-deadline-text');
       textEl.textContent = val ? new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'Standard turnaround';
-      deadlineDisplay.classList.toggle('uc-deadline-set', !!val);
+      const urgent = isDeadlineUrgent(val);
+      deadlineDisplay.classList.toggle('uc-deadline-set', !!val && !urgent);
+      deadlineDisplay.classList.toggle('uc-deadline-urgent', !!val && urgent);
       deadlineDisplay.classList.toggle('uc-deadline-unset', !val);
       updateDeadline(c.id,val,deadlineInput);
       revertDeadlineDisplay();
