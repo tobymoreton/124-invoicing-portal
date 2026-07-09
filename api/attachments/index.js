@@ -58,9 +58,8 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const ref   = (req.query.ref || '').trim();
-  const debug = req.query.debug === '1'; // TEMP diagnostic: ?debug=1 dumps raw items, remove after verify
-  if (!ref && !debug) {
+  const ref = (req.query.ref || '').trim();
+  if (!ref) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -71,7 +70,7 @@ module.exports = async function (context, req) {
 
   try {
     const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const result = await listAttachments(token, ref, debug);
+    const result = await listAttachments(token, ref);
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -83,13 +82,13 @@ module.exports = async function (context, req) {
   }
 };
 
-async function listAttachments(token, ref, debug) {
+async function listAttachments(token, ref) {
   // Query the document library's LIST ITEMS, expanding fields (ourRef, docType) + driveItem
   // (file metadata) in one call. This is the supported route for a doc library; the
   // /drive/root/children + nested listItem-expand route returns Graph 400 BadRequest.
   // The list-items endpoint spans the whole library (all folders) — no recursion needed.
   var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
-           + '?$expand=fields($select=ourRef,docType),driveItem&$top=200';
+           + '?$expand=fields($select=OurRef,docType),driveItem&$top=200';
 
   var url = base;
   var all = [];
@@ -99,16 +98,15 @@ async function listAttachments(token, ref, debug) {
     url = page['@odata.nextLink'] || null;
   }
 
-  // TEMP diagnostic: return raw shape so we can see the real fields/driveItem keys. Remove after verify.
-  if (debug) return { debug: true, count: all.length, sample: all.slice(0, 3) };
-
-  var refLc = (ref || '').toLowerCase();
+  var refLc = ref.toLowerCase();
 
   var files = all.filter(function(item) {
     var d = item.driveItem;
     if (!d || !d.file) return false; // skip folders / non-file list items
     var f = item.fields || {};
-    return String(f.ourRef || '').trim().toLowerCase() === refLc;
+    // NB Graph returns the column key as `OurRef` (capital O) even though SharePoint's Edit Column
+    // Field= param shows `ourRef`. Read the Graph key, not the SP internal-name casing.
+    return String(f.OurRef || '').trim().toLowerCase() === refLc;
   });
 
   return {
@@ -122,7 +120,7 @@ async function listAttachments(token, ref, debug) {
         webUrl:      d.webUrl || '',
         downloadUrl: d['@microsoft.graph.downloadUrl'] || '',
         modified:    d.lastModifiedDateTime || '',
-        ourRef:      f.ourRef  || '',
+        ourRef:      f.OurRef || '',
         docType:     f.docType || '',
       };
     }),
