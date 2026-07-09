@@ -224,6 +224,9 @@
     .uc-deadline-edit-btn:hover{color:var(--gold);}
     .uc-deadline-input{flex-shrink:0;width:126px;padding:4px 6px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;}
     .uc-deadline-input:hover,.uc-deadline-input:focus{border-color:var(--gold);}
+    .ar-row.uc-row{flex-wrap:wrap;}
+    .uc-notes{flex-basis:100%;width:100%;margin-top:6px;padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
+    .uc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
   </style>
 </head>
 <body>
@@ -966,6 +969,7 @@ function renderUnassignedCases(){
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const laip=f['InterPartesorLegalAid']||'';
+    const notes=(f['Notes']||'').trim();
     const deadlineRaw=(f['Deadline']||'').slice(0,10);
     const laipOptions=['','Inter Partes','Legal Aid','Both'];
     const laipShort={'':'\u2014','Inter Partes':'IP','Legal Aid':'LA','Both':'Both'};
@@ -986,7 +990,7 @@ function renderUnassignedCases(){
         '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" style="display:none;" />'+
       '</div>';
     const row=document.createElement('div');
-    row.className='ar-row';
+    row.className='ar-row'+(notes?' uc-row':'');
     row.innerHTML=
       '<div class="ar-date uc-date">'+(dateRec?escHtml(dateRec)+'<div class="uc-rec-label">Received</div>':'\u2014')+'</div>'+
       '<div class="ar-body">'+
@@ -1009,7 +1013,8 @@ function renderUnassignedCases(){
         '<option value="julie@tmclegal.co.uk">Julie</option>'+
         '<option value="daniel@tmclegal.co.uk">Daniel</option>'+
       '</select>'+
-      '<button type="button" class="uc-delete-btn" title="Delete this case record" style="flex-shrink:0;margin-top:2px;margin-left:6px;padding:4px 9px;border:1.5px solid rgba(153,27,27,.3);border-radius:var(--radius-sm);background:var(--white);color:var(--red);font-size:12px;cursor:pointer;">&#128465;</button>';
+      '<button type="button" class="uc-delete-btn" title="Delete this case record" style="flex-shrink:0;margin-top:2px;margin-left:6px;padding:4px 9px;border:1.5px solid rgba(153,27,27,.3);border-radius:var(--radius-sm);background:var(--white);color:var(--red);font-size:12px;cursor:pointer;">&#128465;</button>' +
+      (notes?'<div class="uc-notes"><span class="uc-notes-label">Booking-in notes</span>'+escHtml(notes)+'</div>':'');
     const ucSel=row.querySelector('.uc-assign-sel');
     ucSel.addEventListener('click',e=>e.stopPropagation());
     ucSel.addEventListener('change',()=>{ if(!ucSel.value) return; assignCase(c.id,ref,ucSel.value,row,ucSel); });
