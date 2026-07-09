@@ -102,6 +102,37 @@ module.exports = async function (context, req) {
     return;
   }
 
+  // Rename branch (POST ?rename=1&id=<driveItemId>, new name in x-file-name).
+  // Renames the driveItem; SharePoint versions the change, so it is reversible.
+  // Any signed-in TMC user may rename (gated by the domain check above).
+  if (req.query && req.query.rename) {
+    const rid     = (req.query.id || '').trim();
+    const newName = decodeURIComponent((req.headers['x-file-name'] || '').trim());
+    if (!rid || !newName) {
+      context.res = { status: 400, body: 'Rename needs ?id=<driveItemId> and x-file-name (new name).' };
+      return;
+    }
+    try {
+      const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const dResp = await graphGet('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+                  + '/lists/' + LIST_GUID + '/drive?$select=id', token);
+      const dId = dResp && dResp.id;
+      if (!dId) throw new Error('Could not resolve the caseAttachments drive id.');
+      const rUrl = 'https://graph.microsoft.com/v1.0/drives/' + dId + '/items/' + encodeURIComponent(rid);
+      const updated = await graphPatch(rUrl, token, { name: newName });
+      context.log('AUDIT attachment RENAME id=' + rid + ' to=' + newName + ' by=' + callerEmail);
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ renamed: true, id: rid, name: (updated && updated.name) || newName }),
+      };
+    } catch (err) {
+      context.log.error('Error renaming attachment:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
+
   const fileName = decodeURIComponent((req.headers['x-file-name']    || '').trim());
   const ourRef   = decodeURIComponent((req.headers['x-our-ref']      || '').trim());
   const docType  = decodeURIComponent((req.headers['x-doc-type']     || '').trim());
