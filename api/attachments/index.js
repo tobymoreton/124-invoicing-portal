@@ -83,11 +83,12 @@ module.exports = async function (context, req) {
 };
 
 async function listAttachments(token, ref) {
-  // Library root children, with each driveItem's listItem fields (ourRef, docType) expanded
-  // in the same call. A document library list exposes a `drive`; /drive/root/children are its files.
-  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID
-           + '/drive/root/children'
-           + '?$expand=listItem($expand=fields($select=ourRef,docType))&$top=200';
+  // Query the document library's LIST ITEMS, expanding fields (ourRef, docType) + driveItem
+  // (file metadata) in one call. This is the supported route for a doc library; the
+  // /drive/root/children + nested listItem-expand route returns Graph 400 BadRequest.
+  // The list-items endpoint spans the whole library (all folders) — no recursion needed.
+  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
+           + '?$expand=fields($select=ourRef,docType),driveItem&$top=200';
 
   var url = base;
   var all = [];
@@ -100,21 +101,23 @@ async function listAttachments(token, ref) {
   var refLc = ref.toLowerCase();
 
   var files = all.filter(function(item) {
-    if (!item.file) return false; // skip folders
-    var f = ((item.listItem || {}).fields) || {};
+    var d = item.driveItem;
+    if (!d || !d.file) return false; // skip folders / non-file list items
+    var f = item.fields || {};
     return String(f.ourRef || '').trim().toLowerCase() === refLc;
   });
 
   return {
     value: files.map(function(item) {
-      var f = ((item.listItem || {}).fields) || {};
+      var f = item.fields    || {};
+      var d = item.driveItem || {};
       return {
-        id:          item.id,
-        name:        item.name,
-        size:        item.size || 0,
-        webUrl:      item.webUrl || '',
-        downloadUrl: item['@microsoft.graph.downloadUrl'] || '',
-        modified:    item.lastModifiedDateTime || '',
+        id:          d.id || item.id,
+        name:        d.name || '',
+        size:        d.size || 0,
+        webUrl:      d.webUrl || '',
+        downloadUrl: d['@microsoft.graph.downloadUrl'] || '',
+        modified:    d.lastModifiedDateTime || '',
         ourRef:      f.ourRef  || '',
         docType:     f.docType || '',
       };
