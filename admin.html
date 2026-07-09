@@ -199,7 +199,7 @@
     .ar-pri-high{background:#FEE2E2;color:#991B1B;}
     .ar-pri-medium{background:#FEF9C3;color:#713F12;}
     .ar-pri-low{background:var(--grey-faint);color:var(--grey-mid);}
-    .ar-done{flex-shrink:0;margin-left:6px;padding:5px 12px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+    .ar-done{flex-shrink:0;margin-left:6px;padding:5px 10px;border:1.5px solid var(--green);border-radius:50%;background:transparent;color:var(--green);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1;}
     .ar-done:hover{background:var(--green);color:#fff;}
     .ar-empty{padding:32px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ar-loading{padding:28px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
@@ -700,7 +700,13 @@ async function loadCases(){
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data=await r.json();
     rawCases=(data.value||[]);
-    rawCases.sort((a,b)=>(b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''));
+    rawCases.sort((a,b)=>{
+      const da=a.fields['Deadline']||''; const db=b.fields['Deadline']||'';
+      if(da&&db) return db.localeCompare(da);
+      if(da&&!db) return -1;
+      if(!da&&db) return 1;
+      return (b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||'');
+    });
     allCases=rawCases.filter(c=>{
       const s=(c.fields['StatusMirror']||'').toLowerCase();
       return s!=='closed'&&s!=='settled';
@@ -845,11 +851,6 @@ function renderAdminReminders(){
     const f=r.fields||{};
     const dueDate=f['Duedate']?new Date(f['Duedate']):null;
     const overdue=dueDate&&dueDate<today;
-    const pri=f['Priority']||'';
-    const priBadge=pri==='High'?'<span class="ar-pri ar-pri-high">High</span>'
-      :pri==='Low'?'<span class="ar-pri ar-pri-low">Low</span>'
-      :pri==='Medium'?'<span class="ar-pri ar-pri-medium">Med</span>':'';
-    const detail=stripHtml(f['Brief']||'');
     const row=document.createElement('div');
     row.className='ar-row'+(overdue?' overdue':'');
     row.innerHTML=
@@ -857,10 +858,8 @@ function renderAdminReminders(){
       '<div class="ar-body">'+
         '<div class="ar-event">'+escHtml(f['Event']||'Reminder')+'</div>'+
         '<div class="ar-case">'+escHtml(r._caseName||r._caseRef)+'</div>'+
-        (detail?'<div class="ar-detail">'+escHtml(detail.length>110?detail.slice(0,110)+'\u2026':detail)+'</div>':'')+
       '</div>'+
-      priBadge+
-      '<button class="ar-done" title="Mark complete">\u2713 Done</button>';
+      '<button class="ar-done" title="Mark complete">\u2713</button>';
     row.querySelector('.ar-done').addEventListener('click',e=>{ e.stopPropagation(); markAdminRemDone(r.id,row); });
     row.addEventListener('click',()=>{
       try{ const c=allCases.find(x=>x.fields['Ourreference_x0028_text_x0029_']===r._caseRef); if(c) sessionStorage.setItem('tmc_case_'+r._caseRef, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
