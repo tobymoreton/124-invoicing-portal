@@ -722,6 +722,7 @@ function renderCases(q){
     const lastRemShort=lastRem.length>70?lastRem.slice(0,70)+'\u2026':lastRem;
 
     const tr=document.createElement('tr');
+    const caseUrl = ref ? ('case.html?ref='+encodeURIComponent(ref)) : ('case.html?id='+encodeURIComponent(c.id));
     tr.innerHTML=
       '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
       '<td><span class="td-muted">'+escHtml(firm)+'</span></td>'+
@@ -729,18 +730,18 @@ function renderCases(q){
       '<td><span class="status-chip '+statusClass(status)+'">'+escHtml(status)+'</span></td>'+
       '<td>'+(task?'<span class="task-chip">'+escHtml(task)+'</span>':'\u2014')+'</td>'+
       '<td><span class="td-muted" title="'+escHtml(lastRem)+'">'+escHtml(lastRemShort||'\u2014')+'</span></td>'+
-      '<td><a href="case.html?ref='+encodeURIComponent(ref)+'" class="open-btn">Open \u2192</a></td>';
+      '<td><a href="'+caseUrl+'" class="open-btn">Open \u2192</a></td>';
     tr.addEventListener('click',e=>{
       if(e.target.tagName!=='A'){
-        try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
-        window.location.href='case.html?ref='+encodeURIComponent(ref);
+        if(ref){ try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){} }
+        window.location.href=caseUrl;
       }
     });
     // Also wire the Open link
     const openLink = tr.querySelector('.open-btn');
     if(openLink) openLink.addEventListener('click', e=>{
       e.stopPropagation();
-      try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
+      if(ref){ try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){} }
     });
     // swap last reminder cell for date received
     const cells=tr.querySelectorAll('td');
@@ -922,8 +923,9 @@ function renderUnassignedCases(){
       deleteCase(c.id,row);
     });
     row.addEventListener('click',()=>{
-      try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){}
-      window.location.href='case.html?ref='+encodeURIComponent(ref);
+      const ucUrl = ref ? ('case.html?ref='+encodeURIComponent(ref)) : ('case.html?id='+encodeURIComponent(c.id));
+      if(ref){ try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){} }
+      window.location.href=ucUrl;
     });
     listEl.appendChild(row);
   });

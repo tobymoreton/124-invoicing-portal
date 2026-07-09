@@ -1701,7 +1701,7 @@ async function loadOpponentFirms2() {
 }
 
 let oppFirmNamesCache = [];
-let oppCaseworkersCache = []; // [{name, firm}] - firm is CaseworkerFirmText, plain text
+let oppCaseworkersCache = []; // [{name, firm}] - firm is CaseworkerFirmMirror, plain text
 async function loadOpponentCaseworkers2() {
   const sel1 = document.getElementById('op-OpponentCaseworker1');
   const sel2 = document.getElementById('op-OpponentCaseworker2');
@@ -1711,7 +1711,7 @@ async function loadOpponentCaseworkers2() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     oppCaseworkersCache = (data.value || [])
-      .map(it => ({ name: (it.fields && it.fields.Title) || '', firm: (it.fields && it.fields.CaseworkerFirmText) || '' }))
+      .map(it => ({ name: (it.fields && it.fields.Title) || '', firm: (it.fields && it.fields.CaseworkerFirmMirror) || '' }))
       .filter(x => x.name);
     filterCaseworkerOptions();
   } catch (err) {
@@ -1890,7 +1890,34 @@ function renderCaseUI(firstPaint) {
 }
 
 async function loadCase() {
-  const ref = (new URLSearchParams(window.location.search).get('ref') || '').trim();
+  const _params = new URLSearchParams(window.location.search);
+  const ref = (_params.get('ref') || '').trim();
+  const idParam = (_params.get('id') || '').trim();
+
+  // ID-based fallback: cases with no Our Reference yet (e.g. Infowise-created, not yet assigned
+  // a TMC reference) can't be found via the ref-equality match below. Load directly by SharePoint
+  // item ID instead. No sessionStorage cache on this path - there's no stable ref to key on.
+  if (!ref && idParam) {
+    try {
+      const [idResp] = await Promise.all([
+        fetch('/api/cases?id=' + encodeURIComponent(idParam)),
+        loadCourts(),
+        loadOpponentFirms2(),
+        loadOpponentCaseworkers2(),
+      ]);
+      if (!idResp.ok) throw new Error('HTTP ' + idResp.status);
+      const idData  = await idResp.json();
+      const idMatch = (idData.value || [])[0];
+      if (!idMatch) { showError('Case not found', 'No case with id ' + idParam + '.'); return; }
+      caseItemId = idMatch.id;
+      caseFields = idMatch.fields || {};
+      renderCaseUI(true);
+    } catch (err) {
+      showError('Error loading case', err.message);
+    }
+    return;
+  }
+
   if (!ref) { showError('No case reference', 'Please open this page with a ?ref= parameter.'); return; }
 
   // Fast path: paint instantly from the dash's per-case sessionStorage cache, then revalidate in the background.
