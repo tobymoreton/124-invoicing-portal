@@ -209,6 +209,8 @@
     .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 6px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;width:116px;text-align:center;text-align-last:center;}
     .uc-task-chip{width:104px;text-align:center;flex-shrink:0;margin-top:2px;}
     .uc-ack-chip{width:66px;text-align:center;flex-shrink:0;margin-top:2px;}
+    .uc-deadline-input{flex-shrink:0;margin-top:2px;width:126px;padding:4px 6px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;}
+    .uc-deadline-input:hover,.uc-deadline-input:focus{border-color:var(--gold);}
   </style>
 </head>
 <body>
@@ -881,6 +883,7 @@ function renderUnassignedCases(){
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const laip=f['InterPartesorLegalAid']||'';
+    const deadlineRaw=(f['Deadline']||'').slice(0,10);
     const laipOptions=['','Inter Partes','Legal Aid','Both'];
     const laipColor=laip==='Legal Aid'?'background:#DCFCE7;color:#14532D;':laip==='Inter Partes'?'background:#DBEAFE;color:#1E40AF;':laip==='Both'?'background:#F3E8FF;color:#6B21A8;':'background:var(--grey-faint);color:var(--grey-mid);';
     const laipSelHtml='<select class="uc-laip-sel" title="Inter Partes / Legal Aid" style="'+laipColor+'">'+
@@ -899,6 +902,7 @@ function renderUnassignedCases(){
       (laipSelHtml)+
       (task?'<span class="task-chip uc-task-chip">'+escHtml(task)+'</span>':'<span class="uc-task-chip"></span>')+
       '<span class="task-chip uc-ack-chip" style="'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
+      '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" title="Deadline" />'+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
         '<option value="">Assign to\u2026</option>'+
         '<option value="toby@tmclegal.co.uk">Toby</option>'+
@@ -917,6 +921,9 @@ function renderUnassignedCases(){
     const laipSel=row.querySelector('.uc-laip-sel');
     laipSel.addEventListener('click',e=>e.stopPropagation());
     laipSel.addEventListener('change',()=>{ updateLaip(c.id,laipSel.value,laipSel); });
+    const deadlineInput=row.querySelector('.uc-deadline-input');
+    deadlineInput.addEventListener('click',e=>e.stopPropagation());
+    deadlineInput.addEventListener('change',()=>{ updateDeadline(c.id,deadlineInput.value,deadlineInput); });
     const ucDel=row.querySelector('.uc-delete-btn');
     ucDel.addEventListener('click',e=>{
       e.stopPropagation();
@@ -931,6 +938,24 @@ function renderUnassignedCases(){
     });
     listEl.appendChild(row);
   });
+}
+
+// ── Update Deadline inline ────────────────────────────────────────────────────
+async function updateDeadline(caseId,value,inputEl){
+  inputEl.disabled=true;
+  try{
+    const r=await fetch('/api/caseupdate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:caseId,fields:{Deadline:value?value+'T00:00:00Z':null}}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,80));
+    const caseObj=allCases.find(c=>c.id===caseId);
+    if(caseObj) caseObj.fields['Deadline']=value?value+'T00:00:00Z':null;
+  }catch(err){
+    alert('Failed to update deadline: '+err.message);
+  }finally{
+    inputEl.disabled=false;
+  }
 }
 
 // ── Update Inter Partes / Legal Aid inline ────────────────────────────────
