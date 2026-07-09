@@ -58,8 +58,9 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const ref = (req.query.ref || '').trim();
-  if (!ref) {
+  const ref   = (req.query.ref || '').trim();
+  const debug = req.query.debug === '1'; // TEMP diagnostic: ?debug=1 dumps raw items, remove after verify
+  if (!ref && !debug) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -70,7 +71,7 @@ module.exports = async function (context, req) {
 
   try {
     const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const result = await listAttachments(token, ref);
+    const result = await listAttachments(token, ref, debug);
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
@@ -82,7 +83,7 @@ module.exports = async function (context, req) {
   }
 };
 
-async function listAttachments(token, ref) {
+async function listAttachments(token, ref, debug) {
   // Query the document library's LIST ITEMS, expanding fields (ourRef, docType) + driveItem
   // (file metadata) in one call. This is the supported route for a doc library; the
   // /drive/root/children + nested listItem-expand route returns Graph 400 BadRequest.
@@ -98,7 +99,10 @@ async function listAttachments(token, ref) {
     url = page['@odata.nextLink'] || null;
   }
 
-  var refLc = ref.toLowerCase();
+  // TEMP diagnostic: return raw shape so we can see the real fields/driveItem keys. Remove after verify.
+  if (debug) return { debug: true, count: all.length, sample: all.slice(0, 3) };
+
+  var refLc = (ref || '').toLowerCase();
 
   var files = all.filter(function(item) {
     var d = item.driveItem;
