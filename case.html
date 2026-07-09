@@ -1566,10 +1566,17 @@
           <span id="att-summary" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
         <div id="att-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px;"></div>
+        <div id="att-upload" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;background:rgba(181,154,106,.06);border:1px solid rgba(181,154,106,.25);border-radius:8px;">
+          <span style="font-size:12px;color:var(--grey-mid);">Add file:</span>
+          <select id="att-up-type" style="font-family:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--gold);border-radius:6px;background:#fff;"></select>
+          <input type="file" id="att-up-file" style="display:none;" />
+          <button type="button" id="att-up-btn" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 14px;border-radius:6px;border:none;cursor:pointer;background:var(--gold);color:#fff;font-size:12px;font-family:inherit;">⬆ Upload</button>
+          <span id="att-up-msg" style="font-size:12px;color:var(--grey-mid);"></span>
+        </div>
         <div>
           <table class="ca-table" id="att-table">
-            <colgroup><col/><col style="width:200px;"/><col style="width:80px;"/><col style="width:150px;"/></colgroup>
-            <thead><tr><th>Name</th><th>Type</th><th class="ca-right">Size</th><th>Modified</th></tr></thead>
+            <colgroup><col/><col style="width:200px;"/><col style="width:80px;"/><col style="width:150px;"/><col style="width:44px;"/></colgroup>
+            <thead><tr><th>Name</th><th>Type</th><th class="ca-right">Size</th><th>Modified</th><th></th></tr></thead>
             <tbody id="att-tbody"></tbody>
           </table>
         </div>
@@ -3281,6 +3288,10 @@ let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching
 
 // --- Attachments tab (caseAttachments doc library via /api/attachments) ---
 let attFiles = []; let attLoaded = false; let attFetching = false; let attFilter = 'All';
+const ATT_DOC_TYPES = ['Instructions','Client Files','Bill and Narrative and Advice','Supporting Documents','Documents for Service'];
+const ATT_MANAGEMENT = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+let attUploadWired = false;
+function attIsManagement() { return ATT_MANAGEMENT.includes((switcherCallerEmail || '').toLowerCase()); }
 
 async function loadAttachments() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
@@ -3318,20 +3329,63 @@ function renderAttFilters() {
 
 function renderAttTable() {
   const tbody = document.getElementById('att-tbody'); const loading = document.getElementById('att-loading'); const empty = document.getElementById('att-empty'); const summary = document.getElementById('att-summary');
-  if (loading) loading.style.display = 'none'; if (!tbody) return; tbody.innerHTML = '';
+  if (loading) loading.style.display = 'none'; if (!tbody) return;
+  initAttUpload();
+  tbody.innerHTML = '';
   if (!attFiles.length) { if (empty) { empty.textContent = 'No attachments for this case.'; empty.style.display = 'block'; } if (summary) summary.textContent = ''; const bar = document.getElementById('att-filters'); if (bar) bar.innerHTML = ''; return; }
   if (empty) empty.style.display = 'none';
   renderAttFilters();
   if (summary) summary.textContent = attFiles.length + ' file' + (attFiles.length !== 1 ? 's' : '');
+  const canDel = attIsManagement();
   const rows = attFiles.filter(f => attFilter === 'All' || (f.docType || '').trim() === attFilter);
   rows.forEach(f => {
     const tr = document.createElement('tr'); tr.className = 'ca-row';
     tr.innerHTML = `<td class="ca-cell"><a href="${escHtml(f.webUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a></td>`
       + `<td class="ca-cell">${escHtml(f.docType || '')}</td>`
       + `<td class="ca-cell ca-right">${attFmtSize(f.size)}</td>`
-      + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`;
+      + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`
+      + `<td class="ca-cell ca-center">${canDel ? `<button type="button" data-att-del="${escHtml(f.id)}" data-att-name="${escHtml(f.name || '')}" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--grey-mid);font-size:14px;">🗑</button>` : ''}</td>`;
     tbody.appendChild(tr);
   });
+  tbody.querySelectorAll('[data-att-del]').forEach(b => b.addEventListener('click', () => attDelete(b.dataset.attDel, b.dataset.attName)));
+}
+
+function initAttUpload() {
+  if (attUploadWired) return;
+  const sel = document.getElementById('att-up-type'); const fileInput = document.getElementById('att-up-file'); const btn = document.getElementById('att-up-btn');
+  if (!sel || !fileInput || !btn) return;
+  sel.innerHTML = ATT_DOC_TYPES.map(t => `<option>${escHtml(t)}</option>`).join('');
+  btn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0]; if (!file) return;
+    const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+    const msg = document.getElementById('att-up-msg');
+    if (!ref) { if (msg) { msg.textContent = 'No case reference \u2014 cannot upload.'; msg.style.color = '#c0392b'; } fileInput.value = ''; return; }
+    if (msg) { msg.textContent = 'Uploading ' + file.name + '\u2026'; msg.style.color = 'var(--grey-mid)'; }
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/api/attachmentswrite', { method: 'POST', headers: {
+        'x-file-name':    encodeURIComponent(file.name),
+        'x-our-ref':      encodeURIComponent(ref),
+        'x-doc-type':     encodeURIComponent(sel.value || ''),
+        'x-content-type': encodeURIComponent(file.type || 'application/octet-stream'),
+      }, body: file });
+      if (!resp.ok) { const t = await resp.text(); throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 120)); }
+      if (msg) { msg.textContent = 'Uploaded ' + file.name + '.'; msg.style.color = '#1e7e34'; }
+      attLoaded = false; attFetching = false; loadAttachments();
+    } catch (err) { if (msg) { msg.textContent = 'Upload failed: ' + err.message; msg.style.color = '#c0392b'; } }
+    finally { btn.disabled = false; fileInput.value = ''; }
+  });
+  attUploadWired = true;
+}
+
+async function attDelete(id, name) {
+  if (!confirm('Delete "' + (name || 'this file') + '"? This cannot be undone.')) return;
+  try {
+    const resp = await fetch('/api/attachmentswrite?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!resp.ok) { const t = await resp.text(); throw new Error('HTTP ' + resp.status + ' ' + t.slice(0, 120)); }
+    attLoaded = false; attFetching = false; loadAttachments();
+  } catch (err) { alert('Delete failed: ' + err.message); }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
