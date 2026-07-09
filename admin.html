@@ -175,8 +175,7 @@
     .btn-cancel:hover{border-color:var(--navy);}
 
     /* Admin Reminders + Unassigned (50/50) */
-    .dash-50{display:grid;grid-template-columns:1fr 2fr;gap:20px;margin-bottom:28px;align-items:start;}
-    @media(max-width:900px){.dash-50{grid-template-columns:1fr;}}
+    .dash-50{display:flex;flex-direction:column;gap:20px;margin-bottom:28px;align-items:stretch;}
     .ar-panel{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid rgba(27,42,74,.08);overflow:hidden;}
     .ar-head{background:var(--navy);padding:13px 20px;display:flex;align-items:center;justify-content:space-between;}
     .ar-title{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;}
@@ -206,10 +205,17 @@
     /* Unassigned — inline assign select */
     .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;width:132px;}
     .uc-assign-sel:hover,.uc-assign-sel:focus{border-color:var(--gold);}
-    .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 6px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;width:116px;text-align:center;text-align-last:center;}
-    .uc-task-chip{width:104px;text-align:center;flex-shrink:0;margin-top:2px;}
-    .uc-ack-chip{width:66px;text-align:center;flex-shrink:0;margin-top:2px;}
-    .uc-deadline-input{flex-shrink:0;margin-top:2px;width:126px;padding:4px 6px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;}
+    .uc-laip-sel{flex-shrink:0;margin-top:2px;padding:2px 4px;border:none;border-radius:10px;font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;outline:none;width:56px;text-align:center;text-align-last:center;}
+    .uc-task-chip{width:92px;text-align:center;flex-shrink:0;margin-top:2px;}
+    .uc-ack-chip{width:60px;text-align:center;flex-shrink:0;margin-top:2px;}
+    .uc-deadline-wrap{flex-shrink:0;margin-top:2px;width:150px;}
+    .uc-deadline-label{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.75;margin-bottom:2px;}
+    .uc-deadline-display{display:flex;align-items:center;gap:6px;font-size:11.5px;}
+    .uc-deadline-display.uc-deadline-set{color:var(--navy);font-weight:600;}
+    .uc-deadline-display.uc-deadline-unset{color:var(--grey-mid);font-style:italic;}
+    .uc-deadline-edit-btn{background:none;border:none;color:var(--grey-mid);cursor:pointer;font-size:12px;padding:0;line-height:1;flex-shrink:0;}
+    .uc-deadline-edit-btn:hover{color:var(--gold);}
+    .uc-deadline-input{flex-shrink:0;width:126px;padding:4px 6px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;}
     .uc-deadline-input:hover,.uc-deadline-input:focus{border-color:var(--gold);}
   </style>
 </head>
@@ -885,11 +891,22 @@ function renderUnassignedCases(){
     const laip=f['InterPartesorLegalAid']||'';
     const deadlineRaw=(f['Deadline']||'').slice(0,10);
     const laipOptions=['','Inter Partes','Legal Aid','Both'];
+    const laipShort={'':'\u2014','Inter Partes':'IP','Legal Aid':'LA','Both':'Both'};
     const laipColor=laip==='Legal Aid'?'background:#DCFCE7;color:#14532D;':laip==='Inter Partes'?'background:#DBEAFE;color:#1E40AF;':laip==='Both'?'background:#F3E8FF;color:#6B21A8;':'background:var(--grey-faint);color:var(--grey-mid);';
     const laipSelHtml='<select class="uc-laip-sel" title="Inter Partes / Legal Aid" style="'+laipColor+'">'+
-      laipOptions.map(o=>'<option value="'+escHtml(o)+'"'+(o===laip?' selected':'')+'>'+(o||'\u2014')+'</option>').join('')+
+      laipOptions.map(o=>'<option value="'+escHtml(o)+'"'+(o===laip?' selected':'')+'>'+(laipShort[o]!==undefined?laipShort[o]:escHtml(o))+'</option>').join('')+
       (laip&&!laipOptions.includes(laip)?'<option value="'+escHtml(laip)+'" selected>'+escHtml(laip)+'</option>':'')+
       '</select>';
+    const deadlineDisplayText = deadlineRaw ? new Date(deadlineRaw+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'Standard turnaround';
+    const deadlineWrapHtml =
+      '<div class="uc-deadline-wrap">'+
+        '<div class="uc-deadline-label">Deadline</div>'+
+        '<div class="uc-deadline-display '+(deadlineRaw?'uc-deadline-set':'uc-deadline-unset')+'">'+
+          '<span class="uc-deadline-text">'+deadlineDisplayText+'</span>'+
+          '<button type="button" class="uc-deadline-edit-btn" title="Edit deadline">\u270e</button>'+
+        '</div>'+
+        '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" style="display:none;" />'+
+      '</div>';
     const row=document.createElement('div');
     row.className='ar-row';
     row.innerHTML=
@@ -902,7 +919,7 @@ function renderUnassignedCases(){
       (laipSelHtml)+
       (task?'<span class="task-chip uc-task-chip">'+escHtml(task)+'</span>':'<span class="uc-task-chip"></span>')+
       '<span class="task-chip uc-ack-chip" style="'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
-      '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" title="Deadline" />'+
+      (deadlineWrapHtml)+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
         '<option value="">Assign to\u2026</option>'+
         '<option value="toby@tmclegal.co.uk">Toby</option>'+
@@ -922,8 +939,30 @@ function renderUnassignedCases(){
     laipSel.addEventListener('click',e=>e.stopPropagation());
     laipSel.addEventListener('change',()=>{ updateLaip(c.id,laipSel.value,laipSel); });
     const deadlineInput=row.querySelector('.uc-deadline-input');
+    const deadlineDisplay=row.querySelector('.uc-deadline-display');
+    const deadlineEditBtn=row.querySelector('.uc-deadline-edit-btn');
+    deadlineEditBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      deadlineDisplay.style.display='none';
+      deadlineInput.style.display='';
+      deadlineInput.focus();
+      if(deadlineInput.showPicker) { try{ deadlineInput.showPicker(); }catch(ex){} }
+    });
     deadlineInput.addEventListener('click',e=>e.stopPropagation());
-    deadlineInput.addEventListener('change',()=>{ updateDeadline(c.id,deadlineInput.value,deadlineInput); });
+    function revertDeadlineDisplay(){
+      deadlineInput.style.display='none';
+      deadlineDisplay.style.display='';
+    }
+    deadlineInput.addEventListener('blur',revertDeadlineDisplay);
+    deadlineInput.addEventListener('change',()=>{
+      const val=deadlineInput.value;
+      const textEl=deadlineDisplay.querySelector('.uc-deadline-text');
+      textEl.textContent = val ? new Date(val+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'Standard turnaround';
+      deadlineDisplay.classList.toggle('uc-deadline-set', !!val);
+      deadlineDisplay.classList.toggle('uc-deadline-unset', !val);
+      updateDeadline(c.id,val,deadlineInput);
+      revertDeadlineDisplay();
+    });
     const ucDel=row.querySelector('.uc-delete-btn');
     ucDel.addEventListener('click',e=>{
       e.stopPropagation();
