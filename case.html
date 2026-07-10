@@ -530,6 +530,30 @@
     .ca-edit-wd{width:100%;padding:5px 5px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--navy);resize:vertical;}
     .ca-edit-hrs,.ca-edit-rate{width:100%;padding:4px 4px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--navy);text-align:right;}
     .ca-sched-check{width:15px;height:15px;accent-color:var(--navy);cursor:pointer;display:block;margin:0 auto;}
+    /* Case Actions — expanded inline edit panel */
+    .ca-editing-row:hover{background:transparent;}
+    .ca-edit-cell{padding:0!important;}
+    .ca-edit-panel{background:var(--white);border:1.5px solid var(--gold);border-radius:var(--radius-sm);margin:6px 0;padding:16px 18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 4px 14px rgba(27,42,74,.10);}
+    .ca-edit-head{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--navy-mid);display:flex;align-items:center;gap:8px;}
+    .ca-edit-grid{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;}
+    .ca-ef{display:flex;flex-direction:column;gap:5px;}
+    .ca-ef>span{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--navy-mid);}
+    .ca-ef select,.ca-ef input[type="number"],.ca-ef textarea{font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);border:1.5px solid rgba(27,42,74,.25);border-radius:var(--radius-sm);padding:9px 12px;outline:none;transition:border-color .15s,box-shadow .15s;}
+    .ca-ef input[type="number"]{font-family:'IBM Plex Mono',monospace;text-align:right;}
+    .ca-ef select:focus,.ca-ef input:focus,.ca-ef textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,.22);}
+    .ca-ef select{min-width:230px;}
+    .ca-ef-sm input{width:120px;}
+    .ca-edit-amt{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--navy);padding:8px 0;}
+    .ca-ef-chk{flex-direction:row;align-items:center;gap:8px;}
+    .ca-ef-chk input[type="checkbox"]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer;}
+    .ca-ef-chk>span{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--navy);}
+    .ca-ef-wd{width:100%;}
+    .ca-ef-wd textarea{width:100%;resize:vertical;min-height:110px;line-height:1.55;}
+    .ca-edit-actions{display:flex;gap:10px;align-items:center;}
+    .ca-btn-lg{padding:9px 24px;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;border:none;}
+    .ca-btn-save.ca-btn-lg{background:linear-gradient(135deg,var(--green) 0%,#047857 100%);color:#fff;}
+    .ca-btn-cancel.ca-btn-lg{background:transparent;color:var(--grey-mid);border:1.5px solid var(--grey-light);}
+    .ca-btn-cancel.ca-btn-lg:hover{border-color:var(--grey-mid);color:var(--navy);}
     .rem-overdue .ca-cell:first-child{color:#991B1B;font-weight:700;}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -3533,16 +3557,23 @@ function renderCaTable() {
     const dateStr = fmtDate(f['field_12'] || f['field_1']); const byName = f['Completedby_x0028_text_x0029_'] || f['field_18'] || ''; const workDone = f['field_2'] || ''; const brief = f['field_9'] || '';
     const isEditing = caEditingId === id; const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
     if (isEditing) {
-      tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
-        <td class="ca-cell"><select class="ca-edit-brief" data-id="${id}" style="font-family:'IBM Plex Sans',sans-serif;font-size:11px;padding:2px 4px;width:100%;">${['Preparation/Perusal','Routine letter/email out','Incoming email','Routine telephone call','Timed letter/email','Timed telephone call','Teams/Zoom call','In person hearing','Remote hearing','Mediation'].map(v => '<option' + (v===brief?' selected':'') + '>' + v + '</option>').join('')}</select></td>
-        <td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" data-id="${id}" rows="3">${escHtml(workDone)}</textarea></td>
-        <td class="ca-cell ca-right"><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></td>
-        <td class="ca-cell ca-right"><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></td>
-        <td class="ca-cell ca-mono ca-right">${fmt(amt)}</td>
-        <td class="ca-cell ca-center"><input type="checkbox" class="ca-edit-bill" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>
-        <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
-        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
-        <td class="ca-cell ca-actions"><button class="ca-btn-save" data-id="${id}">\u2713</button><button class="ca-btn-cancel" data-id="${id}">\u00d7</button></td>`;
+      tr.classList.add('ca-editing-row');
+      const _briefOpts = ['Preparation/Perusal','Routine letter/email out','Incoming email','Routine telephone call','Timed letter/email','Timed telephone call','Teams/Zoom call','In person hearing','Remote hearing','Mediation'].map(v => '<option' + (v===brief?' selected':'') + '>' + v + '</option>').join('');
+      tr.innerHTML = `<td class="ca-cell ca-edit-cell" colspan="11">
+        <div class="ca-edit-panel">
+          <div class="ca-edit-head"><span>Editing action</span><span style="color:var(--grey-mid);font-weight:500;text-transform:none;letter-spacing:0;">${escHtml(dateStr)}${byName ? ' · ' + escHtml(byName.split(' ')[0]) : ''}</span>${billed ? '<span class="ca-billed-badge">Billed</span>' : ''}</div>
+          <div class="ca-edit-grid">
+            <label class="ca-ef"><span>Brief</span><select class="ca-edit-brief" data-id="${id}">${_briefOpts}</select></label>
+            <label class="ca-ef ca-ef-sm"><span>Hrs</span><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></label>
+            <label class="ca-ef ca-ef-sm"><span>Rate (£/hr)</span><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></label>
+            <div class="ca-ef ca-ef-amt"><span>Amount</span><div class="ca-edit-amt" data-id="${id}">${fmt(amt)}</div></div>
+            <label class="ca-ef ca-ef-chk"><input type="checkbox" class="ca-edit-bill" data-id="${id}" ${billable ? 'checked' : ''} /><span>Billable?</span></label>
+            <label class="ca-ef ca-ef-chk"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /><span>Schedule (COA)</span></label>
+          </div>
+          <label class="ca-ef ca-ef-wd"><span>Work Done</span><textarea class="ca-edit-wd" data-id="${id}" rows="6">${escHtml(workDone)}</textarea></label>
+          <div class="ca-edit-actions"><button class="ca-btn-save ca-btn-lg" data-id="${id}">✓ Save</button><button class="ca-btn-cancel ca-btn-lg" data-id="${id}">Cancel</button></div>
+        </div>
+      </td>`;
     } else {
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
         <td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${escHtml(brief)}">${escHtml(brief)}</td>
@@ -3560,6 +3591,10 @@ function renderCaTable() {
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
+  tbody.querySelectorAll('.ca-editing-row').forEach(row => {
+    const _h = row.querySelector('.ca-edit-hrs'); const _r = row.querySelector('.ca-edit-rate'); const _a = row.querySelector('.ca-edit-amt');
+    if (_h && _r && _a) { const _u = () => { _a.textContent = fmt((parseFloat(_h.value)||0)*(parseFloat(_r.value)||0)); }; _h.addEventListener('input', _u); _r.addEventListener('input', _u); }
+  });
   renderWipBox();
 }
 
