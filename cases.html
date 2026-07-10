@@ -1405,7 +1405,7 @@ async function saveAction(){
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
-    allActions.unshift({...created,_caseRef:ref,_caseName:caseName,WorkDone:wd,DateWorkDone:date,WIPValue:hrs*rate});
+    allActions.unshift({...created,_caseRef:ref,_caseName:caseName,fields:{...(created.fields||{}),field_2:wd,field_3:hrs,TimeSpentMirror:hrs,field_6:rate,field_9:brief,'Billable_x003f_':billable,field_12:date?date+'T00:00:00Z':new Date().toISOString(),field_16:ref}});
     renderActionsPanel();
     msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-action'),1000);

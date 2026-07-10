@@ -208,6 +208,7 @@
     .ar-done:hover{background:var(--green);color:#fff;}
     .ar-empty{padding:32px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ar-loading{padding:28px 20px;text-align:center;color:var(--grey-mid);font-size:13px;}
+    body.not-mgmt .uc-delete-btn{display:none;}
     /* Unassigned — inline assign select */
     .uc-assign-sel{flex-shrink:0;margin-top:2px;margin-left:8px;padding:4px 8px;border:1.5px solid rgba(27,42,74,.2);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;color:var(--navy);background:var(--white);cursor:pointer;outline:none;transition:border-color .18s ease;width:132px;}
     .uc-assign-sel:hover,.uc-assign-sel:focus{border-color:var(--gold);}
@@ -1179,18 +1180,22 @@ async function deleteCase(caseId,rowEl){
 // Set today as default date for booking in
 document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
 
-// Hide the Invoices nav link unless the caller is Toby or Danielle
-(async function gateInvoicesLink(){
+// Page gate: admin.html is for the admin tier (Toby, Danielle, Lesley). Others are
+// redirected to their dashboard. Cosmetic only — the server-side allowlists on
+// caseupdate/clients/admin APIs remain the real enforcement. The delete button is
+// additionally hidden for non-management (server already 403s them on DELETE).
+(async function gatePage(){
   const link=document.getElementById('nav-invoices-link');
-  if(!link) return;
   try{
     const r=await fetch('/.auth/me');
     const data=r.ok?await r.json():null;
     const user=data&&(data.clientPrincipal||(Array.isArray(data)?data[0]?.clientPrincipal:null));
     const email=(user&&user.userDetails?user.userDetails:'').toLowerCase();
-    const allowed=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
-    if(!allowed.includes(email)) link.remove();
-  }catch(e){ link.remove(); }
+    const adminTier=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
+    const management=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+    if(email&&!adminTier.includes(email)){ window.location.replace('/cases.html'); return; }
+    if(!management.includes(email)) document.body.classList.add('not-mgmt');
+  }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
 })();
 
 loadCases();
