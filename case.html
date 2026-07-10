@@ -3243,13 +3243,21 @@ function renderRemTable() {
     const tr = document.createElement('tr'); tr.dataset.id = id;
     tr.className = 'ca-row' + (completed ? ' ca-billed' : '') + (overdue ? ' rem-overdue' : '');
     if (isEditing) {
-      tr.innerHTML = `<td class="ca-cell"><input type="date" class="ca-edit-rate" style="width:100%;" id="rem-edit-due-${id}" value="${toDateInput(dueDate)}" /></td>
-        <td class="ca-cell"><select class="ca-edit-rate" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-event-${id}">${REM_EVENTS.map(v => `<option${v===event?' selected':''}>${escHtml(v)}</option>`).join('')}</select></td>
-        <td class="ca-cell ca-cell-wd"><textarea class="ca-edit-wd" id="rem-edit-detail-${id}" rows="3">${escHtml(detail)}</textarea></td>
-        <td class="ca-cell ca-center"><select class="ca-edit-rate" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;" id="rem-edit-priority-${id}">${REM_PRIORITIES.map(v => `<option${v===priority?' selected':''}>${v}</option>`).join('')}</select></td>
-        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-done-${id}" ${completed?'checked':''} /></td>
-        <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" id="rem-edit-admin-${id}" ${admin?'checked':''} /></td>
-        <td class="ca-cell ca-actions"><button class="ca-btn-save" data-id="${id}">\u2713</button><button class="ca-btn-cancel" data-id="${id}">\u00d7</button></td>`;
+      tr.classList.add('ca-editing-row');
+      tr.innerHTML = `<td class="ca-cell ca-edit-cell" colspan="7">
+        <div class="ca-edit-panel">
+          <div class="ca-edit-head"><span>Editing reminder</span><span style="color:var(--grey-mid);font-weight:500;text-transform:none;letter-spacing:0;">${escHtml(fmtDate(dueDate))}</span>${completed ? '<span class="ca-billed-badge">Completed</span>' : ''}</div>
+          <div class="ca-edit-grid">
+            <label class="ca-ef"><span>Event</span><select id="rem-edit-event-${id}">${REM_EVENTS.map(v => `<option${v===event?' selected':''}>${escHtml(v)}</option>`).join('')}</select></label>
+            <label class="ca-ef ca-ef-sm"><span>Due Date</span><input type="date" id="rem-edit-due-${id}" value="${toDateInput(dueDate)}" style="font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);border:1.5px solid rgba(27,42,74,.25);border-radius:var(--radius-sm);padding:8px 10px;outline:none;" /></label>
+            <label class="ca-ef"><span>Priority</span><select id="rem-edit-priority-${id}" style="min-width:130px;">${REM_PRIORITIES.map(v => `<option${v===priority?' selected':''}>${v}</option>`).join('')}</select></label>
+            <label class="ca-ef ca-ef-chk"><input type="checkbox" id="rem-edit-done-${id}" ${completed?'checked':''} /><span>Completed?</span></label>
+            <label class="ca-ef ca-ef-chk"><input type="checkbox" id="rem-edit-admin-${id}" ${admin?'checked':''} /><span>Admin?</span></label>
+          </div>
+          <label class="ca-ef ca-ef-wd"><span>Detail</span><textarea class="ca-edit-wd" id="rem-edit-detail-${id}" rows="6">${escHtml(detail)}</textarea></label>
+          <div class="ca-edit-actions"><button class="ca-btn-save ca-btn-lg" data-id="${id}">\u2713 Save</button><button class="ca-btn-cancel ca-btn-lg" data-id="${id}">Cancel</button></div>
+        </div>
+      </td>`;
     } else {
       const priBadge = priority === 'High' ? '<span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#991B1B;padding:2px 4px;border-radius:8px;">H</span>' : priority === 'Low' ? '<span style="font-size:10px;font-weight:600;color:var(--grey-mid);">L</span>' : '<span style="font-size:10px;font-weight:600;color:var(--navy-mid);">M</span>';
       tr.innerHTML = `<td class="ca-cell ca-mono" style="font-size:12px;${overdue?'color:#991B1B;font-weight:700;':''}">${escHtml(fmtDate(dueDate))}</td>
