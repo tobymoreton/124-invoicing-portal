@@ -368,10 +368,10 @@
     <div class="modal-head"><span class="modal-title">Book In Case</span><button class="modal-close" data-close="modal-case">&times;</button></div>
     <div class="modal-body">
       <div class="mf-section">Case Details</div>
-      <div class="mf"><label>Case Name *</label><input type="text" id="ci-name" placeholder="e.g. Smith John-1741234" /></div>
+      <div class="mf"><label>Case Name *</label><input type="text" id="ci-name" placeholder="e.g. Smith John" /></div>
       <div class="mf-row">
-        <div class="mf"><label>Our Reference *</label><input type="text" id="ci-ref" placeholder="e.g. 1741234" /></div>
         <div class="mf"><label>Date Received</label><input type="date" id="ci-date" /></div>
+        <div class="mf" style="justify-content:flex-end;"><span style="font-size:11px;color:var(--grey-mid);line-height:1.4;">Our Reference is assigned automatically after booking in.</span></div>
       </div>
       <div class="mf-row">
         <div class="mf"><label>Task</label>
@@ -381,17 +381,7 @@
             <option>Points of Dispute</option><option>Schedule</option><option>Other</option>
           </select>
         </div>
-        <div class="mf"><label>Stage</label>
-          <select id="ci-stage">
-            <option value="">Select&hellip;</option>
-            <option>Pending assignment</option><option>In billing</option><option>Pending billing</option>
-            <option>Awaiting client approval</option><option>Served by client</option>
-            <option>In negotiation (served informally)</option>
-            <option>In negotiation (served formally)</option>
-            <option>Pending Replies</option>
-            <option>In budgeting</option><option>Settled</option>
-          </select>
-        </div>
+        <div class="mf" style="justify-content:flex-end;"><span style="font-size:11px;color:var(--grey-mid);line-height:1.4;">New cases start at Pending assignment.</span></div>
       </div>
       <div class="mf-section">Parties</div>
       <div class="mf"><label>Client Firm</label><input type="text" id="ci-firm" list="dl-ci-firm" placeholder="Start typing to search firms…" autocomplete="off" /><datalist id="dl-ci-firm"></datalist></div>
@@ -661,35 +651,48 @@ async function saveToApi(url, body, msgId, btnId, onSuccess){
   }finally{btn.disabled=false;}
 }
 
-// Book In Case — reflist typeahead datalists, lazy-loaded once on first modal open
-let ciRefListsLoaded=false;
+// Book In Case — reflist typeahead datalists, lazy-loaded once on first modal open.
+// Fee Earner options are filtered to those linked to the chosen Client Firm
+// (FE reflist FirmLookupId === client firm item id — same linkage case.html uses),
+// falling back to the full list when the firm is blank/unknown or has no linked FEs.
+let ciRefListsLoaded=false; let ciFirms=[]; let ciFeeEarners=[];
+function fillCiDatalist(dlId,titles){const dl=document.getElementById(dlId);if(dl)dl.innerHTML=titles.map(t=>'<option value="'+escHtml(t)+'"></option>').join('');}
+function filterCiFeeEarners(){
+  const firmName=(document.getElementById('ci-firm').value||'').trim();
+  const firm=ciFirms.find(x=>x.name===firmName);
+  let pool=ciFeeEarners;
+  if(firm){const matched=ciFeeEarners.filter(x=>x.firmId===firm.id);if(matched.length)pool=matched;}
+  fillCiDatalist('dl-ci-fe',pool.map(x=>x.name));
+}
 async function loadBookInRefLists(){
   if(ciRefListsLoaded) return; ciRefListsLoaded=true;
-  const fill=(dlId,titles)=>{const dl=document.getElementById(dlId);if(dl)dl.innerHTML=titles.map(t=>'<option value="'+escHtml(t)+'"></option>').join('');};
   try{
     const [cl,fe,of]=await Promise.all([
       fetch('/api/clients').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
       fetch('/api/reflists?list=feeearners').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
       fetch('/api/reflists?list=opponentfirms').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
     ]);
-    fill('dl-ci-firm',(cl.value||[]).map(i=>i.fields?.Title).filter(Boolean));
-    fill('dl-ci-fe',(fe.value||[]).map(i=>i.fields?.Title).filter(Boolean));
-    fill('dl-ci-opp',(of.value||[]).map(i=>i.fields?.Title).filter(Boolean));
+    ciFirms=(cl.value||[]).map(i=>({id:String(i.id),name:((i.fields||{}).Title||'').trim()})).filter(x=>x.name);
+    ciFeeEarners=(fe.value||[]).map(i=>({name:((i.fields||{}).Title||'').trim(),firmId:(i.fields&&i.fields.FirmLookupId!=null)?String(i.fields.FirmLookupId):null})).filter(x=>x.name);
+    fillCiDatalist('dl-ci-firm',ciFirms.map(x=>x.name));
+    fillCiDatalist('dl-ci-opp',(of.value||[]).map(i=>i.fields?.Title).filter(Boolean));
+    filterCiFeeEarners();
   }catch(e){ ciRefListsLoaded=false; /* retry on next open */ }
 }
 document.querySelector('[data-modal="modal-case"]').addEventListener('click',loadBookInRefLists);
+document.getElementById('ci-firm').addEventListener('input',filterCiFeeEarners);
 
 // Book In Case
 document.getElementById('save-case').addEventListener('click',()=>{
   const name=document.getElementById('ci-name').value.trim();
-  const ref=document.getElementById('ci-ref').value.trim();
-  if(!name||!ref){const m=document.getElementById('msg-case');m.className='save-msg err';m.textContent='Case name and reference required.';return;}
+  if(!name){const m=document.getElementById('msg-case');m.className='save-msg err';m.textContent='Case name required.';return;}
   const fields={
     Title:name,
-    Ourreference_x0028_text_x0029_:ref,
-    // CaseNameForOpenCases deliberately NOT sent — it is an SP calculated column;
+    // Our Reference deliberately NOT sent — PA assigns New TMC Reference on item
+    // creation and the calculated/mirror ref columns populate from it.
+    // CaseNameForOpenCases deliberately NOT sent — SP calculated column;
     // Graph rejects writes to calculated fields and would 400 the whole create.
-    StatusMirror:document.getElementById('ci-stage').value||'Pending assignment',
+    StatusMirror:'Pending assignment',
     Task:document.getElementById('ci-task').value,
     Firm_x0028_text_x0029_:document.getElementById('ci-firm').value.trim(),
     FeeEarner_x0028_fromFM_x0029_:document.getElementById('ci-fe').value.trim(),
@@ -701,7 +704,7 @@ document.getElementById('save-case').addEventListener('click',()=>{
   // assignedToTextValue is what lands the new case in the Unassigned panel.
   Object.keys(fields).forEach(k=>{ if(fields[k]===''||fields[k]==null) delete fields[k]; });
   saveToApi('/api/caseupdate',{action:'create',fields},'msg-case','save-case',()=>{
-    ['ci-name','ci-ref','ci-firm','ci-fe','ci-opp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['ci-name','ci-firm','ci-fe','ci-opp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     loadCases();
   });
 });
