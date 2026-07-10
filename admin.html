@@ -394,9 +394,9 @@
         </div>
       </div>
       <div class="mf-section">Parties</div>
-      <div class="mf"><label>Client Firm</label><input type="text" id="ci-firm" placeholder="Firm name" /></div>
+      <div class="mf"><label>Client Firm</label><input type="text" id="ci-firm" list="dl-ci-firm" placeholder="Start typing to search firms…" autocomplete="off" /><datalist id="dl-ci-firm"></datalist></div>
       <div class="mf-row">
-        <div class="mf"><label>Fee Earner</label><input type="text" id="ci-fe" placeholder="Fee earner name" /></div>
+        <div class="mf"><label>Fee Earner</label><input type="text" id="ci-fe" list="dl-ci-fe" placeholder="Start typing to search…" autocomplete="off" /><datalist id="dl-ci-fe"></datalist></div>
         <div class="mf"><label>Assigned To</label>
           <select id="ci-assigned">
             <option value="">Select draftsman&hellip;</option>
@@ -411,7 +411,7 @@
           </select>
         </div>
       </div>
-      <div class="mf"><label>Opponent Firm</label><input type="text" id="ci-opp" placeholder="Opponent firm name" /></div>
+      <div class="mf"><label>Opponent Firm</label><input type="text" id="ci-opp" list="dl-ci-opp" placeholder="Start typing to search…" autocomplete="off" /><datalist id="dl-ci-opp"></datalist></div>
     </div>
     <div class="modal-footer"><span class="save-msg" id="msg-case"></span><button class="btn-cancel" data-close="modal-case">Cancel</button><button class="btn-save" id="save-case">Book In</button></div>
   </div>
@@ -661,25 +661,46 @@ async function saveToApi(url, body, msgId, btnId, onSuccess){
   }finally{btn.disabled=false;}
 }
 
+// Book In Case — reflist typeahead datalists, lazy-loaded once on first modal open
+let ciRefListsLoaded=false;
+async function loadBookInRefLists(){
+  if(ciRefListsLoaded) return; ciRefListsLoaded=true;
+  const fill=(dlId,titles)=>{const dl=document.getElementById(dlId);if(dl)dl.innerHTML=titles.map(t=>'<option value="'+escHtml(t)+'"></option>').join('');};
+  try{
+    const [cl,fe,of]=await Promise.all([
+      fetch('/api/clients').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
+      fetch('/api/reflists?list=feeearners').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
+      fetch('/api/reflists?list=opponentfirms').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
+    ]);
+    fill('dl-ci-firm',(cl.value||[]).map(i=>i.fields?.Title).filter(Boolean));
+    fill('dl-ci-fe',(fe.value||[]).map(i=>i.fields?.Title).filter(Boolean));
+    fill('dl-ci-opp',(of.value||[]).map(i=>i.fields?.Title).filter(Boolean));
+  }catch(e){ ciRefListsLoaded=false; /* retry on next open */ }
+}
+document.querySelector('[data-modal="modal-case"]').addEventListener('click',loadBookInRefLists);
+
 // Book In Case
 document.getElementById('save-case').addEventListener('click',()=>{
   const name=document.getElementById('ci-name').value.trim();
   const ref=document.getElementById('ci-ref').value.trim();
   if(!name||!ref){const m=document.getElementById('msg-case');m.className='save-msg err';m.textContent='Case name and reference required.';return;}
-  saveToApi('/api/caseupdate',{
-    action:'create',
-    fields:{
-      Title:name,
-      Ourreference_x0028_text_x0029_:ref,
-      // CaseNameForOpenCases deliberately NOT sent — it is an SP calculated column;
-      // Graph rejects writes to calculated fields and would 400 the whole create.
-      StatusMirror:document.getElementById('ci-stage').value||'Pending assignment',
-      Task:document.getElementById('ci-task').value,
-      Firm_x0028_text_x0029_:document.getElementById('ci-firm').value.trim(),
-      assignedToTextValue:document.getElementById('ci-assigned').value,
-      DateReceived:document.getElementById('ci-date').value||new Date().toISOString().slice(0,10),
-    }
-  },'msg-case','save-case',()=>{
+  const fields={
+    Title:name,
+    Ourreference_x0028_text_x0029_:ref,
+    // CaseNameForOpenCases deliberately NOT sent — it is an SP calculated column;
+    // Graph rejects writes to calculated fields and would 400 the whole create.
+    StatusMirror:document.getElementById('ci-stage').value||'Pending assignment',
+    Task:document.getElementById('ci-task').value,
+    Firm_x0028_text_x0029_:document.getElementById('ci-firm').value.trim(),
+    FeeEarner_x0028_fromFM_x0029_:document.getElementById('ci-fe').value.trim(),
+    opponentFirmMirror:document.getElementById('ci-opp').value.trim(),
+    assignedToTextValue:document.getElementById('ci-assigned').value,
+    DateReceived:document.getElementById('ci-date').value||new Date().toISOString().slice(0,10),
+  };
+  // Strip empties: Graph 400s on '' for Choice columns, and omitting a blank
+  // assignedToTextValue is what lands the new case in the Unassigned panel.
+  Object.keys(fields).forEach(k=>{ if(fields[k]===''||fields[k]==null) delete fields[k]; });
+  saveToApi('/api/caseupdate',{action:'create',fields},'msg-case','save-case',()=>{
     ['ci-name','ci-ref','ci-firm','ci-fe','ci-opp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     loadCases();
   });
