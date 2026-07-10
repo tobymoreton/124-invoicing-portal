@@ -670,14 +670,18 @@ document.getElementById('save-case').addEventListener('click',()=>{
     fields:{
       Title:name,
       Ourreference_x0028_text_x0029_:ref,
-      CaseNameForOpenCases:name,
+      // CaseNameForOpenCases deliberately NOT sent — it is an SP calculated column;
+      // Graph rejects writes to calculated fields and would 400 the whole create.
       StatusMirror:document.getElementById('ci-stage').value||'Pending assignment',
       Task:document.getElementById('ci-task').value,
       Firm_x0028_text_x0029_:document.getElementById('ci-firm').value.trim(),
       assignedToTextValue:document.getElementById('ci-assigned').value,
       DateReceived:document.getElementById('ci-date').value||new Date().toISOString().slice(0,10),
     }
-  },'msg-case','save-case');
+  },'msg-case','save-case',()=>{
+    ['ci-name','ci-ref','ci-firm','ci-fe','ci-opp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    loadCases();
+  });
 });
 
 // Add Client Firm

@@ -380,6 +380,42 @@ let _callerEmail = null;
 let _isAdmin     = false;
 let _isFinance   = false;
 
+// ── Stale-while-revalidate cache (30 min TTL, keyed per identity) ───────────────
+const CACHE_TTL_MS = 30 * 60 * 1000;
+function cacheKey(email){ return 'tmc_invoiceportal_' + (email ? email.split('@')[0] : 'anon'); }
+function writeCache(email){
+  try{ sessionStorage.setItem(cacheKey(email), JSON.stringify({cachedAt:Date.now(), allInvoices, allLineItems, allWIPItems})); }catch{}
+}
+function readCache(email){
+  try{
+    const raw = sessionStorage.getItem(cacheKey(email));
+    if(!raw) return null;
+    const c = JSON.parse(raw);
+    if(Date.now() - c.cachedAt > CACHE_TTL_MS) return null;
+    return c;
+  }catch{ return null; }
+}
+function renderAllData(isAdmin, isFinance){
+  if (isAdmin) { renderStats(); renderTable(); }
+  if (isFinance) { renderTable(); }
+  renderDraftsman();
+  renderWIP();
+  if (isAdmin) renderDashboard();
+  if (isAdmin || isFinance) {
+    const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
+    const wipTotal = allWIPItems
+      .filter(item => item.WIPValue > 0 && !WIP_EXCLUDE.has((item.Email||'').toLowerCase()))
+      .reduce((s, item) => s + (item.WIPValue || 0), 0);
+    const wipCell = document.getElementById('stat-wip-cell');
+    const wipEl   = document.getElementById('stat-wip');
+    if (wipCell && wipEl) {
+      wipEl.textContent = wipTotal.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+      wipCell.style.display = '';
+      document.querySelector('.ledger').classList.add('has-wip');
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('nav-date').textContent =
     new Date().toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'long', year:'numeric' });
@@ -484,6 +520,16 @@ async function load() {
       }
     }
 
+    // Stale-while-revalidate: paint instantly from cache (if fresh), then always
+    // refresh live underneath so the view stays correct even on a cache hit.
+    const cached = readCache(callerEmail);
+    if (cached) {
+      allInvoices  = cached.allInvoices  || [];
+      allLineItems = cached.allLineItems || [];
+      allWIPItems  = cached.allWIPItems  || [];
+      renderAllData(isAdmin, isFinance);
+    }
+
     // Both admins and non-admins fetch invoices — admins get all, non-admins get their own
     const [invRes, liRes] = await Promise.all([
       fetch(API,    { headers: { Accept: 'application/json' } }),
@@ -493,15 +539,6 @@ async function load() {
     if (!liRes.ok)  { const t=await liRes.text();  throw new Error(`Line Items API ${liRes.status}: ${t.slice(0,160)}`); }
     allInvoices  = (await invRes.json()).filter(inv => !inv.Cancelled);
     allLineItems = await liRes.json();
-    if (isAdmin) {
-      renderStats();
-      renderTable();
-      // Dashboard rendered after WIP loads — called below
-    }
-    // Finance: show table (no stats — ledger hidden)
-    if (isFinance) {
-      renderTable();
-    }
 
     // Fetch WIP — all authenticated users see the FULL WIP schedule (no per-user
     // filtering). The prior client-side re-filter ("only show own WIP") duplicated
@@ -514,23 +551,8 @@ async function load() {
       }
     } catch(e) { /* WIP load failure non-fatal — section will show empty */ }
 
-    renderDraftsman();
-    renderWIP();
-    if (isAdmin) renderDashboard();
-    // Admin/finance: populate WIP ledger stat
-    if (isAdmin || isFinance) {
-      const WIP_EXCLUDE = new Set(['lesley@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk','danielle@tmclegal.co.uk']);
-      const wipTotal = allWIPItems
-        .filter(item => item.WIPValue > 0 && !WIP_EXCLUDE.has((item.Email||'').toLowerCase()))
-        .reduce((s, item) => s + (item.WIPValue || 0), 0);
-      const wipCell = document.getElementById('stat-wip-cell');
-      const wipEl   = document.getElementById('stat-wip');
-      if (wipCell && wipEl) {
-        wipEl.textContent = wipTotal.toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
-        wipCell.style.display = '';
-        document.querySelector('.ledger').classList.add('has-wip');
-      }
-    }
+    renderAllData(isAdmin, isFinance);
+    writeCache(callerEmail);
   } catch(e) { renderError(e.message); }
 }
 
@@ -624,7 +646,7 @@ function openDrawer(id) {
   const actionsHTML    = (canIssue || canCancel) ? `
     <div class="drawer-actions">
       ${canIssue  ? `<button class="btn-issue"  id="btn-issue-${esc(inv._id)}"  onclick="issueInvoice('${esc(inv._id)}',${parseFloat(inv.AmountDue) || ((parseFloat(inv.Net)||0) + (parseFloat(inv.VAT)||0))})">Issue Invoice</button>`  : ''}
-      ${canCancel ? `<button class="btn-cancel" id="btn-cancel-${esc(inv._id)}" onclick="cancelInvoice('${esc(inv._id)}','${esc(inv.Casename||'')}')">Cancel Invoice</button>` : ''}
+      ${canCancel ? `<button class="btn-cancel" id="btn-cancel-${esc(inv._id)}" onclick="cancelInvoice('${esc(inv._id)}')">Cancel Invoice</button>` : ''}
     </div>` : '';
 
   el('drawer-body', `
@@ -1076,7 +1098,11 @@ async function issueInvoice(listItemId, grandTotal) {
   }
 }
 
-async function cancelInvoice(listItemId, caseName) {
+async function cancelInvoice(listItemId) {
+  // Case name looked up here rather than passed via inline onclick — apostrophes in
+  // case names (e.g. O'Brien) broke the interpolated single-quoted JS string.
+  const _inv = allInvoices.find(i => i._id === listItemId);
+  const caseName = _inv ? (_inv.Casename || '') : '';
   const label = caseName ? '"' + caseName + '"' : 'this invoice';
   if (!confirm('Cancel ' + label + '? This will un-bill all WIP entries and cannot be undone.')) return;
   const btn = document.getElementById('btn-cancel-' + listItemId);
