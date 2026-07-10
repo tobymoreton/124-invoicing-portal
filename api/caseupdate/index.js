@@ -5,11 +5,15 @@
  * PATCHes fields on a Cases list item via Graph (app-only auth).
  * All authenticated users can update case fields relevant to their role.
  *
- * POST body (JSON):
+ * POST body (JSON) — update:
  *   itemId   string   — SP list item ID
  *   fields   object   — key/value pairs of SP internal field names to update
  *
- * Returns: { updated: true }
+ * POST body (JSON) — create (used by admin.html "Book In Case"):
+ *   action   'create'
+ *   fields   object   — SP internal field names for the new item
+ *
+ * Returns: { updated: true } | { created: true, id }
  *
  * List: Cases
  * GUID: ae420bda-e550-499c-b337-90e4f33617c1
@@ -30,6 +34,7 @@ const ALLOWED_EMAILS = [
   'kelly@tmclegal.co.uk',
   'tom@tmclegal.co.uk',
   'julie@tmclegal.co.uk',
+  'daniel@tmclegal.co.uk',
 ];
 
 // Deletion is irreversible (real Graph DELETE) — restricted to Management only,
@@ -116,6 +121,31 @@ module.exports = async function (context, req) {
   }
 
   const { itemId, fields } = body || {};
+
+  // ── CREATE: new Cases item (Book In Case). Same allowlist as update. ──────
+  if (body && body.action === 'create') {
+    if (!fields || typeof fields !== 'object' || !Object.keys(fields).length) {
+      context.res = { status: 400, body: 'Missing required field: fields.' };
+      return;
+    }
+    try {
+      const token   = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const postUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+                    + '/lists/' + LIST_GUID + '/items';
+      const created = await graphPost(postUrl, token, { fields: fields });
+      context.log('AUDIT cases CREATE id=' + (created && created.id) + ' createdBy=' + callerEmail);
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ created: true, id: created && created.id }),
+      };
+    } catch (err) {
+      context.log.error('Error creating case:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
+
   if (!itemId || !fields || typeof fields !== 'object') {
     context.res = { status: 400, body: 'Missing required fields: itemId, fields.' };
     return;
@@ -196,6 +226,38 @@ function graphDelete(url, token) {
       });
     });
     req.on('error', reject);
+    req.end();
+  });
+}
+
+function graphPost(url, token, body) {
+  return new Promise(function (resolve, reject) {
+    const payload = JSON.stringify(body);
+    const u       = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'POST',
+      headers: {
+        Authorization:  'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph POST ' + res.statusCode + ': ' + data.slice(0, 300)));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : {}); }
+        catch (e) { resolve({}); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
     req.end();
   });
 }
