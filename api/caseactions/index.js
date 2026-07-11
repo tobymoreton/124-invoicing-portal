@@ -231,6 +231,7 @@ module.exports = async function (context, req) {
       if (b.rate      !== undefined) fields['field_6'] = parseFloat(b.rate)      || 0;
       if (b.brief     !== undefined) fields['field_9'] = b.brief;
       if (b.billable  !== undefined) fields['Billable_x003f_'] = !!b.billable;
+      if (b.completedBy !== undefined) fields['Completedby_x0028_text_x0029_'] = b.completedBy;
       if (b.dateWorkDone !== undefined) fields['field_12'] = b.dateWorkDone;
 
       if (Object.keys(fields).length === 0) {
