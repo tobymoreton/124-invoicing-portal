@@ -57,6 +57,7 @@ const SELECT_FIELDS = [
   'LegalAidOnlyProfitCosts',
   'TimedWorkBillableFromOverride',
   'StatusMirror',
+  'CaseAckByDraftsman',
   'ProfitCostsClaimed_x0028_Ex_x002',
   'GrossProfitCostsRecoveredAf',
   'VAT_x0020__x0025__x0020_Claimed',
