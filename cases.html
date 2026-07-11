@@ -1758,7 +1758,16 @@ function wireCards(){
 const CACHE_TTL_MS = 30 * 60 * 1000;
 function cacheKey(){ return 'tmc_cases_'+(callerEmail.split('@')[0]||'anon'); }
 function writeCache(){
-  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders,allActions,allInvoices})); }catch{}
+  // Audit #10: cache only the fields the dash reads, so the payload can't blow the
+  // sessionStorage quota (overflow was silently swallowed -> no fast-path cache).
+  const pick=(o,keys)=>{const r={};if(o)for(const k of keys)if(o[k]!==undefined)r[k]=o[k];return r;};
+  const INV=['Cancelled','InvoiceDate','DraftedByEmail','Net','Casename','OrderDetails','Ourref','DraftingFeeElement'];
+  const ACT=['field_1','field_2','field_3','field_6','field_9','field_12','field_16','TimeSpentMirror','CreatedUTC'];
+  const REM=['CompletedMirror','Duedate','Priority','Brief','Event'];
+  const invSlim=allInvoices.map(inv=>pick(inv,INV));
+  const actSlim=allActions.map(a=>({id:a.id,_caseRef:a._caseRef,_caseName:a._caseName,fields:pick(a.fields||{},ACT)}));
+  const remSlim=allReminders.map(r=>({id:r.id,_caseRef:r._caseRef,_caseName:r._caseName,fields:pick(r.fields||{},REM)}));
+  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders:remSlim,allActions:actSlim,allInvoices:invSlim})); }catch{}
 }
 function readCache(){
   try{
@@ -1852,7 +1861,17 @@ document.querySelectorAll('.info-btn').forEach(btn => {
   });
 });
 document.addEventListener('click', () => document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')));
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // Audit #13: Esc closes whatever overlay is open, in front-to-back order.
+  document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open'));
+  const briefing = document.getElementById('modal-briefing');
+  if (briefing && briefing.classList.contains('open')) { closeBriefing(); return; }
+  const openOverlay = document.querySelector('.dash-modal-overlay.open');
+  if (openOverlay) { closeModal(openOverlay.id); return; }
+  const caseList = document.getElementById('case-list-section');
+  if (caseList && caseList.classList.contains('visible')) { hideCaseList(); }
+});
 
 init();
 </script>

@@ -628,6 +628,12 @@ document.querySelectorAll('.modal-overlay').forEach(ov=>{
   ov.addEventListener('click',e=>{if(e.target===ov)closeModal(ov.id);});
 });
 function openModal(id){document.getElementById(id).classList.add('open');}
+// Audit #13: Esc closes whichever modal is open.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const openOverlay = document.querySelector('.modal-overlay.open');
+  if (openOverlay) closeModal(openOverlay.id);
+});
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
   // clear save msg
