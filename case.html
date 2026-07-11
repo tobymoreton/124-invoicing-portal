@@ -3654,7 +3654,21 @@ function initAddActionPanel() {
   document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
   const caseRate = parseFloat(caseFields?.['RateForCase']) || ''; document.getElementById('ca-add-rate').value = caseRate;
   const nameEl = document.getElementById('ca-add-completedby');
-  if (switcherCallerName) { for (const opt of nameEl.options) { if (opt.value === switcherCallerName) { nameEl.value = switcherCallerName; break; } } }
+  // Default Completed By to the signed-in user. Exact-match only was too brittle:
+  // options are often first-name ('Toby') while switcherCallerName is full ('Toby Moreton'),
+  // so the match failed silently and the field was left on whatever sat first in the list.
+  if (switcherCallerName) {
+    const full = switcherCallerName.toLowerCase();
+    const first = full.split(' ')[0];
+    let hit = null;
+    for (const opt of nameEl.options) {
+      const v = (opt.value || '').toLowerCase();
+      if (!v) continue;
+      if (v === full) { hit = opt.value; break; }                       // exact
+      if (!hit && (v === first || v.startsWith(first + ' ') || full.startsWith(v))) hit = opt.value; // 'Toby' <-> 'Toby Moreton'
+    }
+    if (hit) nameEl.value = hit;
+  }
   const billEl = document.getElementById('ca-add-billable'); const billLabel = document.getElementById('ca-add-billable-label');
   billEl.addEventListener('change', () => { billLabel.textContent = billEl.checked ? 'Yes' : 'No'; });
   const submitBtn = document.getElementById('ca-add-submit'); const newBtn = submitBtn.cloneNode(true); submitBtn.parentNode.replaceChild(newBtn, submitBtn);
