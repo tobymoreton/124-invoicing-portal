@@ -235,6 +235,10 @@
     /* Modal */
     .dash-modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.45);z-index:400;align-items:center;justify-content:center;padding:20px;}
     .dash-modal-overlay.open{display:flex;}
+    .ack-row{padding:10px 12px;border:1px solid var(--grey-line,#e5e7eb);border-radius:6px;margin-bottom:8px;background:#fbfbfd;}
+    .ack-case{font-weight:600;color:var(--navy,#1B2A4A);font-size:14px;}
+    .ack-meta{display:flex;justify-content:space-between;gap:12px;margin-top:3px;font-size:12px;color:var(--grey-mid,#6b7280);}
+    .ack-dl{white-space:nowrap;font-weight:600;}
     .dash-modal{background:var(--white);border-radius:var(--radius);box-shadow:0 8px 32px rgba(27,42,74,.25);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
     .dash-modal-head{background:var(--navy);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
     .dash-modal-title{font-family:'Spectral',serif;font-weight:300;font-size:17px;color:var(--white);}
@@ -463,6 +467,21 @@
 </div>
 
 <!-- Daily Briefing Modal -->
+<div class="dash-modal-overlay" id="modal-ack">
+  <div class="dash-modal" style="max-width:560px;">
+    <div class="dash-modal-head">
+      <span class="dash-modal-title" id="ack-title">You have been assigned a new case</span>
+    </div>
+    <div style="padding:4px 0 8px;">
+      <div id="ack-list"></div>
+      <div id="ack-msg" style="color:#991B1B;font-size:13px;margin-top:8px;"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;">
+      <button class="dm-btn dm-btn-primary" id="btn-ack">Acknowledge</button>
+    </div>
+  </div>
+</div>
+
 <div class="briefing-modal-overlay" id="modal-briefing">
   <div class="briefing-modal">
     <div class="briefing-modal-head">
@@ -1837,10 +1856,12 @@ async function init(){
       fetchAllData().then(()=>fetchSecondaryData()).then(()=>{
         writeCache(); renderStats(); renderStagePanel();
         renderRemPanel(); renderActionsPanel(); populateCasePickers();
+        showAckModal();
       }).catch(()=>{});
     } else {
       await fetchAllData();
       applyDataAndRender();
+      showAckModal();
       fetchSecondaryData().then(()=>{
         writeCache(); renderStats(); renderRemPanel();
         renderActionsPanel(); populateCasePickers();
@@ -1872,6 +1893,64 @@ document.addEventListener('keydown', e => {
   const caseList = document.getElementById('case-list-section');
   if (caseList && caseList.classList.contains('visible')) { hideCaseList(); }
 });
+
+// ── New-case acknowledgement ────────────────────────────────────────────────
+// A case needs acknowledging when it is assigned to the caller but CaseAckByDraftsman
+// was stamped by somebody else (or is blank). Reassignment therefore re-notifies the
+// new owner. Stamp: '<person-token>|<ISO date>', token aligned with matchesAssigned().
+function ackToken(){ return (callerEmail.split('@')[0]||'').toLowerCase(); }
+function needsAck(f){
+  if(!matchesAssigned(f)) return false;
+  const stamp=String(f.CaseAckByDraftsman||'').toLowerCase();
+  if(!stamp) return true;
+  return stamp.split('|')[0].trim() !== ackToken();
+}
+let ackQueue=[];
+
+function showAckModal(){
+  ackQueue = allCases.filter(c=>needsAck(c.fields));
+  if(!ackQueue.length) return;
+  const n=ackQueue.length;
+  document.getElementById('ack-title').textContent =
+    n===1 ? 'You have been assigned a new case' : 'You have been assigned '+n+' new cases';
+  document.getElementById('ack-list').innerHTML = ackQueue.map(c=>{
+    const f=c.fields;
+    const dl=f.Deadline||f.DateReceived||'';
+    const dlTxt = dl ? new Date(dl).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '\u2014';
+    return '<div class="ack-row">'
+      + '<div class="ack-case">'+escHtml(caseDisplayName(f)||f.Title||'(unnamed case)')+'</div>'
+      + '<div class="ack-meta">'+escHtml(f['Firm_x0028_text_x0029_']||'')
+      + '<span class="ack-dl">'+(f.Deadline?'Deadline':'Received')+': '+dlTxt+'</span></div>'
+      + '</div>';
+  }).join('');
+  document.getElementById('modal-ack').classList.add('open');
+}
+
+async function acknowledgeAll(){
+  const btn=document.getElementById('btn-ack');
+  const msg=document.getElementById('ack-msg');
+  btn.disabled=true; btn.textContent='Saving\u2026'; msg.textContent='';
+  const stamp = ackToken()+'|'+new Date().toISOString().slice(0,10);
+  let failed=0;
+  await Promise.all(ackQueue.map(async c=>{
+    try{
+      const res=await fetch('/api/caseupdate',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({itemId:c.id, fields:{CaseAckByDraftsman:stamp}})});
+      if(res.status===200){ c.fields.CaseAckByDraftsman=stamp; } else failed++;
+    }catch(e){ failed++; }
+  }));
+  if(failed){
+    btn.disabled=false; btn.textContent='Acknowledge';
+    msg.textContent='Could not save '+failed+' of '+ackQueue.length+'. Please try again.';
+    return;
+  }
+  writeCache();
+  document.getElementById('modal-ack').classList.remove('open');
+  btn.disabled=false; btn.textContent='Acknowledge';
+  ackQueue=[];
+}
+
+document.getElementById('btn-ack').addEventListener('click', acknowledgeAll);
 
 init();
 </script>
