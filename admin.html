@@ -1313,21 +1313,37 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
 // Actions and reminders are fetched once, on first open, then cached for the session.
 let dsActions=null, dsReminders=null;
 
-function dsAssignee(f){ return (f['AssignedToMirror']||f['assignedToTextValue']||'').trim(); }
+// The AssignedToMirror / assignedToTextValue mirrors are inconsistent across the list:
+// some rows hold a full name ("Tracy Simmonds"), some a first name only ("Tracy"), some
+// an email ("tracy@tmclegal.co.uk"). Normalise every value to a single key (the email
+// local part / first name, lowercased) and render one button per person.
+const DS_ROSTER={danielle:'Danielle Moreton',joanna:'Joanna Sinfield',julie:'Julie Mercer',kelly:'Kelly Townshend',toby:'Toby Moreton',tom:'Tom Winyard',tracy:'Tracy Simmonds',lesley:'Lesley',daniel:'Daniel',david:'David'};
+
+function dsKey(f){
+  const raw=(f['AssignedToMirror']||f['assignedToTextValue']||'').trim();
+  if(!raw) return '';
+  const first=raw.includes('@')?raw.split('@')[0]:raw.split(/\s+/)[0];
+  const k=first.toLowerCase().replace(/[^a-z]/g,'');
+  // Cases sitting on Danielle are unassigned in practice (she books them in) — they
+  // belong in the Unassigned Cases panel, not a draftsman's list. Excluded here.
+  if(k==='danielle') return '';
+  return k;
+}
+function dsLabel(k){ return DS_ROSTER[k]||(k?k.charAt(0).toUpperCase()+k.slice(1):''); }
 
 function renderDraftsmenButtons(){
   const el=document.getElementById('ds-btns');
   if(!el) return;
   const counts={};
-  allCases.forEach(c=>{ const n=dsAssignee(c.fields); if(n) counts[n]=(counts[n]||0)+1; });
-  const names=Object.keys(counts).sort();
-  if(!names.length){ el.innerHTML='<span class="ds-empty">No assigned cases.</span>'; return; }
+  allCases.forEach(c=>{ const k=dsKey(c.fields); if(k) counts[k]=(counts[k]||0)+1; });
+  const keys=Object.keys(counts).sort((a,b)=>dsLabel(a).localeCompare(dsLabel(b)));
+  if(!keys.length){ el.innerHTML='<span class="ds-empty">No assigned cases.</span>'; return; }
   el.innerHTML='';
-  names.forEach(n=>{
+  keys.forEach(k=>{
     const b=document.createElement('button');
     b.className='ds-btn';
-    b.innerHTML=escHtml(n)+'<span class="ds-n">'+counts[n]+'</span>';
-    b.addEventListener('click',()=>openDraftsman(n));
+    b.innerHTML=escHtml(dsLabel(k))+'<span class="ds-n">'+counts[k]+'</span>';
+    b.addEventListener('click',()=>openDraftsman(k));
     el.appendChild(b);
   });
 }
@@ -1353,13 +1369,13 @@ async function dsLoadData(){
     new Date((a.fields||{})['Duedate']||'9999-12-31')-new Date((b.fields||{})['Duedate']||'9999-12-31')));
 }
 
-async function openDraftsman(name){
+async function openDraftsman(key){
   const body=document.getElementById('ds-modal-body');
-  document.getElementById('ds-modal-title').textContent=name+' \u2014 cases';
+  document.getElementById('ds-modal-title').textContent=dsLabel(key)+' \u2014 cases';
   body.innerHTML='<div class="ds-empty">Loading&hellip;</div>';
   openModal('modal-draftsman');
   try{ await dsLoadData(); }catch(e){ dsActions=dsActions||{}; dsReminders=dsReminders||{}; }
-  const list=allCases.filter(c=>dsAssignee(c.fields)===name);
+  const list=allCases.filter(c=>dsKey(c.fields)===key);
   if(!list.length){ body.innerHTML='<div class="ds-empty">No open cases.</div>'; return; }
   body.innerHTML=list.map(c=>{
     const f=c.fields||{};
