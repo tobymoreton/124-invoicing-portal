@@ -43,7 +43,7 @@
     .page-header{
       position:relative;overflow:hidden;
       background:linear-gradient(135deg,#BFA475 0%,#B59A6A 45%,#A3885A 100%);
-      padding:30px 32px 30px;
+      padding:22px 32px 22px;
       border-bottom:1px solid rgba(0,27,68,.18);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
       display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;
@@ -55,26 +55,31 @@
     .page-title{font-family:'Spectral',serif;font-weight:300;font-size:28px;letter-spacing:.01em;color:var(--navy);}
     .page-sub{font-size:12.5px;color:rgba(0,27,68,.6);margin-top:5px;}
     /* S67 — England at the World Cup. Quiet, not a banner. */
-    .eng-badge{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:5px 11px 5px 8px;border:1px solid rgba(0,27,68,.2);border-radius:999px;background:rgba(255,255,255,.22);}
-    .eng-flag{width:20px;height:12px;display:block;border-radius:1.5px;}
-    .eng-text{font-size:10.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:rgba(0,27,68,.68);}
-    .eng-text b{color:var(--navy);font-weight:700;}
+    .eng-badge{display:inline-flex;align-items:center;margin-top:10px;padding:4px;border:1px solid rgba(0,27,68,.2);border-radius:4px;background:rgba(255,255,255,.28);cursor:default;}
+    .eng-flag{width:38px;height:23px;display:block;border-radius:2px;}
 
     /* Main */
     .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
 
-    /* Quick actions — white card, gold reserved for the primary action only */
+    /* Quick actions — two columns: primaries behind a rule, chips filling the width */
     .qa-section{
-      margin-bottom:28px;
+      margin-bottom:24px;
       background:var(--white);
       border:1px solid var(--grey-light);
       border-radius:var(--radius);
-      padding:28px 28px 26px;
+      padding:18px 24px;
       box-shadow:0 1px 3px rgba(0,27,68,.06);
+      display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;
     }
-    .qa-title{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(0,27,68,.38);margin-bottom:14px;text-align:center;}
-    .qa-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
-    .qa-grid.book-in-row{justify-content:center;margin-bottom:26px;padding-bottom:24px;border-bottom:1px solid var(--grey-light);}
+    .qa-primary{display:flex;flex-direction:column;gap:9px;padding-right:26px;border-right:1px solid var(--grey-light);}
+    .qa-primary .qa-btn{justify-content:center;}
+    .qa-title{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(0,27,68,.38);margin-bottom:7px;}
+    .qa-grid{display:flex;flex-wrap:wrap;gap:8px;}
+    .qa-grid + .qa-title{margin-top:14px;}
+    @media(max-width:900px){
+      .qa-section{grid-template-columns:1fr;gap:16px;}
+      .qa-primary{padding-right:0;padding-bottom:16px;border-right:none;border-bottom:1px solid var(--grey-light);}
+    }
     .qa-btn{
       display:inline-flex;align-items:center;gap:8px;
       padding:9px 16px;border-radius:var(--radius-sm);
@@ -250,14 +255,13 @@
     <div class="page-title">Admin Dashboard</div>
     <div class="page-sub" id="page-sub">All open cases &amp; quick actions</div>
     <!-- S67: England — Norway 1-2 England (AET), QF, 11 Jul 2026. Semi-final v Argentina, Atlanta, Wed 15 Jul, 20:00 BST. -->
-    <div class="eng-badge" title="Norway 1&ndash;2 England (AET) &mdash; Bellingham 45+1, 93">
+    <div class="eng-badge" title="Norway 1&ndash;2 England (AET) &mdash; Bellingham 45+1, 93. Semi-final v Argentina, Wed 15 Jul, 20:00 BST.">
       <svg class="eng-flag" viewBox="0 0 30 18" xmlns="http://www.w3.org/2000/svg" aria-label="England">
         <rect width="30" height="18" fill="#FFFFFF"/>
         <rect x="12" y="0" width="6" height="18" fill="#CE1124"/>
         <rect x="0" y="6" width="30" height="6" fill="#CE1124"/>
         <rect width="30" height="18" fill="none" stroke="rgba(0,0,0,.15)" stroke-width="1"/>
       </svg>
-      <span class="eng-text">Semi-final &middot; <b>England v Argentina</b> &middot; Wed 15 Jul, 20:00</span>
     </div>
   </div>
   <div class="hdr-right">
@@ -271,26 +275,28 @@
 
   <!-- Quick Actions -->
   <div class="qa-section">
-    <!-- Primary actions — own row -->
-    <div class="qa-grid book-in-row">
+    <!-- Primary actions — left column, behind a rule -->
+    <div class="qa-primary">
       <button class="qa-btn primary" data-modal="modal-case"><span class="qa-icon">&#128188;</span> Book In Case</button>
       <a href="/invoice-create.html" class="qa-btn primary-alt"><span class="qa-icon">&#128196;</span> Create Invoice</a>
     </div>
-    <div class="qa-title">Browse &amp; Manage</div>
-    <div class="qa-grid" style="margin-bottom:16px;">
-      <a href="/clients.html" class="qa-btn"><span class="qa-icon">&#127968;</span> Client Firms</a>
-      <a href="/feeearners.html" class="qa-btn"><span class="qa-icon">&#129489;</span> Fee Earners</a>
-      <a href="/courts.html" class="qa-btn"><span class="qa-icon">&#9878;&#65039;</span> Courts</a>
-      <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
-      <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
-    </div>
-    <div class="qa-title">Add New</div>
-    <div class="qa-grid">
-      <button class="qa-btn" data-modal="modal-firm"><span class="qa-icon">&#127968;</span> Add Client Firm</button>
-      <button class="qa-btn" data-modal="modal-feeearner"><span class="qa-icon">&#129489;</span> Add Fee Earner</button>
-      <button class="qa-btn" data-modal="modal-court"><span class="qa-icon">&#9878;&#65039;</span> Add Court</button>
-      <button class="qa-btn" data-modal="modal-oppfirm"><span class="qa-icon">&#129354;</span> Add Opponent Firm</button>
-      <button class="qa-btn" data-modal="modal-oppcw"><span class="qa-icon">&#128100;</span> Add Opponent Caseworker</button>
+    <div>
+      <div class="qa-title">Browse &amp; Manage</div>
+      <div class="qa-grid">
+        <a href="/clients.html" class="qa-btn"><span class="qa-icon">&#127968;</span> Client Firms</a>
+        <a href="/feeearners.html" class="qa-btn"><span class="qa-icon">&#129489;</span> Fee Earners</a>
+        <a href="/courts.html" class="qa-btn"><span class="qa-icon">&#9878;&#65039;</span> Courts</a>
+        <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
+        <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
+      </div>
+      <div class="qa-title">Add New</div>
+      <div class="qa-grid">
+        <button class="qa-btn" data-modal="modal-firm"><span class="qa-icon">&#127968;</span> Add Client Firm</button>
+        <button class="qa-btn" data-modal="modal-feeearner"><span class="qa-icon">&#129489;</span> Add Fee Earner</button>
+        <button class="qa-btn" data-modal="modal-court"><span class="qa-icon">&#9878;&#65039;</span> Add Court</button>
+        <button class="qa-btn" data-modal="modal-oppfirm"><span class="qa-icon">&#129354;</span> Add Opponent Firm</button>
+        <button class="qa-btn" data-modal="modal-oppcw"><span class="qa-icon">&#128100;</span> Add Opponent Caseworker</button>
+      </div>
     </div>
   </div>
 
