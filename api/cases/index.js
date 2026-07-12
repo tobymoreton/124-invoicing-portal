@@ -9,6 +9,9 @@
  *   q       — free-text search string (matches case name or our ref, client-side)
  *   top     — max results (default 10, max 20)
  *   preload — if '1', returns all non-closed cases with no top cap (used for client-side cache)
+ *   closed  — with preload=1, if '1' CLOSED cases are included too. Opt-in only, so the default
+ *             preload payload stays lean. admin.html's "Show Closed" toggle needs this: without
+ *             it the client filters a set that can never contain a closed case (S69 fix).
  *
  * List: Cases
  * GUID: ae420bda-e550-499c-b337-90e4f33617c1
@@ -225,11 +228,12 @@ module.exports = async function (context, req) {
     return;
   }
 
-  // Preload mode: return all non-closed cases for client-side cache — no q required
+  // Preload mode: return all non-closed cases for client-side cache — no q required.
+  // closed=1 includes closed cases as well (admin.html "Show Closed").
   if (preload) {
     try {
       const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-      const result = await getAllOpenCases(token);
+      const result = await getAllOpenCases(token, req.query.closed === '1');
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=300' },
@@ -274,7 +278,7 @@ async function getCaseById(token, id) {
   return { value: [{ id: item.id, fields: item.fields || {} }] };
 }
 
-async function getAllOpenCases(token) {
+async function getAllOpenCases(token, includeClosed) {
   var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
            + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
 
@@ -286,7 +290,7 @@ async function getAllOpenCases(token) {
     url = page['@odata.nextLink'] || null;
   }
 
-  const open = all.filter(function(item) {
+  const open = includeClosed ? all : all.filter(function(item) {
     var status = ((item.fields || {}).StatusMirror || '').toLowerCase();
     return status !== 'closed';
   });
