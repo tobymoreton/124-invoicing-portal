@@ -615,7 +615,24 @@ function updateHeaderStats() {
   const arEl = document.getElementById('ar-count');
   const ucCount = ucEl ? ucEl.textContent : '\u2014';
   const arCount = arEl ? arEl.textContent : '\u2014';
-  el.textContent = openCount + ' open \u00b7 ' + ucCount + ' unassigned \u00b7 ' + arCount + ' reminders';
+  // S67: IP / LA split. InterPartesorLegalAid is a plain choice column \u2014 'Inter Partes',
+  // 'Legal Aid', 'Both', or blank (not yet categorised). Blanks are counted as unset and
+  // shown separately rather than folded into either side.
+  let ip = 0, la = 0, both = 0, unset = 0;
+  allCases.forEach(c => {
+    const v = ((c.fields || {})['InterPartesorLegalAid'] || '').trim();
+    if (v === 'Inter Partes') ip++;
+    else if (v === 'Legal Aid') la++;
+    else if (v === 'Both') both++;
+    else unset++;
+  });
+  const split = [];
+  if (ip)    split.push(ip + ' IP');
+  if (la)    split.push(la + ' LA');
+  if (both)  split.push(both + ' both');
+  if (unset) split.push(unset + ' unset');
+  el.textContent = openCount + ' open' + (split.length ? ' (' + split.join(' \u00b7 ') + ')' : '')
+    + ' \u00b7 ' + ucCount + ' unassigned \u00b7 ' + arCount + ' reminders';
 }
 
 function isDeadlineUrgent(dateStr){
