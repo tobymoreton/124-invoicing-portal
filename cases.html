@@ -337,6 +337,15 @@
   <!-- Dashboard (hidden until loaded) -->
   <div id="dashboard" style="display:none;">
 
+    <!-- My Desk: deadlines (S70) -->
+    <div class="panel" id="desk-deadlines" style="display:none;margin-bottom:24px;">
+      <div class="panel-head">
+        <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">My Desk &mdash; Deadlines</span><button type="button" class="info-btn info-left" aria-label="About Deadlines"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your cases with a Deadline in the next 7 days, plus any already past. Only the Deadline field counts &mdash; a date received is not a deadline. Click a row to open the case.</span></button></span>
+        <span class="panel-count" id="desk-dl-count"></span>
+      </div>
+      <div class="rem-list" id="desk-dl-list"></div>
+    </div>
+
     <!-- Stat cards -->
     <div class="stat-cards">
       <div class="stat-card" id="card-total" data-filter="all">
@@ -959,6 +968,50 @@ function renderStats(){
   const total4pct=pcBreakdown.reduce((s,x)=>s+x.pc,0)*0.04;
   document.getElementById('stat-4pct').textContent=total4pct>0?fmt(total4pct):'\u2014';
   updateWipPeriodCard();
+  renderDeadlines();
+}
+
+// My Desk: deadlines this week (S70).
+// Cases assigned to the caller with a Deadline inside the next 7 days, plus anything
+// already past. ONLY the Deadline field counts - DateReceived is not a deadline, so a
+// case with no Deadline never appears here. The panel hides itself when the list is empty.
+function renderDeadlines(){
+  const wrap=document.getElementById('desk-deadlines');
+  const listEl=document.getElementById('desk-dl-list');
+  const cntEl=document.getElementById('desk-dl-count');
+  if(!wrap||!listEl||!cntEl) return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const horizon=new Date(today); horizon.setDate(horizon.getDate()+7);
+  const rows=myCases.map(c=>{
+    const f=c.fields||{};
+    if(!f['Deadline']) return null;
+    const d=new Date(f['Deadline']); if(isNaN(d)) return null;
+    d.setHours(0,0,0,0);
+    if(d>=horizon) return null;
+    return {f:f,d:d,ref:f['Ourreference_x0028_text_x0029_']||'',overdue:d<today};
+  }).filter(Boolean).sort((a,b)=>a.d-b.d);
+  cntEl.textContent=rows.length;
+  if(!rows.length){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  listEl.innerHTML=rows.map(r=>{
+    const days=Math.round((r.d-today)/86400000);
+    const when=r.overdue?(Math.abs(days)+'d overdue'):(days===0?'today':days===1?'tomorrow':'in '+days+' days');
+    const pri=r.overdue?'pri-high':(days<=2?'pri-medium':'pri-low');
+    return '<div class="rem-row'+(r.overdue?' overdue':'')+'" data-ref="'+escHtml(r.ref)+'">'
+      +'<div class="rem-date'+(r.overdue?' overdue':'')+'">'+fmtDateShort(r.d.toISOString())+'</div>'
+      +'<div class="rem-body">'
+      +'<div class="rem-event">'+escHtml(caseDisplayName(r.f)||r.ref||'(unnamed case)')+'</div>'
+      +'<div class="rem-case">'+escHtml(r.f['Firm_x0028_text_x0029_']||'')+'</div>'
+      +'</div>'
+      +'<div class="rem-pri-badge '+pri+'">'+when+'</div>'
+      +'</div>';
+  }).join('');
+  listEl.querySelectorAll('.rem-row').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const ref=el.dataset.ref;
+      if(ref) window.location.href='/case.html?ref='+encodeURIComponent(ref);
+    });
+  });
 }
 
 // ── Render stage breakdown ─────────────────────────────────────────────────
