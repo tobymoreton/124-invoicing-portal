@@ -343,6 +343,7 @@
     .ds-case-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;}
     .ds-case-name{font-weight:600;font-size:14px;color:var(--navy);text-decoration:none;}
     .ds-case-name:hover{text-decoration:underline;}
+    .ds-firm{font-size:12px;color:var(--grey-mid);font-weight:500;margin-left:8px;}
     .ds-stage{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
     /* Booking-in notes (what we were told) vs Current position (where it is now) — two colours. */
     .ds-notes{margin-top:8px;font-size:12.5px;white-space:pre-wrap;padding:8px 12px;border-radius:var(--radius-sm);border-left:3px solid;}
@@ -1418,10 +1419,12 @@ async function openDraftsman(key,label){
     const cp=dsPlain(f['Current_x0020_Position']);
     const cpUpd=f['CP_x0020_Last_x0020_Updated']?fmtDateShort(f['CP_x0020_Last_x0020_Updated']):'';
     const bookNotes=dsPlain(f['Notes']);
+    const firm=(f['Firm_x0028_text_x0029_']||'').trim();
     const notes=dsPlain(f['draftingNotes']);
     return '<div class="ds-case">'+
       '<div class="ds-case-head">'+
-        (ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
+        '<span>'+(ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
+        (firm?'<span class="ds-firm">'+escHtml(firm)+'</span>':'')+'</span>'+
         '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
       '</div>'+
       (bookNotes?'<div class="ds-notes ds-book"><span class="ds-lbl">Booking-in notes</span>'+escHtml(bookNotes)+'</div>':'')+
