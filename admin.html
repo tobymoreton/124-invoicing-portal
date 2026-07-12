@@ -1310,8 +1310,6 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
 // ── S67: Draftsmen case lists ───────────────────────────────────────
 // Buttons are derived from the AssignedToMirror / assignedToTextValue text mirrors on
 // the open-case set already in memory — no hardcoded name list to maintain.
-// Actions and reminders are fetched once, on first open, then cached for the session.
-let dsActions=null, dsReminders=null;
 
 // The AssignedToMirror / assignedToTextValue mirrors are inconsistent across the list:
 // some rows hold a full name ("Tracy Simmonds"), some a first name only ("Tracy"), some
@@ -1348,59 +1346,24 @@ function renderDraftsmenButtons(){
   });
 }
 
-async function dsLoadData(){
-  if(dsActions&&dsReminders) return;
-  const [ra,rr]=await Promise.all([
-    fetch('/api/caseactions?all=1').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
-    fetch('/api/reminders?all=1&open=1').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
-  ]);
-  dsActions={}; dsReminders={};
-  // /api/caseactions?all=1 returns newest-first, so the first hit per ref is the latest action.
-  (ra.value||[]).forEach(a=>{ const ref=((a.fields||{})['field_16']||'').trim(); if(ref&&!dsActions[ref]) dsActions[ref]=a; });
-  // All OPEN reminders per case, soonest due first. open=1 is the server-side filter;
-  // CompletedMirror is re-checked client-side because it's the reliable text mirror
-  // (the Completed_x003f_ boolean is dropped by Graph app-only).
-  (rr.value||[]).forEach(r=>{
-    const f=r.fields||{}; const ref=(f['Ourreference_x0028_text_x0029_']||'').trim(); if(!ref) return;
-    if((f['CompletedMirror']||'')==='Yes') return;
-    (dsReminders[ref]=dsReminders[ref]||[]).push(r);
-  });
-  Object.values(dsReminders).forEach(arr=>arr.sort((a,b)=>
-    new Date((a.fields||{})['Duedate']||'9999-12-31')-new Date((b.fields||{})['Duedate']||'9999-12-31')));
-}
-
 async function openDraftsman(key){
   const body=document.getElementById('ds-modal-body');
   document.getElementById('ds-modal-title').textContent=dsLabel(key)+' \u2014 cases';
-  body.innerHTML='<div class="ds-empty">Loading&hellip;</div>';
   openModal('modal-draftsman');
-  try{ await dsLoadData(); }catch(e){ dsActions=dsActions||{}; dsReminders=dsReminders||{}; }
   const list=allCases.filter(c=>dsKey(c.fields)===key);
   if(!list.length){ body.innerHTML='<div class="ds-empty">No open cases.</div>'; return; }
   body.innerHTML=list.map(c=>{
     const f=c.fields||{};
     const ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
-    const a=ref?dsActions[ref]:null;
-    const rms=(ref&&dsReminders[ref])||[];
-    const af=a?(a.fields||{}):{};
-    const actTxt=a?(escHtml(fmtDateShort(af['field_12']||af['field_1']))+' \u2014 '+escHtml(af['field_2']||'')):'\u2014';
-    const today=new Date(); today.setHours(0,0,0,0);
-    const remTxt=rms.length?rms.map(r=>{
-      const rf=r.fields||{};
-      const d=rf['Duedate']?new Date(rf['Duedate']):null;
-      const overdue=d&&d<today;
-      return '<div'+(overdue?' style="color:var(--red);font-weight:600;"':'')+'>'+escHtml(fmtDateShort(rf['Duedate']))+' \u2014 '+escHtml(rf['Event']||'Reminder')+'</div>';
-    }).join(''):'\u2014';
+    const cp=(f['Current_x0020_Position']||'').trim();
+    const cpUpd=f['CP_x0020_Last_x0020_Updated']?fmtDateShort(f['CP_x0020_Last_x0020_Updated']):'';
     const notes=(f['draftingNotes']||'').trim();
     return '<div class="ds-case">'+
       '<div class="ds-case-head">'+
         (ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
         '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
       '</div>'+
-      '<div class="ds-meta">'+
-        '<div><b>Last action</b>'+actTxt+'</div>'+
-        '<div><b>Open reminders'+(rms.length?' ('+rms.length+')':'')+'</b>'+remTxt+'</div>'+
-      '</div>'+
+      '<div class="ds-notes"><span class="ds-lbl">Current position'+(cpUpd?' \u00b7 '+escHtml(cpUpd):'')+'</span>'+(cp?escHtml(cp):'\u2014')+'</div>'+
       (notes?'<div class="ds-notes"><span class="ds-lbl">Drafting notes</span>'+escHtml(notes)+'</div>':'')+
     '</div>';
   }).join('');
