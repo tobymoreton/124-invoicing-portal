@@ -885,7 +885,10 @@ document.getElementById('save-cw').addEventListener('click',()=>{
 // otherwise show the 5-minute-old cached list without the new case.
 async function loadCases(bustCache){
   try{
-    const r=await fetch('/api/cases?preload=1'+(bustCache?'&_='+Date.now():''));
+    // Always bust the cache: /api/cases?preload=1 is served Cache-Control max-age=300,
+    // so a case closed on case.html (which writes StatusMirror='Closed') would keep
+    // showing here as open until the 5-minute cache expired. Admin is low-traffic.
+    const r=await fetch('/api/cases?preload=1&_='+Date.now());
     if(!r.ok) throw new Error('HTTP '+r.status);
     const data=await r.json();
     rawCases=(data.value||[]);
@@ -1110,13 +1113,15 @@ function isUnallocated(f){
 function renderUnassignedCases(){
   const listEl=document.getElementById('uc-list');
   const unassigned=allCases.filter(c=>isUnallocated(c.fields));
+  // Sort: cases WITH a Deadline first, soonest deadline first; then everything else,
+  // most recently received first.
   unassigned.sort((a,b)=>{
     const da=(a.fields['Deadline']||'').slice(0,10);
     const db=(b.fields['Deadline']||'').slice(0,10);
-    if(da&&db) return da.localeCompare(db);   // both dated: earliest Deadline first
     if(da&&!db) return -1;                     // any deadline sorts above no deadline
     if(!da&&db) return 1;
-    return (a.fields['DateReceived']||'').localeCompare(b.fields['DateReceived']||''); // no deadline: oldest received first
+    if(da&&db) return da.localeCompare(db);    // both dated: soonest Deadline first
+    return (b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''); // no deadline: newest received first
   });
   document.getElementById('uc-count').textContent=unassigned.length;
   updateHeaderStats();
