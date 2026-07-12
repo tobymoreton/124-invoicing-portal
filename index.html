@@ -302,6 +302,16 @@
 </div>
 
 <main class="main">
+  <div id="anomaly-card" class="table-card" style="display:none;margin-bottom:16px;border-left:4px solid #B45309;">
+    <div style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleAnomalies()">
+      <div>
+        <span style="font-weight:600;color:#7C2D12;">⚠ Needs review</span>
+        <span id="anomaly-count" style="margin-left:8px;color:var(--grey-mid);font-size:13px;"></span>
+      </div>
+      <span id="anomaly-toggle" style="color:var(--grey-mid);font-size:12px;">show ▾</span>
+    </div>
+    <div id="anomaly-body" style="display:none;padding:0 18px 16px;"></div>
+  </div>
   <div class="table-card">
     <div class="table-wrap">
       <table id="invoice-table">
@@ -396,7 +406,7 @@ function readCache(email){
   }catch{ return null; }
 }
 function renderAllData(isAdmin, isFinance){
-  if (isAdmin) { renderStats(); renderTable(); }
+  if (isAdmin) { renderStats(); renderTable(); renderAnomalies(); }
   if (isFinance) { renderTable(); }
   renderDraftsman();
   renderWIP();
@@ -763,6 +773,86 @@ function fmtAmtFull(v) { const n=parseFloat(v); return isNaN(n)?'—':'£'+n.toF
 function fmtDate(v)    { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
 function el(id,html)   { const e=document.getElementById(id); if(e)e.innerHTML=html; }
 function esc(s)        { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// ── Anomaly detection (Admin only: Toby + Danielle) ─────────────────────────
+// Purely rule-based — every rule is a stated arithmetic condition, auditable and
+// arguable. Nothing is inferred and nothing is ever written; this only SURFACES.
+// Runs over allInvoices, which already excludes Cancelled. No new SP fields, no flows.
+const ANOMALY_RULES = [
+  { key:'paidButOwes', sev:'critical', label:'Marked Paid but money still outstanding',
+    why:'Should never happen. Investigate before treating as settled.',
+    test:(i,o,due,st)=>st==='paid' && o>0.005 },
+  { key:'overpaid', sev:'critical', label:'Overpaid — more received than invoiced',
+    why:'Payment may be posted against the wrong invoice.',
+    test:(i,o,due,st)=>o < -0.005 },
+  { key:'payNoDate', sev:'high', label:'Payment recorded with no payment date',
+    why:'Cannot be reconciled or aged.',
+    test:(i)=>[1,2,3].some(k=>(parseFloat(i['PaymentAmount'+k])||0)>0 && !i['PaymentDate'+k]) },
+  { key:'noDueDate', sev:'high', label:'Issued with no due date — unchaseable',
+    why:'Can never become overdue, so will never be chased.',
+    test:(i,o,due,st)=>!!i.OrderDetails && !i.DueDate && st!=='paid' },
+  { key:'zeroValue', sev:'review', label:'Issued with £0 due',
+    why:'Invoice raised for nothing — usually a data error.',
+    test:(i,o,due)=>!!i.OrderDetails && due===0 },
+  { key:'bigOverdue', sev:'review', label:'Overdue above £5,000',
+    why:'Large sums outstanding past their due date.',
+    test:(i,o,due,st,today)=>st!=='paid' && o>5000 && i.DueDate && new Date(i.DueDate)<today }
+];
+const SEV_STYLE = { critical:'#991B1B', high:'#B45309', review:'#6B7280' };
+
+function findAnomalies(){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const found={};
+  for (const r of ANOMALY_RULES) found[r.key]=[];
+  for (const i of allInvoices){
+    const o=parseFloat(i.AmountOutstanding);
+    if (isNaN(o)) continue;
+    const due=parseFloat(i.AmountDue)||0;
+    const st=String(i.Status_Text||i.Status||'').trim().toLowerCase();
+    for (const r of ANOMALY_RULES){
+      try { if (r.test(i,o,due,st,today)) found[r.key].push(i); } catch(e){}
+    }
+  }
+  return found;
+}
+
+function toggleAnomalies(){
+  const b=document.getElementById('anomaly-body');
+  const t=document.getElementById('anomaly-toggle');
+  const open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  t.textContent=open?'show \u25be':'hide \u25b4';
+}
+
+function renderAnomalies(){
+  const card=document.getElementById('anomaly-card');
+  if(!card) return;
+  const found=findAnomalies();
+  const total=Object.values(found).reduce((s,a)=>s+a.length,0);
+  if(!total){ card.style.display='none'; return; }   // silent when clean
+  const money=v=>'\u00a3'+(Math.abs(v)).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+  let html='';
+  for(const r of ANOMALY_RULES){
+    const hits=found[r.key];
+    if(!hits.length) continue;
+    html += '<div style="margin-top:14px;">'
+      + '<div style="font-weight:600;font-size:13px;color:'+SEV_STYLE[r.sev]+';">'+esc(r.label)+' \u00b7 '+hits.length+'</div>'
+      + '<div style="font-size:11.5px;color:var(--grey-mid);margin-bottom:6px;">'+esc(r.why)+'</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+      + hits.map(i=>{
+          const o=parseFloat(i.AmountOutstanding)||0;
+          return '<tr style="border-top:1px solid var(--grey-line,#eee);cursor:pointer;" onclick="openDrawer(\''+esc(i._id)+'\')">'
+            + '<td style="padding:5px 8px 5px 0;font-variant-numeric:tabular-nums;">'+esc(i.OrderDetails||'(draft)')+'</td>'
+            + '<td style="padding:5px 8px 5px 0;">'+esc((i.Casename||'').slice(0,48))+'</td>'
+            + '<td style="padding:5px 0;text-align:right;font-variant-numeric:tabular-nums;color:'+(o<0?'#991B1B':'inherit')+';">'
+            + (o<0?'\u2212':'')+money(o)+'</td></tr>';
+        }).join('')
+      + '</table></div>';
+  }
+  document.getElementById('anomaly-count').textContent = total+' invoice'+(total===1?'':'s')+' flagged';
+  document.getElementById('anomaly-body').innerHTML = html;
+  card.style.display='block';
+}
+
 function renderError(msg) { document.getElementById('table-body').innerHTML=`<tr><td colspan="9"><div class="state-block"><div class="state-icon">⚠</div><h3>Could not load invoices</h3><p>${esc(msg)}</p></div></td></tr>`; }
 
 function nameFromEmail(email) {
