@@ -71,9 +71,16 @@
     }
     .qa-primary{display:flex;flex-direction:column;gap:9px;padding-right:26px;border-right:1px solid var(--grey-light);}
     .qa-primary .qa-btn{justify-content:center;}
-    .qa-title{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(0,27,68,.38);margin-bottom:7px;}
-    .qa-grid{display:flex;flex-wrap:wrap;gap:8px;}
+    .qa-title{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(0,27,68,.38);margin-bottom:7px;text-align:center;}
+    .qa-title.add{color:#8A7040;}
+    .qa-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
     .qa-grid + .qa-title{margin-top:14px;}
+    /* Browse chips — cool navy tint. Add chips — warm gold tint. Two families, read at a glance. */
+    .qa-grid.browse .qa-btn{background:rgba(0,27,68,.035);border-color:rgba(0,27,68,.16);}
+    .qa-grid.browse .qa-btn:hover{background:var(--navy);color:var(--white);border-color:var(--navy);}
+    .qa-grid.browse .qa-btn:hover .qa-icon{opacity:1;filter:brightness(1.6);}
+    .qa-grid.add .qa-btn{background:var(--gold-pale);border-color:rgba(181,154,106,.5);color:#5C4A22;}
+    .qa-grid.add .qa-btn:hover{background:var(--gold);border-color:var(--gold);color:var(--navy);box-shadow:0 2px 8px rgba(181,154,106,.35);}
     @media(max-width:900px){
       .qa-section{grid-template-columns:1fr;gap:16px;}
       .qa-primary{padding-right:0;padding-bottom:16px;border-right:none;border-bottom:1px solid var(--grey-light);}
@@ -278,15 +285,15 @@
     </div>
     <div>
       <div class="qa-title">Browse &amp; Manage</div>
-      <div class="qa-grid">
+      <div class="qa-grid browse">
         <a href="/clients.html" class="qa-btn"><span class="qa-icon">&#127968;</span> Client Firms</a>
         <a href="/feeearners.html" class="qa-btn"><span class="qa-icon">&#129489;</span> Fee Earners</a>
         <a href="/courts.html" class="qa-btn"><span class="qa-icon">&#9878;&#65039;</span> Courts</a>
         <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
         <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
       </div>
-      <div class="qa-title">Add New</div>
-      <div class="qa-grid">
+      <div class="qa-title add">Add New</div>
+      <div class="qa-grid add">
         <button class="qa-btn" data-modal="modal-firm"><span class="qa-icon">&#127968;</span> Add Client Firm</button>
         <button class="qa-btn" data-modal="modal-feeearner"><span class="qa-icon">&#129489;</span> Add Fee Earner</button>
         <button class="qa-btn" data-modal="modal-court"><span class="qa-icon">&#9878;&#65039;</span> Add Court</button>
