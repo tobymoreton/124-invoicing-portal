@@ -54,9 +54,7 @@
     .hdr-stats{font-size:11.5px;font-weight:500;color:rgba(0,27,68,.68);margin-top:2px;}
     .page-title{font-family:'Spectral',serif;font-weight:300;font-size:28px;letter-spacing:.01em;color:var(--navy);}
     .page-sub{font-size:12.5px;color:rgba(0,27,68,.6);margin-top:5px;}
-    /* S67 — England at the World Cup. Quiet, not a banner. */
-    .eng-badge{display:inline-flex;align-items:center;margin-top:10px;padding:4px;border:1px solid rgba(0,27,68,.2);border-radius:4px;background:rgba(255,255,255,.28);cursor:default;}
-    .eng-flag{width:38px;height:23px;display:block;border-radius:2px;}
+    /* S67 — England flag lives in the nav, matching cases.html */
 
     /* Main */
     .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
@@ -241,6 +239,13 @@
 <nav class="nav">
   <div class="nav-brand">
     <span class="nav-wordmark">TMC Legal</span>
+    <span title="Come on England! Beat Norway 2-1 after extra time in the quarter-final, Argentina in the semi Wed 15 Jul" style="display:inline-flex;align-items:center;">
+      <svg width="34" height="22" viewBox="0 0 60 36" style="display:block;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 1px 3px rgba(0,0,0,.25);">
+        <rect width="60" height="36" fill="#ffffff"/>
+        <rect x="24" width="12" height="36" fill="#CE1124"/>
+        <rect y="12" width="60" height="12" fill="#CE1124"/>
+      </svg>
+    </span>
     <span class="nav-divider"></span>
     <span class="nav-title">Admin</span>
   </div>
@@ -254,15 +259,6 @@
   <div>
     <div class="page-title">Admin Dashboard</div>
     <div class="page-sub" id="page-sub">All open cases &amp; quick actions</div>
-    <!-- S67: England — Norway 1-2 England (AET), QF, 11 Jul 2026. Semi-final v Argentina, Atlanta, Wed 15 Jul, 20:00 BST. -->
-    <div class="eng-badge" title="Norway 1&ndash;2 England (AET) &mdash; Bellingham 45+1, 93. Semi-final v Argentina, Wed 15 Jul, 20:00 BST.">
-      <svg class="eng-flag" viewBox="0 0 30 18" xmlns="http://www.w3.org/2000/svg" aria-label="England">
-        <rect width="30" height="18" fill="#FFFFFF"/>
-        <rect x="12" y="0" width="6" height="18" fill="#CE1124"/>
-        <rect x="0" y="6" width="30" height="6" fill="#CE1124"/>
-        <rect width="30" height="18" fill="none" stroke="rgba(0,0,0,.15)" stroke-width="1"/>
-      </svg>
-    </div>
   </div>
   <div class="hdr-right">
     <div class="hdr-clock" id="hdr-clock">--:--:--</div>
@@ -615,11 +611,11 @@ function updateHeaderStats() {
   const arEl = document.getElementById('ar-count');
   const ucCount = ucEl ? ucEl.textContent : '\u2014';
   const arCount = arEl ? arEl.textContent : '\u2014';
-  // S67: IP / LA split. InterPartesorLegalAid is a plain choice column \u2014 'Inter Partes',
-  // 'Legal Aid', 'Both', or blank (not yet categorised). Blanks are counted as unset and
-  // shown separately rather than folded into either side.
+  // S67: IP / LA split, computed over UNASSIGNED cases only \u2014 the open total doesn't
+  // need triaging, the unassigned pile does. InterPartesorLegalAid is a plain choice
+  // column: 'Inter Partes', 'Legal Aid', 'Both', or blank (not yet categorised).
   let ip = 0, la = 0, both = 0, unset = 0;
-  allCases.forEach(c => {
+  allCases.filter(c => isUnallocated(c.fields)).forEach(c => {
     const v = ((c.fields || {})['InterPartesorLegalAid'] || '').trim();
     if (v === 'Inter Partes') ip++;
     else if (v === 'Legal Aid') la++;
@@ -631,8 +627,9 @@ function updateHeaderStats() {
   if (la)    split.push(la + ' LA');
   if (both)  split.push(both + ' both');
   if (unset) split.push(unset + ' unset');
-  el.textContent = openCount + ' open' + (split.length ? ' (' + split.join(' \u00b7 ') + ')' : '')
-    + ' \u00b7 ' + ucCount + ' unassigned \u00b7 ' + arCount + ' reminders';
+  el.textContent = openCount + ' open \u00b7 ' + ucCount + ' unassigned'
+    + (split.length ? ' (' + split.join(' \u00b7 ') + ')' : '')
+    + ' \u00b7 ' + arCount + ' reminders';
 }
 
 function isDeadlineUrgent(dateStr){
