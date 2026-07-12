@@ -1615,6 +1615,16 @@
         <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
       <div class="card">
+        <div class="card-head"><span class="card-title">Invoices on this case</span><span class="card-title" id="inv-case-summary" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--grey-mid);"></span></div>
+        <div class="card-body">
+          <div id="inv-case-msg" style="font-size:13px;color:var(--grey-mid);padding:6px 2px;">Loading&hellip;</div>
+          <table class="ca-table" id="inv-case-table" style="display:none;">
+            <thead><tr><th style="width:70px;">Inv #</th><th style="width:80px;">Date</th><th style="width:80px;">Due</th><th class="ca-right" style="width:90px;">Amount</th><th class="ca-right" style="width:95px;">Outstanding</th><th style="width:80px;">Status</th><th style="width:55px;">Type</th><th style="width:45px;"></th></tr></thead>
+            <tbody id="inv-case-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
         <div class="card-head"><span class="card-title">Invoicing</span><button type="button" class="info-btn" aria-label="About Invoicing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Create a draft invoice for this case, or open the full invoice-create portal.</span></button></div>
         <div class="card-body" style="text-align:center;padding:56px 24px;">
           <div style="font-size:36px;margin-bottom:14px;opacity:.6;">💰</div>
@@ -3197,6 +3207,82 @@ document.querySelectorAll('.info-btn').forEach(btn => {
 });
 document.addEventListener('click', () => document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')));
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')); });
+// ── Invoices on this case (Invoicing tab) ─────────────────────────────────
+// Reads /api/invoices?ref=<Our Reference> — case-scoped mode added S68, which returns
+// every invoice on the case regardless of who drafted it. Display only: no inference of
+// status (a blank Status stays blank), no writes. Cancelled invoices are shown, greyed.
+let invCaseRows = []; let invLoaded = false; let invFetching = false;
+
+async function loadCaseInvoices() {
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const msg = document.getElementById('inv-case-msg');
+  const table = document.getElementById('inv-case-table');
+  if (!msg || !table) return;
+  if (!ref) { msg.textContent = 'No Our Reference on this case \u2014 cannot look up invoices.'; return; }
+  invFetching = true;
+  try {
+    const resp = await fetch('/api/invoices?ref=' + encodeURIComponent(ref));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    invCaseRows = await resp.json();
+    invLoaded = true;
+    renderCaseInvoices();
+  } catch (err) {
+    msg.style.display = 'block';
+    msg.textContent = 'Could not load invoices: ' + err.message;
+  } finally { invFetching = false; }
+}
+
+function renderCaseInvoices() {
+  const msg = document.getElementById('inv-case-msg');
+  const table = document.getElementById('inv-case-table');
+  const tbody = document.getElementById('inv-case-tbody');
+  const summary = document.getElementById('inv-case-summary');
+  if (!msg || !table || !tbody) return;
+  tbody.innerHTML = '';
+
+  if (!invCaseRows.length) {
+    msg.style.display = 'block';
+    msg.textContent = 'No invoices have been raised on this case.';
+    table.style.display = 'none';
+    if (summary) summary.textContent = '';
+    return;
+  }
+
+  const rows = invCaseRows.slice().sort((a, b) => {
+    const da = a.InvoiceDate ? new Date(a.InvoiceDate).getTime() : 0;
+    const db = b.InvoiceDate ? new Date(b.InvoiceDate).getTime() : 0;
+    return db - da;
+  });
+
+  const live = rows.filter(r => r.Cancelled !== true);
+  const totDue = live.reduce((s, r) => s + (parseFloat(r.AmountDue) || 0), 0);
+  const totOut = live.reduce((s, r) => s + (parseFloat(r.AmountOutstanding) || 0), 0);
+  if (summary) summary.textContent = live.length + ' invoice' + (live.length === 1 ? '' : 's')
+    + ' \u00b7 ' + fmt(totDue) + ' raised \u00b7 ' + fmt(totOut) + ' outstanding'
+    + (rows.length > live.length ? ' \u00b7 ' + (rows.length - live.length) + ' cancelled' : '');
+
+  rows.forEach(r => {
+    const cancelled = r.Cancelled === true;
+    const status = (r.Status_Text || r.Status || '').trim();
+    const out = (r.AmountOutstanding === null || r.AmountOutstanding === undefined) ? null : parseFloat(r.AmountOutstanding);
+    const tr = document.createElement('tr');
+    tr.className = 'ca-row';
+    if (cancelled) tr.style.opacity = '.5';
+    tr.innerHTML = '<td class="ca-cell ca-mono">' + escHtml(r.OrderDetails || '\u2014') + '</td>'
+      + '<td class="ca-cell">' + escHtml(fmtDate(r.InvoiceDate)) + '</td>'
+      + '<td class="ca-cell">' + escHtml(r.DueDate ? fmtDate(r.DueDate) : '\u2014') + '</td>'
+      + '<td class="ca-cell ca-mono ca-right">' + fmt(parseFloat(r.AmountDue) || 0) + '</td>'
+      + '<td class="ca-cell ca-mono ca-right">' + (out === null ? '\u2014' : fmt(out)) + '</td>'
+      + '<td class="ca-cell" style="font-size:11px;">' + escHtml(cancelled ? 'Cancelled' : (status || '\u2014')) + '</td>'
+      + '<td class="ca-cell" style="font-size:11px;">' + escHtml(r.LAorIP || '\u2014') + '</td>'
+      + '<td class="ca-cell ca-center">' + (r.FileUrl ? '<a href="' + escHtml(r.FileUrl) + '" target="_blank" rel="noopener" title="Open invoice">\u2197</a>' : '') + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  msg.style.display = 'none';
+  table.style.display = '';
+}
+
 document.getElementById('btn-open-invoice-create')?.addEventListener('click', () => {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
   openDocOverlay('/invoice-create.html?ref=' + encodeURIComponent(ref), 'Create Draft Invoice');
@@ -3457,6 +3543,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (remLoaded) { renderRemTable(); } else if (!remFetching) { loadReminders(); } }); }
   if (btn.dataset.tab === 'attachments') { btn.addEventListener('click', () => { if (attLoaded) { renderAttTable(); } else if (!attFetching) { loadAttachments(); } }); }
+  if (btn.dataset.tab === 'invoicing') { btn.addEventListener('click', () => { if (!invLoaded && !invFetching) loadCaseInvoices(); }); }
 });
 
 // Activate the tab named in the URL hash (e.g. #tab-emails), if present — used by "Switch case"
