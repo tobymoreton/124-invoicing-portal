@@ -1902,13 +1902,25 @@ function ackToken(){ return (callerEmail.split('@')[0]||'').toLowerCase(); }
 // Primary assignee only — deliberately NOT matchesAssigned(), which also counts
 // coAssignedMirror. A co-assignee acknowledging would overwrite the primary's stamp
 // and the two would re-notify each other indefinitely. The case owner acknowledges it.
+// Danielle is the "unassigned" bucket - a case assigned to her has been handed BACK to the
+// allocation queue, not allocated to a person (S69: a SharePoint Person field cannot be cleared
+// via Power Automate, so the portal reassigns to Danielle instead of blanking AssignedTo).
+function assignedToDanielle(f){
+  const v=String(f['assignedToTextValue']||'').trim().toLowerCase();
+  return v==='danielle@tmclegal.co.uk' || v.startsWith('danielle');
+}
 function isPrimaryAssignee(f){
   const assigned=String(f['assignedToTextValue']||'').toLowerCase();
   if(!assigned.trim()) return false;
+  // 'daniel' is a substring of 'danielle' - without this, Daniel would be treated as the
+  // assignee of every case sitting in Danielle's unallocated bucket.
+  if(assignedToDanielle(f)) return ackToken()==='danielle';
   const nameL=callerName.toLowerCase();
   return (!!nameL && assigned.includes(nameL)) || assigned.includes(ackToken());
 }
 function needsAck(f){
+  // Nobody acknowledges a case in the unallocated bucket - it is waiting to be allocated.
+  if(assignedToDanielle(f)) return false;
   if(!isPrimaryAssignee(f)) return false;
   const stamp=String(f.CaseAckByDraftsman||'').toLowerCase();
   if(!stamp) return true;

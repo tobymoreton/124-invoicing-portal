@@ -228,6 +228,10 @@
     .ar-row.uc-row{flex-wrap:wrap;}
     .uc-notes{flex-basis:100%;width:100%;margin-top:6px;padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
     .uc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
+    /* Booking-in notes strip under a row of the All Open Cases table (same look as .uc-notes) */
+    .tc-notes-row td{padding:0 20px 10px 20px;border-bottom:1px solid var(--grey-faint);}
+    .tc-notes{padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
+    .tc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
   </style>
 </head>
 <body>
@@ -537,6 +541,11 @@ let allCases = [];
 let rawCases = [];
 let stageFilter = '';
 let showClosed = false;
+// Closed cases are NOT in rawCases: /api/cases?preload=1 filters status='closed' server-side.
+// They are fetched once, on demand, the first time "Show Closed" is clicked (S69 - before this,
+// the toggle filtered a set that could never contain a closed case, so it only ever surfaced
+// Settled ones and looked broken).
+let closedCases = null;
 
 // Header clock + live stat strip (counts already computed elsewhere - no extra fetch)
 function startHeaderClock() {
@@ -826,7 +835,7 @@ async function loadCases(bustCache){
 
 function renderCases(q){
   const tbody=document.getElementById('cases-tbody');
-  const closedBase=rawCases.filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
+  const closedBase=closedCases||rawCases.filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
   let base=showClosed?closedBase:allCases;
   if(stageFilter) base=base.filter(c=>(c.fields['StatusMirror']||'')===stageFilter);
   const filtered=q?base.filter(c=>{
@@ -875,18 +884,43 @@ function renderCases(q){
       if(ref){ try{ sessionStorage.setItem('tmc_case_'+ref, JSON.stringify({id:c.id,fields:c.fields,cachedAt:Date.now()})); }catch(ex){} }
     });
     tbody.appendChild(tr);
+
+    // Booking-in notes strip, mirroring the Unassigned Cases panel. Display-only; shown only
+    // when Notes is populated (already in the /api/cases SELECT_FIELDS - no API change needed).
+    const notes=(f['Notes']||'').trim();
+    if(notes){
+      const ntr=document.createElement('tr');
+      ntr.className='tc-notes-row';
+      ntr.innerHTML='<td colspan="7"><div class="tc-notes"><span class="tc-notes-label">Booking-in notes</span>'+escHtml(notes)+'</div></td>';
+      tbody.appendChild(ntr);
+    }
   });
 }
 
 document.getElementById('search').addEventListener('input',e=>renderCases(e.target.value.trim()));
 document.getElementById('status-filter').addEventListener('change',e=>{stageFilter=e.target.value;renderCases(document.getElementById('search').value.trim());});
-document.getElementById('btn-closed-toggle').addEventListener('click',()=>{
+document.getElementById('btn-closed-toggle').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-closed-toggle');
   showClosed=!showClosed;
   stageFilter='';
   document.getElementById('status-filter').value='';
-  const btn=document.getElementById('btn-closed-toggle');
   btn.textContent=showClosed?'Hide Closed':'Show Closed';
   btn.classList.toggle('active',showClosed);
+  // First time only: fetch the closed cases, which the default preload deliberately excludes.
+  if(showClosed&&!closedCases){
+    btn.disabled=true; btn.textContent='Loading\u2026';
+    try{
+      const r=await fetch('/api/cases?preload=1&closed=1');
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data=await r.json();
+      closedCases=(data.value||[]).filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
+    }catch(err){
+      closedCases=null;
+      document.getElementById('cases-meta').textContent='Could not load closed cases: '+escHtml(err.message);
+    }
+    btn.disabled=false;
+    btn.textContent=showClosed?'Hide Closed':'Show Closed';
+  }
   renderCases(document.getElementById('search').value.trim());
 });
 
@@ -982,9 +1016,21 @@ async function markAdminRemDone(remId,rowEl){
 }
 
 // ── Unassigned Cases (from allCases, no extra fetch) ───────────────────────
+// A case counts as unallocated if it has NO assignee, or if it is assigned to DANIELLE.
+// Danielle is the "unassigned" bucket: a SharePoint Person field cannot be cleared via Power
+// Automate (PatchItem with an empty Claims string is a silent no-op - proven on case 68864, S69),
+// so a draftsman hands a case back by assigning it to Danielle rather than by blanking the field.
+// If this ever stops treating danielle@ as unallocated, handed-back cases vanish from the
+// allocation queue and the work goes missing. Guard "danielle" with startsWith so it can never be
+// confused with "daniel" (Daniel is a draftsman).
+function isUnallocated(f){
+  const v=((f||{})['assignedToTextValue']||'').trim().toLowerCase();
+  if(!v) return true;
+  return v==='danielle@tmclegal.co.uk' || v.startsWith('danielle');
+}
 function renderUnassignedCases(){
   const listEl=document.getElementById('uc-list');
-  const unassigned=allCases.filter(c=>((c.fields['assignedToTextValue']||'').trim()===''));
+  const unassigned=allCases.filter(c=>isUnallocated(c.fields));
   unassigned.sort((a,b)=>{
     const da=(a.fields['Deadline']||'').slice(0,10);
     const db=(b.fields['Deadline']||'').slice(0,10);
