@@ -334,16 +334,23 @@
     .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
     .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
     #modal-draftsman .modal{max-width:1040px;}
-    .ds-case{border-bottom:1px solid var(--grey-faint);padding:12px 14px;border-radius:var(--radius-sm);}
-    .ds-case:nth-child(odd){background:rgba(27,42,74,.035);}
-    .ds-case:last-child{border-bottom:none;}
-    .ds-case-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+    .ds-case{border:1px solid var(--grey-light);padding:14px 16px;border-radius:var(--radius-sm);margin-bottom:10px;background:var(--white);}
+    .ds-case:nth-child(odd){background:var(--cream);}
+    .ds-case:last-child{margin-bottom:0;}
+    .ds-case-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;}
     .ds-case-name{font-weight:600;font-size:14px;color:var(--navy);text-decoration:none;}
     .ds-case-name:hover{text-decoration:underline;}
     .ds-stage{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
-    .ds-meta{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;color:var(--navy);}
-    .ds-meta b,.ds-lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);display:block;}
-    .ds-notes{margin-top:6px;font-size:12.5px;white-space:pre-wrap;}
+    /* Booking-in notes (what we were told) vs Current position (where it is now) — two colours. */
+    .ds-notes{margin-top:8px;font-size:12.5px;white-space:pre-wrap;padding:8px 12px;border-radius:var(--radius-sm);border-left:3px solid;}
+    .ds-notes:first-of-type{margin-top:0;}
+    .ds-book{background:#FBF6E8;border-left-color:var(--gold);}
+    .ds-book .ds-lbl{color:#8A7040;}
+    .ds-cp{background:#EEF3FA;border-left-color:var(--navy-light);}
+    .ds-cp .ds-lbl{color:var(--navy-mid);}
+    .ds-draft{background:#F1F6F1;border-left-color:#4B7A55;}
+    .ds-draft .ds-lbl{color:#3D6446;}
+    .ds-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:3px;}
     .ds-empty{color:var(--grey-mid);font-size:13px;}
   </style>
   <div class="ds-panel">
@@ -1361,12 +1368,17 @@ function dsKey(f){
 }
 
 // SP rich-text fields come back as raw HTML (<div class="ExternalClass..."><p>...).
-// Strip tags to plain text before escaping for display.
+// Strip tags to plain text before escaping for display. Also drop the legacy
+// "FIRM NOT MATCHED: <firm> | " prefix that PA564 prepended to Notes — it was written
+// on partial-match cases too, where the firm HAD in fact been matched. Fixed at source
+// in PA564; this strips it from the rows already carrying it.
 function dsPlain(html){
   if(!html) return '';
   const d=document.createElement('div');
   d.innerHTML=String(html).replace(/<\/(p|div|br)>/gi,'\n');
-  return (d.textContent||'').replace(/\n{2,}/g,'\n').trim();
+  let t=(d.textContent||'').replace(/\n{2,}/g,'\n').trim();
+  t=t.replace(/^FIRM NOT MATCHED:[^|]*\|\s*/i,'').trim();
+  return t;
 }
 
 function renderDraftsmenButtons(){
@@ -1403,9 +1415,9 @@ async function openDraftsman(key,label){
         (ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
         '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
       '</div>'+
-      (bookNotes?'<div class="ds-notes"><span class="ds-lbl">Booking-in notes</span>'+escHtml(bookNotes)+'</div>':'')+
-      '<div class="ds-notes"><span class="ds-lbl">Current position'+(cpUpd?' \u00b7 '+escHtml(cpUpd):'')+'</span>'+(cp?escHtml(cp):'\u2014')+'</div>'+
-      (notes?'<div class="ds-notes"><span class="ds-lbl">Drafting notes</span>'+escHtml(notes)+'</div>':'')+
+      (bookNotes?'<div class="ds-notes ds-book"><span class="ds-lbl">Booking-in notes</span>'+escHtml(bookNotes)+'</div>':'')+
+      '<div class="ds-notes ds-cp"><span class="ds-lbl">Current position'+(cpUpd?' \u00b7 '+escHtml(cpUpd):'')+'</span>'+(cp?escHtml(cp):'\u2014')+'</div>'+
+      (notes?'<div class="ds-notes ds-draft"><span class="ds-lbl">Drafting notes</span>'+escHtml(notes)+'</div>':'')+
     '</div>';
   }).join('');
 }
