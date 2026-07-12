@@ -314,7 +314,7 @@
   <style>
     .ds-panel{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;}
     .ds-panel h3{font-family:'Spectral',serif;font-weight:300;font-size:16px;color:var(--navy);margin:0 0 10px;}
-    .ds-btns{display:flex;flex-wrap:wrap;gap:8px;}
+    .ds-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
     .ds-btn{padding:7px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;}
     .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
     .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
@@ -1314,55 +1314,62 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
 // The AssignedToMirror / assignedToTextValue mirrors are inconsistent across the list:
 // some rows hold a full name ("Tracy Simmonds"), some a first name only ("Tracy"), some
 // an email ("tracy@tmclegal.co.uk"). Normalise every value to a single key (the email
-// local part / first name, lowercased) and render one button per person.
-const DS_ROSTER={danielle:'Danielle Moreton',joanna:'Joanna Sinfield',julie:'Julie Mercer',kelly:'Kelly Townshend',toby:'Toby Moreton',tom:'Tom Winyard',tracy:'Tracy Simmonds',lesley:'Lesley',daniel:'Daniel',david:'David'};
+// local part / first name, lowercased). The roster is fixed so every draftsman gets a
+// button even at zero cases; Danielle is excluded (her cases are unassigned in practice
+// and already show in the Unassigned Cases panel).
+const DS_ROSTER=['Daniel','Joanna','Julie','Kelly','Toby','Tom','Tracy'];
 
 function dsKey(f){
   const raw=(f['AssignedToMirror']||f['assignedToTextValue']||'').trim();
   if(!raw) return '';
   const first=raw.includes('@')?raw.split('@')[0]:raw.split(/\s+/)[0];
-  const k=first.toLowerCase().replace(/[^a-z]/g,'');
-  // Cases sitting on Danielle are unassigned in practice (she books them in) — they
-  // belong in the Unassigned Cases panel, not a draftsman's list. Excluded here.
-  if(k==='danielle') return '';
-  return k;
+  return first.toLowerCase().replace(/[^a-z]/g,'');
 }
-function dsLabel(k){ return DS_ROSTER[k]||(k?k.charAt(0).toUpperCase()+k.slice(1):''); }
+
+// SP rich-text fields come back as raw HTML (<div class="ExternalClass..."><p>...).
+// Strip tags to plain text before escaping for display.
+function dsPlain(html){
+  if(!html) return '';
+  const d=document.createElement('div');
+  d.innerHTML=String(html).replace(/<\/(p|div|br)>/gi,'\n');
+  return (d.textContent||'').replace(/\n{2,}/g,'\n').trim();
+}
 
 function renderDraftsmenButtons(){
   const el=document.getElementById('ds-btns');
   if(!el) return;
   const counts={};
   allCases.forEach(c=>{ const k=dsKey(c.fields); if(k) counts[k]=(counts[k]||0)+1; });
-  const keys=Object.keys(counts).sort((a,b)=>dsLabel(a).localeCompare(dsLabel(b)));
-  if(!keys.length){ el.innerHTML='<span class="ds-empty">No assigned cases.</span>'; return; }
   el.innerHTML='';
-  keys.forEach(k=>{
+  DS_ROSTER.forEach(name=>{
+    const k=name.toLowerCase();
     const b=document.createElement('button');
     b.className='ds-btn';
-    b.innerHTML=escHtml(dsLabel(k))+'<span class="ds-n">'+counts[k]+'</span>';
-    b.addEventListener('click',()=>openDraftsman(k));
+    b.innerHTML=escHtml(name)+'<span class="ds-n">'+(counts[k]||0)+'</span>';
+    b.addEventListener('click',()=>openDraftsman(k,name));
     el.appendChild(b);
   });
 }
 
-async function openDraftsman(key){
+async function openDraftsman(key,label){
   const body=document.getElementById('ds-modal-body');
-  document.getElementById('ds-modal-title').textContent=dsLabel(key)+' \u2014 cases';
+  document.getElementById('ds-modal-title').textContent=(label||key)+' \u2014 cases';
   openModal('modal-draftsman');
   const list=allCases.filter(c=>dsKey(c.fields)===key);
   if(!list.length){ body.innerHTML='<div class="ds-empty">No open cases.</div>'; return; }
   body.innerHTML=list.map(c=>{
     const f=c.fields||{};
     const ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
-    const cp=(f['Current_x0020_Position']||'').trim();
+    const cp=dsPlain(f['Current_x0020_Position']);
     const cpUpd=f['CP_x0020_Last_x0020_Updated']?fmtDateShort(f['CP_x0020_Last_x0020_Updated']):'';
-    const notes=(f['draftingNotes']||'').trim();
+    const bookNotes=dsPlain(f['Notes']);
+    const notes=dsPlain(f['draftingNotes']);
     return '<div class="ds-case">'+
       '<div class="ds-case-head">'+
         (ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
         '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
       '</div>'+
+      (bookNotes?'<div class="ds-notes"><span class="ds-lbl">Booking-in notes</span>'+escHtml(bookNotes)+'</div>':'')+
       '<div class="ds-notes"><span class="ds-lbl">Current position'+(cpUpd?' \u00b7 '+escHtml(cpUpd):'')+'</span>'+(cp?escHtml(cp):'\u2014')+'</div>'+
       (notes?'<div class="ds-notes"><span class="ds-lbl">Drafting notes</span>'+escHtml(notes)+'</div>':'')+
     '</div>';
