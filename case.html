@@ -2523,15 +2523,44 @@ const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
 // TEAM_MEMBERS - she is not a draftsman and must not appear in Co-assigned or Bill Drafted By.
 const ASSIGNEE_MEMBERS = TEAM_MEMBERS.concat(['Danielle']);
 const TEAM_EMAILS = { Joanna:'joanna@tmclegal.co.uk', Tracy:'tracy@tmclegal.co.uk', Kelly:'kelly@tmclegal.co.uk', Tom:'tom@tmclegal.co.uk', Julie:'julie@tmclegal.co.uk', Daniel:'daniel@tmclegal.co.uk', Toby:'toby@tmclegal.co.uk', Danielle:'danielle@tmclegal.co.uk' };
-// Which team member does a stored mirror value refer to? The mirror is inconsistent (email /
-// display name / first name), so match the email first, then fall back to a name substring -
-// longest name first, so "danielle@..." can never be matched as "Daniel".
+// ── Assignee resolution (mirrors cases.html) ───────────────────────────────
+// assignedToTextValue / coAssignedMirror hold three forms: email ('tracy@tmclegal.co.uk'),
+// display name ('Tracy Simmonds') and bare first name ('Tracy'). Match tokens EXACTLY -
+// never substring: 'daniel' is a substring of 'danielle'. Unknown -> null, never guessed.
+// Includes people who are NOT assignable (Lesley; David - leaver) so historic data still
+// resolves; assignability is governed by TEAM_MEMBERS / ASSIGNEE_MEMBERS, not by this map.
+const PERSON_EMAILS = {
+  joanna:'joanna@tmclegal.co.uk', tracy:'tracy@tmclegal.co.uk', kelly:'kelly@tmclegal.co.uk',
+  tom:'tom@tmclegal.co.uk', julie:'julie@tmclegal.co.uk', daniel:'daniel@tmclegal.co.uk',
+  toby:'toby@tmclegal.co.uk', danielle:'danielle@tmclegal.co.uk',
+  lesley:'lesley@tmclegal.co.uk', david:'david@tmclegal.co.uk',
+};
+const PERSON_EMAIL_SET = Object.values(PERSON_EMAILS);
+function resolveAssignee(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s) return null;
+  for (const tok of s.split(/[\s;,]+/)) {
+    if (!tok) continue;
+    if (PERSON_EMAILS[tok]) return PERSON_EMAILS[tok];
+    if (PERSON_EMAIL_SET.includes(tok)) return tok;
+  }
+  return null;
+}
+function resolveAssigneeAll(raw) {
+  const out = [];
+  String(raw || '').split(/[;,]/).forEach(part => {
+    const e = resolveAssignee(part);
+    if (e && !out.includes(e)) out.push(e);
+  });
+  return out;
+}
+
+// Which team member does a stored mirror value refer to? Resolve the value to a canonical
+// email, then find the member in the list whose email matches. Exact only - no substrings.
 function teamNameFor(currentVal, list) {
-  const cur = (currentVal || '').toLowerCase();
-  if (!cur) return null;
-  const byEmail = list.find(n => (TEAM_EMAILS[n] || n).toLowerCase() === cur);
-  if (byEmail) return byEmail;
-  return list.slice().sort((a, b) => b.length - a.length).find(n => cur.includes(n.toLowerCase())) || null;
+  const email = resolveAssignee(currentVal);
+  if (!email) return null;
+  return (list || TEAM_MEMBERS).find(n => (TEAM_EMAILS[n] || n).toLowerCase() === email) || null;
 }
 
 // Bill Drafted By banner — shown across every tab (sits outside .tab-panel so it
@@ -3150,12 +3179,12 @@ async function initSwitcher() {
   } catch(e) {}
   try {
     const data = casesResp.status === 'fulfilled' ? await casesResp.value.json() : { value: [] };
-    const all = data.value || []; const nameL = switcherCallerName.toLowerCase(); const emailL = switcherCallerEmail.split('@')[0].toLowerCase();
+    const all = data.value || []; const me = resolveAssignee(switcherCallerEmail);
     switcherCases = all.filter(c => {
+      if (!me) return false;
       const f = c.fields || {};
-      const assigned   = (f['assignedToTextValue'] || '').toLowerCase();
-      const coAssigned = (f['coAssignedMirror']    || '').toLowerCase();
-      return (nameL && (assigned.includes(nameL) || coAssigned.includes(nameL))) || (emailL && (assigned.includes(emailL) || coAssigned.includes(emailL)));
+      return resolveAssignee(f['assignedToTextValue']) === me
+          || resolveAssigneeAll(f['coAssignedMirror']).includes(me);
     }).sort((a, b) => {
       const na = caseDisplayName(a.fields||{}).toLowerCase();
       const nb = caseDisplayName(b.fields||{}).toLowerCase();
