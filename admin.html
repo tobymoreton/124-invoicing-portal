@@ -310,6 +310,38 @@
     </div>
   </div>
 
+  <!-- S67: Draftsmen panel -->
+  <style>
+    .ds-panel{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;}
+    .ds-panel h3{font-family:'Spectral',serif;font-weight:300;font-size:16px;color:var(--navy);margin:0 0 10px;}
+    .ds-btns{display:flex;flex-wrap:wrap;gap:8px;}
+    .ds-btn{padding:7px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;}
+    .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+    .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
+    #modal-draftsman .modal{max-width:1040px;}
+    .ds-case{border-bottom:1px solid var(--grey-faint);padding:12px 0;}
+    .ds-case:last-child{border-bottom:none;}
+    .ds-case-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+    .ds-case-name{font-weight:600;font-size:14px;color:var(--navy);text-decoration:none;}
+    .ds-case-name:hover{text-decoration:underline;}
+    .ds-stage{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
+    .ds-meta{margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:12.5px;color:var(--navy);}
+    .ds-meta b,.ds-lbl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);display:block;}
+    .ds-notes{margin-top:6px;font-size:12.5px;white-space:pre-wrap;}
+    .ds-empty{color:var(--grey-mid);font-size:13px;}
+  </style>
+  <div class="ds-panel">
+    <h3>&#128100; Draftsmen &mdash; case lists</h3>
+    <div class="ds-btns" id="ds-btns"><span class="ds-empty">Loading&hellip;</span></div>
+  </div>
+  <div class="modal-overlay" id="modal-draftsman">
+    <div class="modal">
+      <div class="modal-head"><span class="modal-title" id="ds-modal-title">Cases</span><button class="modal-close" data-close="modal-draftsman">&times;</button></div>
+      <div class="modal-body" id="ds-modal-body"></div>
+    </div>
+  </div>
+  <!-- /S67: Draftsmen panel -->
+
   <!-- All Open Cases -->
   <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading cases&hellip;</div>
 
@@ -832,6 +864,7 @@ async function loadCases(bustCache){
     document.getElementById('page-sub').textContent=allCases.length+' open cases';
     renderCases('');
     renderUnassignedCases();
+    renderDraftsmenButtons();
     loadAdminReminders();
   }catch(err){
     document.getElementById('state-loading').innerHTML='<p style="color:#991B1B;">Failed to load: '+escHtml(err.message)+'</p>';
@@ -1273,6 +1306,90 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     if(!management.includes(email)) document.body.classList.add('not-mgmt');
   }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
 })();
+
+// ── S67: Draftsmen case lists ───────────────────────────────────────
+// Buttons are derived from the AssignedToMirror / assignedToTextValue text mirrors on
+// the open-case set already in memory — no hardcoded name list to maintain.
+// Actions and reminders are fetched once, on first open, then cached for the session.
+let dsActions=null, dsReminders=null;
+
+function dsAssignee(f){ return (f['AssignedToMirror']||f['assignedToTextValue']||'').trim(); }
+
+function renderDraftsmenButtons(){
+  const el=document.getElementById('ds-btns');
+  if(!el) return;
+  const counts={};
+  allCases.forEach(c=>{ const n=dsAssignee(c.fields); if(n) counts[n]=(counts[n]||0)+1; });
+  const names=Object.keys(counts).sort();
+  if(!names.length){ el.innerHTML='<span class="ds-empty">No assigned cases.</span>'; return; }
+  el.innerHTML='';
+  names.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='ds-btn';
+    b.innerHTML=escHtml(n)+'<span class="ds-n">'+counts[n]+'</span>';
+    b.addEventListener('click',()=>openDraftsman(n));
+    el.appendChild(b);
+  });
+}
+
+async function dsLoadData(){
+  if(dsActions&&dsReminders) return;
+  const [ra,rr]=await Promise.all([
+    fetch('/api/caseactions?all=1').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
+    fetch('/api/reminders?all=1&open=1').then(r=>r.ok?r.json():{value:[]}).catch(()=>({value:[]})),
+  ]);
+  dsActions={}; dsReminders={};
+  // /api/caseactions?all=1 returns newest-first, so the first hit per ref is the latest action.
+  (ra.value||[]).forEach(a=>{ const ref=((a.fields||{})['field_16']||'').trim(); if(ref&&!dsActions[ref]) dsActions[ref]=a; });
+  // All OPEN reminders per case, soonest due first. open=1 is the server-side filter;
+  // CompletedMirror is re-checked client-side because it's the reliable text mirror
+  // (the Completed_x003f_ boolean is dropped by Graph app-only).
+  (rr.value||[]).forEach(r=>{
+    const f=r.fields||{}; const ref=(f['Ourreference_x0028_text_x0029_']||'').trim(); if(!ref) return;
+    if((f['CompletedMirror']||'')==='Yes') return;
+    (dsReminders[ref]=dsReminders[ref]||[]).push(r);
+  });
+  Object.values(dsReminders).forEach(arr=>arr.sort((a,b)=>
+    new Date((a.fields||{})['Duedate']||'9999-12-31')-new Date((b.fields||{})['Duedate']||'9999-12-31')));
+}
+
+async function openDraftsman(name){
+  const body=document.getElementById('ds-modal-body');
+  document.getElementById('ds-modal-title').textContent=name+' \u2014 cases';
+  body.innerHTML='<div class="ds-empty">Loading&hellip;</div>';
+  openModal('modal-draftsman');
+  try{ await dsLoadData(); }catch(e){ dsActions=dsActions||{}; dsReminders=dsReminders||{}; }
+  const list=allCases.filter(c=>dsAssignee(c.fields)===name);
+  if(!list.length){ body.innerHTML='<div class="ds-empty">No open cases.</div>'; return; }
+  body.innerHTML=list.map(c=>{
+    const f=c.fields||{};
+    const ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
+    const a=ref?dsActions[ref]:null;
+    const rms=(ref&&dsReminders[ref])||[];
+    const af=a?(a.fields||{}):{};
+    const actTxt=a?(escHtml(fmtDateShort(af['field_12']||af['field_1']))+' \u2014 '+escHtml(af['field_2']||'')):'\u2014';
+    const today=new Date(); today.setHours(0,0,0,0);
+    const remTxt=rms.length?rms.map(r=>{
+      const rf=r.fields||{};
+      const d=rf['Duedate']?new Date(rf['Duedate']):null;
+      const overdue=d&&d<today;
+      return '<div'+(overdue?' style="color:var(--red);font-weight:600;"':'')+'>'+escHtml(fmtDateShort(rf['Duedate']))+' \u2014 '+escHtml(rf['Event']||'Reminder')+'</div>';
+    }).join(''):'\u2014';
+    const notes=(f['draftingNotes']||'').trim();
+    return '<div class="ds-case">'+
+      '<div class="ds-case-head">'+
+        (ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
+        '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
+      '</div>'+
+      '<div class="ds-meta">'+
+        '<div><b>Last action</b>'+actTxt+'</div>'+
+        '<div><b>Open reminders'+(rms.length?' ('+rms.length+')':'')+'</b>'+remTxt+'</div>'+
+      '</div>'+
+      (notes?'<div class="ds-notes"><span class="ds-lbl">Drafting notes</span>'+escHtml(notes)+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+// ── /S67 ──
 
 loadCases();
 </script>
