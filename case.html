@@ -2380,15 +2380,16 @@ function renderAssignStrip() {
     sel.innerHTML = '';
     const blank = document.createElement('option'); blank.value = ''; blank.textContent = isStatus ? '\u2014 select \u2014' : '\u2014 none \u2014'; sel.appendChild(blank);
     const curL = (cur || '').toLowerCase(); let matched = !curL;
+    const nameMatch = isStatus ? null : teamNameFor(cur, opts);
     opts.forEach(o => {
       const val = isStatus ? o : (TEAM_EMAILS[o] || o);
       const opt = document.createElement('option'); opt.value = val; opt.textContent = o;
-      if (curL && (curL === val.toLowerCase() || (!isStatus && curL.includes(o.toLowerCase())))) { opt.selected = true; matched = true; }
+      if (curL && (curL === val.toLowerCase() || (!isStatus && o === nameMatch))) { opt.selected = true; matched = true; }
       sel.appendChild(opt);
     });
     if (!matched && cur) { const o = document.createElement('option'); o.value = cur; o.textContent = cur; o.selected = true; sel.appendChild(o); }
   };
-  fill('strip-assigned-sel',   f['assignedToTextValue'], TEAM_MEMBERS, false);
+  fill('strip-assigned-sel',   f['assignedToTextValue'], ASSIGNEE_MEMBERS, false);
   fill('strip-coassigned-sel', f['coAssignedMirror'],    TEAM_MEMBERS, false);
   fill('strip-status-sel',     f['StatusMirror'],        STATUS_VALUES, true);
 }
@@ -2515,7 +2516,23 @@ function renderDocumentBar() {
 }
 
 const TEAM_MEMBERS = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
-const TEAM_EMAILS = { Joanna:'joanna@tmclegal.co.uk', Tracy:'tracy@tmclegal.co.uk', Kelly:'kelly@tmclegal.co.uk', Tom:'tom@tmclegal.co.uk', Julie:'julie@tmclegal.co.uk', Daniel:'daniel@tmclegal.co.uk', Toby:'toby@tmclegal.co.uk' };
+// Assign-to ONLY. Danielle is the "unassigned" bucket: assigning a case to Danielle is how a
+// draftsman hands it back to the allocation queue. A SharePoint Person field cannot be cleared
+// via Power Automate (PatchItem with an empty Claims string is a silent no-op - proven on case
+// 68864, S69), so the portal never blanks AssignedTo. Danielle is deliberately NOT in
+// TEAM_MEMBERS - she is not a draftsman and must not appear in Co-assigned or Bill Drafted By.
+const ASSIGNEE_MEMBERS = TEAM_MEMBERS.concat(['Danielle']);
+const TEAM_EMAILS = { Joanna:'joanna@tmclegal.co.uk', Tracy:'tracy@tmclegal.co.uk', Kelly:'kelly@tmclegal.co.uk', Tom:'tom@tmclegal.co.uk', Julie:'julie@tmclegal.co.uk', Daniel:'daniel@tmclegal.co.uk', Toby:'toby@tmclegal.co.uk', Danielle:'danielle@tmclegal.co.uk' };
+// Which team member does a stored mirror value refer to? The mirror is inconsistent (email /
+// display name / first name), so match the email first, then fall back to a name substring -
+// longest name first, so "danielle@..." can never be matched as "Daniel".
+function teamNameFor(currentVal, list) {
+  const cur = (currentVal || '').toLowerCase();
+  if (!cur) return null;
+  const byEmail = list.find(n => (TEAM_EMAILS[n] || n).toLowerCase() === cur);
+  if (byEmail) return byEmail;
+  return list.slice().sort((a, b) => b.length - a.length).find(n => cur.includes(n.toLowerCase())) || null;
+}
 
 // Bill Drafted By banner — shown across every tab (sits outside .tab-panel so it
 // isn't tied to any one tab) whenever Total IP Profit Costs > 0 and BillDraftedByText
@@ -2621,15 +2638,17 @@ function makeDateInput(id, isoVal) {
 
 // Team select storing emails as values (labels = first names). Matches existing
 // mirror content whether it holds an email, first name or legacy full name.
-function makeTeamSelect(id, currentVal) {
+function makeTeamSelect(id, currentVal, list) {
+  const members = list || TEAM_MEMBERS;
   const sel = document.createElement('select'); sel.className = 'ov-select'; sel.id = id + '-input';
   const blank = document.createElement('option'); blank.value = ''; blank.textContent = '— select —'; sel.appendChild(blank);
   const cur = (currentVal || '').toLowerCase();
+  const nameMatch = teamNameFor(currentVal, members);
   let matched = !cur;
-  TEAM_MEMBERS.forEach(name => {
+  members.forEach(name => {
     const email = TEAM_EMAILS[name] || name;
     const opt = document.createElement('option'); opt.value = email; opt.textContent = name;
-    if (cur && (cur === email.toLowerCase() || cur.includes(name.toLowerCase()))) { opt.selected = true; matched = true; }
+    if (cur && (cur === email.toLowerCase() || name === nameMatch)) { opt.selected = true; matched = true; }
     sel.appendChild(opt);
   });
   if (!matched && currentVal) { const o = document.createElement('option'); o.value = currentVal; o.textContent = currentVal; o.selected = true; sel.appendChild(o); }
@@ -2656,7 +2675,7 @@ function ovSetEditMode() {
     dd.appendChild(sel);
   });
   const assignedEl = document.getElementById('ov-assigned'); assignedEl.innerHTML = '';
-  assignedEl.appendChild(makeTeamSelect('ov-assigned', f['assignedToTextValue']));
+  assignedEl.appendChild(makeTeamSelect('ov-assigned', f['assignedToTextValue'], ASSIGNEE_MEMBERS));
   const coEl = document.getElementById('ov-coassigned'); coEl.innerHTML = '';
   const coSel = makeTeamSelect('ov-coassigned', f['coAssignedMirror']);
   coSel.children[0].textContent = '— none —'; if (!f['coAssignedMirror']) coSel.value = ''; coEl.appendChild(coSel);
