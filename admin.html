@@ -969,7 +969,8 @@ function renderCases(q){
 
     // Booking-in notes strip, mirroring the Unassigned Cases panel. Display-only; shown only
     // when Notes is populated (already in the /api/cases SELECT_FIELDS - no API change needed).
-    const notes=(f['Notes']||'').trim();
+    // dsPlain() strips SP rich-text HTML and the legacy "FIRM NOT MATCHED: <firm> | " prefix.
+    const notes=dsPlain(f['Notes']);
     if(notes){
       const ntr=document.createElement('tr');
       ntr.className='tc-notes-row';
@@ -1137,7 +1138,7 @@ function renderUnassignedCases(){
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const laip=f['InterPartesorLegalAid']||'';
-    const notes=(f['Notes']||'').trim();
+    const notes=dsPlain(f['Notes']);
     const deadlineRaw=(f['Deadline']||'').slice(0,10);
     const laipOptions=['','Inter Partes','Legal Aid','Both'];
     const laipShort={'':'\u2014','Inter Partes':'IP','Legal Aid':'LA','Both':'Both'};
