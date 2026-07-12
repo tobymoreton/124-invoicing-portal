@@ -42,63 +42,53 @@
     /* Page header — reversed: gold shimmer */
     .page-header{
       position:relative;overflow:hidden;
-      background:linear-gradient(135deg,#C9A84C 0%,#E8C96A 30%,#B8962E 55%,#D4AE52 75%,#C9A84C 100%);
-      background-size:300% 100%;
-      animation:shimmer 4s ease-in-out infinite alternate;
-      padding:22px 32px 26px;
-      border-bottom:3px solid rgba(27,42,74,.2);
+      background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);
+      padding:30px 32px 30px;
+      border-bottom:2px solid var(--gold);
       display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;
     }
     .hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
-    .hdr-clock{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:700;color:var(--navy);letter-spacing:.03em;font-variant-numeric:tabular-nums;line-height:1;}
-    .hdr-date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,42,74,.65);}
-    .hdr-stats{font-size:11.5px;font-weight:600;color:rgba(27,42,74,.75);margin-top:2px;}
-    @keyframes shimmer{
-      0%{background-position:0% 50%;}
-      100%{background-position:100% 50%;}
-    }
-    .page-title{font-family:'Spectral',serif;font-weight:400;font-size:24px;color:var(--navy);}
-    .page-sub{font-size:12.5px;color:rgba(27,42,74,.6);margin-top:4px;}
+    .hdr-clock{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:400;color:var(--gold);letter-spacing:.06em;font-variant-numeric:tabular-nums;line-height:1;}
+    .hdr-date{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);}
+    .hdr-stats{font-size:11.5px;font-weight:500;color:rgba(255,255,255,.6);margin-top:2px;}
+    .page-title{font-family:'Spectral',serif;font-weight:300;font-size:28px;letter-spacing:.01em;color:var(--white);}
+    .page-sub{font-size:12.5px;color:rgba(255,255,255,.5);margin-top:5px;}
 
     /* Main */
     .main{padding:24px 32px 56px;max-width:1400px;margin:0 auto;}
 
-    /* Quick actions — gold panel */
+    /* Quick actions — white card, gold reserved for the primary action only */
     .qa-section{
       margin-bottom:28px;
-      background:linear-gradient(135deg,#C9A84C 0%,#E8C96A 30%,#B8962E 55%,#D4AE52 75%,#C9A84C 100%);
-      background-size:300% 100%;
-      animation:shimmer 4s ease-in-out infinite alternate;
+      background:var(--white);
+      border:1px solid var(--grey-light);
       border-radius:var(--radius);
-      padding:24px 28px;
-      box-shadow:0 4px 16px rgba(27,42,74,.18);
+      padding:28px 28px 26px;
+      box-shadow:0 1px 3px rgba(0,27,68,.06);
     }
-    .qa-title{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(27,42,74,.6);margin-bottom:12px;text-align:center;}
+    .qa-title{font-size:9.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(0,27,68,.38);margin-bottom:14px;text-align:center;}
     .qa-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
-    .qa-grid.book-in-row{justify-content:center;margin-bottom:20px;}
+    .qa-grid.book-in-row{justify-content:center;margin-bottom:26px;padding-bottom:24px;border-bottom:1px solid var(--grey-light);}
     .qa-btn{
       display:inline-flex;align-items:center;gap:8px;
-      padding:10px 18px;border-radius:var(--radius-sm);
-      border:1.5px solid rgba(27,42,74,.35);background:rgba(27,42,74,.08);
+      padding:9px 16px;border-radius:var(--radius-sm);
+      border:1px solid rgba(0,27,68,.14);background:var(--white);
       color:var(--navy);font-family:'IBM Plex Sans',sans-serif;
-      font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;
-      backdrop-filter:blur(2px);
+      font-size:13px;font-weight:500;cursor:pointer;transition:all .15s ease;
     }
-    .qa-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
-    .qa-btn .qa-icon{font-size:16px;line-height:1;}
+    .qa-btn:hover{border-color:var(--navy);box-shadow:0 2px 8px rgba(0,27,68,.1);}
+    .qa-btn .qa-icon{font-size:15px;line-height:1;opacity:.75;}
     .qa-btn.primary{
-      background:var(--navy);color:var(--gold);border-color:var(--navy);
-      padding:13px 40px;font-size:15px;
-      box-shadow:0 2px 8px rgba(27,42,74,.3);
+      background:var(--gold);color:var(--navy);border-color:var(--gold);
+      padding:13px 40px;font-size:14px;font-weight:600;letter-spacing:.02em;
+      box-shadow:0 2px 10px rgba(181,154,106,.35);
     }
-    .qa-btn.primary:hover{background:var(--navy-mid);}
+    .qa-btn.primary:hover{background:#A3885A;border-color:#A3885A;box-shadow:0 4px 14px rgba(181,154,106,.45);}
     .qa-btn.primary-alt{
-      background:rgba(27,42,74,.75);color:var(--gold);border-color:rgba(27,42,74,.75);
-      padding:13px 40px;font-size:15px;
-      box-shadow:0 2px 8px rgba(27,42,74,.2);
-      backdrop-filter:blur(4px);
+      background:var(--navy);color:var(--white);border-color:var(--navy);
+      padding:13px 40px;font-size:14px;font-weight:600;letter-spacing:.02em;
     }
-    .qa-btn.primary-alt:hover{background:var(--navy);border-color:var(--navy);}
+    .qa-btn.primary-alt:hover{background:var(--navy-mid);border-color:var(--navy-mid);}
 
     /* Spinner */
     .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
@@ -319,7 +309,8 @@
     .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
     .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
     #modal-draftsman .modal{max-width:1040px;}
-    .ds-case{border-bottom:1px solid var(--grey-faint);padding:12px 0;}
+    .ds-case{border-bottom:1px solid var(--grey-faint);padding:12px 14px;border-radius:var(--radius-sm);}
+    .ds-case:nth-child(odd){background:rgba(27,42,74,.035);}
     .ds-case:last-child{border-bottom:none;}
     .ds-case-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
     .ds-case-name{font-weight:600;font-size:14px;color:var(--navy);text-decoration:none;}
