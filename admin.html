@@ -223,7 +223,8 @@
     .uc-task-chip{width:92px;text-align:center;flex-shrink:0;margin-top:2px;}
     .uc-ack-chip{width:60px;text-align:center;flex-shrink:0;margin-top:2px;}
     .uc-deadline-wrap{flex-shrink:0;margin-top:2px;width:160px;}
-    .uc-deadline-label{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--red);margin-bottom:2px;}
+    .uc-deadline-label{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.75;margin-bottom:2px;}
+    .uc-deadline-label.uc-deadline-label-set{color:var(--red);opacity:1;}
     .uc-deadline-display{display:flex;align-items:center;gap:6px;font-size:11.5px;}
     .uc-deadline-display.uc-deadline-set{color:var(--navy);font-weight:600;}
     .uc-deadline-display.uc-deadline-urgent{color:var(--red);}
@@ -1151,7 +1152,7 @@ function renderUnassignedCases(){
     const deadlineUrgent = isDeadlineUrgent(deadlineRaw);
     const deadlineWrapHtml =
       '<div class="uc-deadline-wrap">'+
-        '<div class="uc-deadline-label">Absolute Deadline</div>'+
+        '<div class="uc-deadline-label'+(deadlineRaw?' uc-deadline-label-set':'')+'">'+(deadlineRaw?'Absolute Deadline':'Deadline')+'</div>'+
         '<div class="uc-deadline-display '+(deadlineRaw?(deadlineUrgent?'uc-deadline-urgent':'uc-deadline-set'):'uc-deadline-unset')+'">'+
           '<span class="uc-deadline-text">'+deadlineDisplayText+'</span>'+
           '<button type="button" class="uc-deadline-edit-btn" title="Edit deadline">\u270e</button>'+
