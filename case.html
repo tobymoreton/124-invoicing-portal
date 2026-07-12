@@ -3572,6 +3572,7 @@ function renderCaTable() {
           <div class="ca-edit-head"><span>Editing action</span><span style="color:var(--grey-mid);font-weight:500;text-transform:none;letter-spacing:0;">${escHtml(dateStr)}${byName ? ' · ' + escHtml(byName.split(' ')[0]) : ''}</span>${billed ? '<span class="ca-billed-badge">Billed</span>' : ''}</div>
           <div class="ca-edit-grid">
             <label class="ca-ef"><span>Brief</span><select class="ca-edit-brief" data-id="${id}">${_briefOpts}</select></label>
+            <label class="ca-ef"><span>By</span><select class="ca-edit-by" data-id="${id}">${caCompletedByOptions(byName)}</select></label>
             <label class="ca-ef ca-ef-sm"><span>Hrs</span><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></label>
             <label class="ca-ef ca-ef-sm"><span>Rate (£/hr)</span><input type="number" class="ca-edit-rate" data-id="${id}" value="${rate}" step="0.01" min="0" /></label>
             <div class="ca-ef ca-ef-amt"><span>Amount</span><div class="ca-edit-amt" data-id="${id}">${fmt(amt)}</div></div>
@@ -3631,6 +3632,23 @@ function renderWipBox() {
   body.innerHTML = html;
 }
 
+// Completed By options for the Case Actions edit panel. If the stored value isn't one
+// of the known names (legacy rows hold emails or full names), it is preserved verbatim
+// as the first option so editing another field can never silently re-attribute the action.
+function caCompletedByOptions(selected) {
+  const names = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
+  const sel   = (selected || '').trim();
+  const known = names.some(n => n.toLowerCase() === sel.toLowerCase());
+  const opts  = [];
+  if (!sel)   opts.push('<option value="" selected>\u2014 not set \u2014</option>');
+  if (sel && !known) opts.push('<option value="' + escHtml(sel) + '" selected>' + escHtml(sel) + '</option>');
+  names.forEach(n => {
+    const isSel = known && n.toLowerCase() === sel.toLowerCase();
+    opts.push('<option value="' + escHtml(n) + '"' + (isSel ? ' selected' : '') + '>' + escHtml(n) + '</option>');
+  });
+  return opts.join('');
+}
+
 async function saveCaRow(id) {
   const scope = document.querySelector('.tab-panel.active') || document;
   const wd = scope.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
@@ -3638,13 +3656,14 @@ async function saveCaRow(id) {
   const rate = parseFloat(scope.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
   const briefEl = scope.querySelector(`.ca-edit-brief[data-id="${id}"]`); const brief = briefEl ? briefEl.value : undefined;
   const billEl = scope.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
+  const byEl = scope.querySelector(`.ca-edit-by[data-id="${id}"]`); const completedBy = byEl ? byEl.value : undefined;
   const saveBtn = scope.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = scope.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
   if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
   try {
-    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable }) });
+    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable, completedBy }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = caActions.findIndex(a => a.id === id);
-    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; }
+    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; if (completedBy !== undefined) f['Completedby_x0028_text_x0029_'] = completedBy; }
     caEditingId = null; renderCaTable(); renderEmailsTable();
   } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
 }

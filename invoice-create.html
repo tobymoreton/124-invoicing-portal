@@ -272,7 +272,7 @@
 
         <div class="form-row">
           <span class="form-label">VAT on drafting fee?</span>
-          <span class="form-value" id="fig-vat-on-drafting"></span>
+          <span class="form-value"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="inp-vat-drafting" /><span id="fig-vat-on-drafting"></span></label></span>
         </div>
 
         <!-- Drafting Fee — LA -->
@@ -616,6 +616,7 @@ async function loadFigures(fields) {
     : '\u2014';
   el('inp-fee-pct').value    = feePct;
   el('inp-la-fee-pct').value = laFeePct;
+  el('inp-vat-drafting').checked = vatOnDrafting;
   el('fig-vat-on-drafting').innerHTML = vatOnDrafting
     ? '<span class="form-badge yes">Yes</span>'
     : '<span class="form-badge no">No</span>';
@@ -712,6 +713,7 @@ function initListeners() {
   el('inp-basis').addEventListener('change', recalc);
   el('inp-drafted-by').addEventListener('change', recalc);
   el('inp-include-tmc').addEventListener('change', recalc);
+  el('inp-vat-drafting').addEventListener('change', recalc);
 
   // Minimum-fee ticks pre-fill the editable override with the floor amount
   // (IP = £375, LA = £50). The box stays editable afterwards; the
@@ -737,7 +739,10 @@ function initListeners() {
 function recalc() {
   if (!selectedCase) return;
 
-  const vatOnDrafting  = selectedCase._vatOnDrafting || false;
+  const vatOnDrafting  = !!(el('inp-vat-drafting')?.checked);
+  el('fig-vat-on-drafting').innerHTML = vatOnDrafting
+    ? '<span class="form-badge yes">Yes</span>'
+    : '<span class="form-badge no">No</span>';
   const feePct         = parseFloat(el('inp-fee-pct').value) || 0;
   const laFeePct       = parseFloat(el('inp-la-fee-pct').value) || 0;
   const basis          = el('inp-basis').value;
