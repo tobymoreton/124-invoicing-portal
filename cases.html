@@ -822,13 +822,50 @@ function computeTotalCosts(f){
   const vatPct   =parseFloat(f['VAT_x0020__x0025__x0020_Claimed'])  ||0;
   return (pc+tmc+other)*(1+vatPct)+disb+vatDisb+counsel*(1+vatPct);
 }
+// ── Assignee resolution ────────────────────────────────────────────────────
+// assignedToTextValue is stored in three forms across the list: email
+// ('tracy@tmclegal.co.uk'), display name ('Tracy Simmonds') and bare first name
+// ('Tracy'). Never substring-match against it: 'daniel' is a substring of 'danielle',
+// so Daniel was being shown every case parked in Danielle's unallocated bucket.
+// resolveAssignee() maps any of the three forms to a canonical email by EXACT token
+// match, and returns null for anything it does not recognise (never guesses).
+// assignable:false = resolvable in existing data, but not offered in Assign-to dropdowns.
+const PEOPLE = [
+  {email:'toby@tmclegal.co.uk',     first:'toby',     label:'Toby',     assignable:true},
+  {email:'danielle@tmclegal.co.uk', first:'danielle', label:'Danielle', assignable:true},
+  {email:'joanna@tmclegal.co.uk',   first:'joanna',   label:'Joanna',   assignable:true},
+  {email:'tracy@tmclegal.co.uk',    first:'tracy',    label:'Tracy',    assignable:true},
+  {email:'kelly@tmclegal.co.uk',    first:'kelly',    label:'Kelly',    assignable:true},
+  {email:'tom@tmclegal.co.uk',      first:'tom',      label:'Tom',      assignable:true},
+  {email:'julie@tmclegal.co.uk',    first:'julie',    label:'Julie',    assignable:true},
+  {email:'daniel@tmclegal.co.uk',   first:'daniel',   label:'Daniel',   assignable:true},
+  {email:'lesley@tmclegal.co.uk',   first:'lesley',   label:'Lesley',   assignable:false},
+  {email:'david@tmclegal.co.uk',    first:'david',    label:'David',    assignable:false}, // leaver - open cases to be closed
+];
+function resolveAssignee(raw){
+  const s=String(raw||'').trim().toLowerCase();
+  if(!s) return null;
+  for(const tok of s.split(/[\s;,]+/)){
+    if(!tok) continue;
+    const p=PEOPLE.find(p=>p.email===tok||p.first===tok);
+    if(p) return p.email;
+  }
+  return null;
+}
+function resolveAssigneeAll(raw){
+  const out=[];
+  String(raw||'').split(/[;,]/).forEach(part=>{
+    const e=resolveAssignee(part);
+    if(e&&!out.includes(e)) out.push(e);
+  });
+  return out;
+}
+
 function matchesAssigned(f){
-  const assigned  =(f['assignedToTextValue']||'').toLowerCase();
-  const coAssigned=(f['coAssignedMirror']   ||'').toLowerCase();
-  const nameL     =callerName.toLowerCase();
-  const emailLocal=callerEmail.split('@')[0].toLowerCase();
-  return assigned.includes(nameL)||assigned.includes(emailLocal)
-      ||coAssigned.includes(nameL)||coAssigned.includes(emailLocal);
+  const me=resolveAssignee(callerEmail);
+  if(!me) return false;
+  return resolveAssignee(f['assignedToTextValue'])===me
+      || resolveAssigneeAll(f['coAssignedMirror']).includes(me);
 }
 
 // ── Identity ───────────────────────────────────────────────────────────────
@@ -1906,17 +1943,11 @@ function ackToken(){ return (callerEmail.split('@')[0]||'').toLowerCase(); }
 // allocation queue, not allocated to a person (S69: a SharePoint Person field cannot be cleared
 // via Power Automate, so the portal reassigns to Danielle instead of blanking AssignedTo).
 function assignedToDanielle(f){
-  const v=String(f['assignedToTextValue']||'').trim().toLowerCase();
-  return v==='danielle@tmclegal.co.uk' || v.startsWith('danielle');
+  return resolveAssignee(f['assignedToTextValue'])==='danielle@tmclegal.co.uk';
 }
 function isPrimaryAssignee(f){
-  const assigned=String(f['assignedToTextValue']||'').toLowerCase();
-  if(!assigned.trim()) return false;
-  // 'daniel' is a substring of 'danielle' - without this, Daniel would be treated as the
-  // assignee of every case sitting in Danielle's unallocated bucket.
-  if(assignedToDanielle(f)) return ackToken()==='danielle';
-  const nameL=callerName.toLowerCase();
-  return (!!nameL && assigned.includes(nameL)) || assigned.includes(ackToken());
+  const me=resolveAssignee(callerEmail);
+  return !!me && resolveAssignee(f['assignedToTextValue'])===me;
 }
 function needsAck(f){
   // Nobody acknowledges a case in the unallocated bucket - it is waiting to be allocated.
