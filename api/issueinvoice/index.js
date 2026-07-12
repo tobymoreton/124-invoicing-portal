@@ -13,7 +13,7 @@
  *      schedule, line descriptions, etc. exactly as drafted)
  *   6. Overwrite draft file with issued HTML
  *   6a. Rename DriveItem to {invoiceNumber}.html
- *   7. Patch Invoice Library item: OrderDetails = number, InvoiceDate = today, AmountDue = grandTotal
+ *   7. Patch Invoice Library item: OrderDetails = number, InvoiceDate = today, DueDate = today + 30, AmountDue = grandTotal
  *   8. Read DraftWipIds CSV from Invoice Library item
  *   9. Mark each TT2 entry Billed_x003f_ = true
  *  10. Update each Line Item where field_7 in DraftWipIds: set InvoiceIDRef = number
@@ -145,6 +145,11 @@ module.exports = async function (context, req) {
     context.log('Uploading issued HTML…');
     const uploadUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
       + '/items/' + driveItemId + '/content';
+    // Overwrite unconditionally — no If-Match. We are deliberately replacing the
+    // draft with the issued HTML. A concurrent metadata touch (e.g. PA099.14
+    // setting DraftNotificationSent) changes the driveItem eTag and would otherwise
+    // cause a spurious 412 resourceModified. Content is only ever written by this
+    // function, so dropping the concurrency check carries no lost-update risk.
     await graphPut(uploadUrl, token, htmlBuffer, 'text/html', null);
     context.log('Issued HTML uploaded.');
 
@@ -159,10 +164,18 @@ module.exports = async function (context, req) {
 
     // ── 6. Patch Invoice Library item ─────────────────────────────────────────
     const invoiceDateIso = invoiceDate.toISOString();
+    // Due date = invoice date + 30 days — the SAME rule doHtmlReplace() uses to print
+    // the due date on the client's invoice document. Written to SP so the invoice can
+    // age, be chased, and appear in Overdue/aging views. Before S68 it was printed and
+    // thrown away: every invoice from 13290 onwards has no DueDate in SharePoint.
+    const dueDate = new Date(invoiceDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    const dueDateIso = dueDate.toISOString();
     context.log('Patching Invoice Library item…');
     await patchListItem(token, INVOICE_LIB, listItemId, {
       OrderDetails: String(invoiceNumber),
       InvoiceDate:  invoiceDateIso,
+      DueDate:      dueDateIso,
       AmountDue:    grandTotal,
     });
     context.log('Invoice Library item patched.');
