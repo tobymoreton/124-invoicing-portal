@@ -123,6 +123,7 @@
     /* Status chips */
     .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
     .s-pending-assignment{background:#FEF9C3;color:#713F12;}
+    .s-assigned-stage-pending{background:#FDE9C8;color:#7C4A03;}
     .s-in-billing{background:#DBEAFE;color:#1E40AF;}
     .s-pending-billing{background:#ECFEFF;color:#155E75;}
     .s-awaiting-client{background:#F3E8FF;color:#6B21A8;}
@@ -326,6 +327,7 @@
         <select id="status-filter" class="filter-select">
           <option value="">All stages</option>
           <option value="Pending assignment">Pending assignment</option>
+          <option value="Assigned - Stage Pending">Assigned - Stage Pending</option>
           <option value="Pending billing">Pending billing</option>
           <option value="In billing">In billing</option>
           <option value="Awaiting client approval">Awaiting client approval</option>
@@ -613,6 +615,7 @@ function stripHtml(s){return (s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ')
 function statusClass(s){
   if(!s) return 's-default'; const sl=s.toLowerCase();
   if(sl==='pending assignment') return 's-pending-assignment';
+  if(sl==='assigned - stage pending') return 's-assigned-stage-pending';
   if(sl==='in billing') return 's-in-billing';
   if(sl==='pending billing') return 's-pending-billing';
   if(sl==='awaiting client approval') return 's-awaiting-client';
