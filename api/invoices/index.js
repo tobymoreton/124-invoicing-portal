@@ -90,6 +90,12 @@ module.exports = async function (context, req) {
   const isAdmin   = ADMIN_EMAILS.includes(callerEmail);
   const isFinance  = FINANCE_EMAILS.includes(callerEmail);
 
+  // Case-scoped read (S68). ?ref=<Our Reference> returns every invoice raised on that ONE
+  // case to any authenticated TMC user, ignoring the drafted-by scope below. Deliberate:
+  // the case Invoicing tab must show the case's full billing picture, not just the caller's
+  // own bills. Scope is a single case — this is not a back door to the whole ledger.
+  const refParam = ((req.query && req.query.ref) || '').trim();
+
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
@@ -99,7 +105,10 @@ module.exports = async function (context, req) {
   try {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     // Admins + finance get all invoices; non-admins get only their own (by DraftedByEmail)
-    const invoices = await fetchAllInvoices(token, (isAdmin || isFinance) ? null : callerEmail);
+    const invoices = await fetchAllInvoices(token, (isAdmin || isFinance || refParam) ? null : callerEmail);
+    const payload  = refParam
+      ? invoices.filter(inv => (inv.Ourref || '').toString().trim().toLowerCase() === refParam.toLowerCase())
+      : invoices;
 
     context.res = {
       status: 200,
@@ -107,7 +116,7 @@ module.exports = async function (context, req) {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
       },
-      body: JSON.stringify(invoices),
+      body: JSON.stringify(payload),
     };
   } catch (err) {
     context.log.error('Error fetching invoices:', err.message);
