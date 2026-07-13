@@ -179,6 +179,9 @@
     .tab-panel.active{display:block;}
     @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+    .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;}
+    @media(max-width:1100px){.three-col{grid-template-columns:1fr 1fr;}}
+    @media(max-width:680px){.three-col{grid-template-columns:1fr;}}
     @media(max-width:680px){.two-col{grid-template-columns:1fr;}}
     .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
     @media(max-width:560px){.detail-grid{grid-template-columns:1fr;}}
@@ -752,7 +755,7 @@
         <button class="btn-edit-cancel" id="btn-ov-cancel">Cancel</button>
         <span class="edit-msg" id="msg-ov"></span>
       </div>
-      <div class="two-col">
+      <div class="three-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Assignment</span><button type="button" class="info-btn" aria-label="About Assignment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Who owns this case and its current status. Use the tab's Edit button to change the assignee, co-assignee or status.</span></button></div>
           <dl class="read-grid">
@@ -771,6 +774,15 @@
             <div class="read-row"><dt>🎯 PODs Received</dt><dd class="ov-editable" id="ov-podrec">—</dd></div>
             <div class="read-row"><dt>🤝 Date Settled</dt><dd class="ov-editable" id="ov-settled">—</dd></div>
           </dl>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">📎 Available Documents</span><button type="button" class="info-btn" aria-label="About Available Documents"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Every file held against this case, grouped by document type. Click a name to open it. To upload, rename or delete, use the Attachments tab.</span></button></span>
+            <span style="font-size:11px;color:var(--grey-mid);" id="ov-docs-count"></span>
+          </div>
+          <div class="card-body">
+            <div id="ov-docs" style="font-size:13px;line-height:1.7;color:var(--navy);">Loading documents&hellip;</div>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -2670,6 +2682,7 @@ function renderOverviewTab() {
   const cpUpd = f['CP_x0020_Last_x0020_Updated']; const cpEl = document.getElementById('ov-cpupdated');
   if (cpEl) cpEl.textContent = cpUpd ? 'Updated ' + fmtDate(cpUpd) : '';
   ovSetReadMode();
+  if (!attLoaded && !attFetching) loadAttachments(); else renderOvDocs();
 }
 
 function makeSelect(id, options, currentVal) {
@@ -3481,7 +3494,7 @@ function attIsManagement() { return ATT_MANAGEMENT.includes((switcherCallerEmail
 async function loadAttachments() {
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
   const loading = document.getElementById('att-loading'); const empty = document.getElementById('att-empty');
-  if (!ref) { attLoaded = true; if (loading) loading.style.display = 'none'; if (empty) { empty.textContent = 'No case reference yet \u2014 attachments are keyed on the Our Reference.'; empty.style.display = 'block'; } return; }
+  if (!ref) { attLoaded = true; if (loading) loading.style.display = 'none'; if (empty) { empty.textContent = 'No case reference yet \u2014 attachments are keyed on the Our Reference.'; empty.style.display = 'block'; } renderOvDocs(); return; }
   if (attFetching || attLoaded) return; attFetching = true;
   if (loading) loading.style.display = 'block'; if (empty) empty.style.display = 'none';
   const tb = document.getElementById('att-tbody'); if (tb) tb.innerHTML = '';
@@ -3489,7 +3502,24 @@ async function loadAttachments() {
     const resp = await fetch('/api/attachments?ref=' + encodeURIComponent(ref)); if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json(); attFiles = data.value || []; attLoaded = true; attFetching = false;
     renderAttTable();
-  } catch (err) { attFetching = false; attLoaded = false; if (loading) loading.textContent = 'Failed to load attachments: ' + err.message; }
+    renderOvDocs();
+  } catch (err) { attFetching = false; attLoaded = false; if (loading) loading.textContent = 'Failed to load attachments: ' + err.message; const od = document.getElementById('ov-docs'); if (od) od.textContent = 'Failed to load documents: ' + err.message; }
+}
+
+// Read-only mirror of the Attachments tab, shown on the Case Overview tab. Same /api/attachments
+// payload (attFiles) - no second fetch, no API change. Upload/rename/delete stay on Attachments.
+function renderOvDocs() {
+  const el = document.getElementById('ov-docs'); const cnt = document.getElementById('ov-docs-count');
+  if (!el) return;
+  if (!attLoaded) { el.textContent = 'Loading documents\u2026'; if (cnt) cnt.textContent = ''; return; }
+  if (!attFiles.length) { el.textContent = 'No documents attached to this case.'; if (cnt) cnt.textContent = ''; return; }
+  if (cnt) cnt.textContent = attFiles.length + ' file' + (attFiles.length !== 1 ? 's' : '');
+  const groups = {};
+  attFiles.forEach(f => { const t = ((f.docType || '').trim()) || 'Uncategorised'; (groups[t] = groups[t] || []).push(f); });
+  el.innerHTML = Object.keys(groups).sort().map(t =>
+    `<div style="margin-bottom:12px;"><div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;">${escHtml(t)}</div>`
+    + groups[t].map(f => `<div style="padding:2px 0;"><a href="${escHtml(f.webUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a><span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(f.size)}${f.modified ? ' \u00b7 ' + fmtDate(f.modified) : ''}</span></div>`).join('')
+    + '</div>').join('');
 }
 
 function attFmtSize(bytes) {
