@@ -3482,13 +3482,34 @@ function renderRemTable() {
         <td class="ca-cell ca-center">${priBadge}</td>
         <td class="ca-cell ca-center">${completed?'<span style="color:var(--green);font-weight:700;font-size:14px;">\u2713</span>':'<span style="color:var(--grey-light);">&#9675;</span>'}</td>
         <td class="ca-cell ca-center">${admin?'<span style="font-size:11px;font-weight:700;color:var(--navy-mid);">A</span>':'\u2212'}</td>
-        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
+        <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button><button class="rem-btn-del" data-id="${id}" title="Delete this reminder" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 0 0 6px;opacity:.55;">\ud83d\uddd1\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { remEditingId = btn.dataset.id; renderRemTable(); }); });
+  tbody.querySelectorAll('.rem-btn-del').forEach(btn => { btn.addEventListener('click', () => deleteRemRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { remEditingId = null; renderRemTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveRemRow(btn.dataset.id)); });
+}
+
+// Delete is destructive: the row goes to SharePoint's recycle bin and disappears from the portal.
+// Confirm first, naming the reminder, so a mis-click on the wrong row cannot quietly bin it.
+async function deleteRemRow(id) {
+  const a = remActions.find(x => x.id === id); if (!a) return;
+  const f = a.fields || {};
+  const label = [f['Event'] || 'Reminder', f['Brief'] ? '\u2014 ' + String(f['Brief']).slice(0, 60) : ''].filter(Boolean).join(' ');
+  if (!confirm('Delete this reminder?\n\n' + label + '\n\nIt will be removed from the case and from your dashboard.')) return;
+  const btn = document.querySelector(`.rem-btn-del[data-id="${id}"]`); if (btn) btn.disabled = true;
+  try {
+    const resp = await fetch('/api/reminders?id=' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    remActions = remActions.filter(x => x.id !== id);
+    if (remEditingId === id) remEditingId = null;
+    renderRemTable();
+  } catch (err) {
+    if (btn) btn.disabled = false;
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 async function saveRemRow(id) {
