@@ -7,6 +7,12 @@ const SITE_PATH     = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const CLIENTS_GUID  = '901e8cbd-8760-4051-9eb0-0d5c0db1c06d';
 
 const ADMIN_EMAILS  = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
+const ALLOWED_DOMAIN = '@tmclegal.co.uk';
+// S73: draftsmen can CREATE a client firm (they hit new instructing firms mid-case and
+// must not be blocked). They CANNOT edit an existing one, and a create by a non-admin
+// has the PRICING fields stripped — drafting fee basis/%, minimum fee, LAA fee, default
+// hourly rate and billing email drive what TMC charges. Those stay with management.
+const PRICING_FIELDS = ['feeBasis','feePercent','minFee','laaFee','hourlyRate','billingEmail'];
 
 async function getToken(tenantId, clientId, clientSecret) {
   return new Promise((resolve, reject) => {
@@ -57,9 +63,11 @@ function graphRequest(url, token, method, body) {
 module.exports = async function (context, req) {
   const method = req.method;
 
-  // Auth check: all users can read; only admins can write
+  // Auth check: all TMC staff can read and create; only admins can edit, and only
+  // admins can set pricing on a create.
   const callerEmail = (req.headers['x-ms-client-principal-name'] || '').toLowerCase();
   const isAdmin = ADMIN_EMAILS.includes(callerEmail);
+  const isStaff = callerEmail.endsWith(ALLOWED_DOMAIN);
 
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
@@ -87,12 +95,16 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // ── POST: create new client firm (admin only) ────────────────────────
+    // ── POST: create new client firm (any TMC user; pricing = admin only) ─
     if (method === 'POST') {
-      if (!isAdmin) { context.res = { status: 403, body: 'Forbidden' }; return; }
+      if (!isStaff) { context.res = { status: 403, body: 'Forbidden' }; return; }
       let body;
       try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
       catch { context.res = { status: 400, body: 'Invalid JSON' }; return; }
+
+      // Strip pricing from a non-admin create rather than rejecting the whole request:
+      // the firm still gets added, it just carries no fee terms until management sets them.
+      if (!isAdmin) PRICING_FIELDS.forEach(k => { delete body[k]; });
 
       const fields = buildFields(body);
       if (!fields.Title) { context.res = { status: 400, body: 'Firm name required' }; return; }
@@ -108,7 +120,7 @@ module.exports = async function (context, req) {
 
     // ── PATCH: update client firm (admin only) ───────────────────────────
     if (method === 'PATCH') {
-      if (!isAdmin) { context.res = { status: 403, body: 'Forbidden' }; return; }
+      if (!isAdmin) { context.res = { status: 403, body: 'Editing a client firm is restricted to Toby, Danielle and Lesley. You can still add a new firm.' }; return; }
       let body;
       try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
       catch { context.res = { status: 400, body: 'Invalid JSON' }; return; }
