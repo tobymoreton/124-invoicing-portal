@@ -70,7 +70,7 @@ module.exports = async function (context, req) {
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
-    // ── GET ──────────────────────────────────────────────────────────────────
+    // -- GET --------------------------------------------------------------------
     if (req.method === 'GET') {
       if (req.query.schema === '1') {
         const schemaUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/columns`;
@@ -95,6 +95,7 @@ module.exports = async function (context, req) {
                  + `&$top=999`;
 
       let filtered = [];
+      let billedFiltered = null;
 
       if (!allMode && ref) {
         try {
@@ -114,10 +115,32 @@ module.exports = async function (context, req) {
           filtered = all.filter(item => (item.fields?.['field_16'] || '').toString().trim() === ref);
         }
       } else {
-        let url = base;
+        // all=1 — the dashboard's bulk read. The unselected $expand=fields payload (every
+        // column on 3,600+ rows across 4 sequential Graph pages) outgrew the SWA gateway
+        // timeout. S76 measured one call DIE after 143,157 ms with NO http status at all,
+        // while an identical call minutes later returned 200 / 3,500 rows in 12,975 ms —
+        // i.e. it is now sitting on the limit and failing intermittently. loadActions()
+        // then rendered the failure as "No actions recorded." Narrow the projection to the
+        // columns the dashboard actually reads.
+        // WATCH: boolean columns have previously been seen to drop OUT of a
+        // fields($select=...) projection on this tenant. Billed_x003f_ is the filter key
+        // here, so the number of rows it removes is returned as _billedFiltered. It should
+        // be ~177. If it comes back 0, the projection has eaten the booleans and this change
+        // MUST be reverted — otherwise billed work is reported as unbilled WIP.
+        const ALL_FIELDS = [
+          'field_1','field_2','field_3','field_6','field_9','field_12','field_16','field_18',
+          'Completedby_x0028_text_x0029_','Casename_x0028_text_x0029_',
+          'Billable_x003f_','Billed_x003f_','Num_BillableAmount_x00a3_',
+          'TimeSpentMirror','CreatedUTC','Title',
+        ].join(',');
+        let url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
+                + `?$select=id,createdDateTime`
+                + `&$expand=fields($select=${ALL_FIELDS})`
+                + `&$top=999`;
         let all = [];
         while (url) { const page = await graphGet(url, token); all = all.concat(page.value || []); url = page['@odata.nextLink'] || null; }
         filtered = all.filter(item => item.fields?.['Billed_x003f_'] !== true);
+        billedFiltered = all.length - filtered.length;
       }
 
       // ── Optional 'since' narrowing (additive, non-breaking) ─────────────────
@@ -159,7 +182,7 @@ module.exports = async function (context, req) {
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: JSON.stringify({ value: filtered }),
+        body: JSON.stringify({ value: filtered, ...(billedFiltered !== null ? { _billedFiltered: billedFiltered } : {}) }),
       };
       return;
     }
