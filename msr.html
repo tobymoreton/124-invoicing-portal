@@ -287,8 +287,11 @@ function render(data) {
   }
 
   tbody.innerHTML = visibleRows.map(function (r) {
-    var assigned = r.assignedTo
-      ? esc(r.assignedTo)
+    // Mirrors store the same person as 'Tom' / 'Joanna Sinfield' / an email. Show the canonical
+    // first name the API resolved; fall back to the raw mirror only when the token is off-roster.
+    var assignedName = r.assignee || r.assignedTo;
+    var assigned = assignedName
+      ? esc(assignedName)
       : '<span class="unassigned">Unassigned</span>';
     return '<tr data-id="' + esc(r.id) + '">'
       + '<td class="nowrap"><a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '">' + esc(r.title) + '</a></td>'
@@ -650,6 +653,7 @@ function exportExcel() {
   rows.forEach(function (r, i) {
     var vals = HEADERS.map(function (h) {
       var v = r[h.key];
+      if (h.key === 'assignedTo') return r.assignee || r.assignedTo || '';   // same normalisation as the table
       if (h.type === 'date')  return v ? new Date(v) : null;
       if (h.type === 'money') return Number(v) || 0;
       return v || '';
