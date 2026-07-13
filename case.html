@@ -554,6 +554,10 @@
     .ca-btn-save.ca-btn-lg{background:linear-gradient(135deg,var(--green) 0%,#047857 100%);color:#fff;}
     .ca-btn-cancel.ca-btn-lg{background:transparent;color:var(--grey-mid);border:1.5px solid var(--grey-light);}
     .ca-btn-cancel.ca-btn-lg:hover{border-color:var(--grey-mid);color:var(--navy);}
+    .ca-edit-del{display:flex;justify-content:flex-end;margin-top:6px;}
+    .ca-btn-del{background:transparent;color:#991B1B;border:1.5px solid #FCA5A5;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .ca-btn-del:hover{background:#FEF2F2;border-color:#991B1B;}
+    .ca-btn-del:disabled{opacity:.5;cursor:not-allowed;}
     .rem-overdue .ca-cell:first-child{color:#991B1B;font-weight:700;}
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -686,6 +690,7 @@
       <option value="">— select —</option>
     </select>
     <span id="bill-drafted-msg" style="font-size:12px;color:#991B1B;"></span>
+    <span style="flex-basis:100%;font-size:12px;color:#7F1D1D;line-height:1.5;">The portal has no Bill Drafted By recorded for this case. It is a one-time entry — once selected, this message will not appear again. It ensures drafting time and fees are allocated to the right person.</span>
   </div>
 
   <div class="doc-bar" id="doc-bar"></div>
@@ -1103,7 +1108,11 @@
             <div class="field full"><label>Opponent Party Name(s)</label><input type="text" id="op-OpponentPartyName" disabled /></div>
             <div class="field"><label>Opponent Reference</label><input type="text" id="op-Opponentreference" disabled /></div>
             <div class="field"><label>Opponent Reference 2</label><input type="text" id="op-Opponentreference2" disabled /></div>
-            <div class="field"><label>Opponent Firm</label><input type="text" id="op-opponentFirmMirror" disabled /></div>
+            <div class="field"><label>Opponent Firm</label>
+              <select id="op-opponentFirmMirror" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
+                <option value="">— loading firms… —</option>
+              </select>
+            </div>
             <div class="field"><label>Opponent Firm 2</label>
               <select id="op-OpponentFirm2" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— loading firms… —</option>
@@ -1736,24 +1745,33 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 document.querySelector('.content').addEventListener('click', e => { const b = e.target.closest('[data-goto-tab]'); if (b) document.querySelector('.tab-btn[data-tab="' + b.dataset.gotoTab + '"]').click(); });
 
 async function loadOpponentFirms2() {
-  const sel = document.getElementById('op-OpponentFirm2');
-  if (!sel) return;
+  const sel1 = document.getElementById('op-opponentFirmMirror');
+  const sel2 = document.getElementById('op-OpponentFirm2');
+  if (!sel1 && !sel2) return;
+  // Preserve any in-form (unsaved) selection across a reload, e.g. after a quick-add.
+  const prev1 = (sel1 && sel1.value) || (caseFields && caseFields['opponentFirmMirror']) || '';
+  const prev2 = (sel2 && sel2.value) || (caseFields && caseFields['OpponentFirm2Mirror']) || '';
   try {
     const resp = await fetch('/api/reflists?list=opponentfirms');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     oppFirmNamesCache = (data.value || []).map(it => (it.fields && it.fields.Title) || '').filter(Boolean);
-    sel.innerHTML = '<option value="">— select firm —</option>';
-    oppFirmNamesCache.forEach(name => {
-      const o = document.createElement('option');
-      o.value = name; o.textContent = name;
-      sel.appendChild(o);
+    [sel1, sel2].forEach(sel => {
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— select firm —</option>';
+      oppFirmNamesCache.forEach(name => {
+        const o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        sel.appendChild(o);
+      });
     });
-    if (caseFields) setSelectOp('op-OpponentFirm2', caseFields['OpponentFirm2Mirror']);
+    if (sel1) setSelectOp('op-opponentFirmMirror', prev1);
+    if (sel2) setSelectOp('op-OpponentFirm2', prev2);
   } catch (err) {
     console.warn('Opponent firms list failed to load:', err.message);
-    sel.innerHTML = '<option value="">— firm list unavailable —</option>';
-    if (caseFields && caseFields['OpponentFirm2Mirror']) setSelectOp('op-OpponentFirm2', caseFields['OpponentFirm2Mirror']);
+    [sel1, sel2].forEach(sel => { if (sel) sel.innerHTML = '<option value="">— firm list unavailable —</option>'; });
+    if (sel1 && prev1) setSelectOp('op-opponentFirmMirror', prev1);
+    if (sel2 && prev2) setSelectOp('op-OpponentFirm2', prev2);
   }
 }
 
@@ -2333,7 +2351,7 @@ function renderOpponentTab() {
   document.getElementById('op-OpponentPartyName').value  = f['OpponentPartyName']               || '';
   document.getElementById('op-Opponentreference').value  = f['Opponentreference']                || '';
   document.getElementById('op-Opponentreference2').value = f['opponentReference2']                || '';
-  document.getElementById('op-opponentFirmMirror').value = f['opponentFirmMirror']               || '';
+  setSelectOp('op-opponentFirmMirror', f['opponentFirmMirror']);
   setSelectOp('op-OpponentFirm2', f['OpponentFirm2Mirror']);
   filterCaseworkerOptions();
   document.getElementById('op-ServiceEmail').value       = f['ServiceEmail']                     || '';
@@ -2348,7 +2366,7 @@ function renderOpponentTab() {
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
   const _firm1El = document.getElementById('op-opponentFirmMirror');
   const _firm2El = document.getElementById('op-OpponentFirm2');
-  if (_firm1El && !_firm1El.dataset.cwFilterWired) { _firm1El.dataset.cwFilterWired = '1'; _firm1El.addEventListener('input', filterCaseworkerOptions); }
+  if (_firm1El && !_firm1El.dataset.cwFilterWired) { _firm1El.dataset.cwFilterWired = '1'; _firm1El.addEventListener('change', filterCaseworkerOptions); }
   if (_firm2El && !_firm2El.dataset.cwFilterWired) { _firm2El.dataset.cwFilterWired = '1'; _firm2El.addEventListener('change', filterCaseworkerOptions); }
   applyOpponentBlankWarnings();
   const _oppTab = document.getElementById('tab-opponent');
@@ -3715,6 +3733,7 @@ function renderCaTable() {
             <label class="ca-ef ca-ef-chk"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /><span>Schedule (COA)</span></label>
           </div>
           <label class="ca-ef ca-ef-wd"><span>Work Done</span><textarea class="ca-edit-wd" data-id="${id}" rows="6">${escHtml(workDone)}</textarea></label>
+          ${billed ? '' : `<div class="ca-edit-del"><button class="ca-btn-del" data-id="${id}">Delete action</button></div>`}
           <div class="ca-edit-actions"><button class="ca-btn-save ca-btn-lg" data-id="${id}">✓ Save</button><button class="ca-btn-cancel ca-btn-lg" data-id="${id}">Cancel</button></div>
         </div>
       </td>`;
@@ -3734,6 +3753,7 @@ function renderCaTable() {
   tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
+  tbody.querySelectorAll('.ca-btn-del').forEach(btn => { btn.addEventListener('click', () => deleteCaRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
   tbody.querySelectorAll('.ca-editing-row').forEach(row => {
     const _h = row.querySelector('.ca-edit-hrs'); const _r = row.querySelector('.ca-edit-rate'); const _a = row.querySelector('.ca-edit-amt');
@@ -3801,6 +3821,34 @@ async function saveCaRow(id) {
     if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; if (completedBy !== undefined) f['Completedby_x0028_text_x0029_'] = completedBy; }
     caEditingId = null; renderCaTable(); renderEmailsTable();
   } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
+}
+
+// Delete a case action. Any signed-in TMC user may delete. BILLED actions are never deletable —
+// no Delete button is rendered for them, and deleteCaRow re-checks before firing — because the
+// time is already supporting an issued invoice.
+async function deleteCaRow(id) {
+  const action = caActions.find(a => a.id === id);
+  if (!action) return;
+  const f = action.fields || {};
+  if (f['Billed_x003f_']) { alert('This action has been billed and cannot be deleted.'); return; }
+  const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+  const dateStr = fmtDate(f['field_12'] || f['field_1']);
+  const wd = (f['field_2'] || '').slice(0, 120);
+  if (!confirm('Delete this action permanently?\n\n' + dateStr + ' \u00b7 ' + fmtN(hrs, 2) + ' hrs\n' + wd + '\n\nThis cannot be undone.')) return;
+  const scope = document.querySelector('.tab-panel.active') || document;
+  const delBtn = scope.querySelector(`.ca-btn-del[data-id="${id}"]`);
+  if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Deleting...'; }
+  try {
+    const resp = await fetch('/api/caseactions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    caActions = caActions.filter(a => a.id !== id);
+    caSchedule.delete(id);
+    caEditingId = null;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Delete action'; }
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 function initAddActionPanel() {
