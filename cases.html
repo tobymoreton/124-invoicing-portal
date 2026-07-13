@@ -1103,11 +1103,10 @@ function renderRemPanel(){
 
   document.getElementById('rem-panel-count').textContent=open.length;
   const el=document.getElementById('rem-panel-list');
+  el.innerHTML='';
   if(!open.length){
     el.innerHTML='<div class="rem-empty">No open reminders \u2014 all clear!</div>';
-    return;
   }
-  el.innerHTML='';
 
   const makeRow=r=>{
     const f=r.fields||{};
@@ -1147,6 +1146,45 @@ function renderRemPanel(){
   addBand(dueToday, 'band-today',   '\ud83d\udfe2 Due today');
   addBand(thisWeek, 'band-week',    'This week');
   addBand(later,    'band-later',   'Later');
+
+  // S76: cases with NO open reminder, pinned to the bottom of the panel. Sourced from
+  // myCases minus every case ref carrying an open reminder - a case leaves this list only
+  // when a reminder is actually set on it. Row click opens the case's Reminders tab;
+  // the + Reminder button opens the Add Reminder modal with the case pre-selected.
+  const refsWithOpen=new Set(open.map(r=>r._caseRef));
+  const noRem=myCases
+    .filter(c=>!refsWithOpen.has(c.fields['Ourreference_x0028_text_x0029_']))
+    .map(c=>({f:c.fields,ref:c.fields['Ourreference_x0028_text_x0029_']||''}))
+    .sort((a,b)=>(caseDisplayName(a.f)||'').toLowerCase().localeCompare((caseDisplayName(b.f)||'').toLowerCase()));
+  if(noRem.length){
+    const head=document.createElement('div');
+    head.className='rem-band-head';
+    head.style.background='#FEF9C3';
+    head.style.color='#713F12';
+    head.textContent='No reminder set ('+noRem.length+')';
+    el.appendChild(head);
+    noRem.forEach(x=>{
+      const row=document.createElement('div');
+      row.className='rem-row';
+      row.innerHTML=
+        '<div class="rem-date">\u2014</div>'+
+        '<div class="rem-body">'+
+          '<div class="rem-event">'+escHtml(caseDisplayName(x.f)||x.ref||'(unnamed case)')+'</div>'+
+          '<div class="rem-case">'+escHtml(x.f['Firm_x0028_text_x0029_']||'')+'</div>'+
+        '</div>'+
+        '<button class="rem-add-btn" title="Add a reminder for this case" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--navy);border-radius:var(--radius-sm);background:transparent;color:var(--navy);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Reminder</button>';
+      row.querySelector('.rem-add-btn').addEventListener('click',e=>{
+        e.stopPropagation();
+        const sel=document.getElementById('rem-case-ref');
+        if(sel) sel.value=x.ref;
+        openModal('modal-reminder');
+      });
+      row.addEventListener('click',()=>{
+        if(x.ref) window.location.href='case.html?ref='+encodeURIComponent(x.ref)+'#tab-reminders';
+      });
+      el.appendChild(row);
+    });
+  }
 }
 
 // ── Show case list ─────────────────────────────────────────────────────────
