@@ -263,6 +263,14 @@
     .uc-divider{display:flex;align-items:center;gap:10px;padding:9px 20px;background:var(--grey-faint);border-top:1px solid var(--grey-light);border-bottom:1px solid var(--grey-light);}
     .uc-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
     .uc-divider span{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
+    /* Band tints (S73). Deadline = amber, IP = blue, LA = green, not-set = plain — matching the
+       IP/LA badge colours already used on the row, so the header and the badge agree at a glance. */
+    .uc-divider-b0{background:#FEF3C7;border-color:#FDE68A;}
+    .uc-divider-b0 span{color:#92400E;}
+    .uc-divider-b1{background:#DBEAFE;border-color:#BFDBFE;}
+    .uc-divider-b1 span{color:#1E40AF;}
+    .uc-divider-b2{background:#DCFCE7;border-color:#BBF7D0;}
+    .uc-divider-b2 span{color:#14532D;}
     /* Booking-in notes strip under a row of the All Open Cases table (same look as .uc-notes) */
     .tc-notes-row td{padding:0 20px 10px 20px;border-bottom:1px solid var(--grey-faint);}
     .tc-notes{padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
@@ -345,7 +353,7 @@
     </div>
     <div class="ar-panel">
       <div class="ar-head">
-        <span class="ar-title">&#128203; Unassigned Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Unassigned Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Cases with no draftsman &mdash; plus any handed back by assigning them to Danielle, which is how a case is returned to this queue. Soonest Deadline first, then most recently received. From each row you can set Inter Partes / Legal Aid, edit the deadline, or assign a draftsman.</span></button></span>
+        <span class="ar-title">&#128203; Unassigned Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Unassigned Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Cases with no draftsman &mdash; plus any handed back by assigning them to Danielle, which is how a case is returned to this queue. Grouped: any case with a Deadline first (soonest first, IP or LA alike &mdash; a deadline outranks funding type), then Inter Partes, then Legal Aid, then anything with no funding type set. Within each group, longest waiting first. From each row you can set Inter Partes / Legal Aid, edit the deadline, or assign a draftsman.</span></button></span>
         <button type="button" class="uc-notes-toggle" id="uc-notes-toggle" onclick="toggleUcNotes()" aria-pressed="false">Hide notes</button>
         <span class="ar-count" id="uc-count">&mdash;</span>
       </div>
@@ -1180,19 +1188,37 @@ function renderUnassignedCases(){
   const listEl=document.getElementById('uc-list');
   applyUcNotes();
   const unassigned=allCases.filter(c=>isUnallocated(c.fields));
-  // Sort: cases WITH a Deadline first, soonest deadline first; then everything else,
-  // most recently received first.
+  // ── Banding (S73) ───────────────────────────────────────────────────────────
+  // The queue is split into four bands, in this order:
+  //   0  DEADLINE      — ANY case carrying a Deadline, IP or LA alike. A deadline is an
+  //                      absolute priority and outranks funding type entirely.
+  //   1  INTER PARTES  — no deadline. ('Both' sits here: it has an IP element.)
+  //   2  LEGAL AID     — no deadline.
+  //   3  NOT SET       — no deadline, no funding type. Needs triage; the row's IP/LA
+  //                      dropdown sets it and the case re-bands on the next render.
+  // Within band 0: soonest Deadline first. Within 1–3: OLDEST DateReceived first — this
+  // is an allocation QUEUE, the longest-waiting case must surface, not sink. A blank
+  // DateReceived sorts LAST (an empty string wins an ascending compare and would
+  // otherwise jump undated cases straight to the top).
+  const BAND_LABEL=[
+    'Deadline \u2014 absolute priority, soonest first',
+    'Inter Partes \u2014 no deadline, longest waiting first',
+    'Legal Aid \u2014 no deadline, longest waiting first',
+    'Funding not set \u2014 set IP / LA on the row'
+  ];
+  function ucBand(f){
+    if((f['Deadline']||'').slice(0,10)) return 0;
+    const v=(f['InterPartesorLegalAid']||'').trim();
+    if(v==='Inter Partes'||v==='Both') return 1;
+    if(v==='Legal Aid') return 2;
+    return 3;
+  }
   unassigned.sort((a,b)=>{
-    const da=(a.fields['Deadline']||'').slice(0,10);
-    const db=(b.fields['Deadline']||'').slice(0,10);
-    if(da&&!db) return -1;                     // any deadline sorts above no deadline
-    if(!da&&db) return 1;
-    if(da&&db) return da.localeCompare(db);    // both dated: soonest Deadline first
-    // No deadline: OLDEST received first. This is an allocation QUEUE - the case that has been
-    // waiting longest must surface at the top, not sink to the bottom. (S64's handover claimed this
-    // was already the behaviour; it was not - the code sorted newest-first until S70.)
-    // A blank DateReceived is sorted LAST: an empty string wins an ascending compare and would
-    // otherwise jump undated cases straight to the top of the queue.
+    const ba=ucBand(a.fields), bb=ucBand(b.fields);
+    if(ba!==bb) return ba-bb;
+    if(ba===0){
+      return (a.fields['Deadline']||'').slice(0,10).localeCompare((b.fields['Deadline']||'').slice(0,10));
+    }
     const ra=(a.fields['DateReceived']||''); const rb=(b.fields['DateReceived']||'');
     if(ra&&!rb) return -1;
     if(!ra&&rb) return 1;
@@ -1202,9 +1228,9 @@ function renderUnassignedCases(){
   updateHeaderStats();
   if(!unassigned.length){ listEl.innerHTML='<div class="ar-empty">No unassigned cases \u2014 all allocated!</div>'; return; }
   listEl.innerHTML='';
-  // One divider, inserted at the join between the two halves of the queue. Not shown when every case
-  // has a deadline, nor when none does (listEl is still empty at the first no-deadline row).
-  let dividerDone=false;
+  // A header is drawn at the top of each band that actually has cases in it. Bands with no
+  // cases produce no header — an empty "Legal Aid" heading would read as a bug.
+  let lastBand=-1;
   unassigned.forEach(c=>{
     const f=c.fields;
     const ref=f['Ourreference_x0028_text_x0029_']||'';
@@ -1235,12 +1261,13 @@ function renderUnassignedCases(){
         '</div>'+
         '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" style="display:none;" />'+
       '</div>';
-    if(!deadlineRaw && !dividerDone && listEl.children.length){
+    const band=ucBand(f);
+    if(band!==lastBand){
       const dv=document.createElement('div');
-      dv.className='uc-divider';
-      dv.innerHTML='<span>No deadline \u2014 standard turnaround, longest waiting first</span>';
+      dv.className='uc-divider uc-divider-b'+band;
+      dv.innerHTML='<span>'+BAND_LABEL[band]+'</span>';
       listEl.appendChild(dv);
-      dividerDone=true;
+      lastBand=band;
     }
     const row=document.createElement('div');
     row.className='ar-row'+(notes?' uc-row':'');
