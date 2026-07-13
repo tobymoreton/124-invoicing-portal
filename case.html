@@ -765,13 +765,14 @@
           </dl>
         </div>
         <div class="card">
-          <div class="card-head"><span class="card-title">Key Dates</span><button type="button" class="info-btn" aria-label="About Key Dates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The case milestone dates: served informally and formally, Part 8 issued, PODs due and received, and date settled. Edit via the tab's Edit button.</span></button></div>
+          <div class="card-head"><span class="card-title">Key Dates</span><button type="button" class="info-btn" aria-label="About Key Dates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The case milestone dates: served informally and formally, Part 8 issued, PODs due and received, authority to assess, and date settled. Edit via the tab's Edit button.</span></button></div>
           <dl class="read-grid">
             <div class="read-row"><dt>📧 Served Informal</dt><dd class="ov-editable" id="ov-servedinf">—</dd></div>
             <div class="read-row"><dt>🎱 Part 8 Issued</dt><dd class="ov-editable" id="ov-part8">—</dd></div>
             <div class="read-row"><dt>🤵 Served Formal</dt><dd class="ov-editable" id="ov-servedfml">—</dd></div>
             <div class="read-row"><dt>📅 PODs Due</dt><dd class="ov-editable" id="ov-poddue">—</dd></div>
             <div class="read-row"><dt>🎯 PODs Received</dt><dd class="ov-editable" id="ov-podrec">—</dd></div>
+            <div class="read-row"><dt>⚖️ Authority to Assess</dt><dd class="ov-editable" id="ov-authassess">—</dd></div>
             <div class="read-row"><dt>🤝 Date Settled</dt><dd class="ov-editable" id="ov-settled">—</dd></div>
           </dl>
         </div>
@@ -2702,7 +2703,7 @@ function renderOverviewTab() {
   const f = caseFields;
   setText('ov-assigned', f['assignedToTextValue'] || '—'); setText('ov-coassigned', f['coAssignedMirror'] || '—'); setText('ov-status', f['StatusMirror'] || '—');
   setText('ov-servedinf', fmtDate(f['DateServedInformally0'])); setText('ov-part8', fmtDate(f['DatePart8Issued'])); setText('ov-servedfml', fmtDate(f['DateServedFormally0']));
-  setText('ov-poddue', fmtDate(f['PODS_x0020_Due'])); setText('ov-podrec', fmtDate(f['PODS_x0020_Received'])); setText('ov-settled', fmtDate(f['DateSettled0']));
+  setText('ov-poddue', fmtDate(f['PODS_x0020_Due'])); setText('ov-podrec', fmtDate(f['PODS_x0020_Received'])); setText('ov-authassess', fmtDate(f['DateofAuthoritytoAssess'])); setText('ov-settled', fmtDate(f['DateSettled0']));
   setText('ov-currentposition', stripHtml(f['Current_x0020_Position']) || '—'); setText('ov-flags', stripHtml(f['Flags']) || '—');
   setText('ov-lastaction', f['LastAction'] || '—'); setText('ov-lastreminder', stripHtml(f['Last_x0020_Reminder']) || '—');
   const multi = !!(f['Andothers_x003f_']);
@@ -2782,7 +2783,7 @@ function ovSetEditMode() {
   coSel.children[0].textContent = '— none —'; if (!f['coAssignedMirror']) coSel.value = ''; coEl.appendChild(coSel);
   const statusEl = document.getElementById('ov-status'); statusEl.innerHTML = '';
   statusEl.appendChild(makeSelect('ov-status', STATUS_VALUES, f['StatusMirror']));
-  [['ov-servedinf', f['DateServedInformally0']],['ov-part8', f['DatePart8Issued']],['ov-servedfml', f['DateServedFormally0']],['ov-poddue', f['PODS_x0020_Due']],['ov-podrec', f['PODS_x0020_Received']],['ov-settled', f['DateSettled0']]].forEach(([elId, isoVal]) => {
+  [['ov-servedinf', f['DateServedInformally0']],['ov-part8', f['DatePart8Issued']],['ov-servedfml', f['DateServedFormally0']],['ov-poddue', f['PODS_x0020_Due']],['ov-podrec', f['PODS_x0020_Received']],['ov-authassess', f['DateofAuthoritytoAssess']],['ov-settled', f['DateSettled0']]].forEach(([elId, isoVal]) => {
     const dd = document.getElementById(elId); dd.innerHTML = ''; dd.appendChild(makeDateInput(elId, isoVal));
   });
 }
@@ -2804,7 +2805,7 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
   const assignedVal = document.getElementById('ov-assigned-input')?.value  || null;
   const coVal       = document.getElementById('ov-coassigned-input')?.value || null;
   const statusVal   = document.getElementById('ov-status-input')?.value     || null;
-  const dateFields = [['ov-servedinf-input','DateServedInformally0'],['ov-part8-input','DatePart8Issued'],['ov-servedfml-input','DateServedFormally0'],['ov-poddue-input','PODS_x0020_Due'],['ov-podrec-input','PODS_x0020_Received'],['ov-settled-input','DateSettled0']];
+  const dateFields = [['ov-servedinf-input','DateServedInformally0'],['ov-part8-input','DatePart8Issued'],['ov-servedfml-input','DateServedFormally0'],['ov-poddue-input','PODS_x0020_Due'],['ov-podrec-input','PODS_x0020_Received'],['ov-authassess-input','DateofAuthoritytoAssess'],['ov-settled-input','DateSettled0']];
   const fields = {};
   if (assignedVal) { fields.assignedToTextValue = assignedVal; fields.AssignedToMirror = assignedVal; }
   if (coVal) fields.coAssignedMirror = coVal;
