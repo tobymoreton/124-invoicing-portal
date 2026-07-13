@@ -1890,7 +1890,7 @@ function readCache(){
 // ── Full data fetch ────────────────────────────────────────────────────────
 async function fetchAllData(){
   const [casesResp, wipResp, invResp] = await Promise.all([
-    fetch('/api/cases?preload=1'),
+    fetch('/api/cases?preload=1&_='+Date.now()),
     fetch('/api/wip').catch(()=>null),
     fetch('/api/invoices').catch(()=>null),
   ]);

@@ -1282,14 +1282,27 @@ async function assignCase(caseId,ref,email,rowEl,selEl){
   selEl.disabled=true;
   rowEl.style.opacity='0.45';
   try{
+    // Assigning a case must also ADVANCE ITS STAGE. Before S70 the assign path wrote only
+    // assignedToTextValue, so a newly-allocated case sat at "Pending assignment" forever and
+    // S69's backfill of the 10 stragglers was a one-off cleanup that the next assignment undid.
+    // Rules: only promote a case that is blank or still at "Pending assignment" - never clobber a
+    // real stage (a case can be reassigned mid-billing). Assigning to Danielle is the UNASSIGN
+    // bucket (S69) - a hand-back, so it stays at "Pending assignment".
+    const caseObjPre=allCases.find(c=>c.id===caseId);
+    const curStage=((caseObjPre&&caseObjPre.fields['StatusMirror'])||'').trim();
+    const toDanielle=email.toLowerCase()==='danielle@tmclegal.co.uk';
+    const promote = !toDanielle && (curStage===''||curStage.toLowerCase()==='pending assignment');
+    const newStage = promote ? 'Assigned - Stage Pending' : null;
+    const fields={assignedToTextValue:email};
+    if(newStage){ fields.Status=newStage; fields.StatusMirror=newStage; }
     const r=await fetch('/api/caseupdate',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({itemId:caseId,fields:{assignedToTextValue:email}}),
+      body:JSON.stringify({itemId:caseId,fields}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,80));
     // Update in-memory so All Open Cases table reflects change
     const caseObj=allCases.find(c=>c.id===caseId);
-    if(caseObj) caseObj.fields['assignedToTextValue']=email;
+    if(caseObj){ caseObj.fields['assignedToTextValue']=email; if(newStage) caseObj.fields['StatusMirror']=newStage; }
     // Fade row out, then remove
     rowEl.style.transition='opacity 0.35s ease';
     rowEl.style.opacity='0';
