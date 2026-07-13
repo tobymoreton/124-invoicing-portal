@@ -252,6 +252,11 @@
     .ar-row.uc-row{flex-wrap:wrap;}
     .uc-notes{flex-basis:100%;width:100%;margin-top:6px;padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
     .uc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
+    /* Booking-in notes toggle. The class sits on the #uc-list CONTAINER, not on the rows, so the
+       choice survives renderUnassignedCases() rebuilding the rows on every refresh. */
+    .uc-list-nonotes .uc-notes{display:none;}
+    .uc-notes-toggle{margin-left:auto;margin-right:8px;padding:3px 9px;border:1px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);font-family:'IBM Plex Sans',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .18s ease;}
+    .uc-notes-toggle:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.45);color:#fff;}
     /* Divider between the deadline-bearing cases and the standard-turnaround tail. The two halves of
        the queue are sorted on different keys (soonest Deadline vs oldest DateReceived), so without a
        break the ordering reads as though it has gone wrong at the join. */
@@ -340,6 +345,7 @@
     <div class="ar-panel">
       <div class="ar-head">
         <span class="ar-title">&#128203; Unassigned Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Unassigned Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Cases with no draftsman &mdash; plus any handed back by assigning them to Danielle, which is how a case is returned to this queue. Soonest Deadline first, then most recently received. From each row you can set Inter Partes / Legal Aid, edit the deadline, or assign a draftsman.</span></button></span>
+        <button type="button" class="uc-notes-toggle" id="uc-notes-toggle" onclick="toggleUcNotes()" aria-pressed="false">Hide notes</button>
         <span class="ar-count" id="uc-count">&mdash;</span>
       </div>
       <div class="ar-list" id="uc-list">
@@ -1152,8 +1158,26 @@ function isUnallocated(f){
   if(!v) return true;
   return v==='danielle@tmclegal.co.uk' || v.startsWith('danielle');
 }
+// ── Booking-in notes toggle (Unassigned Cases) ─────────────────────────
+// Display-only. Never writes to SharePoint. The class goes on the #uc-list CONTAINER rather than
+// on each row, so it keeps working after renderUnassignedCases() replaces the rows.
+const UC_NOTES_KEY='p124.ucNotesHidden';
+function ucNotesHidden(){ try{ return localStorage.getItem(UC_NOTES_KEY)==='1'; }catch(e){ return false; } }
+function applyUcNotes(){
+  const list=document.getElementById('uc-list');
+  const btn=document.getElementById('uc-notes-toggle');
+  if(!list) return;
+  const hidden=ucNotesHidden();
+  list.classList.toggle('uc-list-nonotes',hidden);
+  if(btn){ btn.textContent=hidden?'Show notes':'Hide notes'; btn.setAttribute('aria-pressed',hidden?'true':'false'); }
+}
+function toggleUcNotes(){
+  try{ localStorage.setItem(UC_NOTES_KEY, ucNotesHidden()?'0':'1'); }catch(e){}
+  applyUcNotes();
+}
 function renderUnassignedCases(){
   const listEl=document.getElementById('uc-list');
+  applyUcNotes();
   const unassigned=allCases.filter(c=>isUnallocated(c.fields));
   // Sort: cases WITH a Deadline first, soonest deadline first; then everything else,
   // most recently received first.
