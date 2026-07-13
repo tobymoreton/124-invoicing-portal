@@ -114,12 +114,17 @@ module.exports = async function (context, req) {
     // offer firms that actually exist in the list.
     const firms = Array.from(new Set(shaped.map(r => r.firm).filter(Boolean))).sort();
 
+    // Draftsman filter options — only people who actually have a matter ON THIS REPORT, so the
+    // dropdown can never offer a name that yields an empty table.
+    const assignees = Array.from(new Set(rows.map(r => r.assignee).filter(Boolean))).sort();
+
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       body: JSON.stringify({
         firm,
         firms,
+        assignees,
         generated: new Date().toISOString(),
         count: rows.length,
         value: rows,
@@ -137,6 +142,31 @@ module.exports = async function (context, req) {
 //
 // It lives in code and not in the page (and emphatically not in a prompt) because a filter that
 // lives anywhere else gets silently re-decided every time someone runs the report.
+//
+// NOTE ON THE 'FILEMAKER MIGRATION COHORT' — the build prompt called for a TEMPORARY extra rule
+// excluding rows with DateClosed0 in November 2025, on the basis that the FileMaker import left
+// ~1,611 historic matters carrying Status = 'Pending assignment' (the default, never set by a
+// human), which would therefore stream onto a client-facing report.
+//
+// THAT PREMISE IS FALSE. Measured directly against SharePoint, 2026-07-13 (PA124.11, report-only):
+//
+//     Cases list total ........................................... 2,034
+//     rows with DateClosed0 in Nov 2025 .......................... 1,635
+//     ... of those, rows with Status = 'Pending assignment' ....       0
+//     distinct statuses on those 1,635 rows ...... 'Closed' and
+//                                                  'In negotiation (served formally)' — nothing else
+//     rows with DateClosed0 in Nov 2025 and NOT Closed ..........       2
+//
+// The cohort is ALREADY Status = 'Closed', so rule 2 below removes it without any help. The
+// exclusion was dead code where it was meant to matter (HJA: 29 rows with it, 29 rows without it)
+// and ACTIVELY HARMFUL everywhere else — the only two rows it removed were live Bhatt Murphy
+// matters, both Inter Partes, both in negotiation, worth 46,423.50 between them (items 68605 and
+// 68636). Hiding a live matter from a client report is the same class of bug as the phantom
+// matters this report was built to eliminate, just pointing the other way.
+//
+// So it is gone, and DateClosed0 plays NO part in this filter. Toby's rule, 2026-07-13: "Date
+// Closed is kinda irrelevant in every scenario. Status = Closed is the only definer." Do not
+// reintroduce a DateClosed0 test here without measuring against SharePoint first.
 // ---------------------------------------------------------------------------
 function qualifies(r, firm) {
   // 1. Instructing firm
@@ -167,40 +197,7 @@ function qualifies(r, firm) {
   // 6. Settled matters (belt and braces alongside the Status test).
   if (r.dateSettled) return false;
 
-  // ---------------------------------------------------------------------------
-  // 7. TEMPORARY — THE FILEMAKER MIGRATION COHORT.
-  //
-  // REMOVE THIS ONCE SHAREPOINT Status IS CORRECTED ON THE IMPORT COHORT.
-  //
-  // In November 2025 all cases were migrated from FileMaker into SharePoint. The import left
-  // 1,611 matters (229 of them HJA) carrying Status = 'Pending assignment' — the DEFAULT value,
-  // never set by a human. It is a lie: these are historic, mostly-finished matters, and 223 of
-  // the 229 HJA ones have no case history at all. They are NOT marked Closed, so the business
-  // rule above lets every one of them straight onto a client-facing report:
-  //
-  //     business rule alone .......... 276 HJA rows   WRONG
-  //     ... of which FileMaker ghosts  229
-  //     ... genuine live matters ....... 47            CORRECT
-  //
-  // The only reliable marker today is DateClosed0 falling in November 2025 (mostly 2025-11-22,
-  // the migration date; a handful on 11-25 and 11-27).
-  //
-  // This is the ONLY legitimate use of DateClosed0 anywhere in this report. Toby's rule,
-  // 2026-07-13: "Date Closed is kinda irrelevant in every scenario. Status = Closed is the only
-  // definer." Do not use DateClosed0 as a general is-this-closed test.
-  //
-  // THE PERMANENT FIX IS A DATA JOB, NOT A CODE JOB: set Status = 'Closed' on the migration
-  // cohort in SharePoint. Once that is done, delete this block and DateClosed leaves the logic
-  // entirely.
-  // ---------------------------------------------------------------------------
-  if (isFileMakerMigrationGhost(r)) return false;
-
   return true;
-}
-
-function isFileMakerMigrationGhost(r) {
-  const dc = (r.dateClosed || '').slice(0, 7); // 'YYYY-MM'
-  return dc === '2025-11';
 }
 
 // ---------------------------------------------------------------------------
@@ -223,14 +220,23 @@ function shape(item) {
     // AssignedTo is a Person field -> null via Graph app-only. The mirrors are the only route.
     // Frequently blank. Show as unassigned; never hide the row for it.
     assignedTo:    str(f.AssignedToMirror) || str(f.assignedToTextValue),
+    assignee:      canonicalAssignee(str(f.AssignedToMirror) || str(f.assignedToTextValue)),
     // Informal service if present, otherwise formal.
     dateServed:    str(f.DateServedInformally0) || str(f.DateServedFormally0),
     // AUTHORITATIVE bill total. Mirror of the SP calculated column. Never recomputed.
     totalIPCosts:  num(f.TotalIPCostsMirror),
     counselFees:   num(f.CounselsFeesClaimed),
     disbursements: num(f.DisbursementsClaimed),
+    // Held individually as well as summed: the report column is a TOTAL, but there is no single SP
+    // field behind it, so an inline edit has to write back to the three real columns.
+    interim1:      num(f.InterimPayment1),
+    interim2:      num(f.InterimPayment2),
+    interim3:      num(f.InterimPayment3),
     interimTotal:  interim,
     lastOffer:     num(f.PayingPartysLastOffer),
+    // Which of the two service-date columns the displayed date actually came from, so an inline
+    // edit writes back to the right one instead of guessing. Informal wins when populated.
+    dateServedField: str(f.DateServedInformally0) ? 'DateServedInformally0' : 'DateServedFormally0',
     currentPosition: stripHtml(f['Current_x0020_Position']),
     lastAction:      stripHtml(f.LastAction),
     // filter-only
@@ -239,6 +245,29 @@ function shape(item) {
     dateClosed:  str(f.DateClosed0),
     dateSettled: str(f.DateSettled0),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Assignee normalisation
+//
+// assignedToTextValue / AssignedToMirror are PA-maintained mirrors of a Person column and the SAME
+// person is stored three different ways across the list: email (tom@tmclegal.co.uk), display name
+// (Tom Winyard) and first name only (Tom). Normalise on READ — do NOT clean the data (S66: it is a
+// PA-maintained mirror, the flow would write it straight back, and other consumers are unknown).
+//
+// Matching is by EXACT token, never substring: 'daniel' is a substring of 'danielle' and Daniel is
+// a draftsman while Danielle is the hand-back bucket. A substring match would merge the two.
+const ROSTER = {
+  toby: 'Toby', tom: 'Tom', tracy: 'Tracy', joanna: 'Joanna', kelly: 'Kelly',
+  julie: 'Julie', daniel: 'Daniel', danielle: 'Danielle', lesley: 'Lesley', david: 'David',
+};
+
+function canonicalAssignee(v) {
+  const s = str(v).toLowerCase();
+  if (!s) return '';
+  // email -> local part; otherwise the first word of a display name, or the bare first name
+  const token = s.indexOf('@') !== -1 ? s.split('@')[0] : s.split(/\s+/)[0];
+  return ROSTER[token] || '';   // unknown token -> blank rather than a guess
 }
 
 // SP Choice columns come back from Graph as a plain string, but be tolerant of the
