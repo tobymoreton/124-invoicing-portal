@@ -641,6 +641,10 @@
           <select id="edit-ca-brief"></select>
         </div>
         <div class="dm-field">
+          <label>Completed By</label>
+          <select id="edit-ca-by"></select>
+        </div>
+        <div class="dm-field">
           <label>Date</label>
           <input type="date" id="edit-ca-date" />
         </div>
@@ -1282,27 +1286,48 @@ function openStatusEdit(td){
 }
 
 // ── Load case actions ───────────────────────────────────────────────
+// S76: a FAILED fetch and a genuinely empty list used to be indistinguishable - the catch
+// set allActions=[] and the panel rendered "No actions recorded." On 13 Jul the bulk call
+// began timing out at the gateway (no http status at all, 143 s) and the dashboard reported
+// 0 actions against 3,677 rows sitting safely in SharePoint. Failure is now recorded in
+// actionsError, retried once, surfaced as an error, and NEVER rendered as emptiness; any
+// rows already on screen (from cache or an earlier load) are kept rather than wiped.
+let actionsError=null;
+async function fetchActionsBulk(){
+  let lastErr=null;
+  for(let attempt=0;attempt<2;attempt++){
+    if(attempt) await new Promise(res=>setTimeout(res,2000));
+    try{
+      const r=await fetch('/api/caseactions?all=1&_='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data=await r.json();
+      return Array.isArray(data)?data:(data.value||[]);
+    }catch(err){ lastErr=err; }
+  }
+  throw lastErr||new Error('Request failed');
+}
 async function loadActions(cases){
   const refSet=new Set(cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean));
-  if(!refSet.size){allActions=[];return;}
+  if(!refSet.size){allActions=[];actionsError=null;return;}
   const nameByRef={};
   cases.forEach(c=>{
     const r=c.fields['Ourreference_x0028_text_x0029_'];
     if(r) nameByRef[r]=caseDisplayName(c.fields)||r;
   });
+  let rows;
   try{
-    const r=await fetch('/api/caseactions?all=1&_='+Date.now(),{cache:'no-store'});
-    const data=r.ok?await r.json():{value:[]};
-    const rows=Array.isArray(data)?data:(data.value||[]);
-    allActions=rows
-      .filter(a=>refSet.has((a.fields?.['field_16']||'').toString().trim()))
-      .map(a=>{
-        const ref=(a.fields?.['field_16']||'').toString().trim();
-        return {...a,_caseRef:ref,_caseName:nameByRef[ref]||ref};
-      });
-  }catch{
-    allActions=[];
+    rows=await fetchActionsBulk();
+    actionsError=null;
+  }catch(err){
+    actionsError=(err&&err.message)||'Request failed';
+    return; // keep whatever is already loaded - do not blank the panel
   }
+  allActions=rows
+    .filter(a=>refSet.has((a.fields?.['field_16']||'').toString().trim()))
+    .map(a=>{
+      const ref=(a.fields?.['field_16']||'').toString().trim();
+      return {...a,_caseRef:ref,_caseName:nameByRef[ref]||ref};
+    });
   allActions.sort((a,b)=>{
     const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
     const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
@@ -1329,6 +1354,21 @@ const CA_PAGE_SIZE=40;
 
 function renderActionsPanel(){
   const el=document.getElementById('ca-panel-list');
+  if(actionsError&&!allActions.length){
+    document.getElementById('ca-panel-count').textContent='!';
+    el.innerHTML='<div class="ca-panel-empty" style="color:var(--red);">'
+      +'<div style="font-weight:700;margin-bottom:6px;">Couldn\u2019t load actions</div>'
+      +'<div style="font-size:12px;color:var(--grey-mid);margin-bottom:12px;">'+escHtml(actionsError)
+      +' \u2014 this is a load failure, not an empty list. Nothing has been deleted.</div>'
+      +'<button type="button" id="ca-retry" class="btn-dash-action">Retry</button></div>';
+    const rb=document.getElementById('ca-retry');
+    if(rb) rb.addEventListener('click',async()=>{
+      rb.disabled=true; rb.textContent='Retrying\u2026';
+      await loadActions(myCases);
+      renderActionsPanel(); renderStats();
+    });
+    return;
+  }
   if(!allActions.length){
     document.getElementById('ca-panel-count').textContent='0';
     el.innerHTML='<div class="ca-panel-empty">No actions recorded.</div>';
@@ -1402,9 +1442,28 @@ function openEditActionModal(a){
   document.getElementById('edit-ca-msg').textContent='';
   const briefSel=document.getElementById('edit-ca-brief');
   briefSel.innerHTML=BRIEF_OPTIONS.map(o=>'<option value="'+escHtml(o)+'"'+(o===brief?' selected':'')+'>'+escHtml(o)+'</option>').join('');
+  // Completed By. Same builder as case.html: an unknown or legacy value is kept verbatim as a
+  // selected option, so opening an action someone else recorded and saving it can never silently
+  // re-attribute the work to whoever happens to be looking at it.
+  const by=(a.fields?.['Completedby_x0028_text_x0029_']||a.fields?.['field_18']||'').trim();
+  document.getElementById('edit-ca-by').innerHTML=caCompletedByOptions(by);
   const link=document.getElementById('edit-ca-open-link');
   link.href='case.html?ref='+encodeURIComponent(a._caseRef)+'&action='+encodeURIComponent(a.id)+'#tab-actions';
   openModal('modal-edit-action');
+}
+
+function caCompletedByOptions(selected){
+  const names=['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby','Lesley'];
+  const sel=(selected||'').trim();
+  const known=names.some(n=>n.toLowerCase()===sel.toLowerCase());
+  const opts=[];
+  if(!sel) opts.push('<option value="" selected>\u2014 not set \u2014</option>');
+  if(sel&&!known) opts.push('<option value="'+escHtml(sel)+'" selected>'+escHtml(sel)+'</option>');
+  names.forEach(n=>{
+    const isSel=known&&n.toLowerCase()===sel.toLowerCase();
+    opts.push('<option value="'+escHtml(n)+'"'+(isSel?' selected':'')+'>'+escHtml(n)+'</option>');
+  });
+  return opts.join('');
 }
 
 async function saveEditAction(){
@@ -1419,17 +1478,19 @@ async function saveEditAction(){
   const brief=document.getElementById('edit-ca-brief').value;
   const date=document.getElementById('edit-ca-date').value;
   const billable=document.getElementById('edit-ca-billable').checked;
+  const completedBy=document.getElementById('edit-ca-by').value;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/caseactions',{
       method:'PATCH',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({itemId:editingAction.id,workDone:wd,timeSpent:hrs,rate,brief,billable,
+      body:JSON.stringify({itemId:editingAction.id,workDone:wd,timeSpent:hrs,rate,brief,billable,completedBy,
         ...(date?{dateWorkDone:date+'T00:00:00Z'}:{})}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const f=editingAction.fields=editingAction.fields||{};
     f['field_2']=wd; f['field_3']=hrs; f['TimeSpentMirror']=hrs;
     f['field_6']=rate; f['field_9']=brief; f['Billable_x003f_']=billable;
+    f['Completedby_x0028_text_x0029_']=completedBy;
     if(date) f['field_12']=date+'T00:00:00Z';
     renderActionsPanel();
     msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
