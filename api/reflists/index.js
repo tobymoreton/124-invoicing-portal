@@ -3,12 +3,12 @@ const { URL } = require('url');
 
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
-// Draftsmen must be able to ADD case-related reference data (opponent firms, caseworkers,
-// fee earners, courts) without waiting on management — Toby's call, S73, after Tracy was
-// blocked mid-case. CREATE is therefore open to any authenticated TMC user.
-// EDIT and DELETE stay restricted: amending or removing an EXISTING record silently
-// rewrites data other cases already point at. Adding a new one cannot.
-const EDIT_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
+// Draftsmen must be able to ADD and EDIT case-related reference data (opponent firms,
+// caseworkers, fee earners, courts, client firms) without waiting on management — Toby's
+// call, S73, after Tracy was blocked mid-case. CREATE and EDIT are open to any
+// authenticated TMC user. DELETE stays restricted: a deleted reference record is
+// unrecoverable from the portal and orphans every case already pointing at it.
+const DELETE_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
 const LISTS = {
   feeearners:    '750616ac-5c2e-4a3c-91d9-b0e6cad1e6e9',
   courts:        'e867d355-7eb4-40c7-a790-ee1c591a1361',
@@ -157,10 +157,10 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // POST (create) is open to all TMC staff — gated only by the domain check above.
-    // PATCH and DELETE mutate records other cases already reference: management only.
-    if ((req.method === 'PATCH' || req.method === 'DELETE') && !EDIT_EMAILS.includes(callerEmail)) {
-      context.res = { status: 403, body: 'Edit and delete are restricted to Toby, Danielle and Lesley. You can still add new entries.' };
+    // POST (create) and PATCH (edit) are open to all TMC staff — gated only by the domain
+    // check above. DELETE is irreversible and orphans referencing cases: management only.
+    if (req.method === 'DELETE' && !DELETE_EMAILS.includes(callerEmail)) {
+      context.res = { status: 403, body: 'Deleting a reference record is restricted to Toby, Danielle and Lesley. You can still add and edit entries.' };
       return;
     }
 
@@ -186,7 +186,7 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // DELETE: permanently remove an item (restricted to EDIT_EMAILS via guard above)
+    // DELETE: permanently remove an item (restricted to DELETE_EMAILS via guard above)
     if (req.method === 'DELETE') {
       const itemId = req.query.id;
       if (!itemId) { context.res = { status: 400, body: 'id query param required for DELETE' }; return; }
