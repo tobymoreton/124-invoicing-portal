@@ -294,8 +294,12 @@
 
 <script>
 function p(key, fallback) {
+  // URLSearchParams.get() ALREADY decodes. A second decodeURIComponent() throws
+  // URIError on any value holding a literal '%' (common in Notes), and because this
+  // runs in the top-level const block it killed the whole script - every field on the
+  // sheet rendered as an em-dash while the case record was perfectly populated. S74.
   const v = new URLSearchParams(window.location.search).get(key);
-  return (v !== null && v !== '') ? decodeURIComponent(v) : (fallback || '');
+  return (v !== null && v !== '') ? v : (fallback || '');
 }
 
 function fmtDate(iso) {
