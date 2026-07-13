@@ -395,7 +395,7 @@
   <div id="cases-section" style="display:none;">
     <div class="section-head">
       <div>
-        <div class="section-title">All Open Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About All Open Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Every open case in the firm. Closed and Settled are excluded until you press Show Closed, which loads them on demand. Search by case name, reference, firm or draftsman, and filter by stage. Booking-in notes appear under a row where they exist.</span></button></div>
+        <div class="section-title">All Open Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About All Open Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Every open case in the firm. Closed and Settled are excluded until you press Show Closed, which loads them on demand. Search by case name, our reference, client reference, firm or draftsman, and filter by stage. Booking-in notes appear under a row where they exist.</span></button></div>
         <div class="section-meta" id="cases-meta"></div>
       </div>
       <div class="filter-bar">
@@ -432,6 +432,7 @@
             <tr>
               <th>Case</th>
               <th>Client</th>
+              <th>Client Ref</th>
               <th>Draftsman</th>
               <th>Stage</th>
               <th>Task</th>
@@ -962,8 +963,9 @@ function renderCases(q){
     const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
     const firm=(c.fields['Firm_x0028_text_x0029_']||'').toLowerCase();
     const fe=(c.fields['assignedToTextValue']||'').toLowerCase();
+    const cref=(c.fields['ClientCaseReference']||'').toLowerCase();
     const ql=q.toLowerCase();
-    return name.includes(ql)||ref.includes(ql)||firm.includes(ql)||fe.includes(ql);
+    return name.includes(ql)||ref.includes(ql)||firm.includes(ql)||fe.includes(ql)||cref.includes(ql);
   }):base;
 
   document.getElementById('cases-meta').textContent=filtered.length+' case'+(filtered.length!==1?'s':'')+(q?' matching "'+q+'"':'');
@@ -974,6 +976,7 @@ function renderCases(q){
     const ref=f['Ourreference_x0028_text_x0029_']||'';
     const name=caseDisplayName(f);
     const firm=f['Firm_x0028_text_x0029_']||'\u2014';
+    const clientRef=f['ClientCaseReference']||'\u2014';
     const assignedRaw=f['assignedToTextValue']||'';
     const assigned=assignedRaw?normalizeDraftsmanName(assignedRaw):'\u2014';
     const status=f['StatusMirror']||(!assignedRaw?'Pending assignment':'\u2014');
@@ -985,6 +988,7 @@ function renderCases(q){
     tr.innerHTML=
       '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
       '<td><span class="td-muted">'+escHtml(firm)+'</span></td>'+
+      '<td><span class="td-muted">'+escHtml(clientRef)+'</span></td>'+
       '<td><span class="td-muted">'+escHtml(assigned)+'</span></td>'+
       '<td><span class="status-chip '+statusClass(status)+'">'+escHtml(status)+'</span></td>'+
       '<td>'+(task?'<span class="task-chip">'+escHtml(task)+'</span>':'\u2014')+'</td>'+
@@ -1011,7 +1015,7 @@ function renderCases(q){
     if(notes){
       const ntr=document.createElement('tr');
       ntr.className='tc-notes-row';
-      ntr.innerHTML='<td colspan="7"><div class="tc-notes"><span class="tc-notes-label">Booking-in notes</span>'+escHtml(notes)+'</div></td>';
+      ntr.innerHTML='<td colspan="8"><div class="tc-notes"><span class="tc-notes-label">Booking-in notes</span>'+escHtml(notes)+'</div></td>';
       tbody.appendChild(ntr);
     }
   });
