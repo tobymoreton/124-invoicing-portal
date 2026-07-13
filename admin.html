@@ -106,6 +106,20 @@
     }
     .qa-btn.primary-alt:hover{border-color:var(--navy);box-shadow:0 2px 10px rgba(0,27,68,.12);}
 
+    /* Info tooltips - ported from cases.html (S70). admin.html previously had none at all. */
+    .info-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:none;background:none;cursor:pointer;color:var(--gold);border-radius:50%;position:relative;flex-shrink:0;vertical-align:middle;transition:color .15s ease,background .15s ease;}
+    .info-btn:hover,.info-btn:focus-visible{color:var(--navy);background:var(--gold-pale);outline:none;}
+    .info-btn svg{width:15px;height:15px;display:block;}
+    .ds-panel .info-btn,.section-head .info-btn{color:var(--grey-mid);}
+    .info-tip{position:absolute;z-index:300;top:calc(100% + 8px);left:0;width:260px;max-width:78vw;background:var(--navy);color:var(--cream);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;line-height:1.55;letter-spacing:normal;text-transform:none;text-align:left;padding:10px 13px;border-radius:6px;border:1px solid rgba(201,168,76,.35);box-shadow:0 8px 32px rgba(27,42,74,.25);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s ease,transform .15s ease,visibility .15s;pointer-events:none;}
+    .info-btn:hover .info-tip,.info-btn:focus-visible .info-tip,.info-btn.info-open .info-tip{opacity:1;visibility:visible;transform:translateY(0);}
+    /* .ar-panel and .table-card are overflow:hidden (for their rounded corners), which would clip a
+       tip hanging out of the panel head. Escalate to visible ONLY while a tip is actually showing,
+       so the scroll/clip behaviour is otherwise unchanged. Same trick as cases.html. */
+    .ar-panel:has(.info-open),.ar-panel:has(.info-btn:hover),
+    .table-card:has(.info-open),.table-card:has(.info-btn:hover){overflow:visible;}
+    .ar-panel:has(.info-open),.ar-panel:has(.info-btn:hover){position:relative;z-index:150;}
+
     /* Spinner */
     .spinner{width:28px;height:28px;border:3px solid var(--grey-light);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;margin:60px auto 12px;}
     @keyframes spin{to{transform:rotate(360deg);}}
@@ -310,7 +324,7 @@
   <div class="dash-50">
     <div class="ar-panel">
       <div class="ar-head">
-        <span class="ar-title">&#9200; Admin Reminders</span>
+        <span class="ar-title">&#9200; Admin Reminders<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Admin Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Reminders flagged as Admin across all open cases, still open, soonest due first. Overdue rows are shaded red. Tick &#10003; to complete one; click the row to open that case&rsquo;s Reminders tab.</span></button></span>
         <span class="ar-count" id="ar-count">&mdash;</span>
       </div>
       <div class="ar-list" id="ar-list">
@@ -319,7 +333,7 @@
     </div>
     <div class="ar-panel">
       <div class="ar-head">
-        <span class="ar-title">&#128203; Unassigned Cases</span>
+        <span class="ar-title">&#128203; Unassigned Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Unassigned Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Cases with no draftsman &mdash; plus any handed back by assigning them to Danielle, which is how a case is returned to this queue. Soonest Deadline first, then most recently received. From each row you can set Inter Partes / Legal Aid, edit the deadline, or assign a draftsman.</span></button></span>
         <span class="ar-count" id="uc-count">&mdash;</span>
       </div>
       <div class="ar-list" id="uc-list">
@@ -358,7 +372,7 @@
     .ds-empty{color:var(--grey-mid);font-size:13px;}
   </style>
   <div class="ds-panel">
-    <h3>&#128100; Draftsmen &mdash; case lists</h3>
+    <h3>&#128100; Draftsmen &mdash; case lists<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen case lists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">One button per draftsman, with their number of open cases. Click to see that person&rsquo;s cases with the booking-in notes, the current position and any drafting notes. Danielle is not listed &mdash; cases assigned to her sit in Unassigned Cases.</span></button></h3>
     <div class="ds-btns" id="ds-btns"><span class="ds-empty">Loading&hellip;</span></div>
   </div>
   <div class="modal-overlay" id="modal-draftsman">
@@ -375,7 +389,7 @@
   <div id="cases-section" style="display:none;">
     <div class="section-head">
       <div>
-        <div class="section-title">All Open Cases</div>
+        <div class="section-title">All Open Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About All Open Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Every open case in the firm. Closed and Settled are excluded until you press Show Closed, which loads them on demand. Search by case name, reference, firm or draftsman, and filter by stage. Booking-in notes appear under a row where they exist.</span></button></div>
         <div class="section-meta" id="cases-meta"></div>
       </div>
       <div class="filter-bar">
@@ -719,9 +733,22 @@ document.querySelectorAll('.modal-overlay').forEach(ov=>{
   ov.addEventListener('click',e=>{if(e.target===ov)closeModal(ov.id);});
 });
 function openModal(id){document.getElementById(id).classList.add('open');}
-// Audit #13: Esc closes whichever modal is open.
+// Info tooltips: click to pin open (hover also shows them). Click anywhere else, or Esc, closes.
+document.querySelectorAll('.info-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const wasOpen = btn.classList.contains('info-open');
+    document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open'));
+    if (!wasOpen) btn.classList.add('info-open');
+  });
+});
+document.addEventListener('click', () => document.querySelectorAll('.info-btn.info-open').forEach(b => b.classList.remove('info-open')));
+
+// Audit #13: Esc closes whichever modal is open. A pinned tooltip closes first.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  const openTip = document.querySelector('.info-btn.info-open');
+  if (openTip) { openTip.classList.remove('info-open'); return; }
   const openOverlay = document.querySelector('.modal-overlay.open');
   if (openOverlay) closeModal(openOverlay.id);
 });
@@ -1126,7 +1153,15 @@ function renderUnassignedCases(){
     if(da&&!db) return -1;                     // any deadline sorts above no deadline
     if(!da&&db) return 1;
     if(da&&db) return da.localeCompare(db);    // both dated: soonest Deadline first
-    return (b.fields['DateReceived']||'').localeCompare(a.fields['DateReceived']||''); // no deadline: newest received first
+    // No deadline: OLDEST received first. This is an allocation QUEUE - the case that has been
+    // waiting longest must surface at the top, not sink to the bottom. (S64's handover claimed this
+    // was already the behaviour; it was not - the code sorted newest-first until S70.)
+    // A blank DateReceived is sorted LAST: an empty string wins an ascending compare and would
+    // otherwise jump undated cases straight to the top of the queue.
+    const ra=(a.fields['DateReceived']||''); const rb=(b.fields['DateReceived']||'');
+    if(ra&&!rb) return -1;
+    if(!ra&&rb) return 1;
+    return ra.localeCompare(rb);
   });
   document.getElementById('uc-count').textContent=unassigned.length;
   updateHeaderStats();
