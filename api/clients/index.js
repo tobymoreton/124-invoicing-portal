@@ -8,10 +8,10 @@ const CLIENTS_GUID  = '901e8cbd-8760-4051-9eb0-0d5c0db1c06d';
 
 const ADMIN_EMAILS  = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
-// S73: draftsmen can CREATE a client firm (they hit new instructing firms mid-case and
-// must not be blocked). They CANNOT edit an existing one, and a create by a non-admin
-// has the PRICING fields stripped — drafting fee basis/%, minimum fee, LAA fee, default
-// hourly rate and billing email drive what TMC charges. Those stay with management.
+// S73: draftsmen can CREATE and EDIT a client firm (they hit new instructing firms
+// mid-case and must not be blocked). PRICING fields are stripped from any non-admin
+// write — drafting fee basis/%, minimum fee, LAA fee, default hourly rate and billing
+// email drive what TMC charges. Those stay with management on create AND on edit.
 const PRICING_FIELDS = ['feeBasis','feePercent','minFee','laaFee','hourlyRate','billingEmail'];
 
 async function getToken(tenantId, clientId, clientSecret) {
@@ -63,8 +63,7 @@ function graphRequest(url, token, method, body) {
 module.exports = async function (context, req) {
   const method = req.method;
 
-  // Auth check: all TMC staff can read and create; only admins can edit, and only
-  // admins can set pricing on a create.
+  // Auth check: all TMC staff can read, create and edit; only admins can touch pricing.
   const callerEmail = (req.headers['x-ms-client-principal-name'] || '').toLowerCase();
   const isAdmin = ADMIN_EMAILS.includes(callerEmail);
   const isStaff = callerEmail.endsWith(ALLOWED_DOMAIN);
@@ -118,9 +117,9 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // ── PATCH: update client firm (admin only) ───────────────────────────
+    // ── PATCH: update client firm (any TMC user; pricing = admin only) ────
     if (method === 'PATCH') {
-      if (!isAdmin) { context.res = { status: 403, body: 'Editing a client firm is restricted to Toby, Danielle and Lesley. You can still add a new firm.' }; return; }
+      if (!isStaff) { context.res = { status: 403, body: 'Forbidden' }; return; }
       let body;
       try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; }
       catch { context.res = { status: 400, body: 'Invalid JSON' }; return; }
@@ -128,7 +127,12 @@ module.exports = async function (context, req) {
       const { itemId } = body;
       if (!itemId) { context.res = { status: 400, body: 'Missing itemId' }; return; }
 
+      // Pricing is never editable by a non-admin. Stripped, not rejected — the rest of
+      // the edit still lands; the fee terms are simply left as they were.
+      if (!isAdmin) PRICING_FIELDS.forEach(k => { delete body[k]; });
+
       const fields = buildFields(body);
+      if (Object.keys(fields).length === 0) { context.res = { status: 400, body: 'No fields to update' }; return; }
       await graphRequest(`${baseUrl}/${itemId}/fields`, token, 'PATCH', fields);
       context.res = { status: 200, body: 'OK' };
       return;
