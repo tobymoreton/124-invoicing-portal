@@ -1131,15 +1131,12 @@
               </select>
             </div>
             <div class="field"><label>Opponent Caseworker</label>
-              <select id="op-OpponentCaseworker1" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— loading caseworkers… —</option>
-              </select>
+              <input type="text" id="op-OpponentCaseworker1" list="op-cw-list" autocomplete="off" placeholder="Type to search caseworkers…" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;" />
             </div>
             <div class="field"><label>Opponent Caseworker 2</label>
-              <select id="op-OpponentCaseworker2" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
-                <option value="">— loading caseworkers… —</option>
-              </select>
+              <input type="text" id="op-OpponentCaseworker2" list="op-cw-list" autocomplete="off" placeholder="Type to search caseworkers…" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;" />
             </div>
+            <datalist id="op-cw-list"></datalist>
             <div class="field"><label>Email(s) for Bill Service</label><input type="text" id="op-ServiceEmail" disabled /></div>
             <div class="field checkbox-field" style="margin-top:8px;"><input type="checkbox" id="op-LitigantInPerson" disabled /><label for="op-LitigantInPerson">Litigant in Person?</label></div>
             <div class="field full" style="display:flex;flex-direction:row;gap:32px;flex-wrap:wrap;margin-top:4px;">
@@ -1779,7 +1776,14 @@ async function loadOpponentFirms2() {
     const resp = await fetch('/api/reflists?list=opponentfirms');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
-    oppFirmNamesCache = (data.value || []).map(it => (it.fields && it.fields.Title) || '').filter(Boolean);
+    // Ids are kept alongside the names: Caseworkerfirm on the Opponent Caseworkers list is an SP
+    // LOOKUP, so a quick-added caseworker has to be written with the firm's ITEM ID, not its name.
+    const firms = (data.value || [])
+      .map(it => ({ name: (it.fields && it.fields.Title) || '', id: it.id }))
+      .filter(x => x.name);
+    oppFirmNamesCache = firms.map(x => x.name);
+    oppFirmIdByName = {};
+    firms.forEach(x => { oppFirmIdByName[x.name.trim().toLowerCase()] = x.id; });
     [sel1, sel2].forEach(sel => {
       if (!sel) return;
       sel.innerHTML = '<option value="">— select firm —</option>';
@@ -1800,7 +1804,8 @@ async function loadOpponentFirms2() {
 }
 
 let oppFirmNamesCache = [];
-let oppCaseworkersCache = []; // [{name, firm}] - firm is CaseworkerFirmMirror, plain text
+let oppFirmIdByName = {};     // lower-cased firm name -> Opponent Firms item id (for the Caseworkerfirm lookup)
+let oppCaseworkersCache = []; // [{name, firmId}] - Caseworkerfirm is an SP LOOKUP; there is NO text mirror
 async function loadOpponentCaseworkers2() {
   const sel1 = document.getElementById('op-OpponentCaseworker1');
   const sel2 = document.getElementById('op-OpponentCaseworker2');
@@ -1810,63 +1815,48 @@ async function loadOpponentCaseworkers2() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     oppCaseworkersCache = (data.value || [])
-      .map(it => ({ name: (it.fields && it.fields.Title) || '', firm: (it.fields && it.fields.CaseworkerFirmMirror) || '' }))
+      .map(it => ({ name: (it.fields && it.fields.Title) || '', firmId: (it.fields && it.fields.CaseworkerfirmLookupId) || null }))
       .filter(x => x.name);
     filterCaseworkerOptions();
   } catch (err) {
     console.warn('Opponent caseworkers list failed to load:', err.message);
-    const unavailable = '<option value="">— caseworker list unavailable —</option>';
-    if (sel1) sel1.innerHTML = unavailable;
-    if (sel2) sel2.innerHTML = unavailable;
+    [sel1, sel2].forEach(el => { if (el) el.placeholder = '\u2014 caseworker list unavailable \u2014'; });
     if (caseFields) {
-      if (sel1 && caseFields['opponentCaseworkerMirror']) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
-      if (sel2 && caseFields['opponentCaseworker2Mirror']) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
+      if (sel1 && caseFields['opponentCaseworkerMirror']) sel1.value = caseFields['opponentCaseworkerMirror'];
+      if (sel2 && caseFields['opponentCaseworker2Mirror']) sel2.value = caseFields['opponentCaseworker2Mirror'];
     }
   }
 }
 
-// Confines each Caseworker dropdown to caseworkers recorded against the matching
-// Opponent Firm (Firm 1 free-text / Firm 2 dropdown), same pattern as the
-// Fee Earner-by-Firm filter on the Client Info tab. Falls back to the full
-// caseworker list if no caseworkers are recorded against that firm yet, and
-// always keeps the case's current saved value selectable even if it doesn't
-// match the current firm text (legacy / mismatched data).
-function buildCaseworkerOptionsHtml(pool, current) {
-  let html = '<option value="">— select caseworker —</option>';
-  let hasCurrent = !current;
-  pool.forEach(name => {
-    const esc = name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    const sel = name === current ? ' selected' : '';
-    if (name === current) hasCurrent = true;
-    html += '<option value="' + esc + '"' + sel + '>' + esc + '</option>';
-  });
-  if (!hasCurrent) {
-    const esc = current.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    html += '<option value="' + esc + '" selected>' + esc + '</option>';
-  }
-  return html;
-}
+// Opponent Caseworker is a TYPEAHEAD over the whole reference list (1,377 names), not a
+// firm-filtered dropdown. The firm filter was REMOVED 2026-07-13 (S75) and must not be
+// reinstated without measuring the data first:
+//
+//   - There is no CaseworkerFirmMirror column. It never existed. The firm lives in
+//     `Caseworkerfirm`, an SP LOOKUP into Opponent Firms (readable via Graph as
+//     CaseworkerfirmLookupId).
+//   - Opponent Firms was rebuilt at some point: its items start at id 290. 1,218 of the 1,273
+//     caseworkers carrying a lookup point at ids below that — firms that no longer exist. Only 55
+//     links resolve.
+//   - The Cases mirrors are no help either: of 2,034 cases, a caseworker->firm pair can be derived
+//     for just 7 of the 1,377 caseworkers.
+//
+// A filter on that data hides virtually every caseworker, so a name that IS on the list looks like
+// it isn't. A typeahead over all of them is honest and usable. Quick-add now writes the lookup
+// properly, so filtering becomes possible again once enough rows carry a live one.
 function filterCaseworkerOptions() {
-  const sel1 = document.getElementById('op-OpponentCaseworker1');
-  const sel2 = document.getElementById('op-OpponentCaseworker2');
-  const firm1 = (document.getElementById('op-opponentFirmMirror')?.value || '').trim().toLowerCase();
-  const firm2 = (document.getElementById('op-OpponentFirm2')?.value || '').trim().toLowerCase();
-  const allNames = oppCaseworkersCache.map(c => c.name);
-  if (sel1) {
-    const cur1 = sel1.value;
-    let pool1 = firm1 ? oppCaseworkersCache.filter(c => c.firm.trim().toLowerCase() === firm1).map(c => c.name) : allNames;
-    if (!pool1.length) pool1 = allNames;
-    sel1.innerHTML = buildCaseworkerOptionsHtml(pool1, cur1);
-  }
-  if (sel2) {
-    const cur2 = sel2.value;
-    let pool2 = firm2 ? oppCaseworkersCache.filter(c => c.firm.trim().toLowerCase() === firm2).map(c => c.name) : allNames;
-    if (!pool2.length) pool2 = allNames;
-    sel2.innerHTML = buildCaseworkerOptionsHtml(pool2, cur2);
+  const dl = document.getElementById('op-cw-list');
+  if (dl) {
+    dl.innerHTML = oppCaseworkersCache.map(c => {
+      const esc = c.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      return '<option value="' + esc + '"></option>';
+    }).join('');
   }
   if (caseFields) {
-    if (sel1) setSelectOp('op-OpponentCaseworker1', caseFields['opponentCaseworkerMirror']);
-    if (sel2) setSelectOp('op-OpponentCaseworker2', caseFields['opponentCaseworker2Mirror']);
+    const sel1 = document.getElementById('op-OpponentCaseworker1');
+    const sel2 = document.getElementById('op-OpponentCaseworker2');
+    if (sel1) sel1.value = caseFields['opponentCaseworkerMirror'] || '';
+    if (sel2) sel2.value = caseFields['opponentCaseworker2Mirror'] || '';
   }
 }
 
@@ -1918,9 +1908,14 @@ document.getElementById('op-cw-add-save').addEventListener('click', async () => 
   const msg  = document.getElementById('op-cw-add-msg');
   if (!name) { msg.textContent = 'Name required'; return; }
   if (!firm) { msg.textContent = 'Firm required — select from the list'; return; }
+  // Caseworkerfirm is a LOOKUP. Send the firm's ITEM ID, not its name — the old code posted the
+  // name into CaseworkerFirmMirror, a column that does not exist, so every caseworker added
+  // through the portal was landing with no firm at all.
+  const firmId = oppFirmIdByName[firm.trim().toLowerCase()];
+  if (!firmId) { msg.textContent = 'Could not resolve that firm — reload and try again'; return; }
   const btn = document.getElementById('op-cw-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
   try {
-    const resp = await fetch('/api/reflists?list=opponentcws', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firm }) });
+    const resp = await fetch('/api/reflists?list=opponentcws', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firmId: Number(firmId) }) });
     if (resp.status === 403) throw new Error(await resp.text());
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     await loadOpponentCaseworkers2();
@@ -2424,10 +2419,8 @@ function renderOpponentTab() {
   document.getElementById('op-Addr4').value              = f['Opponent_x0020_Address_x0020_4']   || '';
   document.getElementById('op-Addr5').value              = f['Opponent_x0020_Address_x0020_5']   || '';
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
-  const _firm1El = document.getElementById('op-opponentFirmMirror');
-  const _firm2El = document.getElementById('op-OpponentFirm2');
-  if (_firm1El && !_firm1El.dataset.cwFilterWired) { _firm1El.dataset.cwFilterWired = '1'; _firm1El.addEventListener('change', filterCaseworkerOptions); }
-  if (_firm2El && !_firm2El.dataset.cwFilterWired) { _firm2El.dataset.cwFilterWired = '1'; _firm2El.addEventListener('change', filterCaseworkerOptions); }
+  // No firm->caseworker filter any more (see filterCaseworkerOptions), so changing a firm no
+  // longer rebuilds the caseworker list — and can no longer wipe a caseworker being typed.
   applyOpponentBlankWarnings();
   const _oppTab = document.getElementById('tab-opponent');
   if (_oppTab && !_oppTab.dataset.blankWarnWired) {
