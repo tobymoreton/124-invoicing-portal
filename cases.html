@@ -1163,27 +1163,46 @@ function renderRemPanel(){
     head.style.color='#713F12';
     head.textContent='No reminder set ('+noRem.length+')';
     el.appendChild(head);
+    // Grouped by stage (StatusMirror), largest group first, so the panel reads as a
+    // worklist rather than a flat wall of cases.
+    const byStage={};
     noRem.forEach(x=>{
-      const row=document.createElement('div');
-      row.className='rem-row';
-      row.innerHTML=
-        '<div class="rem-date">\u2014</div>'+
-        '<div class="rem-body">'+
-          '<div class="rem-event">'+escHtml(caseDisplayName(x.f)||x.ref||'(unnamed case)')+'</div>'+
-          '<div class="rem-case">'+escHtml(x.f['Firm_x0028_text_x0029_']||'')+'</div>'+
-        '</div>'+
-        '<button class="rem-add-btn" title="Add a reminder for this case" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--navy);border-radius:var(--radius-sm);background:transparent;color:var(--navy);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Reminder</button>';
-      row.querySelector('.rem-add-btn').addEventListener('click',e=>{
-        e.stopPropagation();
-        const sel=document.getElementById('rem-case-ref');
-        if(sel) sel.value=x.ref;
-        openModal('modal-reminder');
-      });
-      row.addEventListener('click',()=>{
-        if(x.ref) window.location.href='case.html?ref='+encodeURIComponent(x.ref)+'#tab-reminders';
-      });
-      el.appendChild(row);
+      const s=x.f['StatusMirror']||'Unknown';
+      (byStage[s]=byStage[s]||[]).push(x);
     });
+    Object.entries(byStage)
+      .sort((a,b)=>b[1].length-a[1].length||a[0].localeCompare(b[0]))
+      .forEach(([stage,items])=>{
+        const sh=document.createElement('div');
+        sh.className='rem-band-head';
+        sh.style.background='var(--grey-faint)';
+        sh.style.color='var(--grey-mid)';
+        sh.style.paddingLeft='26px';
+        sh.textContent=stage+' ('+items.length+')';
+        el.appendChild(sh);
+        items.forEach(x=>{
+          const row=document.createElement('div');
+          row.className='rem-row';
+          row.innerHTML=
+            '<div class="rem-date">\u2014</div>'+
+            '<div class="rem-body">'+
+              '<div class="rem-event">'+escHtml(caseDisplayName(x.f)||x.ref||'(unnamed case)')+'</div>'+
+              '<div class="rem-case">'+escHtml(x.f['Firm_x0028_text_x0029_']||'')+'</div>'+
+              '<div style="margin-top:3px;"><span class="status-chip '+statusClass(stage)+'">'+escHtml(stage)+'</span></div>'+
+            '</div>'+
+            '<button class="rem-add-btn" title="Add a reminder for this case" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--navy);border-radius:var(--radius-sm);background:transparent;color:var(--navy);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Reminder</button>';
+          row.querySelector('.rem-add-btn').addEventListener('click',e=>{
+            e.stopPropagation();
+            const sel=document.getElementById('rem-case-ref');
+            if(sel) sel.value=x.ref;
+            openModal('modal-reminder');
+          });
+          row.addEventListener('click',()=>{
+            if(x.ref) window.location.href='case.html?ref='+encodeURIComponent(x.ref)+'#tab-reminders';
+          });
+          el.appendChild(row);
+        });
+      });
   }
 }
 
