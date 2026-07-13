@@ -72,6 +72,22 @@
     tfoot td{padding:12px 10px;background:var(--tmc-blue);color:var(--white);font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right;position:sticky;bottom:0;}
     tfoot td.label{text-align:left;font-family:'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;font-size:11px;}
     .msg{padding:40px;text-align:center;color:var(--grey-mid);}
+    /* Inline editing */
+    td.editable{cursor:text;}
+    td.editable:hover{outline:1px dashed rgba(0,27,68,.35);outline-offset:-2px;}
+    td.saving{opacity:.45;pointer-events:none;}
+    .cell-input{width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;padding:4px 6px;border:1.5px solid var(--navy-light);border-radius:4px;background:var(--white);color:var(--navy);outline:none;}
+    .cell-input.num-input{text-align:right;font-family:'IBM Plex Mono',monospace;}
+    textarea.cell-input{min-height:110px;resize:vertical;line-height:1.45;}
+    .interim-edit{display:flex;flex-direction:column;gap:5px;}
+    .interim-edit label{display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);}
+    .interim-edit label .cell-input{flex:1;}
+    .save-err{display:block;margin-top:4px;font-size:10.5px;color:var(--red);font-weight:600;}
+    .edit-hint{font-size:10px;color:var(--grey-mid);font-style:italic;margin-top:5px;}
+    .case-link{color:var(--navy);text-decoration:none;border-bottom:1px solid rgba(0,27,68,.25);}
+    .case-link:hover{color:var(--navy-light);border-bottom-color:var(--navy-light);}
+    .flags a{color:var(--red);font-weight:600;text-decoration:none;border-bottom:1px solid rgba(153,27,27,.4);}
+    .flags a:hover{border-bottom-color:var(--red);}
   </style>
 </head>
 <body>
@@ -98,6 +114,10 @@
         <label class="ctl-label" for="firm-select">Instructing firm</label>
         <select class="ctl" id="firm-select"></select>
       </div>
+      <div>
+        <label class="ctl-label" for="assignee-select">Draftsman</label>
+        <select class="ctl" id="assignee-select" style="min-width:170px;"><option value="">All draftsmen</option></select>
+      </div>
       <div style="align-self:flex-end;display:flex;gap:10px;">
         <button class="btn btn-ghost" id="btn-refresh">Refresh</button>
         <button class="btn btn-primary" id="btn-export" disabled>Export to Excel</button>
@@ -109,6 +129,9 @@
 <div class="source-note">
   Read live from SharePoint at the moment you loaded this page. There is no cached copy and no
   intermediate file &mdash; what you see is what SharePoint says right now.
+  Cells with a dashed outline on hover are editable: click, type, then <strong>Tab</strong> or click
+  away to save. <strong>Esc</strong> cancels. Total IP Costs, Fee Earner and Assigned To are not
+  editable here &mdash; open the case.
 </div>
 
 <div class="flags" id="flags" style="display:none;">
@@ -157,7 +180,9 @@
 'use strict';
 
 var DEFAULT_FIRM = 'Hodge Jones & Allen LLP';
-var current = null;   // last payload
+var current = null;          // last payload from /api/msr
+var visibleRows = [];        // rows after the draftsman filter — what the table and the export show
+var selectedAssignee = '';   // '' = all draftsmen
 
 // Formatting
 function money(n) {
@@ -198,12 +223,30 @@ function load(firm) {
     .then(function (data) {
       current = data;
       buildFirmSelect(data.firms || [], data.firm);
+      buildAssigneeSelect(data.assignees || []);
       render(data);
     })
     .catch(function (err) {
       tbody.innerHTML = '<tr><td colspan="12" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
       document.getElementById('page-sub').textContent = 'Failed to load.';
     });
+}
+
+function buildAssigneeSelect(assignees) {
+  var sel = document.getElementById('assignee-select');
+  sel.innerHTML = '<option value="">All draftsmen</option>';
+  assignees.forEach(function (a) {
+    var o = document.createElement('option');
+    o.value = a; o.textContent = a;
+    if (a === selectedAssignee) o.selected = true;
+    sel.appendChild(o);
+  });
+  // If the previously-selected draftsman has no matters on this firm's report, fall back to All
+  // rather than showing an empty table with a name still in the box.
+  if (selectedAssignee && assignees.indexOf(selectedAssignee) === -1) {
+    selectedAssignee = '';
+    sel.value = '';
+  }
 }
 
 function buildFirmSelect(firms, selected) {
@@ -220,41 +263,52 @@ function buildFirmSelect(firms, selected) {
 
 // Render
 function render(data) {
-  var rows  = data.value || [];
   var tbody = document.getElementById('tbody');
 
+  // Draftsman filter is applied CLIENT-side against the already-filtered report set, so switching
+  // draftsman never re-queries SharePoint and can never change which matters qualify — it only
+  // narrows what is shown.
+  visibleRows = (data.value || []).filter(function (r) {
+    return !selectedAssignee || r.assignee === selectedAssignee;
+  });
+
   document.getElementById('page-sub').textContent =
-    rows.length + (rows.length === 1 ? ' matter' : ' matters') + ' \u00b7 ' + data.firm +
+    visibleRows.length + (visibleRows.length === 1 ? ' matter' : ' matters') +
+    (selectedAssignee ? ' \u00b7 ' + selectedAssignee : '') +
+    ' \u00b7 ' + data.firm +
     ' \u00b7 as at ' + new Date(data.generated).toLocaleString('en-GB');
 
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="msg">No matters on the report for this firm.</td></tr>';
+  if (!visibleRows.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="msg">No matters on the report for this selection.</td></tr>';
+    document.getElementById('tfoot').style.display = 'none';
     document.getElementById('btn-export').disabled = true;
     renderFlags([]);
     return;
   }
 
-  tbody.innerHTML = rows.map(function (r) {
+  tbody.innerHTML = visibleRows.map(function (r) {
     var assigned = r.assignedTo
       ? esc(r.assignedTo)
       : '<span class="unassigned">Unassigned</span>';
-    return '<tr>'
-      + '<td class="nowrap">' + esc(r.title) + '</td>'
+    return '<tr data-id="' + esc(r.id) + '">'
+      + '<td class="nowrap"><a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '">' + esc(r.title) + '</a></td>'
       + '<td>' + esc(r.feeEarner) + '</td>'
-      + '<td>' + esc(r.clientRef) + '</td>'
+      + cell(r, 'clientRef',     'text',   '')
       + '<td>' + assigned + '</td>'
-      + '<td class="nowrap">' + esc(fmtDate(r.dateServed)) + '</td>'
+      + cell(r, 'dateServed',    'date',   'nowrap')
       + '<td class="num">' + money(r.totalIPCosts) + '</td>'
-      + '<td class="num">' + money(r.counselFees) + '</td>'
-      + '<td class="num">' + money(r.disbursements) + '</td>'
-      + '<td class="num">' + money(r.interimTotal) + '</td>'
-      + '<td class="num">' + money(r.lastOffer) + '</td>'
-      + '<td class="wide">' + esc(r.currentPosition) + '</td>'
+      + cell(r, 'counselFees',   'money',  'num')
+      + cell(r, 'disbursements', 'money',  'num')
+      + cell(r, 'interimTotal',  'interim','num')
+      + cell(r, 'lastOffer',     'money',  'num')
+      + cell(r, 'currentPosition','longtext','wide')
       + '<td class="wide">' + esc(r.lastAction) + '</td>'
       + '</tr>';
   }).join('');
 
-  var t = data.totals || {};
+  // Totals are recomputed from the VISIBLE rows, so they always agree with what is on screen and
+  // with what the export produces — including immediately after an inline edit.
+  var t = totalsOf(visibleRows);
   document.getElementById('t-ip').textContent      = money(t.totalIPCosts);
   document.getElementById('t-counsel').textContent = money(t.counselFees);
   document.getElementById('t-disb').textContent    = money(t.disbursements);
@@ -263,27 +317,277 @@ function render(data) {
   document.getElementById('tfoot').style.display   = '';
   document.getElementById('btn-export').disabled   = false;
 
-  renderFlags(findFlags(rows));
+  renderFlags(findFlags(visibleRows));
+}
+
+function totalsOf(rows) {
+  var t = { totalIPCosts: 0, counselFees: 0, disbursements: 0, interimTotal: 0, lastOffer: 0 };
+  rows.forEach(function (r) {
+    t.totalIPCosts  += Number(r.totalIPCosts)  || 0;
+    t.counselFees   += Number(r.counselFees)   || 0;
+    t.disbursements += Number(r.disbursements) || 0;
+    t.interimTotal  += Number(r.interimTotal)  || 0;
+    t.lastOffer     += Number(r.lastOffer)     || 0;
+  });
+  return t;
+}
+
+// ── Inline editing ─────────────────────────────────────────────────────────
+//
+// What is editable, and what deliberately is not:
+//
+//   Total IP Costs   NOT editable. It is TotalIPCostsMirror, a mirror of the SharePoint CALCULATED
+//                    column Calc_TotalInterPartesCosts. PA124.9 would overwrite any edit within
+//                    minutes. Change the components on the case instead.
+//   Fee Earner       NOT editable. SP Lookup — Graph app-only cannot write it.
+//   Assigned To      NOT editable. SP Person — same. Assign from the admin dash.
+//   Last Action      NOT editable. Verbatim passthrough; nothing here should author it.
+//
+//   Current Position IS editable, on Toby's instruction — but see the warning below. It is
+//                    rewritten every night by PA999.1 from the AI pipeline, so an edit made here
+//                    survives only until the next nightly run.
+//
+var EDITABLE = {
+  clientRef:       { field: 'ClientCaseReference',   kind: 'text'     },
+  dateServed:      { field: null,                    kind: 'date'     },  // resolved per row
+  counselFees:     { field: 'CounselsFeesClaimed',   kind: 'money'    },
+  disbursements:   { field: 'DisbursementsClaimed',  kind: 'money'    },
+  lastOffer:       { field: 'PayingPartysLastOffer', kind: 'money'    },
+  interimTotal:    { field: null,                    kind: 'interim'  },  // three real columns
+  currentPosition: { field: 'Current_x0020_Position', kind: 'longtext' }
+};
+
+function cell(r, key, kind, cls) {
+  var body;
+  if (kind === 'money')      body = money(r[key]);
+  else if (kind === 'date')  body = esc(fmtDate(r.dateServed));
+  else if (kind === 'interim') body = money(r.interimTotal);
+  else                       body = esc(r[key] || '');
+  return '<td class="editable ' + cls + '" data-key="' + key + '" onclick="beginEdit(this)">' + body + '</td>';
+}
+
+function rowFor(td) {
+  var id = td.parentNode.getAttribute('data-id');
+  for (var i = 0; i < visibleRows.length; i++) {
+    if (String(visibleRows[i].id) === String(id)) return visibleRows[i];
+  }
+  return null;
+}
+
+function beginEdit(td) {
+  if (td.querySelector('.cell-input')) return;   // already editing
+  var key  = td.getAttribute('data-key');
+  var spec = EDITABLE[key];
+  var r    = rowFor(td);
+  if (!spec || !r) return;
+
+  if (spec.kind === 'interim') return beginInterimEdit(td, r);
+
+  var input;
+  if (spec.kind === 'longtext') {
+    input = document.createElement('textarea');
+    input.value = r.currentPosition || '';
+  } else {
+    input = document.createElement('input');
+    if (spec.kind === 'money') {
+      input.type = 'number'; input.step = '0.01';
+      input.value = (Number(r[key]) || 0);
+    } else if (spec.kind === 'date') {
+      input.type = 'date';
+      input.value = (r.dateServed || '').slice(0, 10);
+    } else {
+      input.type = 'text';
+      input.value = r[key] || '';
+    }
+  }
+  input.className = 'cell-input' + (spec.kind === 'money' ? ' num-input' : '');
+
+  td.innerHTML = '';
+  td.appendChild(input);
+
+  if (spec.kind === 'longtext') {
+    var warn = document.createElement('div');
+    warn.className = 'edit-hint';
+    warn.textContent = 'Note: PA999.1 rewrites Current Position every night. An edit made here will be replaced by the next nightly run.';
+    td.appendChild(warn);
+  }
+
+  input.focus();
+  if (input.select) input.select();
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); cancelEdit(td, r, key); }
+    if (e.key === 'Enter' && spec.kind !== 'longtext') { e.preventDefault(); input.blur(); }
+  });
+  input.addEventListener('blur', function () { commitEdit(td, r, key, spec, input.value); });
+}
+
+function beginInterimEdit(td, r) {
+  // The report column is a TOTAL. There is no single SharePoint field behind it, so editing it
+  // means editing the three real columns — hence three inputs rather than one.
+  var box = document.createElement('div');
+  box.className = 'interim-edit';
+  [1, 2, 3].forEach(function (n) {
+    var lab = document.createElement('label');
+    lab.textContent = n;
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.step = '0.01';
+    inp.className = 'cell-input num-input';
+    inp.setAttribute('data-n', String(n));
+    inp.value = Number(r['interim' + n]) || 0;
+    lab.appendChild(inp);
+    box.appendChild(lab);
+  });
+  td.innerHTML = '';
+  td.appendChild(box);
+
+  var inputs = box.querySelectorAll('input');
+  inputs[0].focus();
+  if (inputs[0].select) inputs[0].select();
+
+  function done() {
+    // Only commit once focus has actually left the whole group, not on each hop between the three.
+    setTimeout(function () {
+      if (td.contains(document.activeElement)) return;
+      var fields = {}, changed = false;
+      for (var i = 0; i < inputs.length; i++) {
+        var n = inputs[i].getAttribute('data-n');
+        var v = round2(inputs[i].value);
+        if (v !== (Number(r['interim' + n]) || 0)) changed = true;
+        fields['InterimPayment' + n] = v;
+      }
+      if (!changed) { redrawCell(td, r, 'interimTotal'); return; }
+      save(td, r, fields, function () {
+        [1, 2, 3].forEach(function (n) { r['interim' + n] = fields['InterimPayment' + n]; });
+        r.interimTotal = r.interim1 + r.interim2 + r.interim3;
+      }, 'interimTotal');
+    }, 0);
+  }
+
+  for (var i = 0; i < inputs.length; i++) {
+    inputs[i].addEventListener('blur', done);
+    inputs[i].addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { e.preventDefault(); redrawCell(td, r, 'interimTotal'); }
+    });
+  }
+}
+
+function round2(v) {
+  var n = parseFloat(v);
+  if (!isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function cancelEdit(td, r, key) { redrawCell(td, r, key); }
+
+function redrawCell(td, r, key) {
+  var kind = (EDITABLE[key] || {}).kind;
+  if (kind === 'money')          td.textContent = money(r[key]);
+  else if (kind === 'date')      td.textContent = fmtDate(r.dateServed);
+  else if (kind === 'interim')   td.textContent = money(r.interimTotal);
+  else                           td.textContent = r[key] || '';
+  td.classList.remove('saving');
+}
+
+function commitEdit(td, r, key, spec, raw) {
+  var fields = {};
+
+  if (spec.kind === 'money') {
+    var v = round2(raw);
+    if (v === (Number(r[key]) || 0)) { redrawCell(td, r, key); return; }
+    fields[spec.field] = v;
+    return save(td, r, fields, function () { r[key] = v; }, key);
+  }
+
+  if (spec.kind === 'date') {
+    var d = (raw || '').slice(0, 10);
+    if (d === (r.dateServed || '').slice(0, 10)) { redrawCell(td, r, key); return; }
+    // Write back to whichever service-date column the displayed value came from — informal if that
+    // is the one in use, otherwise formal. The API tells us which; we never guess.
+    var target = r.dateServedField || 'DateServedFormally0';
+    fields[target] = d ? new Date(d + 'T00:00:00Z').toISOString() : null;
+    return save(td, r, fields, function () { r.dateServed = d; }, key);
+  }
+
+  if (spec.kind === 'longtext') {
+    var text = String(raw == null ? '' : raw);
+    if (text === (r.currentPosition || '')) { redrawCell(td, r, key); return; }
+    // SharePoint stores this as rich text. Wrap it the way the rest of the estate does so the SP
+    // UI and the nightly pipeline see the same shape they always have.
+    fields[spec.field] = toRichText(text);
+    return save(td, r, fields, function () { r.currentPosition = text; }, key);
+  }
+
+  var t = String(raw == null ? '' : raw).trim();
+  if (t === (r[key] || '')) { redrawCell(td, r, key); return; }
+  fields[spec.field] = t;
+  return save(td, r, fields, function () { r[key] = t; }, key);
+}
+
+function toRichText(text) {
+  var paras = String(text).split(/\n{2,}/).map(function (p) {
+    return '<p class="editor-paragraph">' + escXml(p).replace(/\n/g, '<br>') + '</p>';
+  });
+  return '<div>' + paras.join('') + '</div>';
+}
+function escXml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function save(td, r, fields, applyLocal, key) {
+  td.classList.add('saving');
+  fetch('/api/caseupdate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemId: r.id, fields: fields })
+  })
+    .then(function (res) {
+      if (!res.ok) { return res.text().then(function (t) { throw new Error(t || ('HTTP ' + res.status)); }); }
+      return res.json();
+    })
+    .then(function () {
+      applyLocal();
+      redrawCell(td, r, key);
+      // Totals and the data-quality flags both depend on the values just changed.
+      var t = totalsOf(visibleRows);
+      document.getElementById('t-ip').textContent      = money(t.totalIPCosts);
+      document.getElementById('t-counsel').textContent = money(t.counselFees);
+      document.getElementById('t-disb').textContent    = money(t.disbursements);
+      document.getElementById('t-interim').textContent = money(t.interimTotal);
+      document.getElementById('t-offer').textContent   = money(t.lastOffer);
+      renderFlags(findFlags(visibleRows));
+    })
+    .catch(function (err) {
+      // The edit did NOT land. Put the old value back rather than leaving the typed value on
+      // screen looking saved — a silently-lost edit is worse than a visible failure.
+      redrawCell(td, r, key);
+      var e = document.createElement('span');
+      e.className = 'save-err';
+      e.textContent = 'Not saved: ' + err.message;
+      td.appendChild(e);
+    });
 }
 
 // Surface data-quality faults rather than papering over them. These are real records that need a
 // human to fix them IN SHAREPOINT — the report shows them exactly as they are, because they will
-// otherwise reach the client in that state.
+// otherwise reach the client in that state. Each flag links straight to the case so the fix is one
+// click away rather than a hunt.
 function findFlags(rows) {
   var out = [];
+  function flag(r, msg) { out.push({ ref: r.ourRef, title: r.title, msg: msg }); }
   rows.forEach(function (r) {
     if (/\?\?\?/.test(r.title)) {
-      out.push(r.title + ' \u2014 the title contains "???" and will reach the client in that form.');
+      flag(r, 'the title contains "???" and will reach the client in that form.');
     }
     if (!r.currentPosition) {
-      out.push(r.title + ' \u2014 no Current Position.');
+      flag(r, 'no Current Position.');
     }
     if (r.lastOffer && r.interimTotal && Math.abs(r.lastOffer - r.interimTotal) < 0.005) {
-      out.push(r.title + ' \u2014 Paying Party Last Offer (' + money(r.lastOffer) +
+      flag(r, 'Paying Party Last Offer (' + money(r.lastOffer) +
         ') is identical to the interim payments total. One of the two is likely in the wrong field.');
     }
     if (!r.feeEarner) {
-      out.push(r.title + ' \u2014 no Fee Earner.');
+      flag(r, 'no Fee Earner.');
     }
   });
   return out;
@@ -293,7 +597,12 @@ function renderFlags(list) {
   var box = document.getElementById('flags');
   var ul  = document.getElementById('flags-list');
   if (!list.length) { box.style.display = 'none'; ul.innerHTML = ''; return; }
-  ul.innerHTML = list.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
+  ul.innerHTML = list.map(function (f) {
+    var label = f.ref
+      ? '<a href="/case.html?ref=' + encodeURIComponent(f.ref) + '">' + esc(f.title) + '</a>'
+      : esc(f.title);
+    return '<li>' + label + ' \u2014 ' + esc(f.msg) + '</li>';
+  }).join('');
   box.style.display = '';
 }
 
@@ -318,8 +627,8 @@ var BAND     = 'FFD1E8F0';
 var WHITE    = 'FFFFFFFF';
 
 function exportExcel() {
-  if (!current || !current.value || !current.value.length) return;
-  var rows = current.value;
+  if (!visibleRows.length) return;
+  var rows = visibleRows;   // export exactly what is on screen, draftsman filter included
 
   var wb = new ExcelJS.Workbook();
   var ws = wb.addWorksheet('Matter Status Report');
@@ -361,8 +670,8 @@ function exportExcel() {
     });
   });
 
-  // Totals row
-  var t = current.totals || {};
+  // Totals row — recomputed from the exported rows, so it can never disagree with the table.
+  var t = totalsOf(rows);
   var totalVals = HEADERS.map(function (h) {
     if (h.key === 'title')  return 'Totals';
     if (h.type === 'money') return Number(t[h.key]) || 0;
@@ -379,7 +688,8 @@ function exportExcel() {
   // Freeze the header row
   ws.views = [{ state: 'frozen', ySplit: 1 }];
 
-  var firmSlug = (current.firm || 'Report').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  var firmSlug = ((current && current.firm ? current.firm : 'Report') + (selectedAssignee ? ' ' + selectedAssignee : ''))
+    .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
   var d = new Date();
   var stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   var name = firmSlug + '-Matter-Status-Report-' + stamp + '.xlsx';
@@ -397,7 +707,12 @@ function exportExcel() {
 
 // Wiring
 document.getElementById('firm-select').addEventListener('change', function () {
+  selectedAssignee = '';    // draftsman lists differ per firm; start from All on a firm change
   load(this.value);
+});
+document.getElementById('assignee-select').addEventListener('change', function () {
+  selectedAssignee = this.value;
+  if (current) render(current);   // client-side only — no re-fetch
 });
 document.getElementById('btn-refresh').addEventListener('click', function () {
   load(document.getElementById('firm-select').value || DEFAULT_FIRM);
