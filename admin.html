@@ -705,6 +705,24 @@ const EMAIL_TO_FIRSTNAME={
   'lesley@tmclegal.co.uk':'Lesley',
   'david@tmclegal.co.uk':'David', // leaver - not assignable, but historic cases still display
 };
+// Assignment receipt. cases.html stamps CaseAckByDraftsman as '<first-name>|<ISO date>' when the
+// assignee acknowledges the case on their own dashboard. If the stamp's token is not the CURRENT
+// assignee's, the case has been allocated but never opened by the person it now belongs to - so
+// the allocator can see whether an assignment actually landed instead of having to ask.
+function assigneeToken(raw){
+  const s=String(raw||'').trim().toLowerCase();
+  if(!s) return '';
+  return s.includes('@') ? s.split('@')[0] : s.split(/[\s;,]+/)[0];
+}
+function ackChip(f){
+  const tok=assigneeToken(f['assignedToTextValue']);
+  if(!tok||tok==='danielle') return '';   // the hand-back bucket - nothing to acknowledge
+  const stamp=String(f['CaseAckByDraftsman']||'').split('|')[0].trim().toLowerCase();
+  return stamp===tok
+    ? '<span title="Acknowledged by the assignee" style="color:#065F46;font-size:11px;font-weight:600;margin-left:6px;white-space:nowrap;">\u2713 ack</span>'
+    : '<span title="Assigned, but the assignee has not acknowledged it yet" style="color:#B45309;font-size:11px;font-weight:600;margin-left:6px;white-space:nowrap;">\u23f3 not ack</span>';
+}
+
 function normalizeDraftsmanName(raw){
   if(!raw) return '';
   const trimmed=raw.trim(); const lower=trimmed.toLowerCase();
@@ -1004,7 +1022,7 @@ function renderCases(q){
       '<td><div class="td-case-name">'+escHtml(name)+'</div><div class="td-ref" style="margin-top:2px;">'+escHtml(ref)+'</div></td>'+
       '<td><span class="td-muted">'+escHtml(firm)+'</span></td>'+
       '<td><span class="td-muted">'+escHtml(clientRef)+'</span></td>'+
-      '<td><span class="td-muted">'+escHtml(assigned)+'</span></td>'+
+      '<td><span class="td-muted">'+escHtml(assigned)+'</span>'+ackChip(f)+'</td>'+
       '<td><span class="status-chip '+statusClass(status)+'">'+escHtml(status)+'</span></td>'+
       '<td>'+(task?'<span class="task-chip">'+escHtml(task)+'</span>':'\u2014')+'</td>'+
       '<td><span class="td-muted">'+escHtml(dateRec)+'</span></td>'+
@@ -1401,6 +1419,12 @@ async function assignCase(caseId,ref,email,rowEl,selEl){
     const promote = !toDanielle && (curStage===''||curStage.toLowerCase()==='pending assignment');
     const newStage = promote ? 'Assigned - Stage Pending' : null;
     const fields={assignedToTextValue:email};
+    // Clear the acknowledgement stamp on EVERY assignment. CaseAckByDraftsman holds
+    // '<first-name>|<date>' and cases.html only raises the new-case popup when the stamp's token
+    // is not the caller's. So if a case comes BACK to someone who held it before, their old stamp
+    // is still on it and NO POPUP EVER FIRES - the case just silently appears (or doesn't) in
+    // their list. Blanking it here guarantees the new owner is notified, every time.
+    fields.CaseAckByDraftsman='';
     if(newStage){ fields.Status=newStage; fields.StatusMirror=newStage; }
     const r=await fetch('/api/caseupdate',{
       method:'POST',headers:{'Content-Type':'application/json'},

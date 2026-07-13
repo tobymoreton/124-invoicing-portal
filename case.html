@@ -2477,7 +2477,16 @@ async function stripSave(fields, selEl) {
   } catch (err) { if (msg) msg.textContent = 'Failed: ' + err.message; }
   selEl.disabled = false;
 }
-document.getElementById('strip-assigned-sel').addEventListener('change', function(){ if (this.value) stripSave({ assignedToTextValue: this.value, AssignedToMirror: this.value }, this); });
+// Reassigning CLEARS the acknowledgement stamp, so the new owner always gets the popup - even if
+// the case is coming back to someone who held it before (their old stamp would otherwise suppress
+// it silently and forever). Only cleared when the person actually changes.
+function assignFields(newVal){
+  const fields = { assignedToTextValue: newVal, AssignedToMirror: newVal };
+  const cur = caseFields ? caseFields['assignedToTextValue'] : '';
+  if (resolveAssignee(cur) !== resolveAssignee(newVal)) fields.CaseAckByDraftsman = '';
+  return fields;
+}
+document.getElementById('strip-assigned-sel').addEventListener('change', function(){ if (this.value) stripSave(assignFields(this.value), this); });
 document.getElementById('strip-coassigned-sel').addEventListener('change', function(){ stripSave({ coAssignedMirror: this.value || null }, this); });
 document.getElementById('strip-status-sel').addEventListener('change', function(){ if (this.value) stripSave({ StatusMirror: this.value }, this); });
 
@@ -2807,7 +2816,7 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
   const statusVal   = document.getElementById('ov-status-input')?.value     || null;
   const dateFields = [['ov-servedinf-input','DateServedInformally0'],['ov-part8-input','DatePart8Issued'],['ov-servedfml-input','DateServedFormally0'],['ov-poddue-input','PODS_x0020_Due'],['ov-podrec-input','PODS_x0020_Received'],['ov-authassess-input','DateofAuthoritytoAssess'],['ov-settled-input','DateSettled0']];
   const fields = {};
-  if (assignedVal) { fields.assignedToTextValue = assignedVal; fields.AssignedToMirror = assignedVal; }
+  if (assignedVal) { Object.assign(fields, assignFields(assignedVal)); }
   if (coVal) fields.coAssignedMirror = coVal;
   if (statusVal) fields.StatusMirror = statusVal;
   dateFields.forEach(([inputId, spField]) => { const v = document.getElementById(inputId)?.value; fields[spField] = v ? v + 'T00:00:00Z' : null; });
