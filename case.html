@@ -175,7 +175,7 @@
     .content{max-width:1200px;margin:0 auto;padding:28px 28px 56px;}
     .tab-panel{display:none;animation:fadeIn .18s ease;}
     #tab-bookingin.editing #bi-fe-add-btn,#tab-bookingin.editing #bi-firm-add-btn{display:inline-block !important;}
-    #tab-opponent.editing #op-firm2-add-btn,#tab-opponent.editing #op-cw-add-btn{display:inline-block !important;}
+    #tab-opponent.editing #op-firm2-add-btn,#tab-opponent.editing #op-cw-add-btn,#tab-opponent.editing #op-court-add-btn{display:inline-block !important;}
     .tab-panel.active{display:block;}
     @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
     .two-col{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
@@ -1188,6 +1188,18 @@
               <select id="op-CourtName" disabled style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;transition:all .18s ease;width:100%;">
                 <option value="">— loading courts… —</option>
               </select>
+              <button type="button" id="op-court-add-btn" style="display:none;margin-top:6px;background:none;border:none;color:var(--gold-mid);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;padding:0;text-align:left;">+ Add Court</button>
+              <div id="op-court-add-form" style="display:none;margin-top:8px;gap:6px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="op-court-add-name" placeholder="Court name" style="flex-basis:100%;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="op-court-add-a1" placeholder="Address line 1" style="flex-basis:100%;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="op-court-add-a2" placeholder="Address line 2" style="flex-basis:100%;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="op-court-add-a3" placeholder="Address line 3" style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="op-court-add-a4" placeholder="Town / county" style="flex:1;min-width:110px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <input type="text" id="op-court-add-a5" placeholder="Postcode" style="flex:0 0 110px;padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;" />
+                <button type="button" id="op-court-add-save" style="padding:6px 14px;border:none;border-radius:var(--radius-sm);background:var(--navy);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">Add</button>
+                <button type="button" id="op-court-add-cancel" style="padding:6px 10px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);background:none;color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;cursor:pointer;">&#10005;</button>
+                <span id="op-court-add-msg" style="font-size:12px;color:var(--navy);flex-basis:100%;"></span>
+              </div>
             </div>
             <div class="field"><label>Division</label><input type="text" id="op-Division" disabled /></div>
             <div class="field"><label>Claim No</label><input type="text" id="op-ClaimNo" disabled /></div>
@@ -1943,6 +1955,42 @@ async function loadCourts() {
     if (caseFields && caseFields['CourtName_Text']) setSelectOp('op-CourtName', caseFields['CourtName_Text']);
   }
 }
+
+// Quick-add Court (Opponent & Court tab, S73). POSTs to /api/reflists?list=courts — note
+// the SELECT is populated from /api/courts (a different, read-only endpoint), so the
+// create goes to reflists and the reload comes from courts. Both read the same SP list.
+function opCourtAddShow(show) {
+  document.getElementById('op-court-add-form').style.display = show ? 'flex' : 'none';
+  document.getElementById('op-court-add-btn').style.visibility = show ? 'hidden' : '';
+  document.getElementById('op-court-add-msg').textContent = '';
+  if (show) document.getElementById('op-court-add-name').focus();
+}
+document.getElementById('op-court-add-btn').addEventListener('click', () => opCourtAddShow(true));
+document.getElementById('op-court-add-cancel').addEventListener('click', () => opCourtAddShow(false));
+document.getElementById('op-court-add-save').addEventListener('click', async () => {
+  const name = document.getElementById('op-court-add-name').value.trim();
+  const msg  = document.getElementById('op-court-add-msg');
+  if (!name) { msg.textContent = 'Name required'; return; }
+  const val = id => document.getElementById(id).value.trim();
+  const payload = {
+    title:    name,
+    address1: val('op-court-add-a1') || null,
+    address2: val('op-court-add-a2') || null,
+    address3: val('op-court-add-a3') || null,
+    address4: val('op-court-add-a4') || null,
+    address5: val('op-court-add-a5') || null,
+  };
+  const btn = document.getElementById('op-court-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
+  try {
+    const resp = await fetch('/api/reflists?list=courts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    await loadCourts();
+    setSelectOp('op-CourtName', name);
+    ['name','a1','a2','a3','a4','a5'].forEach(k => { document.getElementById('op-court-add-' + k).value = ''; });
+    opCourtAddShow(false);
+  } catch (err) { msg.textContent = err.message; }
+  finally { btn.disabled = false; }
+});
 
 function renderCaseUI(firstPaint) {
   computeFigures();

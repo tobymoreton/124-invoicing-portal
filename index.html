@@ -296,7 +296,7 @@
       <circle cx="6" cy="6" r="4.5" stroke="#1B2A4A" stroke-width="1.4"/>
       <line x1="9.2" y1="9.2" x2="12.5" y2="12.5" stroke="#1B2A4A" stroke-width="1.4" stroke-linecap="round"/>
     </svg>
-    <input type="text" class="search-input" id="search" placeholder="Search client, case, ref…" oninput="onSearch()" />
+    <input type="text" class="search-input" id="search" placeholder="Search client, case, ref, amount (500, &gt;1000, 500-2000)…" oninput="onSearch()" />
   </div>
   <div class="chip-group" id="status-chips">
     <span class="chip-label">Status</span>
@@ -735,8 +735,58 @@ function closeDrawer() {
   renderTable();
 }
 
+// ── Amount search (S73) ───────────────────────────────────────────────────────
+// Parses an amount query out of the ONE search box. Recognised forms (£, commas and
+// spaces are ignored throughout):
+//    500            plain number  — amount match OR normal text match (see below)
+//    =500           exact only
+//    >500  >=500  <500  <=500     open-ended range
+//    500-2000       inclusive range
+// Returns null when the query is not an amount query at all.
+//
+// The plain-number case is deliberately a UNION with the text search: invoice numbers
+// (OrderDetails) and Our Refs are themselves numeric strings, so typing 13305 must still
+// find invoice 13305. Searching "13305" therefore returns that invoice AND anything for
+// £13,305. The operator forms are unambiguous, so those are amount-only.
+function parseAmountQuery(q) {
+  const clean = q.replace(/[\u00a3,\s]/g, '');
+  if (!clean) return null;
+  let m;
+  if ((m = clean.match(/^(>=|<=|>|<|=)(\d+(?:\.\d+)?)$/))) {
+    const v = parseFloat(m[2]);
+    if (isNaN(v)) return null;
+    const op = m[1];
+    return {
+      amountOnly: true,
+      test: a => op === '>'  ? a >  v
+              : op === '>=' ? a >= v
+              : op === '<'  ? a <  v
+              : op === '<=' ? a <= v
+              :               Math.abs(a - v) < 0.005,
+    };
+  }
+  if ((m = clean.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/))) {
+    const lo = parseFloat(m[1]), hi = parseFloat(m[2]);
+    if (isNaN(lo) || isNaN(hi)) return null;
+    return { amountOnly: true, test: a => a >= Math.min(lo,hi) && a <= Math.max(lo,hi) };
+  }
+  if ((m = clean.match(/^(\d+(?:\.\d+)?)$/))) {
+    const v = parseFloat(m[1]);
+    if (isNaN(v)) return null;
+    // Plain number: exact to the penny, or the typed digits appear in the amount
+    // (so "1234" also finds £1,234.56). Never amount-only — union with the text search.
+    const digits = m[1];
+    return {
+      amountOnly: false,
+      test: a => Math.abs(a - v) < 0.005 || a.toFixed(2).indexOf(digits) === 0,
+    };
+  }
+  return null;
+}
+
 function applyFilters(today) {
   const s = filters.search.toLowerCase().trim();
+  const amt = s ? parseAmountQuery(s) : null;
   return allInvoices.filter(inv => {
     // Age band filter
     if (filters.ageMin !== null) {
@@ -747,7 +797,15 @@ function applyFilters(today) {
     }
     if (s) {
       const hay = [inv.VendorName,inv.Casename,inv.OrderDetails,inv.Ourref].map(v=>(v||'').toLowerCase()).join(' ');
-      if (!hay.includes(s)) return false;
+      const textHit = hay.includes(s);
+      if (amt) {
+        // Tested against BOTH Amount Due and Amount Outstanding — "what did we bill"
+        // and "what is still owed" are both things you'd search a ledger for.
+        const due = parseFloat(inv.AmountDue);
+        const out = parseFloat(inv.AmountOutstanding);
+        const amtHit = (!isNaN(due) && amt.test(due)) || (!isNaN(out) && amt.test(out));
+        if (amt.amountOnly ? !amtHit : (!amtHit && !textHit)) return false;
+      } else if (!textHit) return false;
     }
     if (filters.status!=='all') {
       const s = normalizeStatus(inv,today);
