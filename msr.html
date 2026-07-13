@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matter Status Report — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <style>
+    :root {
+      --navy:#001B44; --navy-mid:#253A60; --navy-light:#2E4A7A;
+      --gold:#B59A6A; --gold-pale:#F5EDD0; --gold-mid:#B8962E;
+      --cream:#F4F1EA; --white:#FFFFFF;
+      --grey-mid:#6B7280; --grey-light:#E2DDD4; --grey-faint:#F0EDE6;
+      --green:#065F46; --green-pale:#ECFDF5;
+      --red:#991B1B; --red-pale:#FEF2F2;
+      --tmc-blue:#163B44; --tmc-band:#D1E8F0;
+      --shadow:0 2px 4px rgba(27,42,74,.08),0 8px 24px rgba(27,42,74,.10);
+      --shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px; --radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+
+    /* Nav — matches cases.html */
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-links{display:flex;align-items:center;gap:12px;}
+    .nav-link{font-size:13px;font-weight:600;color:var(--gold);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);background:rgba(201,168,76,.15);transition:all .18s ease;letter-spacing:.02em;}
+    .nav-link:hover{background:rgba(201,168,76,.28);border-color:rgba(201,168,76,.7);color:#F5EDD0;}
+
+    /* Header */
+    .page-header{padding:26px 32px 18px;border-bottom:1px solid var(--grey-light);background:var(--white);}
+    .page-header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+    .page-title{font-family:'Spectral',serif;font-size:26px;font-weight:400;letter-spacing:.01em;}
+    .page-sub{font-size:13px;color:var(--grey-mid);margin-top:3px;}
+    .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    label.ctl-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:4px;}
+    select.ctl{font-family:'IBM Plex Sans',sans-serif;font-size:14px;padding:8px 12px;border:1px solid var(--grey-light);border-radius:var(--radius-sm);background:var(--white);color:var(--navy);min-width:260px;}
+    select.ctl:focus{outline:none;border-color:var(--navy-light);}
+    .btn{font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;padding:9px 18px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all .18s ease;letter-spacing:.02em;}
+    .btn-primary{background:var(--navy);color:var(--gold-pale);}
+    .btn-primary:hover{background:var(--navy-mid);}
+    .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+    .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--grey-light);}
+    .btn-ghost:hover{background:var(--grey-faint);}
+
+    .source-note{margin:14px 32px 0;padding:9px 14px;background:var(--green-pale);border-left:3px solid var(--green);border-radius:var(--radius-sm);font-size:12px;color:var(--green);}
+
+    .flags{margin:14px 32px 0;padding:12px 16px;background:var(--red-pale);border-left:3px solid var(--red);border-radius:var(--radius-sm);font-size:13px;color:var(--red);}
+    .flags h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+    .flags ul{margin:0;padding-left:18px;}
+    .flags li{margin:2px 0;}
+
+    /* Table */
+    .wrap{padding:20px 32px 60px;}
+    .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:auto;}
+    table{border-collapse:collapse;width:100%;font-size:12.5px;}
+    thead th{position:sticky;top:0;z-index:5;background:var(--tmc-blue);color:var(--white);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;padding:11px 10px;white-space:nowrap;}
+    tbody td{padding:10px;border-bottom:1px solid var(--grey-light);vertical-align:top;}
+    tbody tr:nth-child(even){background:var(--tmc-band);}
+    tbody tr:hover{background:var(--gold-pale);}
+    td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+    td.wide{min-width:340px;max-width:460px;white-space:pre-wrap;}
+    td.nowrap{white-space:nowrap;}
+    .unassigned{color:var(--grey-mid);font-style:italic;}
+    tfoot td{padding:12px 10px;background:var(--tmc-blue);color:var(--white);font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right;position:sticky;bottom:0;}
+    tfoot td.label{text-align:left;font-family:'IBM Plex Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;font-size:11px;}
+    .msg{padding:40px;text-align:center;color:var(--grey-mid);}
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Matter Status Report</span>
+  </div>
+  <div class="nav-links" id="nav-links">
+    <a href="/cases.html" class="nav-link">&larr; My Cases</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-top">
+    <div>
+      <div class="page-title">Matter Status Report</div>
+      <div class="page-sub" id="page-sub">Loading&hellip;</div>
+    </div>
+    <div class="controls">
+      <div>
+        <label class="ctl-label" for="firm-select">Instructing firm</label>
+        <select class="ctl" id="firm-select"></select>
+      </div>
+      <div style="align-self:flex-end;display:flex;gap:10px;">
+        <button class="btn btn-ghost" id="btn-refresh">Refresh</button>
+        <button class="btn btn-primary" id="btn-export" disabled>Export to Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="source-note">
+  Read live from SharePoint at the moment you loaded this page. There is no cached copy and no
+  intermediate file &mdash; what you see is what SharePoint says right now.
+</div>
+
+<div class="flags" id="flags" style="display:none;">
+  <h3>Data quality &mdash; needs fixing at source</h3>
+  <ul id="flags-list"></ul>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Fee Earner</th>
+          <th>Client Reference</th>
+          <th>Assigned To</th>
+          <th>Date Served</th>
+          <th style="text-align:right;">Total IP Costs Claimed</th>
+          <th style="text-align:right;">Counsel Fees Claimed</th>
+          <th style="text-align:right;">Disbursements Claimed</th>
+          <th style="text-align:right;">Total Interim Payments</th>
+          <th style="text-align:right;">Paying Party Last Offer</th>
+          <th>Current Position</th>
+          <th>Last Action</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="12" class="msg">Loading&hellip;</td></tr>
+      </tbody>
+      <tfoot id="tfoot" style="display:none;">
+        <tr>
+          <td class="label" colspan="5">Totals</td>
+          <td id="t-ip">&mdash;</td>
+          <td id="t-counsel">&mdash;</td>
+          <td id="t-disb">&mdash;</td>
+          <td id="t-interim">&mdash;</td>
+          <td id="t-offer">&mdash;</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+var DEFAULT_FIRM = 'Hodge Jones & Allen LLP';
+var current = null;   // last payload
+
+// Formatting
+function money(n) {
+  if (n === null || n === undefined || isNaN(n)) return '\u00a30.00';
+  return '\u00a3' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  var dd = String(d.getUTCDate()).padStart(2, '0');
+  return dd + '-' + MONTHS[d.getUTCMonth()] + '-' + d.getUTCFullYear();
+}
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Load
+function load(firm) {
+  var tbody = document.getElementById('tbody');
+  tbody.innerHTML = '<tr><td colspan="12" class="msg">Loading\u2026</td></tr>';
+  document.getElementById('tfoot').style.display = 'none';
+  document.getElementById('btn-export').disabled = true;
+  document.getElementById('page-sub').textContent = 'Loading\u2026';
+
+  // Cache-busted deliberately. This report exists BECAUSE a stale derived copy put phantom
+  // matters in front of a client. It must never read anything but SharePoint as it is now.
+  var url = '/api/msr?firm=' + encodeURIComponent(firm) + '&_=' + Date.now();
+
+  fetch(url, { cache: 'no-store' })
+    .then(function (r) {
+      if (!r.ok) { return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); }); }
+      return r.json();
+    })
+    .then(function (data) {
+      current = data;
+      buildFirmSelect(data.firms || [], data.firm);
+      render(data);
+    })
+    .catch(function (err) {
+      tbody.innerHTML = '<tr><td colspan="12" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
+      document.getElementById('page-sub').textContent = 'Failed to load.';
+    });
+}
+
+function buildFirmSelect(firms, selected) {
+  var sel = document.getElementById('firm-select');
+  if (sel.options.length && sel.value === selected) return;   // already built
+  sel.innerHTML = '';
+  firms.forEach(function (f) {
+    var o = document.createElement('option');
+    o.value = f; o.textContent = f;
+    if (f === selected) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+// Render
+function render(data) {
+  var rows  = data.value || [];
+  var tbody = document.getElementById('tbody');
+
+  document.getElementById('page-sub').textContent =
+    rows.length + (rows.length === 1 ? ' matter' : ' matters') + ' \u00b7 ' + data.firm +
+    ' \u00b7 as at ' + new Date(data.generated).toLocaleString('en-GB');
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="msg">No matters on the report for this firm.</td></tr>';
+    document.getElementById('btn-export').disabled = true;
+    renderFlags([]);
+    return;
+  }
+
+  tbody.innerHTML = rows.map(function (r) {
+    var assigned = r.assignedTo
+      ? esc(r.assignedTo)
+      : '<span class="unassigned">Unassigned</span>';
+    return '<tr>'
+      + '<td class="nowrap">' + esc(r.title) + '</td>'
+      + '<td>' + esc(r.feeEarner) + '</td>'
+      + '<td>' + esc(r.clientRef) + '</td>'
+      + '<td>' + assigned + '</td>'
+      + '<td class="nowrap">' + esc(fmtDate(r.dateServed)) + '</td>'
+      + '<td class="num">' + money(r.totalIPCosts) + '</td>'
+      + '<td class="num">' + money(r.counselFees) + '</td>'
+      + '<td class="num">' + money(r.disbursements) + '</td>'
+      + '<td class="num">' + money(r.interimTotal) + '</td>'
+      + '<td class="num">' + money(r.lastOffer) + '</td>'
+      + '<td class="wide">' + esc(r.currentPosition) + '</td>'
+      + '<td class="wide">' + esc(r.lastAction) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var t = data.totals || {};
+  document.getElementById('t-ip').textContent      = money(t.totalIPCosts);
+  document.getElementById('t-counsel').textContent = money(t.counselFees);
+  document.getElementById('t-disb').textContent    = money(t.disbursements);
+  document.getElementById('t-interim').textContent = money(t.interimTotal);
+  document.getElementById('t-offer').textContent   = money(t.lastOffer);
+  document.getElementById('tfoot').style.display   = '';
+  document.getElementById('btn-export').disabled   = false;
+
+  renderFlags(findFlags(rows));
+}
+
+// Surface data-quality faults rather than papering over them. These are real records that need a
+// human to fix them IN SHAREPOINT — the report shows them exactly as they are, because they will
+// otherwise reach the client in that state.
+function findFlags(rows) {
+  var out = [];
+  rows.forEach(function (r) {
+    if (/\?\?\?/.test(r.title)) {
+      out.push(r.title + ' \u2014 the title contains "???" and will reach the client in that form.');
+    }
+    if (!r.currentPosition) {
+      out.push(r.title + ' \u2014 no Current Position.');
+    }
+    if (r.lastOffer && r.interimTotal && Math.abs(r.lastOffer - r.interimTotal) < 0.005) {
+      out.push(r.title + ' \u2014 Paying Party Last Offer (' + money(r.lastOffer) +
+        ') is identical to the interim payments total. One of the two is likely in the wrong field.');
+    }
+    if (!r.feeEarner) {
+      out.push(r.title + ' \u2014 no Fee Earner.');
+    }
+  });
+  return out;
+}
+
+function renderFlags(list) {
+  var box = document.getElementById('flags');
+  var ul  = document.getElementById('flags-list');
+  if (!list.length) { box.style.display = 'none'; ul.innerHTML = ''; return; }
+  ul.innerHTML = list.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
+  box.style.display = '';
+}
+
+// Excel export
+var HEADERS = [
+  { key: 'title',           label: 'Title',                  width: 34 },
+  { key: 'feeEarner',       label: 'Fee Earner',             width: 20 },
+  { key: 'clientRef',       label: 'Client Reference',       width: 20 },
+  { key: 'assignedTo',      label: 'Assigned To',            width: 18 },
+  { key: 'dateServed',      label: 'Date Served',            width: 14, type: 'date' },
+  { key: 'totalIPCosts',    label: 'Total IP Costs Claimed', width: 18, type: 'money' },
+  { key: 'counselFees',     label: 'Counsel Fees Claimed',   width: 18, type: 'money' },
+  { key: 'disbursements',   label: 'Disbursements Claimed',  width: 18, type: 'money' },
+  { key: 'interimTotal',    label: 'Total Interim Payments', width: 18, type: 'money' },
+  { key: 'lastOffer',       label: 'Paying Party Last Offer',width: 18, type: 'money' },
+  { key: 'currentPosition', label: 'Current Position',       width: 90, type: 'wrap' },
+  { key: 'lastAction',      label: 'Last Action',            width: 90, type: 'wrap' }
+];
+
+var TMC_BLUE = 'FF163B44';
+var BAND     = 'FFD1E8F0';
+var WHITE    = 'FFFFFFFF';
+
+function exportExcel() {
+  if (!current || !current.value || !current.value.length) return;
+  var rows = current.value;
+
+  var wb = new ExcelJS.Workbook();
+  var ws = wb.addWorksheet('Matter Status Report');
+
+  ws.columns = HEADERS.map(function (h) {
+    return { key: h.key, width: h.width };
+  });
+
+  // Header row
+  var head = ws.addRow(HEADERS.map(function (h) { return h.label; }));
+  head.eachCell(function (cell) {
+    cell.font      = { name: 'Arial', size: 10, bold: true, color: { argb: WHITE } };
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: TMC_BLUE } };
+    cell.alignment = { vertical: 'middle', wrapText: true };
+  });
+  head.height = 28;
+
+  // Data rows
+  rows.forEach(function (r, i) {
+    var vals = HEADERS.map(function (h) {
+      var v = r[h.key];
+      if (h.type === 'date')  return v ? new Date(v) : null;
+      if (h.type === 'money') return Number(v) || 0;
+      return v || '';
+    });
+    var row = ws.addRow(vals);
+    var banded = (i % 2 === 1);
+    row.eachCell(function (cell, col) {
+      var h = HEADERS[col - 1];
+      cell.font = { name: 'Arial', size: 10 };
+      if (banded) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND } };
+      }
+      if (h.type === 'money') { cell.numFmt = '\u00a3#,##0.00'; }
+      if (h.type === 'date')  { cell.numFmt = 'DD-MMM-YYYY'; }
+      cell.alignment = (h.type === 'wrap')
+        ? { vertical: 'top', wrapText: true }
+        : { vertical: 'top' };
+    });
+  });
+
+  // Totals row
+  var t = current.totals || {};
+  var totalVals = HEADERS.map(function (h) {
+    if (h.key === 'title')  return 'Totals';
+    if (h.type === 'money') return Number(t[h.key]) || 0;
+    return '';
+  });
+  var foot = ws.addRow(totalVals);
+  foot.eachCell(function (cell, col) {
+    var h = HEADERS[col - 1];
+    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: WHITE } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TMC_BLUE } };
+    if (h.type === 'money') { cell.numFmt = '\u00a3#,##0.00'; }
+  });
+
+  // Freeze the header row
+  ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+  var firmSlug = (current.firm || 'Report').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  var d = new Date();
+  var stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  var name = firmSlug + '-Matter-Status-Report-' + stamp + '.xlsx';
+
+  wb.xlsx.writeBuffer().then(function (buf) {
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  });
+}
+
+// Wiring
+document.getElementById('firm-select').addEventListener('change', function () {
+  load(this.value);
+});
+document.getElementById('btn-refresh').addEventListener('click', function () {
+  load(document.getElementById('firm-select').value || DEFAULT_FIRM);
+});
+document.getElementById('btn-export').addEventListener('click', exportExcel);
+
+// Admin nav link, same pattern as the other pages.
+fetch('/.auth/me')
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    var user = data && (data.clientPrincipal || (Array.isArray(data) ? data[0] && data[0].clientPrincipal : null));
+    if (!user || !user.userDetails) return;
+    var email = user.userDetails.toLowerCase();
+    var ADMIN = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+    if (ADMIN.indexOf(email) !== -1) {
+      var nav = document.getElementById('nav-links');
+      if (nav && !nav.querySelector('[href="/admin.html"]')) {
+        var a = document.createElement('a');
+        a.href = '/admin.html'; a.className = 'nav-link'; a.textContent = '\u2190 Admin';
+        nav.insertBefore(a, nav.firstChild);
+      }
+    }
+  })
+  .catch(function () {});
+
+load(DEFAULT_FIRM);
+</script>
+</body>
+</html>
