@@ -911,7 +911,7 @@ async function loadReminders(cases){
   const refs=cases.map(c=>c.fields['Ourreference_x0028_text_x0029_']).filter(Boolean);
   if(!refs.length){allReminders=[];return;}
   const results=await Promise.allSettled(
-    refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1')
+    refs.map(ref=>fetch('/api/reminders?ref='+encodeURIComponent(ref)+'&open=1&_='+Date.now(),{cache:'no-store'})
       .then(r=>r.ok?r.json():{value:[]})
       .then(data=>{
         const caseName=caseDisplayName((cases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields)||ref;
@@ -1291,7 +1291,7 @@ async function loadActions(cases){
     if(r) nameByRef[r]=caseDisplayName(c.fields)||r;
   });
   try{
-    const r=await fetch('/api/caseactions?all=1');
+    const r=await fetch('/api/caseactions?all=1&_='+Date.now(),{cache:'no-store'});
     const data=r.ok?await r.json():{value:[]};
     const rows=Array.isArray(data)?data:(data.value||[]);
     allActions=rows
@@ -1963,6 +1963,28 @@ async function init(){
       '<h3 style="color:#991B1B;">Error loading cases</h3><p style="margin-top:8px;color:var(--grey-mid);">'+escHtml(err.message)+'</p>';
   }
 }
+
+// Coming BACK to the dashboard used to show it exactly as it was left. Two causes, both fixed here:
+//   1. The browser restores the page from the back/forward cache - init() never runs again, so a
+//      reminder edited or completed on the case page still showed its old text, and a completed
+//      one reappeared.
+//   2. Even on a real reload, readCache() paints the sessionStorage snapshot first; the reminder
+//      and action fetches were also served from the HTTP cache, so the "fresh" pass repainted the
+//      same stale rows (both now go out with no-store + a cache-buster).
+// Refresh whenever the page is shown again, throttled so tab-flicking doesn't hammer the API.
+let lastRefresh=Date.now();
+async function refreshFromServer(){
+  if(Date.now()-lastRefresh<4000) return;
+  lastRefresh=Date.now();
+  try{
+    await fetchAllData();
+    await fetchSecondaryData();
+    writeCache();
+    renderStats(); renderStagePanel(); renderRemPanel(); renderActionsPanel(); populateCasePickers();
+  }catch(e){ /* leave what is on screen rather than blanking it */ }
+}
+window.addEventListener('pageshow', e => { if(e.persisted) refreshFromServer(); });
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') refreshFromServer(); });
 
 document.querySelectorAll('.info-btn').forEach(btn => {
   btn.addEventListener('click', e => {
