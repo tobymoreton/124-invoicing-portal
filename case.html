@@ -1909,7 +1909,7 @@ document.getElementById('op-cw-add-save').addEventListener('click', async () => 
   const btn = document.getElementById('op-cw-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
   try {
     const resp = await fetch('/api/reflists?list=opponentcws', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firm }) });
-    if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add opponent caseworkers');
+    if (resp.status === 403) throw new Error(await resp.text());
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     await loadOpponentCaseworkers2();
     filterCaseworkerOptions();
@@ -2240,7 +2240,7 @@ document.getElementById('bi-firm-add-save').addEventListener('click', async () =
   const btn = document.getElementById('bi-firm-add-save'); btn.disabled = true; msg.textContent = 'Adding\u2026';
   try {
     const resp = await fetch('/api/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-    if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add client firms');
+    if (resp.status === 403) throw new Error(await resp.text());
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     const created = await resp.json().catch(() => ({}));
     if (refFirms) { refFirms.push({ id: String(created.id || ''), name, address1: '' }); refFirms.sort((a, b) => a.name.localeCompare(b.name)); }
@@ -2276,7 +2276,7 @@ document.getElementById('bi-fe-add-save').addEventListener('click', async () => 
   const linkedFirm = (document.getElementById('bi-Firm').value || '').trim();
   try {
     const resp = await fetch('/api/reflists?list=feeearners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: name, firstName: first || null, lastName: last || null, firmToLink: linkedFirm || null }) });
-    if (resp.status === 403) throw new Error('Only Toby, Danielle or Lesley can add fee earners');
+    if (resp.status === 403) throw new Error(await resp.text());
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
     if (refFeeEarners) { refFeeEarners.push({ name: name, firmId: null }); refFeeEarners.sort((a, b) => a.name.localeCompare(b.name)); }
     const feSel = document.getElementById('bi-FeeEarner');
