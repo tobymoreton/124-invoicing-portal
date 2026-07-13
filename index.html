@@ -118,6 +118,21 @@
     .payment-slot-date{font-size:12px;color:var(--grey-mid);}
     .payment-slot-amount{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--navy);}
     .no-payments{font-size:13px;color:var(--grey-mid);font-style:italic;}
+    .pay-row{display:grid;grid-template-columns:16px 1fr 128px auto;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--grey-faint);}
+    .pay-row:last-child{border-bottom:none;}
+    .pay-n{font-size:11px;font-weight:700;color:var(--grey-mid);}
+    .pay-in{width:100%;padding:6px 8px;border:1.5px solid var(--grey-light);border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--navy);background:var(--white);outline:none;}
+    .pay-in:focus{border-color:var(--gold);}
+    .pay-btn{padding:6px 10px;background:transparent;border:1.5px solid var(--gold);border-radius:4px;color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:600;cursor:pointer;}
+    .pay-btn:hover:not(:disabled){background:var(--gold);color:var(--navy);}
+    .pay-btn:disabled{opacity:.4;cursor:not-allowed;}
+    .pay-btn.clr{border-color:var(--grey-light);color:var(--grey-mid);}
+    .pay-btn.clr:hover:not(:disabled){background:var(--grey-faint);color:var(--navy);}
+    .pay-hint{font-size:11.5px;color:var(--grey-mid);margin:2px 0 10px;}
+    .pay-hint a{color:var(--gold);font-weight:600;cursor:pointer;text-decoration:underline;}
+    .pay-msg{font-size:11.5px;margin-top:8px;min-height:14px;}
+    .pay-msg.ok{color:var(--paid,#065F46);}
+    .pay-msg.err{color:var(--overdue);}
     /* ── DRAFTSMAN SECTION ── */
     .ds-section{padding:0 28px 32px;}
     .ds-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -645,10 +660,29 @@ function openDrawer(id) {
   el('d-inv-num', `Invoice ${esc(inv.OrderDetails||'—')}`);
   el('d-client',  esc(inv.VendorName||'Unknown client'));
   el('d-case',    esc(inv.Casename||''));
+  // ── Payments (S73). Editable for Management only (Toby, Danielle) and only on an
+  // issued, non-cancelled invoice. Everyone else keeps the read-only history.
+  const canPay = _isAdmin && !!inv.OrderDetails && !!inv.InvoiceDate && !inv.Cancelled;
+  const todayIso = new Date().toISOString().slice(0,10);
+  const outNow = parseFloat(inv.AmountOutstanding);
   const slots = [1,2,3].map(i => {
     const a=parseFloat(inv[`PaymentAmount${i}`]), d=inv[`PaymentDate${i}`];
-    return a>0?`<div class="payment-slot"><div class="payment-slot-date">${d?fmtDate(d):'Date not recorded'}</div><div class="payment-slot-amount">£${a.toFixed(2)}</div></div>`:'';
+    const has = !isNaN(a) && a>0;
+    if (!canPay) {
+      return has?`<div class="payment-slot"><div class="payment-slot-date">${d?fmtDate(d):'Date not recorded'}</div><div class="payment-slot-amount">£${a.toFixed(2)}</div></div>`:'';
+    }
+    return `<div class="pay-row">
+      <span class="pay-n">${i}</span>
+      <input class="pay-in" type="number" step="0.01" min="0" id="pay-amt-${i}" placeholder="0.00" value="${has?a.toFixed(2):''}">
+      <input class="pay-in" type="date" id="pay-date-${i}" value="${d?String(d).slice(0,10):(has?'':todayIso)}">
+      <span>
+        <button class="pay-btn" id="pay-save-${i}" onclick="savePayment('${esc(inv._id)}',${i})">Save</button>
+        ${has?`<button class="pay-btn clr" id="pay-clr-${i}" onclick="clearPayment('${esc(inv._id)}',${i})">Clear</button>`:''}
+      </span>
+    </div>`;
   }).filter(Boolean).join('');
+  const payHint = canPay && !isNaN(outNow) && outNow > 0
+    ? `<div class="pay-hint">Outstanding £${outNow.toFixed(2)} — <a onclick="fillOutstanding()">fill next free slot</a></div>` : '';
   // Determine whether to show action buttons for this invoice
   const isDraft        = !inv.OrderDetails && !inv.InvoiceDate;
   const isIssued       = !!inv.OrderDetails && !inv.Cancelled;
@@ -681,8 +715,10 @@ function openDrawer(id) {
       <dt>Drafting Fee</dt><dd class="mono">${fmtAmtFull(inv.DraftingFeeElement)}</dd>
       <dt>Invoice PDF</dt><dd>${inv.FileUrl?`<a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Open in SharePoint ↗</a>`:'—'}</dd>
     </div></div>
-    <div class="drawer-section"><div class="drawer-section-title">Payment History</div>
+    <div class="drawer-section"><div class="drawer-section-title">Payment${canPay?'s':' History'}</div>
+      ${payHint}
       ${slots||'<p class="no-payments">No payments recorded.</p>'}
+      ${canPay?'<div class="pay-msg" id="pay-msg"></div>':''}
     </div>
     ${actionsHTML}`);
   document.getElementById('drawer').classList.add('open');
@@ -1217,6 +1253,115 @@ async function cancelInvoice(listItemId) {
   } catch (e) {
     alert('Cancel failed: ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Cancel Invoice'; }
+  }
+}
+
+// ── Payments (S73) ────────────────────────────────────────────────────────────
+// Three slots, no fourth. Management only. The server is the gate; this is the UI.
+// Nothing is written optimistically — every render comes back from SharePoint.
+
+function fillOutstanding() {
+  const inv = allInvoices.find(i => i._id === activeId);
+  if (!inv) return;
+  const free = [1,2,3].find(i => !(parseFloat(inv[`PaymentAmount${i}`]) > 0));
+  if (!free) { payMsg('All three payment slots are in use.', true); return; }
+  const out = parseFloat(inv.AmountOutstanding);
+  const amt = document.getElementById('pay-amt-' + free);
+  if (amt && !isNaN(out) && out > 0) { amt.value = out.toFixed(2); amt.focus(); }
+}
+
+function payMsg(text, isErr) {
+  const m = document.getElementById('pay-msg');
+  if (!m) return;
+  m.textContent = text || '';
+  m.className = 'pay-msg' + (text ? (isErr ? ' err' : ' ok') : '');
+}
+
+// Sends one payment write and re-renders from the server's read-back.
+async function applyPayment(listItemId, slot, amount, date, confirmOverpay) {
+  const res  = await fetch('/api/payment', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ listItemId, slot, amount, date, confirmOverpay: !!confirmOverpay }),
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch (e) { /* non-JSON error body */ }
+
+  if (!res.ok) {
+    // Overpayment: server refuses until explicitly confirmed. Ask, then re-send.
+    if (data && data.code === 'OVERPAY' && !confirmOverpay) {
+      if (confirm(data.error + '\n\nRecord it anyway?')) {
+        return applyPayment(listItemId, slot, amount, date, true);
+      }
+      return null;
+    }
+    throw new Error((data && data.error) || text || ('Server error ' + res.status));
+  }
+
+  // Update the in-memory invoice from the SERVER read-back, then recompute
+  // AmountOutstanding exactly as /api/invoices does (due minus the three payments).
+  const inv = allInvoices.find(i => i._id === listItemId);
+  if (inv && data && data.invoice) {
+    const f = data.invoice;
+    [1,2,3].forEach(n => {
+      const a = parseFloat(f['PaymentAmount' + n]);
+      inv['PaymentAmount' + n] = isNaN(a) ? null : a;
+      inv['PaymentDate'   + n] = f['PaymentDate' + n] || null;
+    });
+    if (f.Status)      inv.Status      = f.Status;
+    if (f.Status_Text) inv.Status_Text = f.Status_Text;
+    const due = parseFloat(inv.AmountDue);
+    if (!isNaN(due)) {
+      const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n]) || 0), 0);
+      inv.AmountOutstanding = Math.round((due - paid) * 100) / 100;
+    }
+  }
+  return data;
+}
+
+async function savePayment(listItemId, slot) {
+  const amtEl  = document.getElementById('pay-amt-'  + slot);
+  const dateEl = document.getElementById('pay-date-' + slot);
+  const btn    = document.getElementById('pay-save-' + slot);
+  const amount = amtEl ? amtEl.value.trim() : '';
+  const date   = dateEl ? dateEl.value : '';
+
+  if (!amount || parseFloat(amount) === 0) {
+    payMsg('Enter an amount, or use Clear to remove this payment.', true);
+    return;
+  }
+  if (!date) { payMsg('A payment date is required.', true); return; }
+
+  payMsg('');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  try {
+    const data = await applyPayment(listItemId, slot, parseFloat(amount), date, false);
+    if (!data) { if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }  // user declined overpay
+    openDrawer(listItemId);   // re-render the drawer from the updated invoice
+    renderTable();
+    renderStats();
+    payMsg('Payment ' + slot + ' saved.', false);
+  } catch (e) {
+    payMsg(e.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }
+}
+
+async function clearPayment(listItemId, slot) {
+  if (!confirm('Remove payment ' + slot + ' from this invoice?')) return;
+  const btn = document.getElementById('pay-clr-' + slot);
+  payMsg('');
+  if (btn) { btn.disabled = true; btn.textContent = 'Clearing\u2026'; }
+  try {
+    await applyPayment(listItemId, slot, null, null, false);
+    openDrawer(listItemId);
+    renderTable();
+    renderStats();
+    payMsg('Payment ' + slot + ' cleared.', false);
+  } catch (e) {
+    payMsg(e.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Clear'; }
   }
 }
 
