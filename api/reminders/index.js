@@ -86,6 +86,37 @@ function graphPatch(url, token, fields) {
   });
 }
 
+function graphDelete(url, token) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname, path: u.pathname + u.search, method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        if (res.statusCode >= 400) { reject(new Error(`Graph DELETE ${res.statusCode}: ${data.slice(0,300)}`)); return; }
+        resolve({});
+      });
+    });
+    req.on('error', reject); req.end();
+  });
+}
+
+// Identity for the DELETE gate. A reminder is destructive and irreversible from the portal
+// (SharePoint's recycle bin is the only way back), so it is staff-only rather than anonymous.
+function getCallerEmail(req) {
+  try {
+    const h = req.headers && req.headers['x-ms-client-principal'];
+    if (!h) return null;
+    const p = JSON.parse(Buffer.from(h, 'base64').toString('utf8'));
+    if (p.userDetails) return p.userDetails.toLowerCase();
+    const c = (p.claims || []).find(c => ['preferred_username','email','upn'].includes(c.typ));
+    return c ? c.val.toLowerCase() : null;
+  } catch { return null; }
+}
+
 module.exports = async function (context, req) {
   const method = req.method;
 
@@ -182,6 +213,25 @@ module.exports = async function (context, req) {
       const patchUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items/${itemId}/fields`;
       await graphPatch(patchUrl, token, fields);
       context.res = { status: 200, body: 'OK' };
+      return;
+    }
+
+    // ── DELETE: remove a reminder ─────────────────────────────────────────
+    // Any signed-in TMC user. The reminder belongs to whoever is working the case; a wrong one
+    // sitting on the dashboard forever is worse than letting them clear it. The row goes to the
+    // SharePoint recycle bin, so it is recoverable there.
+    if (method === 'DELETE') {
+      const callerEmail = getCallerEmail(req);
+      if (!callerEmail || !callerEmail.endsWith('@tmclegal.co.uk')) {
+        context.res = { status: 403, body: 'Forbidden \u2014 you must be signed in.' }; return;
+      }
+      const itemId = (req.query.id || '').trim();
+      if (!itemId) { context.res = { status: 400, body: 'Missing id' }; return; }
+
+      const delUrl = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${REMINDERS_LIST_GUID}/items/${itemId}`;
+      await graphDelete(delUrl, token);
+      context.log(`Reminder ${itemId} deleted by ${callerEmail}`);
+      context.res = { status: 200, body: 'Deleted' };
       return;
     }
 
