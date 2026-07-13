@@ -125,7 +125,12 @@ function buildFields(list, body) {
     if (body.title != null) f['Title']              = body.title;
     if (body.phone != null) f['Phone_x0020_number'] = body.phone;
     if (body.email != null) f['Email']              = body.email;
-    if (body.firm  != null) f['CaseworkerFirmMirror'] = body.firm;
+    // Caseworkerfirm is an SP LOOKUP into Opponent Firms. Graph writes it by ITEM ID via the
+    // LookupId form. The old code wrote body.firm (a NAME) into 'CaseworkerFirmMirror', a column
+    // that DOES NOT EXIST on the list — so every portal-added caseworker landed with no firm.
+    // Confirmed 2026-07-13: the list's only firm field is Caseworkerfirm (Lookup -> Opponent
+    // Firms -> Title); Graph exposes it as CaseworkerfirmLookupId.
+    if (body.firmId != null) f['CaseworkerfirmLookupId'] = Number(body.firmId);
   }
   return f;
 }
