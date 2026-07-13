@@ -252,6 +252,12 @@
     .ar-row.uc-row{flex-wrap:wrap;}
     .uc-notes{flex-basis:100%;width:100%;margin-top:6px;padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
     .uc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
+    /* Divider between the deadline-bearing cases and the standard-turnaround tail. The two halves of
+       the queue are sorted on different keys (soonest Deadline vs oldest DateReceived), so without a
+       break the ordering reads as though it has gone wrong at the join. */
+    .uc-divider{display:flex;align-items:center;gap:10px;padding:9px 20px;background:var(--grey-faint);border-top:1px solid var(--grey-light);border-bottom:1px solid var(--grey-light);}
+    .uc-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
+    .uc-divider span{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
     /* Booking-in notes strip under a row of the All Open Cases table (same look as .uc-notes) */
     .tc-notes-row td{padding:0 20px 10px 20px;border-bottom:1px solid var(--grey-faint);}
     .tc-notes{padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
@@ -1167,6 +1173,9 @@ function renderUnassignedCases(){
   updateHeaderStats();
   if(!unassigned.length){ listEl.innerHTML='<div class="ar-empty">No unassigned cases \u2014 all allocated!</div>'; return; }
   listEl.innerHTML='';
+  // One divider, inserted at the join between the two halves of the queue. Not shown when every case
+  // has a deadline, nor when none does (listEl is still empty at the first no-deadline row).
+  let dividerDone=false;
   unassigned.forEach(c=>{
     const f=c.fields;
     const ref=f['Ourreference_x0028_text_x0029_']||'';
@@ -1197,6 +1206,13 @@ function renderUnassignedCases(){
         '</div>'+
         '<input type="date" class="uc-deadline-input" value="'+deadlineRaw+'" style="display:none;" />'+
       '</div>';
+    if(!deadlineRaw && !dividerDone && listEl.children.length){
+      const dv=document.createElement('div');
+      dv.className='uc-divider';
+      dv.innerHTML='<span>No deadline \u2014 standard turnaround, longest waiting first</span>';
+      listEl.appendChild(dv);
+      dividerDone=true;
+    }
     const row=document.createElement('div');
     row.className='ar-row'+(notes?' uc-row':'');
     row.innerHTML=
