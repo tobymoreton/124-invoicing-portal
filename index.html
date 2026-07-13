@@ -1316,8 +1316,46 @@ async function applyPayment(listItemId, slot, amount, date, confirmOverpay) {
       const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n]) || 0), 0);
       inv.AmountOutstanding = Math.round((due - paid) * 100) / 100;
     }
+    // The 30-min sessionStorage cache holds allInvoices. Without this, a reload
+    // inside the TTL re-renders the PRE-payment figures.
+    try { writeCache(_callerEmail); } catch (e) {}
   }
   return data;
+}
+
+// PA099.11 mirrors the calculated Status into Status_Text on a 1-MINUTE SharePoint
+// poll. Our read-back happens immediately after the PATCH, so it necessarily returns
+// the OLD Status_Text — the chip would sit on the stale value until the next full page
+// load. Re-read the invoice once the mirror has had time to catch up.
+// No inference from AmountOutstanding anywhere: this waits for SharePoint's own answer.
+function refreshInvoiceStatus(listItemId, ourRef, attempt) {
+  attempt = attempt || 1;
+  if (!ourRef || attempt > 3) return;
+  setTimeout(async () => {
+    try {
+      const r = await fetch('/api/invoices?ref=' + encodeURIComponent(ourRef) + '&t=' + Date.now(),
+                            { headers: { Accept: 'application/json' } });
+      if (!r.ok) return;
+      const fresh = await r.json();
+      const src = (fresh || []).find(i => String(i._id) === String(listItemId));
+      const inv = allInvoices.find(i => i._id === listItemId);
+      if (!src || !inv) return;
+
+      const before = inv.Status_Text;
+      inv.Status      = src.Status;
+      inv.Status_Text = src.Status_Text;
+      try { writeCache(_callerEmail); } catch (e) {}
+
+      if (activeId === listItemId) openDrawer(listItemId);
+      renderTable();
+      renderStats();
+
+      // Mirror not caught up yet — try again.
+      if (!src.Status_Text || src.Status_Text === before) {
+        refreshInvoiceStatus(listItemId, ourRef, attempt + 1);
+      }
+    } catch (e) { /* non-fatal — the next page load will read it */ }
+  }, attempt === 1 ? 20000 : 25000);
 }
 
 async function savePayment(listItemId, slot) {
@@ -1338,10 +1376,12 @@ async function savePayment(listItemId, slot) {
   try {
     const data = await applyPayment(listItemId, slot, parseFloat(amount), date, false);
     if (!data) { if (btn) { btn.disabled = false; btn.textContent = 'Save'; } return; }  // user declined overpay
+    const inv = allInvoices.find(i => i._id === listItemId);
     openDrawer(listItemId);   // re-render the drawer from the updated invoice
     renderTable();
     renderStats();
-    payMsg('Payment ' + slot + ' saved.', false);
+    payMsg('Payment ' + slot + ' saved. Status updates within a minute.', false);
+    refreshInvoiceStatus(listItemId, inv ? inv.Ourref : null);
   } catch (e) {
     payMsg(e.message, true);
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
@@ -1355,10 +1395,12 @@ async function clearPayment(listItemId, slot) {
   if (btn) { btn.disabled = true; btn.textContent = 'Clearing\u2026'; }
   try {
     await applyPayment(listItemId, slot, null, null, false);
+    const inv = allInvoices.find(i => i._id === listItemId);
     openDrawer(listItemId);
     renderTable();
     renderStats();
-    payMsg('Payment ' + slot + ' cleared.', false);
+    payMsg('Payment ' + slot + ' cleared. Status updates within a minute.', false);
+    refreshInvoiceStatus(listItemId, inv ? inv.Ourref : null);
   } catch (e) {
     payMsg(e.message, true);
     if (btn) { btn.disabled = false; btn.textContent = 'Clear'; }
