@@ -61,6 +61,11 @@ const SELECT_FIELDS = [
   'TimedWorkBillableFromOverride',
   'StatusMirror',
   'CaseAckByDraftsman',
+  // Idempotency marker for PA124.12 (assignment email). Holds the assignee that was last emailed;
+  // the flow sends only when assignedToTextValue differs from it. MUST be selectable here or the
+  // portal cannot read it back and the backfill can never see its own work (S66 lesson: a new SP
+  // column is invisible to the portal until it is in this list).
+  'AssignNotifiedTo',
   'ProfitCostsClaimed_x0028_Ex_x002',
   'GrossProfitCostsRecoveredAf',
   'VAT_x0020__x0025__x0020_Claimed',
