@@ -1564,11 +1564,13 @@ async function openDraftsman(key,label){
     const cpUpd=f['CP_x0020_Last_x0020_Updated']?fmtDateShort(f['CP_x0020_Last_x0020_Updated']):'';
     const bookNotes=dsPlain(f['Notes']);
     const firm=(f['Firm_x0028_text_x0029_']||'').trim();
+    const fe=(f['FeeEarner_x0028_fromFM_x0029_']||'').trim();
     const notes=dsPlain(f['draftingNotes']);
     return '<div class="ds-case">'+
       '<div class="ds-case-head">'+
         '<span>'+(ref?'<a class="ds-case-name" href="/case.html?ref='+encodeURIComponent(ref)+'">'+escHtml(caseDisplayName(f))+'</a>':'<span class="ds-case-name">'+escHtml(caseDisplayName(f))+'</span>')+
-        (firm?'<span class="ds-firm">'+escHtml(firm)+'</span>':'')+'</span>'+
+        (firm?'<span class="ds-firm">'+escHtml(firm)+'</span>':'')+
+        (fe?'<span class="ds-firm">FE: '+escHtml(fe)+'</span>':'')+'</span>'+
         '<span class="ds-stage">'+escHtml(f['StatusMirror']||'\u2014')+'</span>'+
       '</div>'+
       (bookNotes?'<div class="ds-notes ds-book"><span class="ds-lbl">Booking-in notes</span>'+escHtml(bookNotes)+'</div>':'')+
