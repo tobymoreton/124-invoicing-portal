@@ -622,6 +622,7 @@ async function loadFigures(fields) {
     : '<span class="form-badge no">No</span>';
 
   el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
+  delete el('inp-timed-work-line').dataset.userEdited;
 
   // Auto-select logged-in user if they're in the draftsmen list
   const draftedBySelect = el('inp-drafted-by');
@@ -640,6 +641,12 @@ async function loadFigures(fields) {
   el('inp-la-drafting-override').value = (caseMinFee && laHasFigures) ? '50' : '';
   el('inp-timed-override').value       = '';
   el('inp-include-tmc').checked        = false;
+
+  // Bhatt Murphy never include TMC time in the drafting fee calc — lock the control off.
+  const lockTMC = (fields.Firm_x0028_text_x0029_ || '').toLowerCase().indexOf('bhatt murphy') !== -1;
+  el('inp-include-tmc').disabled      = lockTMC;
+  el('row-include-tmc').style.opacity = lockTMC ? '0.45' : '';
+  el('row-include-tmc').title         = lockTMC ? 'Not available for Bhatt Murphy' : '';
 
   selectedCase._profitCosts          = profitCosts;
   selectedCase._laProfitCosts        = laProfitCosts;
@@ -711,6 +718,7 @@ function initListeners() {
   ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
     .forEach(id => el(id).addEventListener('input', recalc));
   el('inp-basis').addEventListener('change', recalc);
+  el('inp-timed-work-line').addEventListener('input', () => { el('inp-timed-work-line').dataset.userEdited = '1'; });
   el('inp-timed-work-line').addEventListener('change', recalc);
   el('inp-bespoke-line').addEventListener('change', recalc);
   el('inp-drafted-by').addEventListener('change', recalc);
@@ -853,13 +861,16 @@ function recalc() {
   const timedLimited     = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
   const timedFee         = timedOverride !== null ? timedOverride : timedLimited;
 
-  // Update timed work line placeholder with live hours
+  // Update timed work line placeholder with live hours.
+  // Once the user edits the line, leave their wording exactly as typed.
   const twInput = el('inp-timed-work-line');
   const twBase  = twInput.value.replace(/ \| [\d.]+ hrs?$/, '');
-  if (timedHrs > 0) {
-    twInput.value = twBase + ' | ' + timedHrs + ' hr' + (timedHrs !== 1 ? 's' : '');
-  } else if (twBase) {
-    twInput.value = twBase;
+  if (twInput.dataset.userEdited !== '1') {
+    if (timedHrs > 0) {
+      twInput.value = twBase + ' | ' + timedHrs + ' hr' + (timedHrs !== 1 ? 's' : '');
+    } else if (twBase) {
+      twInput.value = twBase;
+    }
   }
 
   // VAT — applies to timed always; applies to both drafting fees when vatOnDrafting true
