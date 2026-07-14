@@ -347,34 +347,57 @@ async function searchCases(token, q, top, includeAll) {
 // Lookup id (FirmLookupId), removing that re-save dependency for the firm name specifically.
 // Safe by construction: only fills where the mirror is blank; never overwrites an existing value.
 // Silent no-op if FirmLookupId is absent or the Client Firms fetch fails (degrades to blank firm).
+var ADDR_MAP = [
+  ['Address1_x0028_text_x0029_', 'AddressLine1'],
+  ['Address2_x0028_text_x0029_', 'AddressLine2'],
+  ['Address3_x0028_text_x0029_', 'AddressLine3'],
+  ['Address4_x0028_text_x0029_', 'AddressLine4'],
+  ['Address5_x0028_text_x0029_', 'Address_x0020_Line_x0020_5'],
+];
+
 async function resolveMissingFirms(token, items) {
   try {
     var needed = false;
     (items || []).forEach(function(item) {
       var f = item.fields || {};
-      var mirror = (f['Firm_x0028_text_x0029_'] || '').trim();
-      if (!mirror && f.FirmLookupId) needed = true;
+      if (!f.FirmLookupId) return;
+      if (!(f['Firm_x0028_text_x0029_'] || '').trim()) needed = true;
+      ADDR_MAP.forEach(function(pair) {
+        if (!(f[pair[0]] || '').trim()) needed = true;
+      });
     });
     if (!needed) return;
 
     var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + CLIENT_FIRMS_GUID + '/items'
-            + '?$expand=fields($select=Title)&$top=999';
+            + '?$expand=fields($select=Title,AddressLine1,AddressLine2,AddressLine3,AddressLine4,Address_x0020_Line_x0020_5)&$top=999';
     var byId = {};
     while (url) {
       var page = await graphGet(url, token);
       (page.value || []).forEach(function(fi) {
-        byId[String(fi.id)] = ((fi.fields || {}).Title || '').trim();
+        byId[String(fi.id)] = fi.fields || {};
       });
       url = page['@odata.nextLink'] || null;
     }
 
     (items || []).forEach(function(item) {
       var f = item.fields || {};
-      var mirror = (f['Firm_x0028_text_x0029_'] || '').trim();
-      if (!mirror && f.FirmLookupId) {
-        var name = byId[String(f.FirmLookupId)];
-        if (name) f['Firm_x0028_text_x0029_'] = name;
-      }
+      if (!f.FirmLookupId) return;
+      var firm = byId[String(f.FirmLookupId)];
+      if (!firm) return;
+
+      var name = (firm.Title || '').trim();
+      if (!(f['Firm_x0028_text_x0029_'] || '').trim() && name) f['Firm_x0028_text_x0029_'] = name;
+
+      // Address mirrors on the case go stale/blank on Infowise-created cases for the same reason
+      // the firm name does (the PA mirror flow only fires on save). Fill blanks at read time from
+      // the Client Firms row. Note line 5's internal name differs from lines 1-4.
+      ADDR_MAP.forEach(function(pair) {
+        var caseField = pair[0], firmField = pair[1];
+        if (!(f[caseField] || '').trim()) {
+          var v = (firm[firmField] || '').trim();
+          if (v) f[caseField] = v;
+        }
+      });
     });
   } catch (e) {
     // Silent no-op - keep the request succeeding with a blank firm rather than erroring.
