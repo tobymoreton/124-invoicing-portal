@@ -138,6 +138,20 @@ module.exports = async function (context, req) {
       return;
     }
 
+    // ── DELETE: remove client firm. Management only ─ same tier as case deletion. ─
+    if (method === 'DELETE') {
+      if (!['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'].includes(callerEmail)) {
+        context.res = { status: 403, body: 'Forbidden — deleting a firm is restricted to Toby or Danielle.' };
+        return;
+      }
+      const itemId = (req.query && req.query.itemId) || null;
+      if (!itemId) { context.res = { status: 400, body: 'Missing itemId' }; return; }
+      await graphRequest(`${baseUrl}/${itemId}`, token, 'DELETE');
+      context.log('AUDIT clients DELETE itemId=' + itemId + ' deletedBy=' + callerEmail);
+      context.res = { status: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deleted: true }) };
+      return;
+    }
+
     context.res = { status: 405, body: 'Method not allowed' };
 
   } catch (err) {
