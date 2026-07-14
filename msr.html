@@ -403,7 +403,10 @@ function setExcluded(r, on) {
   fetch('/api/caseupdate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ itemId: r.id, fields: { ExcludeFromMSR: !!on } })
+    // ExcludeFromMSR is a single line of TEXT ('Yes' or blank), NOT a Yes/No column. A Yes/No
+    // column cannot be read back through this report's Graph $select, and dropping the $select
+    // to accommodate one broke the Fee Earner column across the whole report (2026-07-14).
+    body: JSON.stringify({ itemId: r.id, fields: { ExcludeFromMSR: on ? 'Yes' : '' } })
   }).then(function (res) {
     if (!res.ok) return res.text().then(function (t) { throw new Error(t || ('HTTP ' + res.status)); });
     // Re-read from SharePoint rather than mutating in place — the row moves between two lists
