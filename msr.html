@@ -54,7 +54,7 @@
     tr:hover .row-x{opacity:1;}
     .row-x:hover{background:rgba(153,27,27,.1);}
     .row-undo{border:1.5px solid var(--tmc-blue);background:transparent;color:var(--tmc-blue);font-size:11px;font-weight:700;border-radius:5px;padding:3px 9px;cursor:pointer;}
-    #verify-bar{display:none;align-items:center;gap:6px;margin:0 0 14px;padding:11px 14px;border-radius:8px;background:#FEF9C3;color:#713F12;font-size:13px;}
+    #verify-bar{display:none;align-items:flex-start;gap:14px;margin:0 0 14px;padding:12px 16px;border-radius:8px;background:#FEF9C3;color:#713F12;font-size:13px;line-height:1.45;}
     .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--grey-light);}
     .btn-ghost:hover{background:var(--grey-faint);}
 
@@ -76,18 +76,18 @@
     td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
 
     /* S76 — fit to any screen.
-       Columns 1-11 (✓, Title, Fee Earner, Client Ref, Assigned To, Date Served and the five money
-       columns) and column 14 (✕) are SNUG: width:1% collapses each to its content and nowrap stops
-       them wrapping onto a second line. Every pixel left over then goes to columns 12 and 13
-       (Current Position, Last Action), which is where the long prose lives — so the wider the
-       screen, the wider those two get and the SHORTER the rows become. No fixed pixel widths, so it
-       works on a laptop and on a 34" monitor without a media query. */
+       Every column except Current Position is SNUG: width:1% collapses it to its content and nowrap
+       stops it wrapping onto a second line. Current Position is width:100%, so it absorbs ALL the
+       leftover width — the wider the screen, the wider it gets and the shorter the rows become.
+       This is the classic 1%/100% pattern and it needs exactly ONE greedy column to work; giving
+       two columns 50% each (as this did briefly on 14 Jul, with Last Action still present) leaves
+       the snug columns padded out and the prose column starved. No fixed widths, no media query. */
     thead th:nth-child(-n+11),
     tbody td:nth-child(-n+11),
-    thead th:nth-child(14),
-    tbody td:nth-child(14){width:1%;white-space:nowrap;}
-    thead th:nth-child(12), thead th:nth-child(13){width:50%;}
-    td.wide{white-space:pre-wrap;min-width:220px;}
+    thead th:nth-child(13),
+    tbody td:nth-child(13){width:1%;white-space:nowrap;}
+    thead th:nth-child(12){width:100%;}
+    td.wide{white-space:pre-wrap;min-width:260px;}
     td.nowrap{white-space:nowrap;}
     .unassigned{color:var(--grey-mid);font-style:italic;}
     tfoot td{padding:12px 10px;background:var(--tmc-blue);color:var(--white);font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right;position:sticky;bottom:0;}
@@ -180,12 +180,11 @@
           <th style="text-align:right;">Total Interim Payments</th>
           <th style="text-align:right;">Paying Party Last Offer</th>
           <th>Current Position</th>
-          <th>Last Action</th>
           <th style="width:34px;"></th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="14" class="msg">Loading&hellip;</td></tr>
+        <tr><td colspan="13" class="msg">Loading&hellip;</td></tr>
       </tbody>
       <tfoot id="tfoot" style="display:none;">
         <tr>
@@ -195,7 +194,7 @@
           <td id="t-disb">&mdash;</td>
           <td id="t-interim">&mdash;</td>
           <td id="t-offer">&mdash;</td>
-          <td colspan="3"></td>
+          <td colspan="2"></td>
         </tr>
       </tfoot>
     </table>
@@ -250,7 +249,7 @@ function esc(s) {
 // Load
 function load(firm) {
   var tbody = document.getElementById('tbody');
-  tbody.innerHTML = '<tr><td colspan="14" class="msg">Loading\u2026</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="13" class="msg">Loading\u2026</td></tr>';
   document.getElementById('tfoot').style.display = 'none';
   document.getElementById('btn-export').disabled = true;
   setPublishEnabled(false);
@@ -272,7 +271,7 @@ function load(firm) {
       render(data);
     })
     .catch(function (err) {
-      tbody.innerHTML = '<tr><td colspan="14" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
       document.getElementById('page-sub').textContent = 'Failed to load.';
     });
 }
@@ -324,7 +323,7 @@ function render(data) {
     ' \u00b7 as at ' + new Date(data.generated).toLocaleString('en-GB');
 
   if (!visibleRows.length) {
-    tbody.innerHTML = '<tr><td colspan="14" class="msg">No matters on the report for this selection.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13" class="msg">No matters on the report for this selection.</td></tr>';
     document.getElementById('tfoot').style.display = 'none';
     document.getElementById('btn-export').disabled = true;
     setPublishEnabled(false);
@@ -352,7 +351,6 @@ function render(data) {
       + cell(r, 'interimTotal',  'interim','num')
       + cell(r, 'lastOffer',     'money',  'num')
       + cell(r, 'currentPosition','longtext','wide')
-      + '<td class="wide">' + esc(r.lastAction) + '</td>'
       + '<td class="nowrap">'
             + '<button class="row-x" data-x="' + esc(r.id) + '" title="Remove this matter from the report">\u2715</button>'
         + '</td>'
@@ -479,12 +477,17 @@ function renderVerifyBar() {
       + ' of your matters on this report are verified.</span>';
     return;
   }
-  bar.innerHTML = '<span>' + unver.length + ' of your ' + mine.length
-    + ' matters on this report are not yet verified.</span> '
-    + '<button class="btn btn-primary" id="btn-verify" style="margin-left:10px;">Verify my entries</button>';
+  bar.innerHTML = '<div><strong>' + unver.length + ' of your ' + mine.length
+    + ' matters on this report ' + (unver.length === 1 ? 'is' : 'are') + ' not yet verified.</strong>'
+    + '<div style="margin-top:3px;font-size:12px;">Go through each of your rows first \u2014 check the figures, '
+    + 'edit anything that is wrong, and \u2715 anything that should not be on the report at all. '
+    + '<strong>Only press this once you are happy for every one of your matters to go to the client as it now stands.</strong>'
+    + '</div></div>'
+    + '<button class="btn btn-primary" id="btn-verify" style="margin-left:auto;flex-shrink:0;">I have checked and verified my entries</button>';
   document.getElementById('btn-verify').addEventListener('click', function () {
-    if (!window.confirm('Confirm you have checked, edited and are happy for all ' + mine.length
-      + ' of your matters on this report to go to the client.')) return;
+    if (!window.confirm('You are confirming that you have checked and, where needed, corrected ALL '
+      + mine.length + ' of your matters on this report, and that you are happy for them to go to the client as they now stand.\n\n'
+      + 'Editing a row afterwards will clear its tick.')) return;
     verifyMine(mine);
   });
 }
@@ -506,7 +509,7 @@ function verifyMine(mine) {
   Promise.all(jobs)
     .then(function () { load(document.getElementById('firm-select').value || DEFAULT_FIRM); })
     .catch(function (err) {
-      if (btn) { btn.disabled = false; btn.textContent = 'Verify my entries'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'I have checked and verified my entries'; }
       alert('Some entries did not save: ' + err.message + '\n\nNothing has been assumed \u2014 reload and check the ticks.');
     });
 }
@@ -833,8 +836,7 @@ var HEADERS = [
   { key: 'disbursements',   label: 'Disbursements Claimed',  width: 18, type: 'money' },
   { key: 'interimTotal',    label: 'Total Interim Payments', width: 18, type: 'money' },
   { key: 'lastOffer',       label: 'Paying Party Last Offer',width: 18, type: 'money' },
-  { key: 'currentPosition', label: 'Current Position',       width: 90, type: 'wrap' },
-  { key: 'lastAction',      label: 'Last Action',            width: 90, type: 'wrap' }
+  { key: 'currentPosition', label: 'Current Position',       width: 90, type: 'wrap' }
 ];
 
 var TMC_BLUE = 'FF163B44';
