@@ -492,8 +492,9 @@ function renderVerifyBar() {
   if (!unver.length) {
     bar.classList.add('verify-done');
     bar.innerHTML = '<div><div class="vb-name">\u2713 Thanks, ' + esc(myFirstName) + '.</div>'
-      + '<div class="vb-sub">All ' + mine.length + ' of your matters on this report are verified. '
-      + 'If you edit one of them now, its tick will clear and you will need to verify it again.</div></div>';
+      + '<div class="vb-sub">All ' + mine.length + ' of your matters on this report are verified \u2014 each has a green '
+      + '\u2713 in the first column. If you edit one of them now, its \u2713 goes back to \u23f3 and you will need to '
+      + 'verify it again.</div></div>';
     return;
   }
   bar.classList.remove('verify-done');
@@ -508,7 +509,9 @@ function renderVerifyBar() {
   document.getElementById('btn-verify').addEventListener('click', function () {
     if (!window.confirm('You are confirming that you have checked and, where needed, corrected ALL '
       + mine.length + ' of your matters on this report, and that you are happy for them to go to the client as they now stand.\n\n'
-      + 'Editing a row afterwards will clear its tick.')) return;
+      + 'Each of your rows will get a green \u2713 in the first column.\n\n'
+      + 'If you edit one of those rows afterwards, its \u2713 goes back to \u23f3 and you will need to verify it again \u2014 '
+      + 'so that a \u2713 always means the row is right AS IT NOW STANDS.')) return;
     verifyMine(mine);
   });
 }
