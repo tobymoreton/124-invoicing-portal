@@ -1671,6 +1671,7 @@ async function adDeleteDoc(id,name,rowEl){
   }
 }
 
+document.getElementById('ad-file-input').addEventListener('change',()=>{ const m=document.getElementById('ad-msg'); m.className='save-msg'; m.textContent=''; });
 document.getElementById('ad-upload-btn').addEventListener('click',async()=>{
   const input=document.getElementById('ad-file-input');
   const msg=document.getElementById('ad-msg');
