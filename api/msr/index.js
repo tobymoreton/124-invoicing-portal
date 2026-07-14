@@ -64,7 +64,10 @@ const SELECT_FIELDS = [
   'PayingPartysLastOffer',
   'Current_x0020_Position',
   'LastAction',
-  // S76 — sign-off and exclusion. Plain text (email / ISO date) + one Yes/No.
+  // S76 — sign-off and exclusion. ALL THREE ARE SINGLE LINE OF TEXT.
+  // ExcludeFromMSR is text, NOT Yes/No: a Yes/No column cannot be read through this report's
+  // $select (see the Graph section at the bottom), and dropping the $select to accommodate one
+  // broke the Fee Earner column across the whole report. Text holds 'Yes' or blank.
   'MSRVerifiedBy',
   'MSRVerifiedUTC',
   'ExcludeFromMSR',
@@ -254,7 +257,7 @@ function shape(item) {
     // it records who said the row was right and when. It does not stop anyone editing after.
     verifiedBy:  str(f.MSRVerifiedBy),
     verifiedUTC: str(f.MSRVerifiedUTC),
-    // S76 — removed from the report by Management. Yes/No.
+    // S76 — removed from the report. TEXT column holding 'Yes' or blank.
     excluded:    bool(f.ExcludeFromMSR),
     // filter-only
     status:      str(choiceVal(f.StatusMirror) || choiceVal(f.Status)),
@@ -305,8 +308,8 @@ function num(v) {
   return isFinite(n) ? n : 0;
 }
 
-// SP Yes/No. Graph returns a real boolean, but tolerate the string forms SharePoint and
-// Power Automate have both been seen to emit.
+// ExcludeFromMSR is a single line of TEXT holding 'Yes' or blank — not a SharePoint Yes/No column.
+// Tolerant of the true/1 forms in case the column type is ever changed under us.
 function bool(v) {
   if (v === true) return true;
   if (typeof v === 'string') {
@@ -367,17 +370,16 @@ function totalsOf(rows) {
 // ---------------------------------------------------------------------------
 // Graph
 //
-// ⚠ NO $select ON fields. This was a deliberate change in S76 and must not be reverted to a
-//   $select for tidiness. SharePoint Yes/No columns are SILENTLY DROPPED from the Graph response
-//   when they are named in $expand=fields($select=...) — they come back absent even when true
-//   (proven on Billable_x003f_ / Billed_x003f_ / Completed_x003f_). ExcludeFromMSR is a Yes/No
-//   column, so a $select would return it as undefined on every row and every excluded matter
-//   would quietly reappear on the client report. Fetch the whole fields bag and shape it here.
-//   SELECT_FIELDS above is retained as the documented field list for this report.
+// ⚠ S76 — DO NOT REMOVE THE $select. It was removed once, on 2026-07-14, to get a Yes/No column
+//   (SharePoint silently drops Yes/No columns named in an $expand=fields($select=...)). Removing it
+//   BROKE THE FEE EARNER COLUMN on the live report — most rows came back with no fee earner and the
+//   data-quality panel filled with "no Fee Earner". Reverted immediately. The exact mechanism was
+//   NOT established; what is established is that this report needs the $select and cannot carry a
+//   Yes/No column. ExcludeFromMSR is therefore read as TEXT, not as a Yes/No.
 // ---------------------------------------------------------------------------
 async function getAllCases(token) {
   let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
-          + '?$expand=fields&$top=500';
+          + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
   let all = [];
   while (url) {
     const page = await graphGet(url, token);
