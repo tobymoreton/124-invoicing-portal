@@ -328,6 +328,7 @@
         <a href="/courts.html" class="qa-btn"><span class="qa-icon">&#9878;&#65039;</span> Courts</a>
         <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
         <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
+        <button class="qa-btn" id="btn-admin-docs"><span class="qa-icon">&#128193;</span> Admin Documents</button>
       </div>
       <div class="qa-title add">Add New</div>
       <div class="qa-grid add">
@@ -403,6 +404,30 @@
     </div>
   </div>
   <!-- /S67: Draftsmen panel -->
+
+  <!-- Admin Documents modal (T&Cs, policies, non-case-specific files). Reuses the existing
+       caseAttachments library via a sentinel Our Reference of 'ADMIN' — no new SP list. -->
+  <div class="modal-overlay" id="modal-admindocs">
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-head"><span class="modal-title">Admin Documents</span><button class="modal-close" data-close="modal-admindocs">&times;</button></div>
+      <div class="modal-body">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <input type="file" id="ad-file-input" style="font-size:12.5px;" />
+          <select id="ad-doctype" style="padding:7px 10px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;">
+            <option value="">Type…</option>
+            <option>Terms &amp; Conditions</option>
+            <option>Policy</option>
+            <option>Template</option>
+            <option>Other</option>
+          </select>
+          <button class="btn-save" id="ad-upload-btn">Upload</button>
+          <span class="save-msg" id="ad-msg"></span>
+        </div>
+        <div id="ad-list" style="display:flex;flex-direction:column;gap:8px;"><div class="ar-loading">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+  <!-- /Admin Documents modal -->
 
   <!-- All Open Cases -->
   <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading cases&hellip;</div>
@@ -1499,6 +1524,7 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     const management=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
     if(email&&!adminTier.includes(email)){ window.location.replace('/cases.html'); return; }
     if(!management.includes(email)) document.body.classList.add('not-mgmt');
+    adManagement=management.includes(email);
   }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
 })();
 
@@ -1582,6 +1608,98 @@ async function openDraftsman(key,label){
 // ── /S67 ──
 
 loadCases();
+
+// ── Admin Documents (non-case files: T&Cs, policies, templates) ──────────
+// Reuses /api/attachments + /api/attachmentswrite against the caseAttachments library,
+// keyed on the sentinel Our Reference 'ADMIN' so no new SharePoint list is needed.
+const AD_REF='ADMIN';
+let adManagement=false; // set by gatePage(); delete is Management-only, server-enforced too
+
+document.getElementById('btn-admin-docs').addEventListener('click',()=>{ openModal('modal-admindocs'); loadAdminDocs(); });
+
+function adFmtSize(n){
+  n=Number(n)||0;
+  if(n<1024) return n+' B';
+  if(n<1024*1024) return (n/1024).toFixed(1)+' KB';
+  return (n/1024/1024).toFixed(1)+' MB';
+}
+
+async function loadAdminDocs(){
+  const list=document.getElementById('ad-list');
+  list.innerHTML='<div class="ar-loading">Loading\u2026</div>';
+  try{
+    const r=await fetch('/api/attachments?ref='+encodeURIComponent(AD_REF));
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    renderAdminDocs(data.value||[]);
+  }catch(err){
+    list.innerHTML='<p style="color:#991B1B;font-size:13px;">Failed to load: '+escHtml(err.message)+'</p>';
+  }
+}
+
+function renderAdminDocs(files){
+  const list=document.getElementById('ad-list');
+  if(!files.length){ list.innerHTML='<div class="ar-empty">No admin documents yet.</div>'; return; }
+  list.innerHTML='';
+  files.forEach(f=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--grey-light);border-radius:var(--radius-sm);';
+    row.innerHTML=
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;">'+
+        '<a href="'+escHtml(f.webUrl||f.downloadUrl||'#')+'" target="_blank" style="color:var(--navy);font-weight:600;text-decoration:none;">'+escHtml(f.name)+'</a>'+
+        (f.docType?' <span style="color:var(--grey-mid);font-size:11.5px;">('+escHtml(f.docType)+')</span>':'')+
+      '</span>'+
+      '<span style="font-size:11.5px;color:var(--grey-mid);white-space:nowrap;">'+adFmtSize(f.size)+'</span>'+
+      (adManagement?'<button type="button" class="ad-del-btn" title="Delete" style="flex-shrink:0;padding:4px 9px;border:1.5px solid rgba(153,27,27,.3);border-radius:var(--radius-sm);background:var(--white);color:var(--red);font-size:12px;cursor:pointer;">&#128465;</button>':'');
+    if(adManagement){
+      row.querySelector('.ad-del-btn').addEventListener('click',()=>adDeleteDoc(f.id,f.name,row));
+    }
+    list.appendChild(row);
+  });
+}
+
+async function adDeleteDoc(id,name,rowEl){
+  if(!confirm('Delete "'+name+'"? This cannot be undone.')) return;
+  rowEl.style.opacity='0.4'; rowEl.style.pointerEvents='none';
+  try{
+    const r=await fetch('/api/attachmentswrite?id='+encodeURIComponent(id),{method:'DELETE'});
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,100));
+    rowEl.remove();
+  }catch(err){
+    rowEl.style.opacity=''; rowEl.style.pointerEvents='';
+    alert('Delete failed: '+err.message);
+  }
+}
+
+document.getElementById('ad-upload-btn').addEventListener('click',async()=>{
+  const input=document.getElementById('ad-file-input');
+  const msg=document.getElementById('ad-msg');
+  const file=input.files&&input.files[0];
+  if(!file){ msg.className='save-msg err'; msg.textContent='Choose a file first.'; return; }
+  const docType=document.getElementById('ad-doctype').value;
+  msg.className='save-msg'; msg.textContent='Uploading\u2026';
+  try{
+    const buf=await file.arrayBuffer();
+    const r=await fetch('/api/attachmentswrite',{
+      method:'POST',
+      headers:{
+        'x-file-name':encodeURIComponent(file.name),
+        'x-our-ref':encodeURIComponent(AD_REF),
+        'x-doc-type':encodeURIComponent(docType),
+        'x-content-type':encodeURIComponent(file.type||'application/octet-stream'),
+        'Content-Type':'application/octet-stream',
+      },
+      body:buf,
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+    msg.className='save-msg ok'; msg.textContent='\u2713 Uploaded';
+    input.value=''; document.getElementById('ad-doctype').value='';
+    loadAdminDocs();
+  }catch(err){
+    msg.className='save-msg err'; msg.textContent='Failed: '+err.message;
+  }
+});
+// ── /Admin Documents ──
 </script>
 </body>
 </html>
