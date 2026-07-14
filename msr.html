@@ -55,7 +55,11 @@
     .vcell{white-space:nowrap;}
     .vcell .vwrap{display:flex;align-items:center;gap:7px;}
     .row-undo{border:1.5px solid var(--tmc-blue);background:transparent;color:var(--tmc-blue);font-size:11px;font-weight:700;border-radius:5px;padding:3px 9px;cursor:pointer;}
-    #verify-bar{display:none;align-items:flex-start;gap:14px;margin:0 0 14px;padding:12px 16px;border-radius:8px;background:#FEF9C3;color:#713F12;font-size:13px;line-height:1.45;}
+    #verify-bar{display:none;align-items:center;gap:18px;margin:0 0 18px;padding:18px 22px;border-radius:10px;background:#FEF3C7;border:2px solid #D97706;box-shadow:0 2px 10px rgba(217,119,6,.18);color:#713F12;font-size:14px;line-height:1.5;}
+    #verify-bar .vb-name{font-family:'Spectral',serif;font-size:20px;font-weight:600;color:#7C2D12;margin-bottom:2px;}
+    #verify-bar .vb-sub{font-size:12.5px;}
+    #verify-bar .btn-primary{font-size:14px;padding:13px 22px;}
+    #verify-bar.verify-done{background:#E8F6EC;border-color:#1B7A4B;box-shadow:none;color:#14532D;}
     .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--grey-light);}
     .btn-ghost:hover{background:var(--grey-faint);}
 
@@ -480,17 +484,21 @@ function renderVerifyBar() {
   // invisible however many rows are outstanding. (Bug found live, 2026-07-14.)
   bar.style.display = 'flex';
   if (!unver.length) {
-    bar.innerHTML = '<span style="color:#1B7A4B;font-weight:600;">\u2713 All ' + mine.length
-      + ' of your matters on this report are verified.</span>';
+    bar.classList.add('verify-done');
+    bar.innerHTML = '<div><div class="vb-name">\u2713 Thanks, ' + esc(myFirstName) + '.</div>'
+      + '<div class="vb-sub">All ' + mine.length + ' of your matters on this report are verified. '
+      + 'If you edit one of them now, its tick will clear and you will need to verify it again.</div></div>';
     return;
   }
-  bar.innerHTML = '<div><strong>' + unver.length + ' of your ' + mine.length
-    + ' matters on this report ' + (unver.length === 1 ? 'is' : 'are') + ' not yet verified.</strong>'
-    + '<div style="margin-top:3px;font-size:12px;">Go through each of your rows first \u2014 check the figures, '
-    + 'edit anything that is wrong, and \u2715 anything that should not be on the report at all. '
+  bar.classList.remove('verify-done');
+  bar.innerHTML = '<div style="flex:1;">'
+    + '<div class="vb-name">' + esc(myFirstName) + ' \u2014 ' + unver.length + ' of your ' + mine.length
+    + ' matters on this report ' + (unver.length === 1 ? 'is' : 'are') + ' not yet verified.</div>'
+    + '<div class="vb-sub">Go through each of your rows first \u2014 check the figures, edit anything that is '
+    + 'wrong, and \u2715 anything that should not be on the report at all. '
     + '<strong>Only press this once you are happy for every one of your matters to go to the client as it now stands.</strong>'
     + '</div></div>'
-    + '<button class="btn btn-primary" id="btn-verify" style="margin-left:auto;flex-shrink:0;">I have checked and verified my entries</button>';
+    + '<button class="btn btn-primary" id="btn-verify" style="flex-shrink:0;">I have checked and verified my entries</button>';
   document.getElementById('btn-verify').addEventListener('click', function () {
     if (!window.confirm('You are confirming that you have checked and, where needed, corrected ALL '
       + mine.length + ' of your matters on this report, and that you are happy for them to go to the client as they now stand.\n\n'
