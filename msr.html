@@ -66,7 +66,7 @@
     .flags li{margin:2px 0;}
 
     /* Table */
-    .wrap{padding:20px 32px 60px;}
+    .wrap{padding:20px 20px 60px;}
     .card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:auto;}
     table{border-collapse:collapse;width:100%;font-size:12.5px;}
     thead th{position:sticky;top:0;z-index:5;background:var(--tmc-blue);color:var(--white);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;padding:11px 10px;white-space:nowrap;}
@@ -74,7 +74,20 @@
     tbody tr:nth-child(even){background:var(--tmc-band);}
     tbody tr:hover{background:var(--gold-pale);}
     td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
-    td.wide{min-width:340px;max-width:460px;white-space:pre-wrap;}
+
+    /* S76 — fit to any screen.
+       Columns 1-11 (✓, Title, Fee Earner, Client Ref, Assigned To, Date Served and the five money
+       columns) and column 14 (✕) are SNUG: width:1% collapses each to its content and nowrap stops
+       them wrapping onto a second line. Every pixel left over then goes to columns 12 and 13
+       (Current Position, Last Action), which is where the long prose lives — so the wider the
+       screen, the wider those two get and the SHORTER the rows become. No fixed pixel widths, so it
+       works on a laptop and on a 34" monitor without a media query. */
+    thead th:nth-child(-n+11),
+    tbody td:nth-child(-n+11),
+    thead th:nth-child(14),
+    tbody td:nth-child(14){width:1%;white-space:nowrap;}
+    thead th:nth-child(12), thead th:nth-child(13){width:50%;}
+    td.wide{white-space:pre-wrap;min-width:220px;}
     td.nowrap{white-space:nowrap;}
     .unassigned{color:var(--grey-mid);font-style:italic;}
     tfoot td{padding:12px 10px;background:var(--tmc-blue);color:var(--white);font-weight:600;font-family:'IBM Plex Mono',monospace;text-align:right;position:sticky;bottom:0;}
