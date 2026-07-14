@@ -374,6 +374,7 @@ function render(data) {
   renderFlags(findFlags(visibleRows));
   renderExcluded(data.excluded || []);
   renderVerifyBar();
+  maybeNotifyComplete(data);
 }
 
 // ── S76: verification + exclusion ──────────────────────────────────────────
@@ -507,11 +508,56 @@ function verifyMine(mine) {
     });
   });
   Promise.all(jobs)
-    .then(function () { load(document.getElementById('firm-select').value || DEFAULT_FIRM); })
+    .then(function () {
+      // Re-read from SharePoint, THEN test for completion — never off the in-memory rows, which
+      // would report a report clean on the strength of writes that might not have landed.
+      checkCompleteAfterLoad = true;
+      load(document.getElementById('firm-select').value || DEFAULT_FIRM);
+    })
     .catch(function (err) {
       if (btn) { btn.disabled = false; btn.textContent = 'I have checked and verified my entries'; }
       alert('Some entries did not save: ' + err.message + '\n\nNothing has been assumed \u2014 reload and check the ticks.');
     });
+}
+
+// S76 — "everyone has verified" email to Management.
+//
+// Fired by the browser of whoever verifies LAST, after their write has landed AND the report has
+// been re-read from SharePoint. Only rows with an emailable draftsman count: an unassigned row, an
+// off-roster name, or a case sitting in Danielle's hand-back bucket can never be verified by
+// anybody, so counting them would mean the email could never fire at all.
+var checkCompleteAfterLoad = false;
+
+function verifiableRows(rows) {
+  return rows.filter(function (r) {
+    return r.assignee && r.assignee !== 'Danielle';
+  });
+}
+
+function maybeNotifyComplete(data) {
+  if (!checkCompleteAfterLoad) return;
+  checkCompleteAfterLoad = false;
+
+  // The WHOLE report for the firm, not the draftsman-filtered view.
+  var all   = (data && data.value) || [];
+  var owned = verifiableRows(all);
+  if (!owned.length) return;
+  var outstanding = owned.filter(function (r) { return !r.verifiedBy; });
+  if (outstanding.length) return;   // somebody else still has rows to do
+
+  fetch('/api/msrnotify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode:  'complete',
+      firm:  (data && data.firm) || DEFAULT_FIRM,
+      link:  window.location.origin + '/msr.html',
+      total: all.length
+    })
+  }).catch(function () {
+    // Silent. The draftsman has done their job; a failed courtesy email to Management is not their
+    // problem and must not be dressed up as their error.
+  });
 }
 
 function totalsOf(rows) {
