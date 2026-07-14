@@ -711,6 +711,8 @@ function initListeners() {
   ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
     .forEach(id => el(id).addEventListener('input', recalc));
   el('inp-basis').addEventListener('change', recalc);
+  el('inp-timed-work-line').addEventListener('change', recalc);
+  el('inp-bespoke-line').addEventListener('change', recalc);
   el('inp-drafted-by').addEventListener('change', recalc);
   el('inp-include-tmc').addEventListener('change', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
