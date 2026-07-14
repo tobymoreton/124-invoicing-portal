@@ -1681,13 +1681,18 @@ document.getElementById('ad-upload-btn').addEventListener('click',async()=>{
   const file=input.files&&input.files[0];
   if(!file){ msg.className='save-msg err'; msg.textContent='Choose a file first.'; return; }
   const docType=document.getElementById('ad-doctype').value;
+  // Same-name uploads OVERWRITE in the SP library (no folders in v1) - three different
+  // firms' T&Cs all called "Terms and Conditions of Business.pdf" would collide down to one
+  // file. Prefix the stored name with the doc type to keep them distinct; the docType
+  // column still carries the clean value for filtering/display.
+  const uploadName=docType?(docType+' - '+file.name):file.name;
   msg.className='save-msg'; msg.textContent='Uploading\u2026';
   try{
     const buf=await file.arrayBuffer();
     const r=await fetch('/api/attachmentswrite',{
       method:'POST',
       headers:{
-        'x-file-name':encodeURIComponent(file.name),
+        'x-file-name':encodeURIComponent(uploadName),
         'x-our-ref':encodeURIComponent(AD_REF),
         'x-doc-type':encodeURIComponent(docType),
         'x-content-type':encodeURIComponent(file.type||'application/octet-stream'),
