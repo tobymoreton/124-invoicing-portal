@@ -64,6 +64,10 @@ const SELECT_FIELDS = [
   'PayingPartysLastOffer',
   'Current_x0020_Position',
   'LastAction',
+  // S76 — sign-off and exclusion. Plain text (email / ISO date) + one Yes/No.
+  'MSRVerifiedBy',
+  'MSRVerifiedUTC',
+  'ExcludeFromMSR',
   // filtering only — not displayed
   'Status',
   'StatusMirror',
@@ -108,7 +112,13 @@ module.exports = async function (context, req) {
     const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     const all    = await getAllCases(token);
     const shaped = all.map(item => shape(item));
-    const rows   = shaped.filter(r => qualifies(r, firm)).sort(sortByDateServed);
+    const onReport = shaped.filter(r => qualifies(r, firm));
+
+    // S76 — excluded matters are NOT deleted from the report, they are moved to a separate,
+    // collapsed list on the page with an Undo. A matter that silently disappears from a client
+    // report is the exact bug this whole report exists to prevent; it just points the other way.
+    const rows     = onReport.filter(r => !r.excluded).sort(sortByDateServed);
+    const excluded = onReport.filter(r =>  r.excluded).sort(sortByDateServed);
 
     // Firm picker options, derived from the same fetch — no second call, and it can only ever
     // offer firms that actually exist in the list.
@@ -128,6 +138,7 @@ module.exports = async function (context, req) {
         generated: new Date().toISOString(),
         count: rows.length,
         value: rows,
+        excluded,
         totals: totalsOf(rows),
       }),
     };
@@ -239,6 +250,12 @@ function shape(item) {
     dateServedField: str(f.DateServedInformally0) ? 'DateServedInformally0' : 'DateServedFormally0',
     currentPosition: stripHtml(f['Current_x0020_Position']),
     lastAction:      stripHtml(f.LastAction),
+    // S76 — draftsman sign-off. Plain text, written by the portal only. A stamp, not a lock:
+    // it records who said the row was right and when. It does not stop anyone editing after.
+    verifiedBy:  str(f.MSRVerifiedBy),
+    verifiedUTC: str(f.MSRVerifiedUTC),
+    // S76 — removed from the report by Management. Yes/No.
+    excluded:    bool(f.ExcludeFromMSR),
     // filter-only
     status:      str(choiceVal(f.StatusMirror) || choiceVal(f.Status)),
     funding:     str(choiceVal(f.InterPartesorLegalAid)),
@@ -286,6 +303,17 @@ function str(v) {
 function num(v) {
   const n = parseFloat(v);
   return isFinite(n) ? n : 0;
+}
+
+// SP Yes/No. Graph returns a real boolean, but tolerate the string forms SharePoint and
+// Power Automate have both been seen to emit.
+function bool(v) {
+  if (v === true) return true;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    return s === 'true' || s === 'yes' || s === '1';
+  }
+  return v === 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -338,10 +366,18 @@ function totalsOf(rows) {
 
 // ---------------------------------------------------------------------------
 // Graph
+//
+// ⚠ NO $select ON fields. This was a deliberate change in S76 and must not be reverted to a
+//   $select for tidiness. SharePoint Yes/No columns are SILENTLY DROPPED from the Graph response
+//   when they are named in $expand=fields($select=...) — they come back absent even when true
+//   (proven on Billable_x003f_ / Billed_x003f_ / Completed_x003f_). ExcludeFromMSR is a Yes/No
+//   column, so a $select would return it as undefined on every row and every excluded matter
+//   would quietly reappear on the client report. Fetch the whole fields bag and shape it here.
+//   SELECT_FIELDS above is retained as the documented field list for this report.
 // ---------------------------------------------------------------------------
 async function getAllCases(token) {
   let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
-          + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
+          + '?$expand=fields&$top=500';
   let all = [];
   while (url) {
     const page = await graphGet(url, token);
