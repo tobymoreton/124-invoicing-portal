@@ -340,6 +340,12 @@ function render(data) {
     document.getElementById('btn-export').disabled = true;
     setPublishEnabled(false);
     renderFlags([]);
+    // These MUST still run on an empty table. The early return used to skip them, which meant
+    // (a) the verify bar kept the PREVIOUS firm's numbers, and (b) an EXCLUDED matter did not
+    // render in the Excluded strip either — so a matter someone had ✕'d disappeared from the page
+    // completely. A matter that silently vanishes is the exact bug this report exists to prevent.
+    renderExcluded(data.excluded || []);
+    renderVerifyBar();
     return;
   }
 
