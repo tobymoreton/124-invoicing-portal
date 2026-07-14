@@ -543,7 +543,7 @@ function renderList(cases) {
   list.innerHTML = cases.map((c, i) => {
     const f = c.fields || c;
     return '<div class="typeahead-item" data-idx="' + i + '">'
-      + '<div>' + esc(f.Title || '\u2014') + '</div>'
+      + '<div>' + esc(caseDisplayName(f)) + '</div>'
       + '<div class="ref">' + esc(f.Ourreference_x0028_text_x0029_ || '') + '</div>'
       + '</div>';
   }).join('');
@@ -559,7 +559,7 @@ function renderList(cases) {
 function pickCase(fields, spId) {
   selectedCase = { id: spId, fields };
   el('case-search').value = '';
-  el('selected-name').textContent = fields.Title || '\u2014';
+  el('selected-name').textContent = caseDisplayName(fields);
   el('selected-ref').textContent  = fields.Ourreference_x0028_text_x0029_ || '';
   el('selected-case').classList.add('visible');
   closeList();
@@ -1103,6 +1103,15 @@ function gbp(n) { return '\u00a3' + (+n || 0).toLocaleString('en-GB', {minimumFr
 function fmtDate(s) { try { return new Date(s).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'}); } catch { return s; } }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showMsg(id, msg, type) { const e = el(id); e.textContent = msg; e.className = type ? 'status-msg ' + type : 'status-msg'; }
+
+// Display name is composed live from the case fields — the SP Title column is not
+// trusted (PA125 can leave it stale, e.g. '-1741313' on a case with no surname).
+function caseDisplayName(f) {
+  const surname = (f.OurPartySurname || '').trim();
+  const ref     = (f.Ourreference_x0028_text_x0029_ || '').trim();
+  if (surname && ref) return surname + '-' + ref;
+  return (f.Title || '').trim() || ref || '\u2014';
+}
 
 // Reconstruct Fullcasename from Cases fields (mirrors SP calculated field formula)
 function computeFullCaseName(f) {
