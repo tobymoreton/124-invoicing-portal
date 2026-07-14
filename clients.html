@@ -201,6 +201,7 @@
       </div>
     </div>
     <div class="modal-footer">
+      <button class="btn-danger" id="modal-delete" style="display:none;margin-right:auto;">Delete Firm</button>
       <span class="save-msg" id="modal-msg"></span>
       <button class="btn-secondary" id="modal-cancel">Cancel</button>
       <button class="btn-primary" id="modal-save">Save Firm</button>
@@ -327,6 +328,7 @@ function openEdit(firm){
   document.getElementById('f-laaFee').value      = f['LAA_x0020_Drafting_x0020_fee_x00']||'';
   document.getElementById('modal-msg').textContent = '';
   document.getElementById('modal-msg').className = 'save-msg';
+  document.getElementById('modal-delete').style.display = isAdmin ? 'inline-block' : 'none';
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -425,7 +427,33 @@ async function saveFirm(){
   }
 }
 
+async function deleteFirm(){
+  if(!editingId) return;
+  const firm = allFirms.find(f=>f.id===editingId);
+  const name = firm ? (firm.fields.Title||'this firm') : 'this firm';
+  const openCount = firm ? (firm.fields.OpenCasesCount||0) : 0;
+  const warn = openCount
+    ? '\n\nWarning: ' + openCount + ' open case' + (openCount!==1?'s':'') + ' reference this firm. Deleting it will leave those cases pointing at a firm that no longer exists.'
+    : '';
+  if(!confirm('Delete "'+name+'"? This cannot be undone.'+warn)) return;
+  const btn = document.getElementById('modal-delete');
+  const msg = document.getElementById('modal-msg');
+  btn.disabled = true; msg.className='save-msg'; msg.textContent='Deleting\u2026';
+  try{
+    const r = await fetch('/api/clients?itemId='+encodeURIComponent(editingId), { method:'DELETE' });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()));
+    allFirms = allFirms.filter(f=>f.id!==editingId);
+    document.getElementById('page-sub').textContent = allFirms.length+' firm'+(allFirms.length!==1?'s':'');
+    renderFirms(document.getElementById('search').value.trim());
+    closeModal();
+  }catch(err){
+    msg.className='save-msg err'; msg.textContent='Delete failed: '+err.message;
+    btn.disabled=false;
+  }
+}
+
 // ── Wire up ───────────────────────────────────────────────────────────────
+document.getElementById('modal-delete').addEventListener('click', deleteFirm);
 document.getElementById('btn-add-firm').addEventListener('click', openAdd);
 document.getElementById('modal-close').addEventListener('click', closeModal);
 document.getElementById('modal-cancel').addEventListener('click', closeModal);
