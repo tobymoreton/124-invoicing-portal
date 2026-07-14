@@ -47,6 +47,14 @@
     .btn-primary{background:var(--navy);color:var(--gold-pale);}
     .btn-primary:hover{background:var(--navy-mid);}
     .btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+    /* S76 — verification + exclusion */
+    .vok{color:#1B7A4B;font-weight:700;}
+    .vno{opacity:.55;}
+    .row-x{border:none;background:transparent;color:#991B1B;font-size:13px;cursor:pointer;padding:2px 5px;border-radius:4px;opacity:.35;}
+    tr:hover .row-x{opacity:1;}
+    .row-x:hover{background:rgba(153,27,27,.1);}
+    .row-undo{border:1.5px solid var(--tmc-blue);background:transparent;color:var(--tmc-blue);font-size:11px;font-weight:700;border-radius:5px;padding:3px 9px;cursor:pointer;}
+    #verify-bar{display:none;align-items:center;gap:6px;margin:0 0 14px;padding:11px 14px;border-radius:8px;background:#FEF9C3;color:#713F12;font-size:13px;}
     .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--grey-light);}
     .btn-ghost:hover{background:var(--grey-faint);}
 
@@ -120,6 +128,7 @@
       </div>
       <div style="align-self:flex-end;display:flex;gap:10px;">
         <button class="btn btn-ghost" id="btn-refresh">Refresh</button>
+        <button class="btn btn-ghost" id="btn-notify" style="display:none;">Notify Draftsmen</button>
         <button class="btn btn-ghost" id="btn-publish" style="display:none;" disabled>Publish &amp; Copy Link</button>
         <button class="btn btn-primary" id="btn-export" disabled>Export to Excel</button>
       </div>
@@ -141,10 +150,12 @@
 </div>
 
 <div class="wrap">
+  <div id="verify-bar"></div>
   <div class="card">
     <table id="tbl">
       <thead>
         <tr>
+          <th style="width:34px;" title="Verified by the draftsman">&#10003;</th>
           <th>Title</th>
           <th>Fee Earner</th>
           <th>Client Reference</th>
@@ -157,23 +168,31 @@
           <th style="text-align:right;">Paying Party Last Offer</th>
           <th>Current Position</th>
           <th>Last Action</th>
+          <th style="width:34px;"></th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr><td colspan="12" class="msg">Loading&hellip;</td></tr>
+        <tr><td colspan="14" class="msg">Loading&hellip;</td></tr>
       </tbody>
       <tfoot id="tfoot" style="display:none;">
         <tr>
-          <td class="label" colspan="5">Totals</td>
+          <td class="label" colspan="6">Totals</td>
           <td id="t-ip">&mdash;</td>
           <td id="t-counsel">&mdash;</td>
           <td id="t-disb">&mdash;</td>
           <td id="t-interim">&mdash;</td>
           <td id="t-offer">&mdash;</td>
-          <td colspan="2"></td>
+          <td colspan="3"></td>
         </tr>
       </tfoot>
     </table>
+  </div>
+
+  <!-- S76: excluded matters. NOT deleted — parked, visibly, with an Undo. A live matter that
+       silently vanishes from a client report is the bug this whole report exists to prevent. -->
+  <div class="card" id="excl-card" style="display:none;margin-top:18px;">
+    <div id="excl-head" style="cursor:pointer;padding:12px 14px;font-weight:700;font-size:13px;color:var(--tmc-blue);"></div>
+    <div id="excl-body" style="display:none;padding:0 14px 14px;"></div>
   </div>
 </div>
 
@@ -184,6 +203,17 @@ var DEFAULT_FIRM = 'Hodge Jones & Allen LLP';
 var current = null;          // last payload from /api/msr
 var visibleRows = [];        // rows after the draftsman filter — what the table and the export show
 var selectedAssignee = '';   // '' = all draftsmen
+
+// S76 — who is looking at this. Set once from /.auth/me, before the first render completes.
+// myFirstName is the canonical roster name, matched by EXACT token: 'daniel' is a substring of
+// 'danielle', and Daniel is a draftsman while Danielle is the hand-back bucket.
+var myEmail     = '';
+var myFirstName = '';
+var isMgmt      = false;
+var ROSTER = {
+  toby: 'Toby', tom: 'Tom', tracy: 'Tracy', joanna: 'Joanna', kelly: 'Kelly',
+  julie: 'Julie', daniel: 'Daniel', danielle: 'Danielle', lesley: 'Lesley', david: 'David'
+};
 
 // Formatting
 function money(n) {
@@ -207,7 +237,7 @@ function esc(s) {
 // Load
 function load(firm) {
   var tbody = document.getElementById('tbody');
-  tbody.innerHTML = '<tr><td colspan="12" class="msg">Loading\u2026</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="14" class="msg">Loading\u2026</td></tr>';
   document.getElementById('tfoot').style.display = 'none';
   document.getElementById('btn-export').disabled = true;
   setPublishEnabled(false);
@@ -229,7 +259,7 @@ function load(firm) {
       render(data);
     })
     .catch(function (err) {
-      tbody.innerHTML = '<tr><td colspan="12" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="14" class="msg">Could not load the report: ' + esc(err.message) + '</td></tr>';
       document.getElementById('page-sub').textContent = 'Failed to load.';
     });
 }
@@ -281,7 +311,7 @@ function render(data) {
     ' \u00b7 as at ' + new Date(data.generated).toLocaleString('en-GB');
 
   if (!visibleRows.length) {
-    tbody.innerHTML = '<tr><td colspan="12" class="msg">No matters on the report for this selection.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="14" class="msg">No matters on the report for this selection.</td></tr>';
     document.getElementById('tfoot').style.display = 'none';
     document.getElementById('btn-export').disabled = true;
     setPublishEnabled(false);
@@ -297,6 +327,7 @@ function render(data) {
       ? esc(assignedName)
       : '<span class="unassigned">Unassigned</span>';
     return '<tr data-id="' + esc(r.id) + '">'
+      + '<td class="nowrap vcell">' + verifyMark(r) + '</td>'
       + '<td class="nowrap"><a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '">' + esc(r.title) + '</a></td>'
       + '<td>' + esc(r.feeEarner) + '</td>'
       + cell(r, 'clientRef',     'text',   '')
@@ -309,8 +340,13 @@ function render(data) {
       + cell(r, 'lastOffer',     'money',  'num')
       + cell(r, 'currentPosition','longtext','wide')
       + '<td class="wide">' + esc(r.lastAction) + '</td>'
+      + '<td class="nowrap">'
+            + '<button class="row-x" data-x="' + esc(r.id) + '" title="Remove this matter from the report">\u2715</button>'
+        + '</td>'
       + '</tr>';
   }).join('');
+
+  wireVerifyAndExclude();
 
   // Totals are recomputed from the VISIBLE rows, so they always agree with what is on screen and
   // with what the export produces — including immediately after an inline edit.
@@ -325,6 +361,135 @@ function render(data) {
   setPublishEnabled(true);
 
   renderFlags(findFlags(visibleRows));
+  renderExcluded(data.excluded || []);
+  renderVerifyBar();
+}
+
+// ── S76: verification + exclusion ──────────────────────────────────────────
+//
+// VERIFY is a STAMP, not a lock. MSRVerifiedBy / MSRVerifiedUTC record who said their rows were
+// right and when. Nothing is frozen: anyone can still edit a verified row afterwards, and the
+// stamp does not move. It exists so you can see at a glance who has and has not been through
+// their matters before the report goes to the client.
+//
+// EXCLUDE is available to ANY signed-in draftsman (Toby's call, S76) and is NOT a delete. The row
+// moves to the collapsed "Excluded" strip below the table, where it stays visible to everyone with
+// a Put back button. Nothing ever disappears silently — that is the whole safeguard.
+
+function verifyMark(r) {
+  if (r.verifiedBy) {
+    var who = String(r.verifiedBy).split('@')[0];
+    var when = r.verifiedUTC ? fmtDate(r.verifiedUTC) : '';
+    return '<span class="vok" title="Verified by ' + esc(who) + (when ? ' on ' + esc(when) : '') + '">\u2713</span>';
+  }
+  return '<span class="vno" title="Not yet verified">\u23f3</span>';
+}
+
+function wireVerifyAndExclude() {
+  var btns = document.querySelectorAll('.row-x');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function (e) {
+      e.stopPropagation();
+      var id = this.getAttribute('data-x');
+      var r  = visibleRows.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!r) return;
+      if (!window.confirm('Remove "' + r.title + '" from the report?\n\nIt is not deleted \u2014 it moves to the Excluded list below the table and can be put back.')) return;
+      setExcluded(r, true);
+    });
+  }
+}
+
+function setExcluded(r, on) {
+  fetch('/api/caseupdate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ itemId: r.id, fields: { ExcludeFromMSR: !!on } })
+  }).then(function (res) {
+    if (!res.ok) return res.text().then(function (t) { throw new Error(t || ('HTTP ' + res.status)); });
+    // Re-read from SharePoint rather than mutating in place — the row moves between two lists
+    // and the totals change with it. A re-load can never disagree with SharePoint.
+    load(document.getElementById('firm-select').value || DEFAULT_FIRM);
+  }).catch(function (err) {
+    alert('Could not update the report: ' + err.message);
+  });
+}
+
+function renderExcluded(list) {
+  var card = document.getElementById('excl-card');
+  var head = document.getElementById('excl-head');
+  var body = document.getElementById('excl-body');
+  if (!list.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  head.textContent = '\u26a0 Excluded from this report (' + list.length + ') \u2014 click to show';
+  body.innerHTML = list.map(function (r) {
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid rgba(0,0,0,.06);font-size:13px;">'
+      + '<a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '" style="flex:1;">' + esc(r.title) + '</a>'
+      + '<span style="color:#666;">' + esc(r.assignee || r.assignedTo || '') + '</span>'
+      + '<span style="color:#666;">' + money(r.totalIPCosts) + '</span>'
+      + '<button class="row-undo" data-u="' + esc(r.id) + '">Put back</button>'
+      + '</div>';
+  }).join('');
+  head.onclick = function () {
+    var shown = body.style.display !== 'none';
+    body.style.display = shown ? 'none' : '';
+    head.textContent = '\u26a0 Excluded from this report (' + list.length + ') \u2014 click to '
+      + (shown ? 'show' : 'hide');
+  };
+  var us = body.querySelectorAll('.row-undo');
+  for (var i = 0; i < us.length; i++) {
+    us[i].addEventListener('click', function () {
+      var id = this.getAttribute('data-u');
+      var r  = list.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (r) setExcluded(r, false);
+    });
+  }
+}
+
+// The "I have checked my matters" bar. Only shown to a signed-in draftsman who actually has rows
+// on the CURRENT view. Stamps every one of their rows in one go.
+function renderVerifyBar() {
+  var bar = document.getElementById('verify-bar');
+  if (!bar) return;
+  if (!myFirstName) { bar.style.display = 'none'; return; }
+  var mine = visibleRows.filter(function (r) { return r.assignee === myFirstName; });
+  if (!mine.length) { bar.style.display = 'none'; return; }
+  var unver = mine.filter(function (r) { return !r.verifiedBy; });
+  bar.style.display = '';
+  if (!unver.length) {
+    bar.innerHTML = '<span style="color:#1B7A4B;font-weight:600;">\u2713 All ' + mine.length
+      + ' of your matters on this report are verified.</span>';
+    return;
+  }
+  bar.innerHTML = '<span>' + unver.length + ' of your ' + mine.length
+    + ' matters on this report are not yet verified.</span> '
+    + '<button class="btn btn-primary" id="btn-verify" style="margin-left:10px;">Verify my entries</button>';
+  document.getElementById('btn-verify').addEventListener('click', function () {
+    if (!window.confirm('Confirm you have checked, edited and are happy for all ' + mine.length
+      + ' of your matters on this report to go to the client.')) return;
+    verifyMine(mine);
+  });
+}
+
+function verifyMine(mine) {
+  var btn = document.getElementById('btn-verify');
+  if (btn) { btn.disabled = true; btn.textContent = 'Verifying\u2026'; }
+  var stamp = new Date().toISOString();
+  var jobs = mine.map(function (r) {
+    return fetch('/api/caseupdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: r.id, fields: { MSRVerifiedBy: myEmail, MSRVerifiedUTC: stamp } })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Case ' + r.title + ': HTTP ' + res.status);
+      return true;
+    });
+  });
+  Promise.all(jobs)
+    .then(function () { load(document.getElementById('firm-select').value || DEFAULT_FIRM); })
+    .catch(function (err) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Verify my entries'; }
+      alert('Some entries did not save: ' + err.message + '\n\nNothing has been assumed \u2014 reload and check the ticks.');
+    });
 }
 
 function totalsOf(rows) {
@@ -543,6 +708,23 @@ function escXml(s) {
 
 function save(td, r, fields, applyLocal, key) {
   td.classList.add('saving');
+
+  // S76 — STALE RESET. Editing a row on the report CLEARS its verification stamp, so a ✓ always
+  // means "this row, as it stands right now, has been signed off" rather than "someone signed off
+  // an earlier version of it". A green tick on a row that has been changed since sign-off is
+  // exactly the quietly-wrong thing this report exists to prevent.
+  //
+  // Deliberately NOT driven off SharePoint's Modified column: the verify write ITSELF bumps
+  // Modified, so a Modified-vs-stamp comparison would mark every tick stale the instant it landed.
+  // Clearing on the edit path is deterministic and has no timing trap.
+  //
+  // Known limitation: an edit made in case.html does NOT clear the stamp — only edits made here do.
+  // Accepted (Toby, S76): the report is checked and edited on this page in the hour before it is sent.
+  var clearing = !!r.verifiedBy;
+  if (clearing) {
+    fields = Object.assign({}, fields, { MSRVerifiedBy: '', MSRVerifiedUTC: '' });
+  }
+
   fetch('/api/caseupdate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -554,6 +736,13 @@ function save(td, r, fields, applyLocal, key) {
     })
     .then(function () {
       applyLocal();
+      if (clearing) {
+        r.verifiedBy = '';
+        r.verifiedUTC = '';
+        var vc = td.parentNode && td.parentNode.querySelector('.vcell');
+        if (vc) vc.innerHTML = verifyMark(r);
+        renderVerifyBar();
+      }
       redrawCell(td, r, key);
       // Totals and the data-quality flags both depend on the values just changed.
       var t = totalsOf(visibleRows);
@@ -651,7 +840,6 @@ function exportExcel() {
 // copies its webUrl. isMgmt gates visibility only — /api/msrshare enforces the same list.
 // The published file is a deliberate DEAD SNAPSHOT: draftsmen co-author it in Excel Online
 // and nothing they type flows back to SharePoint. Do NOT add a write-back path.
-var isMgmt = false;
 function setPublishEnabled(on) {
   var pb = document.getElementById('btn-publish');
   if (!pb) return;
@@ -785,21 +973,93 @@ document.getElementById('btn-refresh').addEventListener('click', function () {
 document.getElementById('btn-export').addEventListener('click', exportExcel);
 document.getElementById('btn-publish').addEventListener('click', publishExcel);
 
-// Admin nav link, same pattern as the other pages.
+// S76 — Notify Draftsmen. Emails ONLY the draftsmen who still have unverified matters on the
+// CURRENT report, each with a deep link to their own filtered view. Nobody who has already ticked
+// everything gets an email — that is how people learn to ignore them.
+//
+// The page sends NAMES, never addresses. /api/msrnotify resolves them against a hardcoded roster
+// and drops anything it does not recognise, so this cannot be made to email an arbitrary address.
+document.getElementById('btn-notify').addEventListener('click', function () {
+  var firm = document.getElementById('firm-select').value || DEFAULT_FIRM;
+
+  // Count against the WHOLE report for this firm, not the draftsman-filtered view — otherwise
+  // notifying while a filter is on would quietly skip everyone else.
+  var all = (current && current.value) || [];
+  var byName = {};
+  all.forEach(function (r) {
+    if (r.verifiedBy) return;
+    if (!r.assignee) return;          // unassigned / off-roster — nobody to email
+    if (r.assignee === 'Danielle') return;   // hand-back bucket, not a draftsman with work
+    byName[r.assignee] = (byName[r.assignee] || 0) + 1;
+  });
+  var recipients = Object.keys(byName).map(function (n) { return { name: n, count: byName[n] }; });
+
+  if (!recipients.length) {
+    alert('Every matter on this report is already verified. Nobody to notify.');
+    return;
+  }
+
+  var summary = recipients.map(function (r) { return r.name + ' (' + r.count + ')'; }).join(', ');
+  if (!window.confirm('Email these draftsmen about their unverified matters on the ' + firm + ' report?\n\n' + summary)) return;
+
+  var btn = this;
+  var old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Sending\u2026';
+
+  fetch('/api/msrnotify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      firm: firm,
+      link: window.location.origin + '/msr.html',
+      recipients: recipients
+    })
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error(t || ('HTTP ' + r.status));
+      return JSON.parse(t);
+    });
+  }).then(function (res) {
+    btn.disabled = false; btn.textContent = old;
+    var msg = 'Sent to ' + res.sent + ' draftsm' + (res.sent === 1 ? 'an' : 'en')
+            + (res.sentTo && res.sentTo.length ? ': ' + res.sentTo.join(', ') : '') + '.';
+    // Never report a send that did not happen. Surface every failure and every dropped name.
+    if (res.failed && res.failed.length)  msg += '\n\nNOT sent:\n' + res.failed.join('\n');
+    if (res.skipped && res.skipped.length) msg += '\n\nSkipped (not on the roster): ' + res.skipped.join(', ');
+    alert(msg);
+  }).catch(function (e) {
+    btn.disabled = false; btn.textContent = old;
+    alert('Could not send: ' + (e && e.message ? e.message : e)
+      + '\n\nIf this is a 403 from Graph, the app registration is missing Mail.Send.');
+  });
+});
+
+// Identity FIRST, then load. isMgmt and myFirstName have to be set before the first render or the
+// ✕ buttons and the verify bar would be missing until something forced a redraw.
+var QS = new URLSearchParams(window.location.search);
+var startFirm = (QS.get('firm') || '').trim() || DEFAULT_FIRM;
+var startDraftsman = (QS.get('draftsman') || '').trim();
+
 fetch('/.auth/me')
   .then(function (r) { return r.json(); })
   .then(function (data) {
     var user = data && (data.clientPrincipal || (Array.isArray(data) ? data[0] && data[0].clientPrincipal : null));
     if (!user || !user.userDetails) return;
-    var email = user.userDetails.toLowerCase();
+    myEmail = user.userDetails.toLowerCase();
+
+    // Exact token — never a substring match. See the ROSTER comment at the top.
+    var token = myEmail.indexOf('@') !== -1 ? myEmail.split('@')[0] : myEmail.split(/\s+/)[0];
+    myFirstName = ROSTER[token] || '';
+
     var ADMIN = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
     // Management only — narrower than ADMIN, which includes Finance.
     var MGMT  = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
-    if (MGMT.indexOf(email) !== -1) {
+    if (MGMT.indexOf(myEmail) !== -1) {
       isMgmt = true;
       setPublishEnabled(!document.getElementById('btn-export').disabled);
+      document.getElementById('btn-notify').style.display = '';
     }
-    if (ADMIN.indexOf(email) !== -1) {
+    if (ADMIN.indexOf(myEmail) !== -1) {
       var nav = document.getElementById('nav-links');
       if (nav && !nav.querySelector('[href="/admin.html"]')) {
         var a = document.createElement('a');
@@ -808,9 +1068,14 @@ fetch('/.auth/me')
       }
     }
   })
-  .catch(function () {});
-
-load(DEFAULT_FIRM);
+  .catch(function () {})
+  .then(function () {
+    // A ?draftsman= in the link pre-selects the filter. buildAssigneeSelect() honours
+    // selectedAssignee if the name is on this report; if it is not, it falls back to All rather
+    // than showing an empty table with a name that yields nothing.
+    selectedAssignee = startDraftsman;
+    load(startFirm);
+  });
 </script>
 </body>
 </html>
