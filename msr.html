@@ -885,10 +885,10 @@ function findFlags(rows) {
     if (!r.currentPosition) {
       flag(r, 'no Current Position.');
     }
-    if (r.lastOffer && r.interimTotal && Math.abs(r.lastOffer - r.interimTotal) < 0.005) {
-      flag(r, 'Paying Party Last Offer (' + money(r.lastOffer) +
-        ') is identical to the interim payments total. One of the two is likely in the wrong field.');
-    }
+    // NOT A FLAG: Paying Party Last Offer == interim payments total.
+    // This was flagged as "one of the two is likely in the wrong field" until Toby struck it out
+    // (S76): a paying party very often makes an offer equal to what it has already paid on account,
+    // so the two matching is NORMAL, not an error. Do not reinstate it.
     if (!r.feeEarner) {
       flag(r, 'no Fee Earner.');
     }
