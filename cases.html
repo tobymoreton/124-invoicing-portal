@@ -1163,6 +1163,11 @@ function renderRemPanel(){
     head.style.color='#713F12';
     head.textContent='No reminder set ('+noRem.length+')';
     el.appendChild(head);
+    // S76: last action per case, taken from allActions (already sorted newest-first in
+    // loadActions), so the first hit per ref IS the latest. Read-only; if the actions fetch
+    // failed, allActions is empty and the line simply does not render.
+    const lastActByRef={};
+    allActions.forEach(a=>{ const r=a._caseRef; if(r && !lastActByRef[r]) lastActByRef[r]=a; });
     // Grouped by stage (StatusMirror), largest group first, so the panel reads as a
     // worklist rather than a flat wall of cases.
     const byStage={};
@@ -1181,6 +1186,14 @@ function renderRemPanel(){
         sh.textContent=stage+' ('+items.length+')';
         el.appendChild(sh);
         items.forEach(x=>{
+          const la=lastActByRef[x.ref];
+          let laHtml='';
+          if(la){
+            const lad=la.fields?.['field_12']||la.fields?.['field_1']||'';
+            const law=(la.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+            const lat=law.length>90?law.slice(0,90)+'\u2026':law;
+            if(lad||lat) laHtml='<div class="rem-case" style="margin-top:3px;color:var(--grey-mid);">Last action'+(lad?' \u00b7 '+escHtml(fmtDateShort(lad)):'')+(lat?': '+escHtml(lat):'')+'</div>';
+          }
           const row=document.createElement('div');
           row.className='rem-row';
           row.innerHTML=
@@ -1188,6 +1201,7 @@ function renderRemPanel(){
             '<div class="rem-body">'+
               '<div class="rem-event">'+escHtml(caseDisplayName(x.f)||x.ref||'(unnamed case)')+'</div>'+
               '<div class="rem-case">'+escHtml(x.f['Firm_x0028_text_x0029_']||'')+'</div>'+
+              laHtml+
               '<div style="margin-top:3px;"><span class="status-chip '+statusClass(stage)+'">'+escHtml(stage)+'</span></div>'+
             '</div>'+
             '<button class="rem-add-btn" title="Add a reminder for this case" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--navy);border-radius:var(--radius-sm);background:transparent;color:var(--navy);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Reminder</button>';
