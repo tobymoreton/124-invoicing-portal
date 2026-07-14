@@ -357,32 +357,53 @@ var ADDR_MAP = [
 
 async function resolveMissingFirms(token, items) {
   try {
-    var needed = false;
+    // Two lookup paths, because the portal and Infowise populate cases differently:
+    //  - Infowise-created cases carry FirmLookupId (a real SP Lookup) but the text mirror
+    //    Firm_x0028_text_x0029_ stays blank until the item is re-saved.
+    //  - Portal-created/edited cases (case.html's Firm dropdown) write ONLY
+    //    Firm_x0028_text_x0029_ as plain text — Graph app-only cannot write SP Lookup
+    //    fields at all, so FirmLookupId is never set on that path. Name is all we have.
+    var needsById   = false;
+    var needsByName = false;
     (items || []).forEach(function(item) {
       var f = item.fields || {};
-      if (!f.FirmLookupId) return;
-      if (!(f['Firm_x0028_text_x0029_'] || '').trim()) needed = true;
-      ADDR_MAP.forEach(function(pair) {
-        if (!(f[pair[0]] || '').trim()) needed = true;
-      });
+      var addrBlank = ADDR_MAP.some(function(pair) { return !(f[pair[0]] || '').trim(); });
+      if (!addrBlank && (f['Firm_x0028_text_x0029_'] || '').trim()) return;
+      if (f.FirmLookupId) needsById = true;
+      else if ((f['Firm_x0028_text_x0029_'] || '').trim()) needsByName = true;
     });
-    if (!needed) return;
+    if (!needsById && !needsByName) return;
 
     var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + CLIENT_FIRMS_GUID + '/items'
             + '?$expand=fields($select=Title,AddressLine1,AddressLine2,AddressLine3,AddressLine4,Address_x0020_Line_x0020_5)&$top=999';
     var byId = {};
+    var byNameList = {}; // lowercased trimmed Title -> array of field sets (duplicates possible)
     while (url) {
       var page = await graphGet(url, token);
       (page.value || []).forEach(function(fi) {
-        byId[String(fi.id)] = fi.fields || {};
+        var flds = fi.fields || {};
+        byId[String(fi.id)] = flds;
+        var key = (flds.Title || '').trim().toLowerCase();
+        if (key) { (byNameList[key] = byNameList[key] || []).push(flds); }
       });
       url = page['@odata.nextLink'] || null;
     }
 
     (items || []).forEach(function(item) {
       var f = item.fields || {};
-      if (!f.FirmLookupId) return;
-      var firm = byId[String(f.FirmLookupId)];
+      var firm = null;
+      if (f.FirmLookupId) {
+        firm = byId[String(f.FirmLookupId)] || null;
+      } else {
+        var nameKey = (f['Firm_x0028_text_x0029_'] || '').trim().toLowerCase();
+        if (nameKey) {
+          var candidates = byNameList[nameKey] || [];
+          // Ambiguous (duplicate firm names in Client Firms) — do not guess which one.
+          // Leaving it blank is the honest outcome per the no-fabrication rule; a wrong
+          // address is worse than a missing one.
+          if (candidates.length === 1) firm = candidates[0];
+        }
+      }
       if (!firm) return;
 
       var name = (firm.Title || '').trim();
