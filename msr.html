@@ -50,9 +50,10 @@
     /* S76 — verification + exclusion */
     .vok{color:#1B7A4B;font-weight:700;}
     .vno{opacity:.55;}
-    .row-x{border:none;background:transparent;color:#991B1B;font-size:13px;cursor:pointer;padding:2px 5px;border-radius:4px;opacity:.35;}
-    tr:hover .row-x{opacity:1;}
-    .row-x:hover{background:rgba(153,27,27,.1);}
+    .row-x{border:1px solid rgba(153,27,27,.35);background:transparent;color:#991B1B;font-size:11px;font-weight:700;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1;}
+    .row-x:hover{background:#991B1B;color:#fff;border-color:#991B1B;}
+    .vcell{white-space:nowrap;}
+    .vcell .vwrap{display:flex;align-items:center;gap:7px;}
     .row-undo{border:1.5px solid var(--tmc-blue);background:transparent;color:var(--tmc-blue);font-size:11px;font-weight:700;border-radius:5px;padding:3px 9px;cursor:pointer;}
     #verify-bar{display:none;align-items:flex-start;gap:14px;margin:0 0 14px;padding:12px 16px;border-radius:8px;background:#FEF9C3;color:#713F12;font-size:13px;line-height:1.45;}
     .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--grey-light);}
@@ -87,11 +88,9 @@
        This is the classic 1%/100% pattern and it needs exactly ONE greedy column to work; giving
        two columns 50% each (as this did briefly on 14 Jul, with Last Action still present) leaves
        the snug columns padded out and the prose column starved. No fixed widths, no media query. */
-    thead th:nth-child(-n+11),
-    tbody td:nth-child(-n+11),
-    thead th:nth-child(13),
-    tbody td:nth-child(13){width:1%;white-space:nowrap;}
-    thead th:nth-child(12){width:100%;}
+    thead th:nth-child(-n+12),
+    tbody td:nth-child(-n+12){width:1%;white-space:nowrap;}
+    thead th:nth-child(13){width:100%;}
     td.wide{white-space:pre-wrap;min-width:260px;}
     td.nowrap{white-space:nowrap;}
     .unassigned{color:var(--grey-mid);font-style:italic;}
@@ -158,8 +157,11 @@
   Read live from SharePoint at the moment you loaded this page. There is no cached copy and no
   intermediate file &mdash; what you see is what SharePoint says right now.
   Cells with a dashed outline on hover are editable: click, type, then <strong>Tab</strong> or click
-  away to save. <strong>Esc</strong> cancels. Total IP Costs, Fee Earner and Assigned To are not
-  editable here &mdash; open the case.
+  away to save. <strong>Esc</strong> cancels. Total IP Costs and Assigned To are not editable here &mdash;
+  open the case. <strong>Fee Earner is editable, but it only fixes THIS report</strong> &mdash; the Fee
+  Earner on the case is a SharePoint lookup the portal cannot set, so the case still needs updating at
+  source. Use the <strong>&#10005;</strong> to take a matter off the report; it is not deleted, it moves
+  to the Excluded list below the table and can be put back.
 </div>
 
 <div class="flags" id="flags" style="display:none;">
@@ -168,12 +170,14 @@
 </div>
 
 <div class="wrap">
+  <datalist id="fe-list"></datalist>
   <div id="verify-bar"></div>
   <div class="card">
     <table id="tbl">
       <thead>
         <tr>
           <th style="width:34px;" title="Verified by the draftsman">&#10003;</th>
+          <th style="width:34px;" title="Remove from the report"></th>
           <th>Title</th>
           <th>Fee Earner</th>
           <th>Client Reference</th>
@@ -185,7 +189,6 @@
           <th style="text-align:right;">Total Interim Payments</th>
           <th style="text-align:right;">Paying Party Last Offer</th>
           <th>Current Position</th>
-          <th style="width:34px;"></th>
         </tr>
       </thead>
       <tbody id="tbody">
@@ -193,13 +196,13 @@
       </tbody>
       <tfoot id="tfoot" style="display:none;">
         <tr>
-          <td class="label" colspan="6">Totals</td>
+          <td class="label" colspan="7">Totals</td>
           <td id="t-ip">&mdash;</td>
           <td id="t-counsel">&mdash;</td>
           <td id="t-disb">&mdash;</td>
           <td id="t-interim">&mdash;</td>
           <td id="t-offer">&mdash;</td>
-          <td colspan="2"></td>
+          <td></td>
         </tr>
       </tfoot>
     </table>
@@ -345,8 +348,9 @@ function render(data) {
       : '<span class="unassigned">Unassigned</span>';
     return '<tr class="' + (r.verifiedBy ? 'verified' : '') + '" data-id="' + esc(r.id) + '">'
       + '<td class="nowrap vcell">' + verifyMark(r) + '</td>'
+      + '<td class="nowrap"><button class="row-x" data-x="' + esc(r.id) + '" title="Remove this matter from the report">\u2715</button></td>'
       + '<td class="nowrap"><a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '">' + esc(r.title) + '</a></td>'
-      + '<td>' + esc(r.feeEarner) + '</td>'
+      + cell(r, 'feeEarner',     'text',   '')
       + cell(r, 'clientRef',     'text',   '')
       + '<td>' + assigned + '</td>'
       + cell(r, 'dateServed',    'date',   'nowrap')
@@ -356,9 +360,6 @@ function render(data) {
       + cell(r, 'interimTotal',  'interim','num')
       + cell(r, 'lastOffer',     'money',  'num')
       + cell(r, 'currentPosition','longtext','wide')
-      + '<td class="nowrap">'
-            + '<button class="row-x" data-x="' + esc(r.id) + '" title="Remove this matter from the report">\u2715</button>'
-        + '</td>'
       + '</tr>';
   }).join('');
 
@@ -584,21 +585,36 @@ function totalsOf(rows) {
 //   Total IP Costs   NOT editable. It is TotalIPCostsMirror, a mirror of the SharePoint CALCULATED
 //                    column Calc_TotalInterPartesCosts. PA124.9 would overwrite any edit within
 //                    minutes. Change the components on the case instead.
-//   Fee Earner       NOT editable. SP Lookup — Graph app-only cannot write it.
-//   Assigned To      NOT editable. SP Person — same. Assign from the admin dash.
-//   Last Action      NOT editable. Verbatim passthrough; nothing here should author it.
+//   Assigned To      NOT editable. SP Person — Graph app-only cannot write it. Assign from the
+//                    admin dash.
+//
+//   Fee Earner       IS editable here, on Toby's instruction (S76) — and it needs explaining.
+//                    The real SP `FeeEarner` column is a LOOKUP, and Graph app-only CANNOT write a
+//                    Lookup. It is also disabled in case.html (the field is rendered read-only), so
+//                    before this there was NO route to set a fee earner anywhere in the portal — and
+//                    the source note on this page wrongly told people to "open the case" to do it.
+//                    What this edit writes is the plain-text mirror `FeeEarner_x0028_fromFM_x0029_`,
+//                    which is what THIS REPORT reads. It fixes the client-facing report immediately.
+//                    It does NOT set the SharePoint Lookup: Infowise, PA flows, SP views and any
+//                    other consumer will still see the case with no fee earner. Nothing is known to
+//                    maintain that mirror (confirmed with Toby, S76 — origin is the FileMaker
+//                    migration), so it will not self-heal either way. The case still needs fixing at
+//                    source, and the note under the edit box says so.
 //
 //   Current Position IS editable, on Toby's instruction — but see the warning below. It is
 //                    rewritten every night by PA999.1 from the AI pipeline, so an edit made here
 //                    survives only until the next nightly run.
 //
 var EDITABLE = {
+  feeEarner:       { field: 'FeeEarner_x0028_fromFM_x0029_', kind: 'text', list: 'fe-list',
+                     note: 'This writes the report\u2019s text copy only \u2014 the Fee Earner on the case itself is a '
+                         + 'SharePoint lookup the portal cannot set. The case STILL needs updating at source.' },
   clientRef:       { field: 'ClientCaseReference',   kind: 'text'     },
   dateServed:      { field: null,                    kind: 'date'     },  // resolved per row
   counselFees:     { field: 'CounselsFeesClaimed',   kind: 'money'    },
   disbursements:   { field: 'DisbursementsClaimed',  kind: 'money'    },
   lastOffer:       { field: 'PayingPartysLastOffer', kind: 'money'    },
-  interimTotal:    { field: null,                    kind: 'interim'  },  // three real columns
+  interimTotal:    { field: null,                    kind: 'interim'  },
   currentPosition: { field: 'Current_x0020_Position', kind: 'longtext' }
 };
 
@@ -643,6 +659,9 @@ function beginEdit(td) {
     } else {
       input.type = 'text';
       input.value = r[key] || '';
+      // A datalist gives the known fee earners as suggestions while still allowing a name that is
+      // not on the reference list — blocking those would just leave the report blank.
+      if (spec.list) input.setAttribute('list', spec.list);
     }
   }
   input.className = 'cell-input' + (spec.kind === 'money' ? ' num-input' : '');
@@ -655,6 +674,11 @@ function beginEdit(td) {
     warn.className = 'edit-hint';
     warn.textContent = 'Note: PA999.1 rewrites Current Position every night. An edit made here will be replaced by the next nightly run.';
     td.appendChild(warn);
+  } else if (spec.note) {
+    var n = document.createElement('div');
+    n.className = 'edit-hint';
+    n.textContent = spec.note;
+    td.appendChild(n);
   }
 
   input.focus();
@@ -1107,6 +1131,26 @@ document.getElementById('btn-notify').addEventListener('click', function () {
       + '\n\nIf this is a 403 from Graph, the app registration is missing Mail.Send.');
   });
 });
+
+// S76 — fee earner suggestions for the inline editor. Same reference list the Book In form uses.
+// Failure is non-fatal: without it the field is still a free-text box, which is better than no
+// route to a fee earner at all (which is what existed before S76).
+function loadFeeEarners() {
+  fetch('/api/reflists?list=feeearners')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) {
+      if (!d) return;
+      var names = (d.value || [])
+        .map(function (i) { return (((i.fields || {}).Title) || '').trim(); })
+        .filter(Boolean)
+        .sort(function (a, b) { return a.localeCompare(b); });
+      var dl = document.getElementById('fe-list');
+      if (!dl) return;
+      dl.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join('');
+    })
+    .catch(function () {});
+}
+loadFeeEarners();
 
 // Identity FIRST, then load. isMgmt and myFirstName have to be set before the first render or the
 // ✕ buttons and the verify bar would be missing until something forced a redraw.
