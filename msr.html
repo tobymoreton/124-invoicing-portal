@@ -120,6 +120,7 @@
       </div>
       <div style="align-self:flex-end;display:flex;gap:10px;">
         <button class="btn btn-ghost" id="btn-refresh">Refresh</button>
+        <button class="btn btn-ghost" id="btn-publish" style="display:none;" disabled>Publish &amp; Copy Link</button>
         <button class="btn btn-primary" id="btn-export" disabled>Export to Excel</button>
       </div>
     </div>
@@ -209,6 +210,7 @@ function load(firm) {
   tbody.innerHTML = '<tr><td colspan="12" class="msg">Loading\u2026</td></tr>';
   document.getElementById('tfoot').style.display = 'none';
   document.getElementById('btn-export').disabled = true;
+  setPublishEnabled(false);
   document.getElementById('page-sub').textContent = 'Loading\u2026';
 
   // Cache-busted deliberately. This report exists BECAUSE a stale derived copy put phantom
@@ -282,6 +284,7 @@ function render(data) {
     tbody.innerHTML = '<tr><td colspan="12" class="msg">No matters on the report for this selection.</td></tr>';
     document.getElementById('tfoot').style.display = 'none';
     document.getElementById('btn-export').disabled = true;
+    setPublishEnabled(false);
     renderFlags([]);
     return;
   }
@@ -319,6 +322,7 @@ function render(data) {
   document.getElementById('t-offer').textContent   = money(t.lastOffer);
   document.getElementById('tfoot').style.display   = '';
   document.getElementById('btn-export').disabled   = false;
+  setPublishEnabled(true);
 
   renderFlags(findFlags(visibleRows));
 }
@@ -630,7 +634,72 @@ var BAND     = 'FFD1E8F0';
 var WHITE    = 'FFFFFFFF';
 
 function exportExcel() {
-  if (!visibleRows.length) return;
+  var built = buildWorkbook();
+  if (!built) return;
+  built.wb.xlsx.writeBuffer().then(function (buf) {
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = built.name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  });
+}
+
+// S76: Publish & Copy Link. Uploads the SAME workbook to the SharePoint Admin Library and
+// copies its webUrl. isMgmt gates visibility only — /api/msrshare enforces the same list.
+// The published file is a deliberate DEAD SNAPSHOT: draftsmen co-author it in Excel Online
+// and nothing they type flows back to SharePoint. Do NOT add a write-back path.
+var isMgmt = false;
+function setPublishEnabled(on) {
+  var pb = document.getElementById('btn-publish');
+  if (!pb) return;
+  pb.style.display = isMgmt ? '' : 'none';
+  pb.disabled = !on;
+}
+
+function publishExcel() {
+  var built = buildWorkbook();
+  if (!built) return;
+  var btn = document.getElementById('btn-publish');
+  var old = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Publishing\u2026';
+  built.wb.xlsx.writeBuffer().then(function (buf) {
+    return fetch('/api/msrshare', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'x-file-name': encodeURIComponent(built.name)
+      },
+      body: buf
+    });
+  }).then(function (r) {
+    return r.text().then(function (t) {
+      if (!r.ok) throw new Error(t || ('HTTP ' + r.status));
+      return JSON.parse(t);
+    });
+  }).then(function (res) {
+    var url = res && res.webUrl;
+    if (!url) throw new Error('No link returned.');
+    var done = function () {
+      btn.textContent = '\u2713 Link copied';
+      setTimeout(function () { btn.textContent = old; btn.disabled = false; }, 2500);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, function () { window.prompt('Copy this link:', url); done(); });
+    } else {
+      window.prompt('Copy this link:', url);
+      done();
+    }
+  }).catch(function (e) {
+    btn.textContent = old; btn.disabled = false;
+    alert('Publish failed: ' + (e && e.message ? e.message : e));
+  });
+}
+
+function buildWorkbook() {
+  if (!visibleRows.length) return null;
   var rows = visibleRows;   // export exactly what is on screen, draftsman filter included
 
   var wb = new ExcelJS.Workbook();
@@ -698,15 +767,7 @@ function exportExcel() {
   var stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   var name = firmSlug + '-Matter-Status-Report-' + stamp + '.xlsx';
 
-  wb.xlsx.writeBuffer().then(function (buf) {
-    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
-  });
+  return { wb: wb, name: name };
 }
 
 // Wiring
@@ -722,6 +783,7 @@ document.getElementById('btn-refresh').addEventListener('click', function () {
   load(document.getElementById('firm-select').value || DEFAULT_FIRM);
 });
 document.getElementById('btn-export').addEventListener('click', exportExcel);
+document.getElementById('btn-publish').addEventListener('click', publishExcel);
 
 // Admin nav link, same pattern as the other pages.
 fetch('/.auth/me')
@@ -731,6 +793,12 @@ fetch('/.auth/me')
     if (!user || !user.userDetails) return;
     var email = user.userDetails.toLowerCase();
     var ADMIN = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+    // Management only — narrower than ADMIN, which includes Finance.
+    var MGMT  = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+    if (MGMT.indexOf(email) !== -1) {
+      isMgmt = true;
+      setPublishEnabled(!document.getElementById('btn-export').disabled);
+    }
     if (ADMIN.indexOf(email) !== -1) {
       var nav = document.getElementById('nav-links');
       if (nav && !nav.querySelector('[href="/admin.html"]')) {
