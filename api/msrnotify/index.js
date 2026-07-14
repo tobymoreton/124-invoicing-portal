@@ -30,7 +30,14 @@ const { URL } = require('url');
 
 const SEND_FROM = 'office@tmclegal.co.uk';
 
+// Who gets told when a report is fully verified. Management, not the draftsmen.
+const COMPLETE_TO = 'toby@tmclegal.co.uk';
+
 // Management only — this sends mail on behalf of the firm.
+//
+// EXCEPTION: the 'complete' mode is open to ANY signed-in draftsman, because it is fired by the
+// browser of whoever happens to verify LAST — and that will usually not be Management. It can only
+// ever send to COMPLETE_TO above, so it cannot be used to mail anyone else.
 const ALLOWED_EMAILS = [
   'toby@tmclegal.co.uk',
   'danielle@tmclegal.co.uk',
@@ -74,7 +81,14 @@ module.exports = async function (context, req) {
   context.log('P124 /api/msrnotify called');
 
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ALLOWED_EMAILS.includes(callerEmail)) {
+  if (!callerEmail || !callerEmail.endsWith('@tmclegal.co.uk')) {
+    context.res = { status: 403, body: 'Forbidden — you must be signed in.' };
+    return;
+  }
+  // Chase mode mails other people, so it stays Management-only. Completion mode can only ever mail
+  // COMPLETE_TO, so any signed-in draftsman may trigger it (see the note above).
+  const isComplete = req.body && String(req.body.mode || '') === 'complete';
+  if (!isComplete && !ALLOWED_EMAILS.includes(callerEmail)) {
     context.res = { status: 403, body: 'Forbidden — notifying the draftsmen is restricted to Management.' };
     return;
   }
@@ -86,6 +100,7 @@ module.exports = async function (context, req) {
   }
 
   const body = req.body || {};
+  const mode = String(body.mode || 'chase').trim();
   const firm = String(body.firm || '').trim();
   const link = String(body.link || '').trim();
   const list = Array.isArray(body.recipients) ? body.recipients : [];
@@ -98,6 +113,45 @@ module.exports = async function (context, req) {
     context.res = { status: 400, body: 'link must be an https URL.' };
     return;
   }
+
+  // ── mode: 'complete' ── every draftsman with matters on this report has now verified them.
+  // Fired by the browser of whoever verifies LAST, once their write lands and the reload comes back
+  // with nothing outstanding.
+  //
+  // ⚠ NOT idempotent. If two draftsmen verify their last rows within the same few seconds, both
+  //   browsers can see a clean report and both will fire — the email may arrive twice. Deduping
+  //   properly needs a "completion notified" stamp in SharePoint; not built. A duplicate email is a
+  //   far cheaper failure than a missed one, so it fires optimistically.
+  if (mode === 'complete') {
+    const total = parseInt(body.total, 10) || 0;
+    try {
+      const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const deep  = link + (link.indexOf('?') === -1 ? '?' : '&') + 'firm=' + encodeURIComponent(firm);
+      const html =
+        '<p>Every draftsman with matters on the <strong>' + esc(firm) + '</strong> Matter Status Report '
+        + 'has now checked and verified their entries.</p>'
+        + (total ? '<p><strong>' + total + '</strong> ' + (total === 1 ? 'matter is' : 'matters are') + ' on the report.</p>' : '')
+        + '<p><a href="' + esc(deep) + '">Open the report</a></p>'
+        + '<p style="color:#666;font-size:12px;">Sent from the TMC portal. A verified row loses its tick if it is '
+        + 'edited on the report afterwards — glance at the report before you send it.</p>';
+
+      await sendMail(token, COMPLETE_TO,
+        'Matter Status Report — ' + firm + ' — all draftsmen have verified', html);
+      context.log('AUDIT msrnotify COMPLETE firm=' + firm + ' to=' + COMPLETE_TO + ' triggeredBy=' + callerEmail);
+
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complete: true, sentTo: COMPLETE_TO }),
+      };
+    } catch (err) {
+      context.log.error('Error sending completion email:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
+
+  // ── mode: 'chase' (default) ── nudge the draftsmen who still have unverified matters.
   if (!list.length) {
     context.res = {
       status: 200,
@@ -151,18 +205,7 @@ module.exports = async function (context, req) {
         + '<p style="color:#666;font-size:12px;">Sent from the TMC portal.</p>';
 
       try {
-        await graphPost(
-          'https://graph.microsoft.com/v1.0/users/' + encodeURIComponent(SEND_FROM) + '/sendMail',
-          token,
-          {
-            message: {
-              subject,
-              body: { contentType: 'HTML', content: html },
-              toRecipients: [{ emailAddress: { address: t.to } }],
-            },
-            saveToSentItems: true,
-          }
-        );
+        await sendMail(token, t.to, subject, html);
         sent.push(t.name);
         context.log('AUDIT msrnotify sent to=' + t.to + ' firm=' + firm + ' count=' + t.count + ' by=' + callerEmail);
       } catch (e) {
@@ -218,6 +261,21 @@ function getToken(tenantId, clientId, clientSecret) {
     req.write(body);
     req.end();
   });
+}
+
+function sendMail(token, to, subject, html) {
+  return graphPost(
+    'https://graph.microsoft.com/v1.0/users/' + encodeURIComponent(SEND_FROM) + '/sendMail',
+    token,
+    {
+      message: {
+        subject: subject,
+        body: { contentType: 'HTML', content: html },
+        toRecipients: [{ emailAddress: { address: to } }],
+      },
+      saveToSentItems: true,
+    }
+  );
 }
 
 function graphPost(url, token, body) {
