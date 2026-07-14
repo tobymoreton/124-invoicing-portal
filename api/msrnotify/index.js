@@ -28,7 +28,21 @@
 const https   = require('https');
 const { URL } = require('url');
 
-const SEND_FROM = 'office@tmclegal.co.uk';
+// The mailbox these emails are SENT FROM.
+//
+// ⚠ This must be a real MAILBOX, not a distribution group, an alias or a mail-enabled security
+//   group. Graph /users/{addr}/sendMail resolves the address to a user object; anything that is not
+//   one comes back 404 ErrorInvalidUser ("The requested user '...' is invalid").
+//   office@tmclegal.co.uk was tried first, on the strength of PA099.14 sending invoice
+//   notifications to it — but PA099.14 DELIVERS TO it, which proves nothing about whether it can
+//   be SENT AS. It failed with exactly that 404 (2026-07-14).
+//
+// automation@tmclegal.co.uk is the Power Automate service account (the same identity the PA
+// loop-breakers test for), so it is a real account rather than an alias — and it reads as a system
+// notification rather than a personal email, which is the point.
+//
+// Overridable without a code change via the MSR_SEND_FROM app setting on the Function App.
+const SEND_FROM = process.env.MSR_SEND_FROM || 'automation@tmclegal.co.uk';
 
 // Who gets told when a report is fully verified. Management, not the draftsmen.
 const COMPLETE_TO = 'toby@tmclegal.co.uk';
@@ -211,7 +225,10 @@ module.exports = async function (context, req) {
       } catch (e) {
         // One bad address must not stop the rest. Report exactly who did NOT get it — never
         // report a send as successful when it was not.
-        failed.push(t.name + ': ' + e.message);
+        var hint = /ErrorInvalidUser/i.test(e.message)
+          ? ' — the SEND-FROM mailbox (' + SEND_FROM + ') is not a valid mailbox, not the recipient'
+          : '';
+        failed.push(t.name + ': ' + e.message + hint);
         context.log.error('msrnotify FAILED to=' + t.to + ': ' + e.message);
       }
     }
