@@ -1094,8 +1094,8 @@ function showMsg(id, msg, type) { const e = el(id); e.textContent = msg; e.class
 // Reconstruct Fullcasename from Cases fields (mirrors SP calculated field formula)
 function computeFullCaseName(f) {
   if (f.Fullcasenameoveride) return f.Fullcasenameoveride;
-  const multiC = !!(f['Andothers_x003f_'] === true || f.MultiClaimants);
-  const multiD = !!(f['Morethanonedefendant_x003f_'] === true || f.MultiDefendants);
+  const multiC = (f['Andothers_x003f_'] === true) && !!f.MultiClaimants;
+  const multiD = (f['Morethanonedefendant_x003f_'] === true) && !!f.MultiDefendants;
   const claimant  = multiC ? (f.MultiClaimants || '') : ((f.OurPartyFirstName || '') + ' ' + (f.OurPartySurname || '')).trim();
   const defendant = multiD ? (f.MultiDefendants || '') : (f.OpponentPartyName || '');
   if (claimant && defendant) return claimant + ' -v- ' + defendant;
