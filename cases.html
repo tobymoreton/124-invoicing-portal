@@ -90,6 +90,9 @@
 
     /* ── Dashboard columns ── */
     .dash-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:28px;}
+    /* S76: 1fr == minmax(auto,1fr), so a nowrap child (.rem-case) blows the track out to its
+       full text width. min-width:0 lets the columns stay equal thirds and the ellipsis work. */
+    .dash-cols>*{min-width:0;}
     @media(max-width:1100px){.dash-cols{grid-template-columns:1fr 1fr;}}
     @media(max-width:700px){.dash-cols{grid-template-columns:1fr;}}
 
