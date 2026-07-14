@@ -72,6 +72,11 @@
     thead th{position:sticky;top:0;z-index:5;background:var(--tmc-blue);color:var(--white);font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;padding:11px 10px;white-space:nowrap;}
     tbody td{padding:10px;border-bottom:1px solid var(--grey-light);vertical-align:top;}
     tbody tr:nth-child(even){background:var(--tmc-band);}
+    /* S76 — verified rows go light green, odd and even alike, so a glance down the table shows what
+       is still outstanding. Placed AFTER the banding rule so it wins; the hover rule below still
+       wins over this, so hovering a verified row is unambiguous. */
+    tbody tr.verified,
+    tbody tr.verified:nth-child(even){background:#E8F6EC;}
     tbody tr:hover{background:var(--gold-pale);}
     td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
 
@@ -338,7 +343,7 @@ function render(data) {
     var assigned = assignedName
       ? esc(assignedName)
       : '<span class="unassigned">Unassigned</span>';
-    return '<tr data-id="' + esc(r.id) + '">'
+    return '<tr class="' + (r.verifiedBy ? 'verified' : '') + '" data-id="' + esc(r.id) + '">'
       + '<td class="nowrap vcell">' + verifyMark(r) + '</td>'
       + '<td class="nowrap"><a class="case-link" href="/case.html?ref=' + encodeURIComponent(r.ourRef) + '">' + esc(r.title) + '</a></td>'
       + '<td>' + esc(r.feeEarner) + '</td>'
@@ -807,7 +812,9 @@ function save(td, r, fields, applyLocal, key) {
       if (clearing) {
         r.verifiedBy = '';
         r.verifiedUTC = '';
-        var vc = td.parentNode && td.parentNode.querySelector('.vcell');
+        var tr = td.parentNode;
+        if (tr) tr.classList.remove('verified');   // the green must go the moment the tick does
+        var vc = tr && tr.querySelector('.vcell');
         if (vc) vc.innerHTML = verifyMark(r);
         renderVerifyBar();
       }
