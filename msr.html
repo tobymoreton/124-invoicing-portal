@@ -470,7 +470,10 @@ function renderVerifyBar() {
   var mine = visibleRows.filter(function (r) { return r.assignee === myFirstName; });
   if (!mine.length) { bar.style.display = 'none'; return; }
   var unver = mine.filter(function (r) { return !r.verifiedBy; });
-  bar.style.display = '';
+  // MUST be 'flex', not ''. #verify-bar carries display:none in the STYLESHEET, and an empty
+  // inline value does not override a stylesheet rule — it falls back to it, and the bar stays
+  // invisible however many rows are outstanding. (Bug found live, 2026-07-14.)
+  bar.style.display = 'flex';
   if (!unver.length) {
     bar.innerHTML = '<span style="color:#1B7A4B;font-weight:600;">\u2713 All ' + mine.length
       + ' of your matters on this report are verified.</span>';
