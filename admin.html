@@ -263,14 +263,16 @@
     .uc-divider{display:flex;align-items:center;gap:10px;padding:9px 20px;background:var(--grey-faint);border-top:1px solid var(--grey-light);border-bottom:1px solid var(--grey-light);}
     .uc-divider::after{content:'';flex:1;height:1px;background:var(--grey-light);}
     .uc-divider span{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
-    /* Band tints (S73). Deadline = amber, IP = blue, LA = green, not-set = plain — matching the
-       IP/LA badge colours already used on the row, so the header and the badge agree at a glance. */
-    .uc-divider-b0{background:#FEF3C7;border-color:#FDE68A;}
-    .uc-divider-b0 span{color:#92400E;}
-    .uc-divider-b1{background:#DBEAFE;border-color:#BFDBFE;}
-    .uc-divider-b1 span{color:#1E40AF;}
-    .uc-divider-b2{background:#DCFCE7;border-color:#BBF7D0;}
-    .uc-divider-b2 span{color:#14532D;}
+    /* Band tints (S79). Not acknowledged = red, Deadline = amber, IP = blue, LA = green,
+       not-set = plain — header tint agrees with the row badge / urgency at a glance. */
+    .uc-divider-b0{background:#FEE2E2;border-color:#FECACA;}
+    .uc-divider-b0 span{color:#991B1B;}
+    .uc-divider-b1{background:#FEF3C7;border-color:#FDE68A;}
+    .uc-divider-b1 span{color:#92400E;}
+    .uc-divider-b2{background:#DBEAFE;border-color:#BFDBFE;}
+    .uc-divider-b2 span{color:#1E40AF;}
+    .uc-divider-b3{background:#DCFCE7;border-color:#BBF7D0;}
+    .uc-divider-b3 span{color:#14532D;}
     /* Booking-in notes strip under a row of the All Open Cases table (same look as .uc-notes) */
     .tc-notes-row td{padding:0 20px 10px 20px;border-bottom:1px solid var(--grey-faint);}
     .tc-notes{padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
@@ -1284,23 +1286,40 @@ function renderUnassignedCases(){
   // DateReceived sorts LAST (an empty string wins an ascending compare and would
   // otherwise jump undated cases straight to the top).
   const BAND_LABEL=[
+    'Not acknowledged \u2014 action these first',
     'Deadline \u2014 absolute priority, soonest first',
     'Inter Partes \u2014 no deadline, longest waiting first',
     'Legal Aid \u2014 no deadline, longest waiting first',
     'Funding not set \u2014 set IP / LA on the row'
   ];
+  // S79: cases whose booking-in acknowledgement has NOT been sent float to the very top,
+  // above the deadline/funding banding — per the "above anything else" brief. AcknowledgmentSent
+  // is the same field the row's Ack / No-Ack chip reads.
+  function ucAck(f){
+    return f['AcknowledgmentSent']===true||f['AcknowledgmentSent']==='Yes'||f['AcknowledgmentSent']==='true'||f['AcknowledgmentSent']===1;
+  }
   function ucBand(f){
-    if((f['Deadline']||'').slice(0,10)) return 0;
+    if(!ucAck(f)) return 0;
+    if((f['Deadline']||'').slice(0,10)) return 1;
     const v=(f['InterPartesorLegalAid']||'').trim();
-    if(v==='Inter Partes'||v==='Both') return 1;
-    if(v==='Legal Aid') return 2;
-    return 3;
+    if(v==='Inter Partes'||v==='Both') return 2;
+    if(v==='Legal Aid') return 3;
+    return 4;
   }
   unassigned.sort((a,b)=>{
     const ba=ucBand(a.fields), bb=ucBand(b.fields);
     if(ba!==bb) return ba-bb;
-    if(ba===0){
+    // Deadline band: soonest deadline first.
+    if(ba===1){
       return (a.fields['Deadline']||'').slice(0,10).localeCompare((b.fields['Deadline']||'').slice(0,10));
+    }
+    // Not-acknowledged band: a deadline still pulls a row up (soonest first); the rest,
+    // and the funding bands, go longest-waiting-first (oldest DateReceived), blank date last.
+    if(ba===0){
+      const da=(a.fields['Deadline']||'').slice(0,10), db=(b.fields['Deadline']||'').slice(0,10);
+      if(da&&!db) return -1;
+      if(!da&&db) return 1;
+      if(da&&db&&da!==db) return da.localeCompare(db);
     }
     const ra=(a.fields['DateReceived']||''); const rb=(b.fields['DateReceived']||'');
     if(ra&&!rb) return -1;
