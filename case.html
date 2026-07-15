@@ -3637,11 +3637,17 @@ function renderOvDocs() {
 
 // Office docs (.docx/.xlsx/.pptx) opened via their raw webUrl land in Word/Excel/PowerPoint
 // for the web in EDIT mode, which errors "can't be opened for editing" for read-only users.
-// Append ?web=1 to force browser view-mode open. PDFs/HTML/others keep the plain webUrl.
+// Force action=view so Office files open in Word/Excel/PowerPoint-web READ mode.
+// Their webUrl is the Doc.aspx launcher (has action=edit|default); read-only users
+// hit "can't be opened for editing" unless the action is rewritten to view.
 function attOpenUrl(f) {
   var u = f.webUrl || '#';
   if (u !== '#' && /\.(docx?|xlsx?|pptx?)$/i.test(f.name || '')) {
-    u += (u.indexOf('?') === -1 ? '?web=1' : '&web=1');
+    if (/[?&]action=/i.test(u)) {
+      u = u.replace(/([?&]action=)(edit|default|view|interactivepreview)/i, '$1view');
+    } else {
+      u += (u.indexOf('?') === -1 ? '?action=view' : '&action=view');
+    }
   }
   return u;
 }
