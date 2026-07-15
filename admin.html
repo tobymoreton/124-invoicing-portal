@@ -329,7 +329,7 @@
         <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
         <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
         <button class="qa-btn" id="btn-admin-docs"><span class="qa-icon">&#128193;</span> Admin Documents</button>
-        <button class="qa-btn" id="btn-att-types"><span class="qa-icon">&#128220;</span> Attachment Types</button>
+        <button class="qa-btn" id="btn-att-types" style="display:none;"><span class="qa-icon">&#128220;</span> Attachment Types</button>
       </div>
       <div class="qa-title add">Add New</div>
       <div class="qa-grid add">
@@ -1552,6 +1552,7 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     if(email&&!adminTier.includes(email)){ window.location.replace('/cases.html'); return; }
     if(!management.includes(email)) document.body.classList.add('not-mgmt');
     adManagement=management.includes(email);
+    if(email==='toby@tmclegal.co.uk'){ const b=document.getElementById('btn-att-types'); if(b) b.style.display='inline-flex'; }
   }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
 })();
 
