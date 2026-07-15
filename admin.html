@@ -329,6 +329,7 @@
         <a href="/opponentfirms.html" class="qa-btn"><span class="qa-icon">&#129354;</span> Opponent Firms</a>
         <a href="/opponentcws.html" class="qa-btn"><span class="qa-icon">&#128100;</span> Opponent Caseworkers</a>
         <button class="qa-btn" id="btn-admin-docs"><span class="qa-icon">&#128193;</span> Admin Documents</button>
+        <button class="qa-btn" id="btn-att-types"><span class="qa-icon">&#128220;</span> Attachment Types</button>
       </div>
       <div class="qa-title add">Add New</div>
       <div class="qa-grid add">
@@ -431,6 +432,29 @@
     </div>
   </div>
   <!-- /Admin Documents modal -->
+
+  <!-- Attachment Types editor (S78): the Doc Type dropdown on case.html's Attachments tab.
+       Stored in PortalConfig key 'AttachmentDocTypes' as a JSON array; case.html falls back
+       to a hardcoded default if this is empty. Kept short — SP Text column caps at 255 chars. -->
+  <div class="modal-overlay" id="modal-att-types">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-head"><span class="modal-title">Attachment Types</span><button class="modal-close" data-close="modal-att-types">&times;</button></div>
+      <div class="modal-body">
+        <div id="at-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="at-new" placeholder="New type name&hellip;" maxlength="40" style="flex:1;padding:8px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;" />
+          <button class="btn-save" id="at-add-btn">+ Add</button>
+        </div>
+        <div id="at-budget" style="font-size:11px;color:var(--grey-mid);margin-top:6px;"></div>
+        <div id="at-msg" class="save-msg" style="margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" data-close="modal-att-types">Close</button>
+        <button class="btn-primary" id="at-save-btn">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- /Attachment Types editor -->
 
   <!-- All Open Cases -->
   <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading cases&hellip;</div>

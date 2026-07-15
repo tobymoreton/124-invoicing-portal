@@ -1456,10 +1456,34 @@
               <div class="field"><label>Due Date</label><input type="date" id="rem-add-duedate" /></div>
               <div class="field"><label>Event</label>
                 <select id="rem-add-event" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
-                  <option>General reminder</option><option>Chase Client</option>
-                  <option>Chase Other Side for response</option><option>Chase Chambers</option>
-                  <option>Review</option><option>Invoice</option>
-                  <option>Relay offer to Client</option><option>Start Precedent R</option>
+                  <option>Approve Bill</option><option>CCMC</option>
+                  <option>Chase Chambers</option><option>Chase Client</option>
+                  <option>Chase HJA &ndash; Emailed 7 days ago</option>
+                  <option>Chase Other Side for Interim</option>
+                  <option>Chase Other Side for Interim &amp; Offer</option>
+                  <option>Chase Other Side for Offer</option>
+                  <option>Chase Other Side for response</option>
+                  <option>Detailed Assessment</option><option>Finalise Bill</option>
+                  <option>Finalise Replies</option><option>Finalise Budget</option>
+                  <option selected>General reminder</option>
+                  <option>Get Counsel reduction</option><option>Important reminder</option>
+                  <option>Invoice</option><option>Issue Invoice - Draft done</option>
+                  <option>Issue Part 8</option><option>Lodge completed bill</option>
+                  <option>Make Offer</option><option>Mediation</option>
+                  <option>Meeting</option><option>Points of Dispute due</option>
+                  <option>Prepare for CCMC</option><option>Prepare for Detailed Assessment</option>
+                  <option>Prepare for Mediation</option>
+                  <option>Prepare for Without Prejudice call</option>
+                  <option>Relay offer to Client</option><option>Replies due</option>
+                  <option>Request Detailed Assessment</option>
+                  <option>Request Provisional Assessment</option>
+                  <option>Review</option><option>Send Bill to Client</option>
+                  <option>Send Budget to Client</option><option>Send Replies to Client</option>
+                  <option>Serve formally</option><option>Serve informally</option>
+                  <option>Serve Precedent H</option><option>Serve Precedent R</option>
+                  <option>Start Bill</option><option>Start Budget</option>
+                  <option>Start Precedent R</option><option>Start Replies</option>
+                  <option>Without Prejudice call</option>
                 </select>
               </div>
               <div class="field"><label>Priority</label>
@@ -3558,7 +3582,22 @@ let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching
 
 // --- Attachments tab (caseAttachments doc library via /api/attachments) ---
 let attFiles = []; let attLoaded = false; let attFetching = false; let attFilter = 'All';
-const ATT_DOC_TYPES = ['Instructions','Acknowledgment','Terms and conditions','Bill','Incoming email','Outgoing email','Narrative','Advice','Authority to assess','Voucher',"Counsel's fee note"];
+const DEFAULT_ATT_DOC_TYPES = ['Instructions','Acknowledgment','Terms and conditions','Bill','Incoming email','Outgoing email','Narrative','Advice','Authority to assess','Voucher',"Counsel's fee note"];
+let ATT_DOC_TYPES = DEFAULT_ATT_DOC_TYPES.slice();
+// Toby can edit this list himself on the Admin Dashboard (Attachment Types) - stored in
+// PortalConfig under key 'AttachmentDocTypes' as a JSON array. Fetched once per page load;
+// falls back to the hardcoded default above if PortalConfig has nothing yet or the call fails.
+async function loadAttDocTypes() {
+  try {
+    const r = await fetch('/api/portalconfig?key=AttachmentDocTypes');
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.value) {
+      const parsed = JSON.parse(data.value);
+      if (Array.isArray(parsed) && parsed.length) ATT_DOC_TYPES = parsed;
+    }
+  } catch { /* keep default */ }
+}
 const ATT_MANAGEMENT = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
 let attUploadWired = false;
 function attIsManagement() { return ATT_MANAGEMENT.includes((switcherCallerEmail || '').toLowerCase()); }
@@ -3642,6 +3681,7 @@ function initAttUpload() {
   if (attUploadWired) return;
   const sel = document.getElementById('att-up-type'); const fileInput = document.getElementById('att-up-file'); const btn = document.getElementById('att-up-btn'); const zone = document.getElementById('att-upload');
   if (!sel || !fileInput || !btn) return;
+  loadAttDocTypes().then(() => { sel.innerHTML = ATT_DOC_TYPES.map(t => `<option>${escHtml(t)}</option>`).join(''); });
   sel.innerHTML = ATT_DOC_TYPES.map(t => `<option>${escHtml(t)}</option>`).join('');
   btn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => { attUploadFiles(fileInput.files); fileInput.value = ''; });
