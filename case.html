@@ -3631,10 +3631,20 @@ function renderOvDocs() {
   attFiles.forEach(f => { const t = ((f.docType || '').trim()) || 'Uncategorised'; (groups[t] = groups[t] || []).push(f); });
   el.innerHTML = Object.keys(groups).sort().map(t =>
     `<div style="margin-bottom:12px;"><div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;">${escHtml(t)}</div>`
-    + groups[t].map(f => `<div style="padding:2px 0;"><a href="${escHtml(f.webUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a><span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(f.size)}${f.modified ? ' \u00b7 ' + fmtDate(f.modified) : ''}</span></div>`).join('')
+    + groups[t].map(f => `<div style="padding:2px 0;"><a href="${escHtml(attOpenUrl(f))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a><span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(f.size)}${f.modified ? ' \u00b7 ' + fmtDate(f.modified) : ''}</span></div>`).join('')
     + '</div>').join('');
 }
 
+// Office docs (.docx/.xlsx/.pptx) opened via their raw webUrl land in Word/Excel/PowerPoint
+// for the web in EDIT mode, which errors "can't be opened for editing" for read-only users.
+// Append ?web=1 to force browser view-mode open. PDFs/HTML/others keep the plain webUrl.
+function attOpenUrl(f) {
+  var u = f.webUrl || '#';
+  if (u !== '#' && /\.(docx?|xlsx?|pptx?)$/i.test(f.name || '')) {
+    u += (u.indexOf('?') === -1 ? '?web=1' : '&web=1');
+  }
+  return u;
+}
 function attFmtSize(bytes) {
   const n = Number(bytes) || 0;
   if (n < 1024) return n + ' B';
@@ -3668,7 +3678,7 @@ function renderAttTable() {
   const rows = attFiles.filter(f => attFilter === 'All' || (f.docType || '').trim() === attFilter);
   rows.forEach(f => {
     const tr = document.createElement('tr'); tr.className = 'ca-row';
-    tr.innerHTML = `<td class="ca-cell"><a href="${escHtml(f.webUrl || '#')}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a></td>`
+    tr.innerHTML = `<td class="ca-cell"><a href="${escHtml(attOpenUrl(f))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a></td>`
       + `<td class="ca-cell">${escHtml(f.docType || '')}</td>`
       + `<td class="ca-cell ca-right">${attFmtSize(f.size)}</td>`
       + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`
