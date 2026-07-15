@@ -318,6 +318,14 @@
   </div>
 </nav>
 
+<!-- Rolling news banner (S78): shown only when Toby has an active update posted via
+     PortalConfig key 'CasesBanner'. Hidden entirely when inactive/empty - no reserved space. -->
+<div id="news-banner" style="display:none;background:linear-gradient(90deg,var(--gold-mid),var(--gold));color:var(--navy);font-weight:600;font-size:13px;padding:9px 32px;align-items:center;gap:12px;">
+  <span style="flex-shrink:0;">&#128226;</span>
+  <span id="news-banner-text" style="flex:1;"></span>
+  <button id="news-banner-dismiss" title="Dismiss for this session" style="flex-shrink:0;background:none;border:none;color:var(--navy);font-size:16px;cursor:pointer;opacity:.6;padding:2px 6px;">&times;</button>
+</div>
+
 <div class="page-header">
   <div class="page-header-top">
     <div>
@@ -328,6 +336,7 @@
       <span class="user-pill-label">Signed in as</span>
       <span class="user-pill-name" id="user-name">&mdash;</span>
     </div>
+    <button id="btn-post-update" style="display:none;flex-shrink:0;padding:7px 14px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);background:rgba(201,168,76,.15);color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">&#128226; Post Update</button>
   </div>
 </div>
 
@@ -722,6 +731,31 @@
       <button class="briefing-modal-close" data-close-breakdown="modal-4pct">&times;</button>
     </div>
     <div id="pc-breakdown-list" style="max-height:60vh;overflow-y:auto;padding:12px 20px;"></div>
+  </div>
+</div>
+
+<!-- Post Update modal (Toby only) -->
+<div class="dash-modal-overlay" id="modal-post-update">
+  <div class="dash-modal" style="max-width:520px;">
+    <div class="dash-modal-head">
+      <span class="dash-modal-title">Post an Update</span>
+      <button class="dash-modal-close" data-close="modal-post-update">&times;</button>
+    </div>
+    <div class="dash-modal-body">
+      <div class="dm-field">
+        <label>Banner Text</label>
+        <textarea id="pu-text" rows="3" placeholder="e.g. Portal will be offline briefly this evening for an update."></textarea>
+      </div>
+      <div class="dm-field" style="flex-direction:row;align-items:center;gap:10px;">
+        <input type="checkbox" id="pu-active" checked style="width:18px;height:18px;accent-color:var(--navy);" />
+        <label style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;">Show banner (uncheck to hide without deleting the text)</label>
+      </div>
+    </div>
+    <div class="dash-modal-footer">
+      <span class="dm-save-msg" id="pu-msg"></span>
+      <button class="dm-btn dm-btn-secondary" data-close="modal-post-update">Cancel</button>
+      <button class="dm-btn dm-btn-primary" id="pu-save">Save</button>
+    </div>
   </div>
 </div>
 
@@ -2216,6 +2250,77 @@ async function acknowledgeAll(){
 document.getElementById('btn-ack').addEventListener('click', acknowledgeAll);
 
 init();
+
+// ── Rolling news banner (Toby-only posting) ────────────────────────────────
+const BANNER_KEY='CasesBanner';
+const BANNER_WRITE_EMAIL='toby@tmclegal.co.uk';
+let bannerDismissedThisSession=false;
+
+async function loadBanner(){
+  try{
+    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY));
+    if(!r.ok) return;
+    const data=await r.json();
+    let parsed=null;
+    try{ parsed=data.value?JSON.parse(data.value):null; }catch{ parsed=null; }
+    const banner=document.getElementById('news-banner');
+    const textEl=document.getElementById('news-banner-text');
+    if(parsed&&parsed.active&&parsed.text&&!bannerDismissedThisSession){
+      textEl.textContent=parsed.text;
+      banner.style.display='flex';
+    }else{
+      banner.style.display='none';
+    }
+  }catch{/*ignore - banner is non-critical*/}
+}
+
+function wireBanner(){
+  const dismissBtn=document.getElementById('news-banner-dismiss');
+  if(dismissBtn) dismissBtn.addEventListener('click',()=>{
+    bannerDismissedThisSession=true;
+    document.getElementById('news-banner').style.display='none';
+  });
+  const postBtn=document.getElementById('btn-post-update');
+  if(callerEmail===BANNER_WRITE_EMAIL&&postBtn){
+    postBtn.style.display='inline-flex';
+    postBtn.addEventListener('click',async()=>{
+      document.getElementById('pu-msg').textContent='';
+      try{
+        const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY));
+        const data=r.ok?await r.json():null;
+        const parsed=data&&data.value?JSON.parse(data.value):null;
+        document.getElementById('pu-text').value=parsed?parsed.text||'':'';
+        document.getElementById('pu-active').checked=parsed?!!parsed.active:true;
+      }catch{/*leave fields at default*/}
+      openModal('modal-post-update');
+    });
+  }
+  const saveBtn=document.getElementById('pu-save');
+  if(saveBtn) saveBtn.addEventListener('click',async()=>{
+    const msg=document.getElementById('pu-msg');
+    const text=document.getElementById('pu-text').value.trim();
+    const active=document.getElementById('pu-active').checked;
+    if(active&&!text){ msg.className='dm-save-msg err'; msg.textContent='Enter banner text, or untick Show banner.'; return; }
+    saveBtn.disabled=true; msg.className='dm-save-msg'; msg.textContent='Saving\u2026';
+    try{
+      const value=JSON.stringify({text,active,postedAt:new Date().toISOString(),postedBy:callerEmail});
+      const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value}),
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+      bannerDismissedThisSession=false;
+      msg.className='dm-save-msg ok'; msg.textContent='\u2713 Saved';
+      loadBanner();
+      setTimeout(()=>closeModal('modal-post-update'),800);
+    }catch(err){
+      msg.className='dm-save-msg err'; msg.textContent='Failed: '+err.message;
+    }finally{ saveBtn.disabled=false; }
+  });
+}
+
+// Banner loads once identity is known (needs callerEmail for the Post Update gate),
+// so hook it onto the same init sequence rather than firing at parse time.
+(async()=>{ await loadIdentity(); wireBanner(); loadBanner(); })();
 </script>
 </body>
 </html>
