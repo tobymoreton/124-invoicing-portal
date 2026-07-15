@@ -13,7 +13,7 @@ const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 // is the one deliberate exception: Toby asked for a control "only I can see", so
 // CasesBannerText/Active stay Toby-only.
 const MANAGEMENT_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
-const TOBY_ONLY_KEYS = ['CasesBannerText','CasesBannerActive'];
+const TOBY_ONLY_KEYS = ['CasesBannerText','CasesBannerActive','AttachmentDocTypes'];
 function writeEmailsFor(key){ return TOBY_ONLY_KEYS.includes(key) ? ['toby@tmclegal.co.uk'] : MANAGEMENT_EMAILS; }
 
 function getCallerEmail(req) {
