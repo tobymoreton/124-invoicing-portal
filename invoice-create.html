@@ -136,6 +136,25 @@
     @keyframes spin{to{transform:rotate(360deg);}}
     .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
     .spinner.visible{display:block;}
+
+    /* Draft preview modal */
+    .preview-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(27,42,74,.55);align-items:center;justify-content:center;padding:24px;}
+    .preview-overlay.open{display:flex;}
+    .preview-modal{background:var(--cream-dark);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:100%;max-width:900px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;}
+    .preview-head{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--navy);}
+    .preview-title{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);}
+    .preview-close{background:none;border:none;color:rgba(245,242,235,.7);font-size:24px;line-height:1;cursor:pointer;padding:0 4px;transition:color var(--transition);}
+    .preview-close:hover{color:var(--gold);}
+    .preview-body{flex:1;overflow:auto;padding:16px;background:#8a8a8a;}
+    .preview-frame{width:210mm;max-width:100%;height:70vh;border:none;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.25);display:block;margin:0 auto;}
+    .preview-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:var(--white);border-top:1px solid var(--grey-light);flex-wrap:wrap;}
+    .preview-foot-right{display:flex;align-items:center;gap:16px;margin-left:auto;}
+    .preview-note{font-size:12px;color:var(--grey-mid);}
+    .btn-preview-back{font-family:inherit;font-size:13px;font-weight:500;color:var(--grey-mid);background:none;border:1.5px solid var(--grey-light);border-radius:var(--radius);padding:10px 16px;cursor:pointer;transition:border-color var(--transition),color var(--transition);}
+    .btn-preview-back:hover{border-color:var(--grey-mid);color:var(--navy);}
+    .btn-preview-approve{font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--white);background:var(--navy);border:none;border-radius:var(--radius);padding:11px 22px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background var(--transition);}
+    .btn-preview-approve:hover:not(:disabled){background:var(--navy-mid);}
+    .btn-preview-approve:disabled{opacity:.5;cursor:not-allowed;}
   </style>
 </head>
 <body>
@@ -405,10 +424,33 @@
       <div class="card-title">Step 3 &mdash; Create Draft</div>
       <button class="btn-issue" id="btn-issue" disabled>
         <div class="spinner" id="issue-spinner"></div>
-        <span id="btn-issue-label">Create Draft Invoice</span>
+        <span id="btn-issue-label">Preview Draft Invoice</span>
       </button>
-      <p class="issue-note">This creates a draft for Lesley to review and issue. The invoice number is assigned when she issues it.</p>
+      <p class="issue-note">Opens the rendered draft for review before it is created. The invoice number is assigned when Lesley issues it.</p>
       <div id="issue-status" class="status-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Draft preview modal -->
+<div id="preview-overlay" class="preview-overlay">
+  <div class="preview-modal">
+    <div class="preview-head">
+      <span class="preview-title">Draft Preview &mdash; review before creating</span>
+      <button class="preview-close" id="preview-back" title="Back to edit">&times;</button>
+    </div>
+    <div class="preview-body">
+      <iframe id="preview-frame" class="preview-frame" title="Invoice preview"></iframe>
+    </div>
+    <div class="preview-foot">
+      <button class="btn-preview-back" id="preview-back-btn">&larr; Back &amp; edit</button>
+      <div class="preview-foot-right">
+        <span class="preview-note">Creates a draft for Lesley to review and issue.</span>
+        <button class="btn-preview-approve" id="preview-approve">
+          <div class="spinner" id="preview-spinner"></div>
+          <span id="preview-approve-label">Approve &amp; Create Draft</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -742,7 +784,11 @@ function initListeners() {
     renderWipTable();
     recalc();
   });
-  el('btn-issue').addEventListener('click', handleCreateDraft);
+  el('btn-issue').addEventListener('click', openPreview);
+  el('preview-approve').addEventListener('click', approveDraft);
+  el('preview-back').addEventListener('click', closePreview);
+  el('preview-back-btn').addEventListener('click', closePreview);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
 }
 
 // ── Recalc ────────────────────────────────────────────────
@@ -935,13 +981,62 @@ function recalc() {
   }
 }
 
-// ── Create Draft Invoice ──────────────────────────────────
-async function handleCreateDraft() {
-  if (!selectedCase || !selectedCase.computed) return;
+// ── Preview -> Approve -> Create Draft ──────────────────
+let _previewData = null;
 
-  const btn     = el('btn-issue');
-  const spinner = el('issue-spinner');
-  const label   = el('btn-issue-label');
+// Build the invoiceData object (incl. inline logo) used for BOTH the preview
+// and the final capture, so the approved draft is byte-identical to what was shown.
+async function buildInvoiceData() {
+  const f = selectedCase.fields;
+  const c = selectedCase.computed;
+
+  // Fetch logo and inline as base64
+  let logoDataUrl = null;
+  try {
+    const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
+    if (logoResp.ok) {
+      const blob  = await logoResp.blob();
+      logoDataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload  = () => res(r.result);
+        r.onerror = () => rej(new Error('Logo read failed'));
+        r.readAsDataURL(blob);
+      });
+    }
+  } catch (_) {}
+
+  return {
+    invoiceNumber:   'DRAFT',
+    invoiceDate:     null,
+    yourRef:         f.ClientCaseReference || '',
+    ourRef:          f.Ourreference_x0028_text_x0029_ || '',
+    caseName:        computeFullCaseName(f),
+    firmName:        f.Firm_x0028_text_x0029_ || '',
+    address1:        f.Address1_x0028_text_x0029_ || '',
+    address2:        f.Address2_x0028_text_x0029_ || '',
+    address3:        f.Address3_x0028_text_x0029_ || '',
+    address4:        f.Address4_x0028_text_x0029_ || '',
+    address5:        f.Address5_x0028_text_x0029_ || '',
+    draftingFee:       c.draftingFee,
+    draftingFeeLine:   c.draftingFeeLine,
+    laFee:             c.laFee,
+    laFeeLine:         c.laFeeLine,
+    timedFee:          c.timedFee,
+    timedHours:        c.timedHrs,
+    timedRate:         0,
+    timedWorkLine:     c.timedWorkLine,
+    bespokeAmt:        c.bespokeAmt || 0,
+    bespokeInvoiceLine: c.bespokeInvoiceLine || '',
+    expenses:          (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
+    vatOnDrafting:   c.vatOnDrafting,
+    logoDataUrl,
+    scheduleLines:   c.scheduleLines || [],
+  };
+}
+
+// Step 3 button -> validate, build data, render the real invoice into the modal. No write yet.
+async function openPreview() {
+  if (!selectedCase || !selectedCase.computed) return;
 
   // Validate: drafted-by required when a drafting fee is charged
   const _draftedBy   = (el('inp-drafted-by').value || '').trim();
@@ -962,67 +1057,49 @@ async function handleCreateDraft() {
     return;
   }
 
-  btn.disabled    = true;
-  spinner.classList.add('visible');
-  label.textContent = 'Generating invoice\u2026';
+  const btn   = el('btn-issue');
+  const label = el('btn-issue-label');
+  btn.disabled = true;
+  label.textContent = 'Preparing preview\u2026';
   showMsg('issue-status', '', '');
+
+  try {
+    _previewData = await buildInvoiceData();
+    el('preview-frame').srcdoc = generateInvoiceHTML(_previewData);
+    el('preview-overlay').classList.add('open');
+  } catch (err) {
+    showMsg('issue-status', 'Could not build the preview. Please try again.', 'error');
+    console.error('Preview build error:', err.message);
+  } finally {
+    label.textContent = 'Preview Draft Invoice';
+    btn.disabled = false;
+  }
+}
+
+function closePreview() {
+  el('preview-overlay').classList.remove('open');
+  el('preview-frame').srcdoc = '';
+}
+
+// Modal Approve button -> capture the previewed invoice and POST to /api/createdraft.
+async function approveDraft() {
+  if (!selectedCase || !selectedCase.computed || !_previewData) return;
+
+  const btn     = el('preview-approve');
+  const spinner = el('preview-spinner');
+  const label   = el('preview-approve-label');
+
+  btn.disabled = true;
+  spinner.classList.add('visible');
+  label.textContent = 'Saving draft\u2026';
 
   try {
     const f = selectedCase.fields;
     const c = selectedCase.computed;
 
-    // 1. Fetch logo and inline as base64
-    label.textContent = 'Loading logo\u2026';
-    let logoDataUrl = null;
-    try {
-      const logoResp = await fetch('/New Logo Gold, Silver and Navy.png');
-      if (logoResp.ok) {
-        const blob  = await logoResp.blob();
-        logoDataUrl = await new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload  = () => res(r.result);
-          r.onerror = () => rej(new Error('Logo read failed'));
-          r.readAsDataURL(blob);
-        });
-      }
-    } catch (_) {}
+    // Capture the previewed invoice as base64 (same data object -> identical output)
+    const pdfBase64 = await captureInvoicePdf(_previewData);
 
-    // 2. Build invoice data object
-    label.textContent = 'Generating invoice\u2026';
-    const invoiceData = {
-      invoiceNumber:   'DRAFT',
-      invoiceDate:     null,
-      yourRef:         f.ClientCaseReference || '',
-      ourRef:          f.Ourreference_x0028_text_x0029_ || '',
-      caseName:        computeFullCaseName(f),
-      firmName:        f.Firm_x0028_text_x0029_ || '',
-      address1:        f.Address1_x0028_text_x0029_ || '',
-      address2:        f.Address2_x0028_text_x0029_ || '',
-      address3:        f.Address3_x0028_text_x0029_ || '',
-      address4:        f.Address4_x0028_text_x0029_ || '',
-      address5:        f.Address5_x0028_text_x0029_ || '',
-      draftingFee:       c.draftingFee,
-      draftingFeeLine:   c.draftingFeeLine,
-      laFee:             c.laFee,
-      laFeeLine:         c.laFeeLine,
-      timedFee:          c.timedFee,
-      timedHours:        c.timedHrs,
-      timedRate:         0,
-      timedWorkLine:     c.timedWorkLine,
-      bespokeAmt:        c.bespokeAmt || 0,
-      bespokeInvoiceLine: c.bespokeInvoiceLine || '',
-      expenses:          (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
-      vatOnDrafting:   c.vatOnDrafting,
-      logoDataUrl,
-      scheduleLines:   c.scheduleLines || [],
-    };
-
-    // 3. Capture as base64
-    label.textContent = 'Capturing HTML\u2026';
-    const pdfBase64 = await captureInvoicePdf(invoiceData);
-
-    // 4. POST to /api/createdraft
-    label.textContent = 'Saving draft\u2026';
     const payload = {
       pdfBase64,
       computed:          c,
@@ -1047,8 +1124,9 @@ async function handleCreateDraft() {
     const { pdfUrl } = result;
 
     spinner.classList.remove('visible');
-    label.textContent = 'Create Draft Invoice';
+    label.textContent = 'Approve & Create Draft';
     btn.disabled = false;
+    closePreview();
 
     const linkHtml = pdfUrl
       ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft \u2192</a>'
@@ -1058,7 +1136,7 @@ async function handleCreateDraft() {
 
   } catch (err) {
     spinner.classList.remove('visible');
-    label.textContent = 'Create Draft Invoice';
+    label.textContent = 'Approve & Create Draft';
     btn.disabled = false;
     // Translate server/Graph errors into clean user-facing messages
     const raw = err.message || '';

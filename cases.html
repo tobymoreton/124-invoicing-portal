@@ -231,6 +231,14 @@
     .bd-table td{padding:8px;border-bottom:1px solid var(--grey-faint);}
     .bd-table tr:last-child td{border-bottom:none;}
     .bd-empty{padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;}
+    /* Add Reminder / Add Action — matched to case.html's quick-action-bar buttons */
+    .btn-qa-reminder{position:relative;overflow:hidden;background:var(--navy);color:var(--gold);}
+    .btn-qa-reminder::after,.btn-qa-action::after{content:'';position:absolute;top:0;left:-75%;width:50%;height:100%;background:linear-gradient(120deg,transparent 0%,rgba(255,255,255,.25) 50%,transparent 100%);transform:skewX(-20deg);animation:qaShimmer 6s ease-in-out infinite;pointer-events:none;}
+    .btn-qa-reminder:hover{background:var(--navy-mid);}
+    .btn-qa-action{position:relative;overflow:hidden;background:var(--gold);color:var(--navy);}
+    .btn-qa-action:hover{filter:brightness(1.08);}
+    @keyframes qaShimmer{0%{left:-75%;}35%{left:125%;}100%{left:125%;}}
+    @media(prefers-reduced-motion:reduce){.btn-qa-reminder::after,.btn-qa-action::after{animation:none;}}
     /* Action buttons */
     .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;align-items:center;}
     .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
@@ -407,10 +415,10 @@
 
     <!-- Action buttons -->
     <div class="dash-actions">
-      <a href="/invoice-create.html" class="btn-dash-action" style="margin-right:auto;text-decoration:none;">+ New Invoice Draft</a>
-      <button class="btn-briefing" id="btn-briefing"><span class="btn-briefing-icon">&#x2615;</span> Daily Briefing</button>
-      <button class="btn-dash-action" id="btn-add-action">+ Add Action</button>
-      <button class="btn-dash-action" id="btn-add-reminder">+ Add Reminder</button>
+      <a href="/invoice-create.html" class="btn-dash-action" style="text-decoration:none;">+ New Invoice Draft</a>
+      <button class="btn-dash-action btn-qa-reminder" id="btn-add-reminder">&#128276; Add Reminder</button>
+      <button class="btn-dash-action btn-qa-action" id="btn-add-action">&#9889; Add Action</button>
+      <button class="btn-briefing" id="btn-briefing" style="margin-left:auto;"><span class="btn-briefing-icon">&#x2615;</span> Daily Briefing</button>
     </div>
 
     <!-- Two column panels -->
