@@ -1734,6 +1734,74 @@ document.getElementById('ad-upload-btn').addEventListener('click',async()=>{
   }
 });
 // ── /Admin Documents ──
+
+// ── Attachment Types (case.html Attachments-tab dropdown, Toby-only) ────────
+const AT_KEY='AttachmentDocTypes';
+const AT_DEFAULT=['Instructions','Acknowledgment','Terms and conditions','Bill','Incoming email','Outgoing email','Narrative','Advice','Authority to assess','Voucher',"Counsel's fee note"];
+const AT_CHAR_BUDGET=230;
+let atTypes=[];
+
+document.getElementById('btn-att-types').addEventListener('click',()=>{ openModal('modal-att-types'); loadAttTypes(); });
+
+async function loadAttTypes(){
+  const msg=document.getElementById('at-msg'); msg.textContent='';
+  try{
+    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(AT_KEY));
+    const data=r.ok?await r.json():null;
+    const parsed=data&&data.value?JSON.parse(data.value):null;
+    atTypes=(Array.isArray(parsed)&&parsed.length)?parsed.slice():AT_DEFAULT.slice();
+  }catch{
+    atTypes=AT_DEFAULT.slice();
+  }
+  renderAtList();
+}
+
+function renderAtList(){
+  const el=document.getElementById('at-list');
+  const budgetEl=document.getElementById('at-budget');
+  const used=JSON.stringify(atTypes).length;
+  budgetEl.textContent=used+' / '+AT_CHAR_BUDGET+' characters used (SharePoint field limit is 255)';
+  budgetEl.style.color=used>AT_CHAR_BUDGET?'var(--red)':'var(--grey-mid)';
+  if(!atTypes.length){ el.innerHTML='<div class="ar-empty">No types — add at least one.</div>'; return; }
+  el.innerHTML='';
+  atTypes.forEach((t,idx)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--grey-light);border-radius:var(--radius-sm);';
+    row.innerHTML='<span style="flex:1;font-size:13px;">'+escHtml(t)+'</span>'
+      +'<button type="button" data-idx="'+idx+'" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;">&times;</button>';
+    row.querySelector('button').addEventListener('click',()=>{ atTypes.splice(idx,1); renderAtList(); });
+    el.appendChild(row);
+  });
+}
+
+document.getElementById('at-add-btn').addEventListener('click',()=>{
+  const input=document.getElementById('at-new');
+  const val=input.value.trim();
+  if(!val) return;
+  if(atTypes.some(t=>t.toLowerCase()===val.toLowerCase())){ input.value=''; return; }
+  atTypes.push(val);
+  input.value='';
+  renderAtList();
+});
+document.getElementById('at-new').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('at-add-btn').click(); } });
+
+document.getElementById('at-save-btn').addEventListener('click',async()=>{
+  const msg=document.getElementById('at-msg'); const btn=document.getElementById('at-save-btn');
+  if(!atTypes.length){ msg.className='save-msg err'; msg.textContent='Add at least one type.'; return; }
+  const value=JSON.stringify(atTypes);
+  if(value.length>AT_CHAR_BUDGET+25){ msg.className='save-msg err'; msg.textContent='List too long — remove some types.'; return; }
+  btn.disabled=true; msg.className='save-msg'; msg.textContent='Saving\u2026';
+  try{
+    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(AT_KEY),{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+    msg.className='save-msg ok'; msg.textContent='\u2713 Saved';
+  }catch(err){
+    msg.className='save-msg err'; msg.textContent='Failed: '+err.message;
+  }finally{ btn.disabled=false; }
+});
+// ── /Attachment Types ──
 </script>
 </body>
 </html>
