@@ -372,6 +372,7 @@
     .ds-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
     .ds-btn{padding:7px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;}
     .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+    a.ds-btn{display:inline-block;text-decoration:none;}
     .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
     #modal-draftsman .modal{max-width:1040px;}
     .ds-case{border:1px solid var(--grey-light);padding:14px 16px;border-radius:var(--radius-sm);margin-bottom:10px;background:var(--white);}
@@ -397,6 +398,17 @@
   <div class="ds-panel">
     <h3>&#128100; Draftsmen &mdash; case lists<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen case lists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">One button per draftsman, with their number of open cases. Click to see that person&rsquo;s cases with the booking-in notes, the current position and any drafting notes. Danielle is not listed &mdash; cases assigned to her sit in Unassigned Cases.</span></button></h3>
     <div class="ds-btns" id="ds-btns"><span class="ds-empty">Loading&hellip;</span></div>
+  </div>
+  <div class="ds-panel">
+    <h3>&#128193; Draftsmen &mdash; SharePoint folders<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Opens each draftsman&rsquo;s Bills of Costs folder in SharePoint (new tab). Read-only access to their files. Management view.</span></button></h3>
+    <div class="ds-btns">
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20A%2FKelly&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02" target="_blank" rel="noopener">Kelly</a>
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20C%2FJoanna%20%28b%29&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02" target="_blank" rel="noopener">Joanna</a>
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20B%2FTracy&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02" target="_blank" rel="noopener">Tracy</a>
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20A%2FTom&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02" target="_blank" rel="noopener">Tom</a>
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20B%2FJulie&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02" target="_blank" rel="noopener">Julie</a>
+      <a class="ds-btn" href="https://tmcostings.sharepoint.com/sites/TMCLegalLimited/Documents%20%20Open%20Cases/Forms/Inside%20Document%20Set.aspx" target="_blank" rel="noopener">Toby</a>
+    </div>
   </div>
   <div class="modal-overlay" id="modal-draftsman">
     <div class="modal">
