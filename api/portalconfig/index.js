@@ -8,9 +8,13 @@ const { URL } = require('url');
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const CONFIG_LIST_GUID = '6661b8ba-3f10-436b-b4de-88b370e8160b';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
-// Deliberately narrower than the usual Management tier (Toby+Danielle) - Toby asked for
-// a banner "only I can see [the posting control for]". Read stays open to all TMC staff.
-const WRITE_EMAILS = ['toby@tmclegal.co.uk'];
+// Per-key write permission. Default is Toby+Danielle (the usual Management tier used
+// everywhere else in this app - reflists, client firms, attachments delete). The banner
+// is the one deliberate exception: Toby asked for a control "only I can see", so
+// CasesBannerText/Active stay Toby-only.
+const MANAGEMENT_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+const TOBY_ONLY_KEYS = ['CasesBannerText','CasesBannerActive'];
+function writeEmailsFor(key){ return TOBY_ONLY_KEYS.includes(key) ? ['toby@tmclegal.co.uk'] : MANAGEMENT_EMAILS; }
 
 function getCallerEmail(req) {
   try {
@@ -105,8 +109,8 @@ module.exports = async function (context, req) {
 
     // POST: upsert. Restricted - deliberately just Toby, not the usual Management tier.
     if (req.method === 'POST') {
-      if (!WRITE_EMAILS.includes(callerEmail)) {
-        context.res = { status: 403, body: 'Forbidden \u2014 only Toby can post portal updates.' };
+      if (!writeEmailsFor(key).includes(callerEmail)) {
+        context.res = { status: 403, body: 'Forbidden — you do not have permission to update this setting.' };
         return;
       }
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
