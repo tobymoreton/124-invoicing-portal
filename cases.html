@@ -904,6 +904,17 @@ const PEOPLE = [
   {email:'lesley@tmclegal.co.uk',   first:'lesley',   label:'Lesley',   assignable:false},
   {email:'david@tmclegal.co.uk',    first:'david',    label:'David',    assignable:false}, // leaver - open cases to be closed
 ];
+// Per-draftsman SharePoint "My folder" deep-links (keyed by signed-in email).
+// Users not listed here simply see no link. Outbound read-only; do not modify TMC-File.
+const MY_FOLDERS = {
+  'kelly@tmclegal.co.uk':  'https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20A%2FKelly&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02',
+  'joanna@tmclegal.co.uk': 'https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20C%2FJoanna%20%28b%29&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02',
+  'tracy@tmclegal.co.uk':  'https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20B%2FTracy&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02',
+  'tom@tmclegal.co.uk':    'https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20A%2FTom&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02',
+  'julie@tmclegal.co.uk':  'https://tmcostings.sharepoint.com/sites/TMC-File/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FTMC%2DFile%2FShared%20Documents%2FBills%20of%20Costs%20B%2FJulie&viewid=238dcfb2%2D5637%2D40c2%2Db0f4%2D78db27f14c02',
+  'toby@tmclegal.co.uk':   'https://tmcostings.sharepoint.com/sites/TMCLegalLimited/Documents%20%20Open%20Cases/Forms/Inside%20Document%20Set.aspx',
+};
+
 function resolveAssignee(raw){
   const s=String(raw||'').trim().toLowerCase();
   if(!s) return null;
@@ -943,6 +954,20 @@ async function loadIdentity(){
       callerName=NAME_DISPLAY[local]||user.userDetails;
       document.getElementById('user-name').textContent=callerName||callerEmail;
       isAdmin=ADMIN_EMAILS.includes(callerEmail);
+      const folderUrl=MY_FOLDERS[callerEmail];
+      if(folderUrl){
+        const nl=document.getElementById('nav-links');
+        if(nl&&!document.getElementById('nav-my-folder')){
+          const a=document.createElement('a');
+          a.id='nav-my-folder';
+          a.href=folderUrl;
+          a.target='_blank';
+          a.rel='noopener';
+          a.className='nav-link';
+          a.textContent='📁 My folder';
+          nl.appendChild(a);
+        }
+      }
       if(callerEmail==='toby@tmclegal.co.uk'||callerEmail==='danielle@tmclegal.co.uk'||callerEmail==='lesley@tmclegal.co.uk'){
         const nl=document.getElementById('nav-links');
         if(nl&&!document.getElementById('nav-invoice-portal')){
