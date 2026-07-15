@@ -1231,8 +1231,7 @@ function renderRemPanel(){
           if(la){
             const lad=la.fields?.['field_12']||la.fields?.['field_1']||'';
             const law=(la.fields?.['field_2']||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
-            const lat=law.length>90?law.slice(0,90)+'\u2026':law;
-            if(lad||lat) laHtml='<div class="rem-case" style="margin-top:3px;color:var(--grey-mid);">Last action'+(lad?' \u00b7 '+escHtml(fmtDateShort(lad)):'')+(lat?': '+escHtml(lat):'')+'</div>';
+            if(lad||law) laHtml='<div class="rem-case" style="margin-top:3px;color:var(--grey-mid);white-space:normal;">Last action'+(lad?' \u00b7 '+escHtml(fmtDateShort(lad)):'')+(law?': '+escHtml(law):'')+'</div>';
           }
           const row=document.createElement('div');
           row.className='rem-row';
