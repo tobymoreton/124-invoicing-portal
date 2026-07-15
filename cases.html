@@ -746,7 +746,8 @@
     <div class="dash-modal-body">
       <div class="dm-field">
         <label>Banner Text</label>
-        <textarea id="pu-text" rows="3" placeholder="e.g. Portal will be offline briefly this evening for an update."></textarea>
+        <textarea id="pu-text" rows="3" maxlength="240" placeholder="e.g. Portal will be offline briefly this evening for an update."></textarea>
+        <div id="pu-count" style="font-size:11px;color:var(--grey-mid);text-align:right;margin-top:2px;">240 characters left</div>
       </div>
       <div class="dm-field" style="flex-direction:row;align-items:center;gap:10px;">
         <input type="checkbox" id="pu-active" checked style="width:18px;height:18px;accent-color:var(--navy);" />
@@ -2254,21 +2255,24 @@ document.getElementById('btn-ack').addEventListener('click', acknowledgeAll);
 init();
 
 // ── Rolling news banner (Toby-only posting) ────────────────────────────────
-const BANNER_KEY='CasesBanner';
+const BANNER_KEY_TEXT='CasesBannerText';
+const BANNER_KEY_ACTIVE='CasesBannerActive';
 const BANNER_WRITE_EMAIL='toby@tmclegal.co.uk';
 let bannerDismissedThisSession=false;
 
 async function loadBanner(){
   try{
-    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY));
-    if(!r.ok) return;
+    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT));
+    const ra=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE));
+    if(!r.ok||!ra.ok) return;
     const data=await r.json();
-    let parsed=null;
-    try{ parsed=data.value?JSON.parse(data.value):null; }catch{ parsed=null; }
+    const dataActive=await ra.json();
+    const text=data.value||'';
+    const active=dataActive.value==='1';
     const banner=document.getElementById('news-banner');
     const textEl=document.getElementById('news-banner-text');
-    if(parsed&&parsed.active&&parsed.text&&!bannerDismissedThisSession){
-      textEl.textContent=parsed.text;
+    if(active&&text&&!bannerDismissedThisSession){
+      textEl.textContent=text;
       banner.style.display='flex';
       startMarquee(textEl);
     }else{
@@ -2302,16 +2306,23 @@ function wireBanner(){
     document.getElementById('news-banner').style.display='none';
   });
   const postBtn=document.getElementById('btn-post-update');
+  const textArea=document.getElementById('pu-text');
+  const countEl=document.getElementById('pu-count');
+  if(textArea&&countEl) textArea.addEventListener('input',()=>{
+    countEl.textContent=(240-textArea.value.length)+' characters left';
+  });
   if(callerEmail===BANNER_WRITE_EMAIL&&postBtn){
     postBtn.style.display='inline-flex';
     postBtn.addEventListener('click',async()=>{
       document.getElementById('pu-msg').textContent='';
       try{
-        const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY));
+        const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT));
+        const ra=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE));
         const data=r.ok?await r.json():null;
-        const parsed=data&&data.value?JSON.parse(data.value):null;
-        document.getElementById('pu-text').value=parsed?parsed.text||'':'';
-        document.getElementById('pu-active').checked=parsed?!!parsed.active:true;
+        const dataActive=ra.ok?await ra.json():null;
+        textArea.value=data&&data.value?data.value:'';
+        document.getElementById('pu-active').checked=dataActive?dataActive.value==='1':true;
+        countEl.textContent=(240-textArea.value.length)+' characters left';
       }catch{/*leave fields at default*/}
       openModal('modal-post-update');
     });
@@ -2319,16 +2330,19 @@ function wireBanner(){
   const saveBtn=document.getElementById('pu-save');
   if(saveBtn) saveBtn.addEventListener('click',async()=>{
     const msg=document.getElementById('pu-msg');
-    const text=document.getElementById('pu-text').value.trim();
+    const text=textArea.value.trim();
     const active=document.getElementById('pu-active').checked;
     if(active&&!text){ msg.className='dm-save-msg err'; msg.textContent='Enter banner text, or untick Show banner.'; return; }
     saveBtn.disabled=true; msg.className='dm-save-msg'; msg.textContent='Saving\u2026';
     try{
-      const value=JSON.stringify({text,active,postedAt:new Date().toISOString(),postedBy:callerEmail});
-      const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY),{
-        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value}),
+      const r1=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:text}),
       });
-      if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,120));
+      const r2=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:active?'1':'0'}),
+      });
+      if(!r1.ok) throw new Error('HTTP '+r1.status+' '+(await r1.text()).slice(0,120));
+      if(!r2.ok) throw new Error('HTTP '+r2.status+' '+(await r2.text()).slice(0,120));
       bannerDismissedThisSession=false;
       msg.className='dm-save-msg ok'; msg.textContent='\u2713 Saved';
       loadBanner();
