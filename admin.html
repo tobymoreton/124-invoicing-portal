@@ -1579,9 +1579,9 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     const data=r.ok?await r.json():null;
     const user=data&&(data.clientPrincipal||(Array.isArray(data)?data[0]?.clientPrincipal:null));
     const email=(user&&user.userDetails?user.userDetails:'').toLowerCase();
-    const adminTier=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
     const management=['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
-    if(email&&!adminTier.includes(email)){ window.location.replace('/cases.html'); return; }
+    // S79: admin dashboard opened to all signed-in staff (removed non-admin-tier redirect).
+    // Management-only actions (delete) stay gated via the not-mgmt class + server enforcement.
     if(!management.includes(email)) document.body.classList.add('not-mgmt');
     adManagement=management.includes(email);
     if(email==='toby@tmclegal.co.uk'){ const b=document.getElementById('btn-att-types'); if(b) b.style.display='inline-flex'; }
