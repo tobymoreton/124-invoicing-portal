@@ -320,10 +320,12 @@
 
 <!-- Rolling news banner (S78): shown only when Toby has an active update posted via
      PortalConfig key 'CasesBanner'. Hidden entirely when inactive/empty - no reserved space. -->
-<div id="news-banner" style="display:none;background:linear-gradient(90deg,var(--gold-mid),var(--gold));color:var(--navy);font-weight:600;font-size:13px;padding:9px 32px;align-items:center;gap:12px;">
-  <span style="flex-shrink:0;">&#128226;</span>
-  <span id="news-banner-text" style="flex:1;"></span>
-  <button id="news-banner-dismiss" title="Dismiss for this session" style="flex-shrink:0;background:none;border:none;color:var(--navy);font-size:16px;cursor:pointer;opacity:.6;padding:2px 6px;">&times;</button>
+<div id="news-banner" style="display:none;background:linear-gradient(90deg,var(--gold-mid),var(--gold));color:var(--navy);font-weight:600;font-size:13px;padding:9px 0;align-items:center;gap:12px;overflow:hidden;position:relative;">
+  <span style="flex-shrink:0;padding-left:32px;">&#128226;</span>
+  <div style="flex:1;overflow:hidden;white-space:nowrap;position:relative;height:18px;">
+    <span id="news-banner-text" style="position:absolute;white-space:nowrap;will-change:transform;"></span>
+  </div>
+  <button id="news-banner-dismiss" title="Dismiss for this session" style="flex-shrink:0;background:none;border:none;color:var(--navy);font-size:16px;cursor:pointer;opacity:.6;padding:2px 32px 2px 6px;">&times;</button>
 </div>
 
 <div class="page-header">
@@ -2268,10 +2270,29 @@ async function loadBanner(){
     if(parsed&&parsed.active&&parsed.text&&!bannerDismissedThisSession){
       textEl.textContent=parsed.text;
       banner.style.display='flex';
+      startMarquee(textEl);
     }else{
       banner.style.display='none';
+      stopMarquee();
     }
   }catch{/*ignore - banner is non-critical*/}
+}
+
+let marqueeFrame=null;
+function stopMarquee(){ if(marqueeFrame){ cancelAnimationFrame(marqueeFrame); marqueeFrame=null; } }
+function startMarquee(textEl){
+  stopMarquee();
+  const wrap=textEl.parentElement;
+  const speed=60; // px/sec
+  let x=wrap.clientWidth;
+  function step(){
+    const textWidth=textEl.offsetWidth;
+    x-=speed/60;
+    if(x< -textWidth) x=wrap.clientWidth;
+    textEl.style.transform='translateX('+x+'px)';
+    marqueeFrame=requestAnimationFrame(step);
+  }
+  marqueeFrame=requestAnimationFrame(step);
 }
 
 function wireBanner(){
