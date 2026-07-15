@@ -258,6 +258,8 @@
     .read-row:last-child dt,.read-row:last-child dd{border-bottom:none;}
     .read-row dt{color:var(--grey-mid);}
     .read-row dd{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
+    .read-row:has(dd.ov-editable) dt{white-space:nowrap;}
+    .read-row dd.ov-editable{white-space:normal;overflow-wrap:anywhere;}
     .read-row.total dt,.read-row.total dd{
       font-weight:700;font-size:14px;
       background:linear-gradient(90deg,var(--navy) 0%,var(--navy-mid) 100%);
