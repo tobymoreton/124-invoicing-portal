@@ -1,9 +1,10 @@
-const https = require('https'); 
+const https = require('https');
 const { URL } = require('url');
 
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
-const WRITE_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
+// S79: reference-list writes opened to all @tmclegal.co.uk staff (was Toby/Danielle/Lesley),
+// matching /api/clients. The caller is already domain-checked at the top of the handler.
 const LISTS = {
   feeearners:    '750616ac-5c2e-4a3c-91d9-b0e6cad1e6e9',
   courts:        'e867d355-7eb4-40c7-a790-ee1c591a1361',
@@ -116,6 +117,7 @@ module.exports = async function (context, req) {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     const baseUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + guid + '/items';
 
+    // ── GET: return all items sorted by Title ────────────────────────────────
     if (req.method === 'GET') {
       const items = []; let url = baseUrl + '?$expand=fields&$top=999';
       while (url) {
@@ -128,10 +130,9 @@ module.exports = async function (context, req) {
       return;
     }
 
-    if (!WRITE_EMAILS.includes(callerEmail)) {
-      context.res = { status: 403, body: 'Write access restricted' }; return;
-    }
+    // S79: writes allowed for any authenticated TMC staff (domain-checked at top of handler).
 
+    // ── POST: create new item ─────────────────────────────────────────────────
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
       const fields = buildFields(listKey, body);
@@ -141,6 +142,7 @@ module.exports = async function (context, req) {
       return;
     }
 
+    // ── PATCH: update existing item ───────────────────────────────────────────
     if (req.method === 'PATCH') {
       const itemId = req.query.id;
       if (!itemId) { context.res = { status: 400, body: 'id query param required for PATCH' }; return; }
