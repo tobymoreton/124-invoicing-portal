@@ -71,6 +71,20 @@ async function graphPatch(url, token, body) {
   });
 }
 
+// SharePoint "enhanced rich text" wraps the value in <div class="ExternalClass...">...</div>
+// and uses <div>/<p>/<br> for line breaks. Undo that on read so consumers get clean text whether
+// the Value column is plain or rich text — the banner keeps its line breaks (→ star separators)
+// and JSON configs like AttachmentDocTypes parse correctly again.
+function unwrapRichText(v) {
+  if (v == null) return v;
+  let s = String(v);
+  s = s.replace(/<\/(div|p)>/gi, '\n').replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/gi, ' ').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '\"').replace(/&#39;/gi, "'").replace(/&apos;/gi, "'").replace(/&amp;/gi, '&');
+  s = s.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+  return s;
+}
+
 module.exports = async function (context, req) {
   const callerEmail = getCallerEmail(req);
   if (!callerEmail || !callerEmail.endsWith(ALLOWED_DOMAIN)) {
@@ -102,7 +116,7 @@ module.exports = async function (context, req) {
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
-        body: JSON.stringify({ key, value: item ? (item.fields.Value || null) : null }),
+        body: JSON.stringify({ key, value: item ? (unwrapRichText(item.fields.Value) || null) : null }),
       };
       return;
     }
