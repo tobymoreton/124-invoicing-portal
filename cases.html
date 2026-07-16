@@ -89,7 +89,7 @@
     .wip-toggle.active{background:var(--navy);color:var(--gold);border-color:var(--navy);}
 
     /* ── Dashboard columns ── */
-    .dash-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:28px;}
+    .dash-cols{display:grid;grid-template-columns:0.85fr 1.25fr 0.9fr;gap:20px;margin-bottom:28px;}
     /* S76: 1fr == minmax(auto,1fr), so a nowrap child (.rem-case) blows the track out to its
        full text width. min-width:0 lets the columns stay equal thirds and the ellipsis work. */
     .dash-cols>*{min-width:0;}
@@ -216,6 +216,9 @@
     .ca-panel-wd{font-size:12.5px;font-weight:500;color:var(--navy);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
     .ca-panel-case{font-size:11.5px;color:var(--grey-mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .ca-panel-val{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--navy-mid);white-space:nowrap;padding-top:2px;}
+    .ca-units{font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:var(--navy);border:1.5px solid rgba(27,42,74,.18);border-radius:5px;padding:2px 4px;background:var(--white);cursor:pointer;max-width:64px;}
+    .ca-units:hover{border-color:var(--navy);}
+    .ca-units:focus{outline:none;border-color:var(--gold);}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ca-panel-list{max-height:640px;overflow-y:auto;}
     .ca-panel-search-row{padding:8px 18px;border-bottom:1px solid var(--grey-faint);background:var(--white);}
@@ -835,7 +838,13 @@ const STATUS_VALUES = [
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function fmt(n){return '\u00a3'+Math.round(n).toLocaleString('en-GB');}
+function fmt(n){
+  // Show pennies only when the amount is not a whole pound, so £9.50 stays £9.50 (it was
+  // rounding up to £10) while whole pounds and big aggregates stay clean. Rounds at 2dp.
+  const cents=Math.round((Number(n)||0)*100);
+  const hasPennies=cents%100!==0;
+  return '£'+(cents/100).toLocaleString('en-GB',{minimumFractionDigits:hasPennies?2:0,maximumFractionDigits:hasPennies?2:0});
+}
 function fmtDate(iso){
   if(!iso) return '\u2014';
   const d=new Date(iso); if(isNaN(d)) return '\u2014';
@@ -1488,6 +1497,30 @@ let caSearchTerm='';
 let caVisibleCount=40;
 const CA_PAGE_SIZE=40;
 
+// S79: inline time-claimed control on each Case Actions row. Sets the action's total time in
+// 6-minute units and PATCHes timeSpent only (same field the Edit-Action modal writes).
+async function setActionUnits(a,units,selEl,valEl){
+  const newHrs=Math.round(units*0.1*100)/100;
+  const prevHrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
+  const prevUnits=Math.max(1,Math.round(prevHrs/0.1));
+  if(newHrs===prevHrs) return;
+  selEl.disabled=true;
+  try{
+    const r=await fetch('/api/caseactions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:a.id,timeSpent:newHrs})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    a.fields=a.fields||{};
+    a.fields['field_3']=newHrs; a.fields['TimeSpentMirror']=newHrs;
+    const rate=parseFloat(a.fields?.['field_6'])||0;
+    const val=newHrs*rate;
+    if(valEl) valEl.textContent=val>0?fmt(val):'—';
+    renderStats();
+    try{ writeCache(); }catch(e){}
+  }catch(err){
+    selEl.value=String(prevUnits);
+    alert('Couldn’t update time: '+err.message);
+  }finally{ selEl.disabled=false; }
+}
+
 function renderActionsPanel(){
   const el=document.getElementById('ca-panel-list');
   if(actionsError&&!allActions.length){
@@ -1537,15 +1570,30 @@ function renderActionsPanel(){
     const row=document.createElement('div');
     row.className='ca-panel-row';
     row.style.borderLeft='3px solid '+bs.c;
+    const curUnits=Math.max(1,Math.round(hrs/0.1));
+    const maxUnits=Math.max(10,curUnits);
+    let unitOpts='';
+    for(let u=1;u<=maxUnits;u++){
+      const m=u*6;
+      const lbl=m<60?(m+'m'):(m%60===0?(m/60+'h'):((m/60).toFixed(1)+'h'));
+      unitOpts+='<option value="'+u+'"'+(u===curUnits?' selected':'')+'>'+lbl+'</option>';
+    }
     row.innerHTML=
-      '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'\u2014')+'</div>'+
+      '<div class="ca-panel-date">'+escHtml(date?fmtDateShort(date):'—')+'</div>'+
       '<div class="ca-panel-body">'+
         (brief?'<span class="ca-brief-chip" style="background:'+bs.bg+';color:'+bs.c+';">'+bs.e+' '+escHtml(brief)+'</span>':'')+
-        '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'\u2026':wd||'\u2014')+'</div>'+
+        '<div class="ca-panel-wd">'+escHtml(wd.length>120?wd.slice(0,120)+'…':wd||'—')+'</div>'+
         '<div class="ca-panel-case">'+escHtml(a._caseName||a._caseRef)+'</div>'+
       '</div>'+
-      (val>0?'<div class="ca-panel-val">'+fmt(val)+'</div>':'');
-    row.addEventListener('click', () => openEditActionModal(a));
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">'+
+        '<div class="ca-panel-val ca-val-cell">'+(val>0?fmt(val):'—')+'</div>'+
+        '<select class="ca-units" title="Time claimed (6-minute units) — pick a larger value to increase">'+unitOpts+'</select>'+
+      '</div>';
+    const uSel=row.querySelector('.ca-units');
+    const vCell=row.querySelector('.ca-val-cell');
+    uSel.addEventListener('click',ev=>ev.stopPropagation());
+    uSel.addEventListener('change',ev=>{ ev.stopPropagation(); setActionUnits(a,parseInt(uSel.value,10),uSel,vCell); });
+    row.addEventListener('click',ev=>{ if(ev.target.closest('.ca-units')) return; openEditActionModal(a); });
     el.appendChild(row);
   });
   if(filtered.length>caVisibleCount){
