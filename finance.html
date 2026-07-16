@@ -97,6 +97,21 @@
     .placeholder-card-label{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
     .placeholder-card-sub{font-size:11.5px;color:var(--grey-light);}
 
+    /* ── Outstanding accounts / statements ── */
+    .stmt-panel{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:32px;border-top:3px solid var(--gold);overflow:hidden;}
+    .stmt-loading,.stmt-empty,.stmt-error{padding:28px 32px;font-size:13px;color:var(--grey-mid);font-style:italic;}
+    .stmt-error{color:#991B1B;font-style:normal;}
+    .stmt-table{width:100%;border-collapse:collapse;}
+    .stmt-table th{font-size:10px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--grey-mid);text-align:left;padding:14px 20px;border-bottom:1px solid var(--grey-light);}
+    .stmt-table th.num{text-align:right;}
+    .stmt-table td{padding:12px 20px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;color:var(--navy);}
+    .stmt-table td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+    .stmt-table td.owed{font-weight:600;color:#991B1B;}
+    .stmt-table tbody tr:hover{background:var(--grey-faint);}
+    .stmt-table tfoot td{font-weight:700;border-top:2px solid var(--navy);border-bottom:none;padding:14px 20px;}
+    .stmt-client{font-weight:600;}
+    .stmt-btn{background:var(--navy);color:var(--gold);border:none;padding:7px 16px;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;letter-spacing:.04em;border-radius:var(--radius-sm);cursor:pointer;transition:all .18s ease;white-space:nowrap;}
+    .stmt-btn:hover{background:var(--gold);color:var(--navy);}
     @media(max-width:700px){.main{padding:20px 16px;}.balance-figure{font-size:34px;}}
   </style>
 </head>
@@ -140,6 +155,23 @@
       </button>
     </div>
 
+  </div>
+
+  <div class="section-title">Outstanding Accounts</div>
+  <div class="stmt-panel">
+    <div class="stmt-loading" id="stmt-loading">Loading outstanding accounts…</div>
+    <table class="stmt-table" id="stmt-table" style="display:none;">
+      <thead><tr>
+        <th>Client</th>
+        <th class="num">Invoices</th>
+        <th class="num">Outstanding</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="stmt-tbody"></tbody>
+      <tfoot id="stmt-tfoot"></tfoot>
+    </table>
+    <div class="stmt-empty" id="stmt-empty" style="display:none;">No outstanding accounts.</div>
+    <div class="stmt-error" id="stmt-error" style="display:none;"></div>
   </div>
 
   <div class="section-title">Coming Soon</div>
@@ -233,6 +265,198 @@ async function loadBalance(forceRefresh) {
   }
 }
 
+let allInvoices = [];
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function normalizeStatus(inv, today) {
+  if (!inv.OrderDetails && !inv.InvoiceDate) return 'Draft';
+  const raw=(inv.Status_Text||inv.Status||'').trim();
+  const lo=raw.toLowerCase();
+  if (lo==='paid')         return 'Paid';
+  if (lo.includes('part')) return 'Part-Paid';
+  if (lo==='outstanding')  return 'Outstanding';
+  if (lo==='overdue')      return 'Overdue';
+  const due=inv.DueDate?new Date(inv.DueDate):null;
+  if (due&&today&&due<today) return 'Overdue';
+  return 'Outstanding';
+}
+
+async function loadStatements() {
+  const loading = document.getElementById('stmt-loading');
+  const errEl   = document.getElementById('stmt-error');
+  try {
+    const r = await fetch('/api/invoices', { headers: { Accept: 'application/json' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    allInvoices = (await r.json()).filter(inv => !inv.Cancelled);
+    renderStatements();
+  } catch (err) {
+    loading.style.display = 'none';
+    errEl.textContent = 'Could not load accounts: ' + err.message;
+    errEl.style.display = '';
+  }
+}
+
+function renderStatements() {
+  const loading = document.getElementById('stmt-loading');
+  const table   = document.getElementById('stmt-table');
+  const tbody   = document.getElementById('stmt-tbody');
+  const tfoot   = document.getElementById('stmt-tfoot');
+  const empty   = document.getElementById('stmt-empty');
+  const today   = new Date(); today.setHours(0,0,0,0);
+
+  // Same outstanding predicate as printStatement(), so the panel total matches the statement.
+  const owing = allInvoices.filter(inv => {
+    const s = normalizeStatus(inv, today);
+    return (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid')
+      && (parseFloat(inv.AmountDue)||0) > 0;
+  });
+
+  const byFirm = {};
+  owing.forEach(inv => {
+    const firm = inv.VendorName || '';   // raw key — must equal what printStatement() compares against
+    if (!byFirm[firm]) byFirm[firm] = { count:0, total:0 };
+    byFirm[firm].count += 1;
+    byFirm[firm].total += parseFloat(inv.AmountOutstanding)||0;
+  });
+
+  const firms = Object.entries(byFirm).sort((a,b) => b[1].total - a[1].total);
+
+  loading.style.display = 'none';
+  if (!firms.length) { empty.style.display = ''; return; }
+
+  const f = v => '£' + (parseFloat(v)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+
+  tbody.innerHTML = firms.map(([firm, d]) => {
+    const jsFirm = esc(firm).replace(/'/g, "\\'");
+    return `
+    <tr>
+      <td class="stmt-client">${esc(firm) || '(no client name)'}</td>
+      <td class="num">${d.count}</td>
+      <td class="num owed">${f(d.total)}</td>
+      <td class="num"><button class="stmt-btn" onclick="printStatement('${jsFirm}')">Statement</button></td>
+    </tr>`;
+  }).join('');
+
+  const grand = firms.reduce((s,[,d]) => s + d.total, 0);
+  tfoot.innerHTML = `<tr>
+    <td>${firms.length} client${firms.length===1?'':'s'}</td>
+    <td class="num">${owing.length}</td>
+    <td class="num owed">${f(grand)}</td>
+    <td></td>
+  </tr>`;
+
+  table.style.display = '';
+}
+
+function printStatement(clientName) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const invoices = allInvoices.filter(inv => {
+    const s = normalizeStatus(inv, today);
+    return inv.VendorName === clientName
+      && (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid')
+      && (parseFloat(inv.AmountDue)||0) > 0;
+  }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
+  if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+
+  const groups = {};
+  invoices.forEach(inv => {
+    const g = (inv.LAorIP||'').trim() === 'Legal Aid' ? 'Legal Aid' : (inv.LAorIP||'').trim() === 'Inter Partes' ? 'Inter Partes' : 'Other';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(inv);
+  });
+
+  const totalOutstanding = invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0);
+  const stmtDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+  const f = v => { const n=parseFloat(v); return isNaN(n)?'£0.00':'£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
+  const fd = v => { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+
+  const groupHTML = Object.entries(groups).map(([grp, invs]) => {
+    const rows = invs.map((inv,i) => {
+      const paid = [1,2,3].reduce((s,n)=>s+(parseFloat(inv[`PaymentAmount${n}`])||0),0);
+      const bg = i%2===1?'background:#f5f5f8;':'';
+      return `<tr style="${bg}">
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.OrderDetails||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Ourref||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Theirref||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;max-width:220px;">${inv.Casename||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:center;">${fd(inv.InvoiceDate)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${f(inv.AmountDue)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${paid>0?f(paid):'£0.00'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;font-weight:700;color:#1B2A4A;">${f(inv.AmountOutstanding)}</td>
+      </tr>`;
+    }).join('');
+    const grpTotal = invs.reduce((s,inv)=>s+(parseFloat(inv.AmountOutstanding)||0),0);
+    return `<div style="margin-bottom:28px;">
+      <div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #C9A84C;padding-bottom:4px;margin-bottom:0;">${grp}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#1B2A4A;">
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE NO</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">YOUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">CASE</th>
+          <th style="padding:8px 10px;text-align:center;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE DATE</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">AMOUNT INVOICED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">PAYMENTS RECEIVED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUTSTANDING (£)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f0ede6;">
+          <td colspan="7" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
+          <td style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;color:#1B2A4A;">${f(grpTotal)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Client Statement — ${clientName}</title>
+  <style>
+    @page{margin:20mm 18mm;}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1B2A4A;margin:0;padding:0;font-size:13px;}
+    @media print{.no-print{display:none;}}
+  </style>
+</head><body>
+  <div class="no-print" style="background:#1B2A4A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;">
+    <span style="color:#C9A84C;font-weight:600;font-size:14px;">Client Statement — ${clientName}</span>
+    <button onclick="window.print()" style="background:#C9A84C;color:#1B2A4A;border:none;padding:8px 20px;font-weight:700;cursor:pointer;border-radius:4px;font-size:13px;">Print / Save as PDF</button>
+  </div>
+  <div style="padding:20px 24px;">
+    <table style="width:100%;margin-bottom:24px;"><tr>
+      <td style="vertical-align:top;width:50%;">
+        <img src="/New%20Logo%20Gold%2C%20Silver%20and%20Navy.png" style="height:60px;" alt="TMC Legal" />
+        <div style="margin-top:12px;">
+          <div style="font-size:18px;font-weight:700;color:#1B2A4A;margin-bottom:2px;">Client Statement</div>
+          <div style="font-size:14px;color:#555;">${clientName}</div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;font-size:12px;line-height:1.7;color:#1B2A4A;">
+        Fennels Lodge<br>St Peters Close<br>Loudwater<br>Buckinghamshire<br>HP11 1JT
+        <br><br>
+        Tel: 01628 526 236<br>
+        Email: danielle@tmclegal.co.uk
+      </td>
+    </tr></table>
+    <div style="font-size:11px;color:#555;margin-bottom:20px;">Statement date: ${stmtDate}</div>
+    ${groupHTML}
+    <table style="width:100%;margin-top:16px;"><tr>
+      <td style="background:#1B2A4A;padding:12px 16px;text-align:right;">
+        <span style="color:rgba(255,255,255,.7);font-size:12px;font-weight:600;letter-spacing:.08em;">TOTAL OUTSTANDING</span>
+        <span style="color:#C9A84C;font-size:20px;font-weight:700;margin-left:20px;font-family:Georgia,serif;">${f(totalOutstanding)}</span>
+      </td>
+    </tr></table>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e1d6;font-size:11px;color:#888;">
+      <strong style="color:#1B2A4A;">Payment Details:</strong> Please make cheques payable to T M Costings or bank transfer to Sort Code: 40-47-84 | Account: 61842959 | Reference: your invoice number.
+    </div>
+  </div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=1000,height=800');
+  w.document.write(html);
+  w.document.close();
+}
+
 async function init() {
   const email   = await getCallerEmail();
   callerEmail = email;
@@ -245,6 +469,7 @@ async function init() {
 
   document.getElementById('main-content').style.display = '';
   loadBalance(false);
+  loadStatements();
 }
 
 init();
