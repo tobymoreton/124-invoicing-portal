@@ -219,6 +219,8 @@
     .ca-units{font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:var(--navy);border:1.5px solid rgba(27,42,74,.18);border-radius:5px;padding:2px 4px;background:var(--white);cursor:pointer;max-width:64px;}
     .ca-units:hover{border-color:var(--navy);}
     .ca-units:focus{outline:none;border-color:var(--gold);}
+    .ca-bill{display:inline-flex;align-items:center;gap:4px;font-size:10px;cursor:pointer;white-space:nowrap;user-select:none;}
+    .ca-bill input{width:13px;height:13px;accent-color:var(--navy);cursor:pointer;margin:0;}
     .ca-panel-empty{padding:32px 18px;text-align:center;color:var(--grey-mid);font-size:13px;}
     .ca-panel-list{max-height:640px;overflow-y:auto;}
     .ca-panel-search-row{padding:8px 18px;border-bottom:1px solid var(--grey-faint);background:var(--white);}
@@ -1521,6 +1523,24 @@ async function setActionUnits(a,units,selEl,valEl){
   }finally{ selEl.disabled=false; }
 }
 
+// S79: inline Billable toggle on each Case Actions row. Writes Billable_x003f_ via PATCH (the
+// same field the Edit-Action modal writes). Reads can be optimistic — this tenant sometimes
+// drops the boolean from bulk reads — but the write is reliable.
+async function setActionBillable(a,checked,cbEl,lblEl,wrapEl){
+  cbEl.disabled=true;
+  try{
+    const r=await fetch('/api/caseactions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:a.id,billable:checked})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    a.fields=a.fields||{}; a.fields['Billable_x003f_']=checked;
+    if(lblEl) lblEl.textContent=checked?'Billable':'Non-billable';
+    if(wrapEl) wrapEl.style.color=checked?'var(--grey-mid)':'var(--red)';
+    try{ writeCache(); }catch(e){}
+  }catch(err){
+    cbEl.checked=!checked;
+    alert('Couldn’t update billable: '+err.message);
+  }finally{ cbEl.disabled=false; }
+}
+
 function renderActionsPanel(){
   const el=document.getElementById('ca-panel-list');
   if(actionsError&&!allActions.length){
@@ -1570,6 +1590,7 @@ function renderActionsPanel(){
     const row=document.createElement('div');
     row.className='ca-panel-row';
     row.style.borderLeft='3px solid '+bs.c;
+    const billable=a.fields?.['Billable_x003f_']!==false;
     const curUnits=Math.max(1,Math.round(hrs/0.1));
     const maxUnits=Math.max(10,curUnits);
     let unitOpts='';
@@ -1588,12 +1609,18 @@ function renderActionsPanel(){
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">'+
         '<div class="ca-panel-val ca-val-cell">'+(val>0?fmt(val):'—')+'</div>'+
         '<select class="ca-units" title="Time claimed (6-minute units) — pick a larger value to increase">'+unitOpts+'</select>'+
+        '<label class="ca-bill" style="color:'+(billable?'var(--grey-mid)':'var(--red)')+';"><input type="checkbox" class="ca-bill-cb"'+(billable?' checked':'')+'/><span class="ca-bill-lbl">'+(billable?'Billable':'Non-billable')+'</span></label>'+
       '</div>';
     const uSel=row.querySelector('.ca-units');
     const vCell=row.querySelector('.ca-val-cell');
     uSel.addEventListener('click',ev=>ev.stopPropagation());
     uSel.addEventListener('change',ev=>{ ev.stopPropagation(); setActionUnits(a,parseInt(uSel.value,10),uSel,vCell); });
-    row.addEventListener('click',ev=>{ if(ev.target.closest('.ca-units')) return; openEditActionModal(a); });
+    const bCb=row.querySelector('.ca-bill-cb');
+    const bWrap=row.querySelector('.ca-bill');
+    const bLbl=row.querySelector('.ca-bill-lbl');
+    bWrap.addEventListener('click',ev=>ev.stopPropagation());
+    bCb.addEventListener('change',ev=>{ ev.stopPropagation(); setActionBillable(a,bCb.checked,bCb,bLbl,bWrap); });
+    row.addEventListener('click',ev=>{ if(ev.target.closest('.ca-units')||ev.target.closest('.ca-bill')) return; openEditActionModal(a); });
     el.appendChild(row);
   });
   if(filtered.length>caVisibleCount){
@@ -2117,7 +2144,7 @@ function writeCache(){
   // sessionStorage quota (overflow was silently swallowed -> no fast-path cache).
   const pick=(o,keys)=>{const r={};if(o)for(const k of keys)if(o[k]!==undefined)r[k]=o[k];return r;};
   const INV=['Cancelled','InvoiceDate','DraftedByEmail','Net','Casename','OrderDetails','Ourref','DraftingFeeElement'];
-  const ACT=['field_1','field_2','field_3','field_6','field_9','field_12','field_16','TimeSpentMirror','CreatedUTC'];
+  const ACT=['field_1','field_2','field_3','field_6','field_9','field_12','field_16','TimeSpentMirror','CreatedUTC','Billable_x003f_'];
   const REM=['CompletedMirror','Duedate','Priority','Brief','Event'];
   const invSlim=allInvoices.map(inv=>pick(inv,INV));
   const actSlim=allActions.map(a=>({id:a.id,_caseRef:a._caseRef,_caseName:a._caseName,fields:pick(a.fields||{},ACT)}));
