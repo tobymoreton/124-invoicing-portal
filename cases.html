@@ -1023,6 +1023,7 @@ function renderStats(){
   const weekEnd=new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+7);
   wipThisMonth=0; wipThisWeek=0;
   allActions.forEach(a=>{
+    if(a.fields?.['Billable_x003f_']===false) return;
     const dateStr=a.fields?.['field_12']||a.fields?.['field_1']||'';
     if(!dateStr) return;
     const d=new Date(dateStr);
@@ -2014,6 +2015,7 @@ function openWipBreakdown(){
   const el=document.getElementById('wip-breakdown-list');
   const map={};
   allActions.forEach(a=>{
+    if(a.fields?.['Billable_x003f_']===false) return;
     const ref=a._caseRef||'';
     const hrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
     const rate=parseFloat(a.fields?.['field_6'])||0;
@@ -2059,6 +2061,7 @@ function openWipPeriodBreakdown(){
   if(titleEl) titleEl.textContent='WIP This '+(isPeriodMonth?'Month':'Week')+' \u2014 Breakdown';
   const map={};
   allActions.forEach(a=>{
+    if(a.fields?.['Billable_x003f_']===false) return;
     const ds=a.fields?.['field_12']||a.fields?.['field_1']||''; if(!ds) return;
     const d=new Date(ds); if(isNaN(d)) return;
     if(isPeriodMonth?(d.getFullYear()!==yr||d.getMonth()!==mo):(d<wkStart||d>=wkEnd)) return;
@@ -2175,6 +2178,7 @@ async function fetchAllData(){
     const wipData=await wipResp.json();
     const wipItems=Array.isArray(wipData)?wipData:(wipData.value||[]);
     wipTotal=wipItems
+      .filter(w=>w.Billable!==false)
       .filter(w=>!callerEmail||!w.Email||(w.Email||'').toLowerCase()===callerEmail)
       .reduce((s,w)=>s+(parseFloat(w.WIPValue)||0),0);
   }
