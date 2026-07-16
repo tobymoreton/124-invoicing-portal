@@ -641,7 +641,7 @@ async function loadFigures(fields) {
   const vatPctClaimed        = parseFloat(fields.VAT_x0020__x0025__x0020_Claimed) || 0;
   const profitCostsRecovered = vatPctClaimed === 0 ? grossRecovered : Math.round(grossRecovered / 6 * 5 * 100) / 100;
   const basis                = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
-  const vatOnDrafting        = fields.VatOnDraftingFee_x003f_ === true;
+  const vatOnDrafting        = fields.VatOnDraftingFee_x003f_ !== false;
   const wipLineOverride      = fields.TimedWorkLineOverride || '';
 
   const sel = el('inp-basis');
