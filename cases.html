@@ -1507,15 +1507,36 @@ async function setActionUnits(a,units,selEl,valEl){
   const prevHrs=parseFloat(a.fields?.['TimeSpentMirror']||a.fields?.['field_3'])||0;
   const prevUnits=Math.max(1,Math.round(prevHrs/0.1));
   if(newHrs===prevHrs) return;
+  // Routine (1 unit) <-> Timed (>1 unit) auto-switch for the email and call brief pairs.
+  // Anything else (Preparation, hearings, incoming email, etc.) is left untouched.
+  const curBrief=a.fields?.['field_9']||'';
+  let newBrief=curBrief;
+  if(units>1){
+    if(curBrief==='Routine letter/email out') newBrief='Timed letter/email';
+    else if(curBrief==='Routine telephone call') newBrief='Timed telephone call';
+  }else{
+    if(curBrief==='Timed letter/email') newBrief='Routine letter/email out';
+    else if(curBrief==='Timed telephone call') newBrief='Routine telephone call';
+  }
+  const briefChanged=newBrief!==curBrief;
   selEl.disabled=true;
   try{
-    const r=await fetch('/api/caseactions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:a.id,timeSpent:newHrs})});
+    const r=await fetch('/api/caseactions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemId:a.id,timeSpent:newHrs,...(briefChanged?{brief:newBrief}:{})})});
     if(!r.ok) throw new Error('HTTP '+r.status);
     a.fields=a.fields||{};
     a.fields['field_3']=newHrs; a.fields['TimeSpentMirror']=newHrs;
     const rate=parseFloat(a.fields?.['field_6'])||0;
     const val=newHrs*rate;
     if(valEl) valEl.textContent=val>0?fmt(val):'—';
+    if(briefChanged){
+      a.fields['field_9']=newBrief;
+      const chip=selEl.closest('.ca-panel-row')?.querySelector('.ca-brief-chip');
+      if(chip){
+        const bs2=BRIEF_STYLES[newBrief]||{e:'',bg:'transparent',c:'var(--grey-mid)'};
+        chip.style.background=bs2.bg; chip.style.color=bs2.c;
+        chip.textContent=(bs2.e?bs2.e+' ':'')+newBrief;
+      }
+    }
     renderStats();
     try{ writeCache(); }catch(e){}
   }catch(err){
