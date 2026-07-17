@@ -420,7 +420,8 @@
     <div class="poa-modal-head">Payment received — no matching invoice</div>
     <div class="poa-modal-body">
       <label class="poa-lbl first">Client firm</label>
-      <input class="poa-inp" id="poa-firm" type="text" placeholder="e.g. Smith &amp; Co Solicitors">
+      <input class="poa-inp" id="poa-firm" type="text" list="poa-firms" placeholder="Start typing or pick a firm…" autocomplete="off">
+      <datalist id="poa-firms"></datalist>
       <div class="poa-2col">
         <div><label class="poa-lbl">Amount (£)</label><input class="poa-inp" id="poa-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>
         <div><label class="poa-lbl">Date received</label><input class="poa-inp" id="poa-date" type="date"></div>
@@ -1911,6 +1912,15 @@ function openPOAModal() {
   document.getElementById('poa-amount').value = '';
   document.getElementById('poa-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('poa-mnote').value = '';
+  // Firm dropdown from distinct client firms already billed (VendorName). Still a
+  // free-text input underneath, so a never-before-billed firm can be typed.
+  const seen = new Set();
+  const firms = (allInvoices || [])
+    .map(i => (i.VendorName || '').trim())
+    .filter(v => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+  const dl = document.getElementById('poa-firms');
+  if (dl) dl.innerHTML = firms.map(v => '<option value="' + esc(v) + '"></option>').join('');
   poaMsg('');
   document.getElementById('poa-modal-overlay').classList.add('open');
   document.getElementById('poa-firm').focus();
