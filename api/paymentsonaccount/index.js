@@ -85,11 +85,13 @@ module.exports = async function (context, req) {
     // ── GET — list rows ───────────────────────────────────────────────────────
     if (req.method === 'GET') {
       const openOnly = String((req.query && req.query.open) || '') === '1';
-      const url = listUrl + '/items?$expand=fields&$top=500&$orderby=fields/'
-        + F.date + ' desc';
+      // No $orderby on DateReceived — the SP column is not indexed, so Graph
+      // rejects it (400). Small list; sort newest-first client-side instead.
+      const url = listUrl + '/items?$expand=fields&$top=500';
       const rows = await graphGetAll(url, token);
 
       const out = rows.map(r => shape(r)).filter(r => !openOnly || r.remaining > 0.005);
+      out.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
       const totalUnallocated = out.reduce((s, r) => s + (r.remaining > 0 ? r.remaining : 0), 0);
 
       context.res = {
