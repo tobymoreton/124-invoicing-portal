@@ -230,6 +230,40 @@
     .btn-cancel:hover:not(:disabled){background:var(--overdue);color:var(--white);}
     .btn-cancel:disabled{opacity:.4;cursor:not-allowed;}
     .drawer-action-msg{font-size:12px;color:var(--grey-mid);padding:0 24px 14px;text-align:center;}
+    /* PAYMENTS ON ACCOUNT (unallocated) */
+    .poa-banner{margin:0;background:var(--white);border-bottom:1px solid var(--grey-light);}
+    .poa-banner.hot{background:var(--overdue-bg);border-bottom:2px solid var(--overdue);}
+    .poa-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 28px;flex-wrap:wrap;}
+    .poa-headline{font-size:13px;color:var(--navy);}
+    .poa-banner.hot .poa-headline{color:var(--overdue);}
+    .poa-headline strong{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+    .poa-warn{font-size:15px;animation:pulse-red 2s ease-in-out infinite;display:inline-block;}
+    .poa-add-btn{padding:8px 16px;background:var(--navy);color:var(--gold);border:2px solid var(--navy);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.03em;cursor:pointer;white-space:nowrap;transition:all var(--transition);}
+    .poa-add-btn:hover{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+    .poa-list{padding:0 28px 14px;overflow-x:auto;}
+    .poa-table{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--white);border-radius:var(--radius);overflow:hidden;}
+    .poa-table th{padding:8px 12px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);background:var(--cream-dark);}
+    .poa-table td{padding:8px 12px;border-top:1px solid var(--grey-faint);color:var(--navy);}
+    .poa-table .poa-num{text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;}
+    .poa-age{color:var(--overdue);font-weight:600;font-size:11px;}
+    .poa-note{color:var(--grey-mid);}
+    .poa-modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.35);z-index:500;backdrop-filter:blur(2px);align-items:center;justify-content:center;}
+    .poa-modal-overlay.open{display:flex;}
+    .poa-modal{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:440px;max-width:94vw;overflow:hidden;}
+    .poa-modal-head{background:var(--navy);color:var(--gold);padding:16px 22px;font-family:'Spectral',serif;font-weight:400;font-size:16px;}
+    .poa-modal-body{padding:18px 22px;}
+    .poa-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .poa-lbl{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin:12px 0 5px;}
+    .poa-lbl.first{margin-top:0;}
+    .poa-inp{width:100%;padding:9px 11px;border:1.5px solid var(--grey-light);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);outline:none;}
+    .poa-inp:focus{border-color:var(--gold);background:var(--white);}
+    .poa-msg{font-size:12px;margin-top:12px;min-height:15px;}
+    .poa-msg.ok{color:var(--paid);}
+    .poa-msg.err{color:var(--overdue);}
+    .poa-modal-foot{display:flex;gap:10px;padding:14px 22px 18px;border-top:1px solid var(--grey-faint);}
+    .poa-btn-cancel{flex:1;padding:10px;background:var(--white);color:var(--grey-mid);border:1.5px solid var(--grey-light);border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;}
+    .poa-btn-save{flex:1;padding:10px;background:var(--navy);color:var(--gold);border:2px solid var(--navy);border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;}
+    .poa-btn-save:hover{background:var(--gold);color:var(--navy);border-color:var(--gold);}
   </style>
 </head>
 <body>
@@ -280,6 +314,8 @@
     <div class="ledger-sub">unbilled work</div>
   </div>
 </div>
+
+<div class="poa-banner" id="poa-banner" style="display:none;"></div>
 
 <div class="dash" id="dash-section" style="display:none;">
   <div class="dash-row-label">Invoice Age Analysis</div>
@@ -378,6 +414,27 @@
     </div>
   </div>
 </section>
+
+<div class="poa-modal-overlay" id="poa-modal-overlay">
+  <div class="poa-modal" role="dialog" aria-modal="true" aria-label="Log payment received">
+    <div class="poa-modal-head">Payment received — no matching invoice</div>
+    <div class="poa-modal-body">
+      <label class="poa-lbl first">Client firm</label>
+      <input class="poa-inp" id="poa-firm" type="text" placeholder="e.g. Smith &amp; Co Solicitors">
+      <div class="poa-2col">
+        <div><label class="poa-lbl">Amount (£)</label><input class="poa-inp" id="poa-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="poa-lbl">Date received</label><input class="poa-inp" id="poa-date" type="date"></div>
+      </div>
+      <label class="poa-lbl">Note (bank ref, anything known)</label>
+      <input class="poa-inp" id="poa-mnote" type="text" placeholder="optional">
+      <div class="poa-msg" id="poa-msg"></div>
+    </div>
+    <div class="poa-modal-foot">
+      <button class="poa-btn-cancel" onclick="closePOAModal()">Cancel</button>
+      <button class="poa-btn-save" id="poa-save" onclick="submitPOA()">Save</button>
+    </div>
+  </div>
+</div>
 
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Invoice detail">
@@ -579,6 +636,7 @@ async function load() {
 
     renderAllData(isAdmin, isFinance);
     writeCache(callerEmail);
+    if (isAdmin) loadPOA();
   } catch(e) { renderError(e.message); }
 }
 
@@ -1797,6 +1855,101 @@ function filterByAge(min, max) {
   document.querySelector('#type-chips .chip[data-val="all"]').classList.add('active');
   renderTable();
   document.querySelector('.main').scrollIntoView({behavior:'smooth'});
+}
+
+// PAYMENTS ON ACCOUNT (unallocated) — admin only (Toby, Danielle). Lives here on the
+// invoicing tab, in plain sight, because this is where payments get worked. Capture
+// only for now; allocate is the next step. Gate mirrors /api/paymentsonaccount.
+const API_POA = '/api/paymentsonaccount';
+let _poaRows = [];
+
+async function loadPOA() {
+  try {
+    const res = await fetch(API_POA + '?open=1', { headers: { Accept: 'application/json' } });
+    if (!res.ok) return;                 // 403 for non-admins — stay hidden
+    const data = await res.json();
+    _poaRows = (data && data.rows) || [];
+    renderPOA((data && data.totalUnallocated) || 0);
+  } catch (e) { /* non-fatal */ }
+}
+
+function renderPOA(total) {
+  const wrap = document.getElementById('poa-banner');
+  if (!wrap) return;
+  wrap.style.display = '';
+  const n = _poaRows.length;
+  const money = v => '\u00a3' + (v || 0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const fd = v => { if (!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}); };
+  const ageDays = v => { if (!v) return null; const d = new Date(v); if (isNaN(d)) return null; return Math.floor((Date.now() - d) / 86400000); };
+  const hot = n > 0;
+  wrap.className = 'poa-banner' + (hot ? ' hot' : '');
+  const rowsHTML = _poaRows.map(r => {
+    const age = ageDays(r.date);
+    return '<tr>'
+      + '<td>' + esc(r.firm || '\u2014') + '</td>'
+      + '<td class="poa-num">' + money(r.remaining) + '</td>'
+      + '<td>' + fd(r.date) + (age != null ? ' <span class="poa-age">' + age + 'd</span>' : '') + '</td>'
+      + '<td class="poa-note">' + esc(r.note || '') + '</td>'
+      + '</tr>';
+  }).join('');
+  wrap.innerHTML =
+    '<div class="poa-head">'
+    + '<div class="poa-headline">'
+    + (hot
+        ? '<span class="poa-warn">\u26a0</span> <strong>' + money(total) + '</strong> unallocated across ' + n + ' payment' + (n !== 1 ? 's' : '') + ' \u2014 allocate against an invoice or chase the client'
+        : 'No unallocated payments. Money in without a matching invoice? Log it here so it can\u2019t get lost.')
+    + '</div>'
+    + '<button class="poa-add-btn" onclick="openPOAModal()">+ Payment received</button>'
+    + '</div>'
+    + (hot
+        ? '<div class="poa-list"><table class="poa-table"><thead><tr><th>Client firm</th><th class="poa-num">Unallocated</th><th>Received</th><th>Note</th></tr></thead><tbody>' + rowsHTML + '</tbody></table></div>'
+        : '');
+}
+
+function openPOAModal() {
+  document.getElementById('poa-firm').value = '';
+  document.getElementById('poa-amount').value = '';
+  document.getElementById('poa-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('poa-mnote').value = '';
+  poaMsg('');
+  document.getElementById('poa-modal-overlay').classList.add('open');
+  document.getElementById('poa-firm').focus();
+}
+
+function closePOAModal() { document.getElementById('poa-modal-overlay').classList.remove('open'); }
+
+function poaMsg(t, err) {
+  const m = document.getElementById('poa-msg');
+  if (!m) return;
+  m.textContent = t || '';
+  m.className = 'poa-msg' + (t ? (err ? ' err' : ' ok') : '');
+}
+
+async function submitPOA() {
+  const firm   = document.getElementById('poa-firm').value.trim();
+  const amount = document.getElementById('poa-amount').value.trim();
+  const date   = document.getElementById('poa-date').value;
+  const note   = document.getElementById('poa-mnote').value.trim();
+  if (!firm) { poaMsg('Client firm is required.', true); return; }
+  if (!amount || parseFloat(amount) <= 0) { poaMsg('Enter a positive amount.', true); return; }
+  if (!date) { poaMsg('Date received is required.', true); return; }
+  const btn = document.getElementById('poa-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+  try {
+    const res = await fetch(API_POA, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', clientFirmName: firm, amountReceived: parseFloat(amount), dateReceived: date, note: note }),
+    });
+    const text = await res.text();
+    let data = null; try { data = JSON.parse(text); } catch (e) {}
+    if (!res.ok) throw new Error((data && data.error) || text || ('Server error ' + res.status));
+    closePOAModal();
+    loadPOA();
+  } catch (e) {
+    poaMsg(e.message, true);
+    if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }
 }
 
 </script>
