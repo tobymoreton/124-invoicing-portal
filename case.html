@@ -535,6 +535,11 @@
     .ca-edit-wd{width:100%;padding:5px 5px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--navy);resize:vertical;}
     .ca-edit-hrs,.ca-edit-rate{width:100%;padding:4px 4px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--navy);text-align:right;}
     .ca-sched-check{width:15px;height:15px;accent-color:var(--navy);cursor:pointer;display:block;margin:0 auto;}
+    .ca-units{font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:var(--navy);border:1.5px solid rgba(27,42,74,.18);border-radius:5px;padding:2px 4px;background:var(--white);cursor:pointer;max-width:62px;text-align:right;}
+    .ca-units:hover{border-color:var(--navy);}
+    .ca-units:focus{outline:none;border-color:var(--gold);}
+    .ca-units:disabled{opacity:.5;cursor:default;}
+    .ca-bill-inline{width:15px;height:15px;accent-color:var(--navy);cursor:pointer;display:block;margin:0 auto;}
     /* Case Actions — expanded inline edit panel */
     .ca-editing-row:hover{background:transparent;}
     .ca-edit-cell{padding:0!important;}
@@ -3942,12 +3947,22 @@ function renderCaTable() {
         </div>
       </td>`;
     } else {
+      const curUnits = Math.max(1, Math.round(hrs / 0.1));
+      const maxUnits = Math.max(10, curUnits);
+      let unitOpts = '';
+      for (let u = 1; u <= maxUnits; u++) { const m = u * 6; const lbl = m < 60 ? (m + 'm') : (m % 60 === 0 ? (m / 60 + 'h') : ((m / 60).toFixed(1) + 'h')); unitOpts += '<option value="' + u + '"' + (u === curUnits ? ' selected' : '') + '>' + lbl + '</option>'; }
+      const hrsCell = billed
+        ? `<td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td>`
+        : `<td class="ca-cell ca-right"><select class="ca-units" data-id="${id}" title="Time claimed (6-minute units) - pick a larger value to increase">${unitOpts}</select></td>`;
+      const billCell = billed
+        ? `<td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>`
+        : `<td class="ca-cell ca-center"><input type="checkbox" class="ca-bill-inline" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>`;
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
         <td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${escHtml(brief)}">${escHtml(brief)}</td>
         <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>
-        <td class="ca-cell ca-mono ca-right">${fmtN(hrs, 2)}</td><td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>
+        ${hrsCell}<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>
         <td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>
-        <td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>
+        ${billCell}
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
         <td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
@@ -3958,6 +3973,8 @@ function renderCaTable() {
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
   tbody.querySelectorAll('.ca-btn-del').forEach(btn => { btn.addEventListener('click', () => deleteCaRow(btn.dataset.id)); });
+  tbody.querySelectorAll('.ca-units').forEach(sel => { const a = caActions.find(x => x.id === sel.dataset.id); if (a) sel.addEventListener('change', () => setCaUnits(a, parseInt(sel.value, 10), sel)); });
+  tbody.querySelectorAll('.ca-bill-inline').forEach(cb => { const a = caActions.find(x => x.id === cb.dataset.id); if (a) cb.addEventListener('change', () => setCaBillable(a, cb.checked, cb)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
   tbody.querySelectorAll('.ca-editing-row').forEach(row => {
     const _h = row.querySelector('.ca-edit-hrs'); const _r = row.querySelector('.ca-edit-rate'); const _a = row.querySelector('.ca-edit-amt');
@@ -4008,6 +4025,50 @@ function caCompletedByOptions(selected) {
   return opts.join('');
 }
 
+// S80: inline time (6-minute units) + billable controls on Case Actions rows — mirrors the
+// dashboard (cases.html). Time change PATCHes timeSpent only; the Routine<->Timed brief pair
+// auto-switches when crossing the 1-unit boundary. Optimistic; billed rows stay static/locked.
+async function setCaUnits(a, units, selEl) {
+  const newHrs = Math.round(units * 0.1 * 100) / 100;
+  const prevHrs = parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0;
+  const prevUnits = Math.max(1, Math.round(prevHrs / 0.1));
+  if (newHrs === prevHrs) return;
+  const curBrief = a.fields?.['field_9'] || '';
+  let newBrief = curBrief;
+  if (units > 1) {
+    if (curBrief === 'Routine letter/email out') newBrief = 'Timed letter/email';
+    else if (curBrief === 'Routine telephone call') newBrief = 'Timed telephone call';
+  } else {
+    if (curBrief === 'Timed letter/email') newBrief = 'Routine letter/email out';
+    else if (curBrief === 'Timed telephone call') newBrief = 'Routine telephone call';
+  }
+  const briefChanged = newBrief !== curBrief;
+  selEl.disabled = true;
+  try {
+    const r = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: a.id, timeSpent: newHrs, ...(briefChanged ? { brief: newBrief } : {}) }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    a.fields = a.fields || {};
+    a.fields['field_3'] = newHrs; a.fields['TimeSpentMirror'] = newHrs;
+    a.fields['Num_BillableAmount_x00a3_'] = newHrs * (parseFloat(a.fields?.['field_6']) || 0);
+    if (briefChanged) a.fields['field_9'] = newBrief;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    selEl.value = String(prevUnits); selEl.disabled = false;
+    alert('Could not update time: ' + err.message);
+  }
+}
+async function setCaBillable(a, checked, cbEl) {
+  cbEl.disabled = true;
+  try {
+    const r = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: a.id, billable: checked }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    a.fields = a.fields || {}; a.fields['Billable_x003f_'] = checked;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    cbEl.checked = !checked; cbEl.disabled = false;
+    alert('Could not update billable: ' + err.message);
+  }
+}
 async function saveCaRow(id) {
   const scope = document.querySelector('.tab-panel.active') || document;
   const wd = scope.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
