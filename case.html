@@ -2656,6 +2656,16 @@ function renderHeader() {
 // Failure is VISIBLE, never silent (audit P4).
 let _cfItems   = [];
 let _cfShowAll = false;
+// Collapse preference persists for the browser session, so someone who does not
+// want the banner does not have to dismiss it on every case they open.
+let _cfHidden  = (function () {
+  try { return sessionStorage.getItem('p124-cf-hidden') === '1'; } catch (e) { return false; }
+})();
+function toggleCaseFilesHidden() {
+  _cfHidden = !_cfHidden;
+  try { sessionStorage.setItem('p124-cf-hidden', _cfHidden ? '1' : '0'); } catch (e) { /* private mode */ }
+  renderCaseFiles();
+}
 const CF_SHOW   = 3;
 
 // '/drives/b!xxxx/root:/Bills of Costs A/Kelly' → '/Bills of Costs A/Kelly'.
@@ -2723,6 +2733,16 @@ function renderCaseFiles() {
   // latest CF_SHOW. 'show all' reveals the rest.
   const cfFolders = cfList.filter(it => it.isFolder);
   const cfFiles   = cfList.filter(it => !it.isFolder);
+
+  if (_cfHidden) {
+    el.innerHTML = '<div class="cf-head">'
+      + '<button class="cf-more" onclick="toggleCaseFilesHidden()">'
+      + '\uD83D\uDCC1 Show case folders and recent files'
+      + (total ? ' (' + total + ')' : '') + '</button></div>';
+    renderEmailAtt();
+    return;
+  }
+
   const shown = _cfShowAll ? cfList : cfFolders.concat(cfFiles.slice(0, CF_SHOW));
   const multiFolder = cfFolders.length > 1;
 
@@ -2742,11 +2762,25 @@ function renderCaseFiles() {
     html += '<button class="cf-more" onclick="toggleCaseFiles()">'
          + (_cfShowAll ? 'show fewer' : 'show all ' + total) + '</button>';
   }
+  html += '<button class="cf-more" onclick="toggleCaseFilesHidden()">hide all</button>';
   html += '</div>';
 
   order.forEach(lib => {
     html += '<div class="cf-lib">' + escHtml(lib) + '</div>';
+    let filesStarted = false;
     byLib[lib].forEach(it => {
+      // Sub-heading before the first FILE in each library, so the cap is explicit:
+      // these are the newest few, not everything that exists.
+      if (!it.isFolder && !filesStarted) {
+        filesStarted = true;
+        html += '<div class="cf-lib" style="opacity:.75;">'
+             + (_cfShowAll
+                 ? 'All files'
+                 : 'Most recent files' + (cfFiles.length > CF_SHOW
+                     ? ' (latest ' + Math.min(CF_SHOW, cfFiles.length) + ' of ' + cfFiles.length + ')'
+                     : ''))
+             + '</div>';
+      }
       const icon = it.isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4';
       const meta = [fmtDate(it.modified), cfSize(it.size)].filter(Boolean).join(' \u00b7 ');
       // min-width:0 + ellipsis — a nowrap child with no min-width blows out a flex
