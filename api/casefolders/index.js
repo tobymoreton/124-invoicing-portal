@@ -84,7 +84,7 @@ module.exports = async function (context, req) {
     const sites   = [];
 
     for (const site of SITES) {
-      const outcome = { site: site.key, ok: false, driveId: null, hits: 0, error: null };
+      const outcome = { site: site.key, ok: false, driveId: null, raw: 0, folderFacets: 0, hits: 0, firstRaw: null, error: null };
       try {
         // Resolve the site's default document library drive id first — the same
         // two-step /api/attachments needed (a drive id, not a list route).
@@ -94,12 +94,24 @@ module.exports = async function (context, req) {
         if (!outcome.driveId) throw new Error('no drive id returned for site');
 
         const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
+        // NOTE (S81): no $select. Naming `folder` in a $select on a search() result did
+        // NOT reliably return the folder facet, so every row failed the `it.folder`
+        // test below and the endpoint reported 0 hits for folders that demonstrably
+        // exist. Same class of trap as the boolean-dropping $select in /api/wip.
         const url = 'https://graph.microsoft.com/v1.0/drives/' + outcome.driveId
-                  + '/root/search(q=' + q + ')'
-                  + '?$select=id,name,webUrl,folder,parentReference&$top=50';
+                  + '/root/search(q=' + q + ')?$top=200';
 
         const res   = await graphGet(url, token);
         const items = (res && res.value) || [];
+        outcome.raw = items.length;
+        outcome.folderFacets = items.filter(it => it.folder).length;
+        if (items[0]) {
+          outcome.firstRaw = {
+            name: items[0].name || null,
+            isFolder: !!items[0].folder,
+            keys: Object.keys(items[0]).join(','),
+          };
+        }
 
         // FOLDERS ONLY, and only where the NAME carries the ref (Graph search also
         // matches file CONTENT, which would return documents that merely mention it).
