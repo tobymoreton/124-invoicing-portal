@@ -2,35 +2,41 @@
  * P124 — Invoicing Portal
  * Azure Function: /api/casefolders
  *
- * Finds SharePoint FOLDERS whose name contains a case reference, across both
- * document sites, and returns links to them.
+ * Finds SharePoint FILES AND FOLDERS whose NAME contains a case reference, across
+ * every document library on both sites, newest-modified first.
  *
- * ⚠️  READ-ONLY. This function performs NO writes of any kind and never reads
- *     folder CONTENTS — it returns the folder's own name, path and webUrl only.
- *     TMC-File is a live working library; nothing here opens, lists or alters it.
+ * ⚠️  READ-ONLY. No writes of any kind. Returns each item's own name, library,
+ *     path, size, modified date and webUrl — it never opens or downloads content.
  *
- * ⚠️  S81 STATUS: PROBE. Whether Graph app-only auth permits driveItem
- *     `search(q=)` on this tenant is NOT PROVEN. It is UNCERTAIN, and the only way
- *     to establish it is to deploy this and call it. `?debug=1` returns the raw
- *     per-site outcome (status + first 300 chars of any error) precisely so a
- *     failure is diagnosable in one call instead of presenting as "no results".
- *     Do NOT build UI against this until a live call has been seen to work.
- *
- * Sites searched (Toby, 2026-07-18): BOTH.
- *   - tmcostings.sharepoint.com:/sites/TMCLegalLimited:   (the portal's own site)
- *   - tmcostings.sharepoint.com:/sites/TMC-File:          (the case file library)
+ * ── S81 findings, all EXTRACTED from live probes 2026-07-18 ──────────────────
+ *  1. App-only Graph `search(q=)` on a drive IS permitted on this tenant.
+ *     (First probe: both drives resolved, ok:true, no permission error.)
+ *  2. Searching `/sites/{site}:/drive` searches ONLY the site's DEFAULT document
+ *     library. The first probe did exactly that and returned 0 for
+ *     TMCLegalLimited — not because nothing matched, but because Toby's files sit
+ *     in a DIFFERENT library on that site. FIX: enumerate /drives and search every
+ *     one. This is why v1 reported "nothing found" for the site holding most of
+ *     the documents.
+ *  3. Ref-named FILES definitely exist (ref 1736735 returned 9, e.g.
+ *     "1736735-Forster-FormalServiceLetter.pdf"); ref-named FOLDERS were not found
+ *     in the default TMC-File library. Toby: a handful of TMC-File folders and
+ *     files carry the ref today, and the naming convention will be tightened once
+ *     this surfaces in the portal. So: match on NAME for both files and folders,
+ *     and do not assume a per-case folder exists.
+ *  4. Graph search also matches file CONTENT and PATH, which returns items that
+ *     merely mention the ref. Everything is therefore filtered to NAME contains ref.
  *
  * GET /api/casefolders?ref=<Our Reference>[&debug=1]
- * Returns: { ref, folders: [ { name, site, path, webUrl } ], sites: [...debug] }
+ * Returns: { ref, count, items: [ { name, isFolder, library, site, path, webUrl,
+ *                                   modified, size } ], drives?: [...debug] }
  */
 
 const https   = require('https');
 const { URL } = require('url');
 
-// Both document sites. `key` is what the client shows as the source label.
 const SITES = [
-  { key: 'TMCLegalLimited', path: 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:' },
-  { key: 'TMC-File',        path: 'tmcostings.sharepoint.com:/sites/TMC-File:' },
+  { key: 'TMC Legal Limited', path: 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:' },
+  { key: 'TMC-File',          path: 'tmcostings.sharepoint.com:/sites/TMC-File:' },
 ];
 
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
@@ -64,7 +70,6 @@ module.exports = async function (context, req) {
     context.res = { status: 400, body: 'Missing required query parameter: ref.' };
     return;
   }
-  // Guard against a wildcard-ish search returning half the tenant.
   if (ref.length < 4) {
     context.res = { status: 400, body: 'ref must be at least 4 characters.' };
     return;
@@ -79,62 +84,69 @@ module.exports = async function (context, req) {
   }
 
   try {
-    const token   = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const folders = [];
-    const sites   = [];
+    const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    const refLower = ref.toLowerCase();
+    const items    = [];
+    const dbg      = [];
+    const seen     = {};   // dedupe by driveItem id
 
     for (const site of SITES) {
-      const outcome = { site: site.key, ok: false, driveId: null, raw: 0, folderFacets: 0, hits: 0, firstRaw: null, error: null };
+      let drives = [];
       try {
-        // Resolve the site's default document library drive id first — the same
-        // two-step /api/attachments needed (a drive id, not a list route).
-        const drive = await graphGet(
-          'https://graph.microsoft.com/v1.0/sites/' + site.path + '/drive?$select=id', token);
-        outcome.driveId = drive && drive.id ? drive.id : null;
-        if (!outcome.driveId) throw new Error('no drive id returned for site');
-
-        const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
-        // NOTE (S81): no $select. Naming `folder` in a $select on a search() result did
-        // NOT reliably return the folder facet, so every row failed the `it.folder`
-        // test below and the endpoint reported 0 hits for folders that demonstrably
-        // exist. Same class of trap as the boolean-dropping $select in /api/wip.
-        const url = 'https://graph.microsoft.com/v1.0/drives/' + outcome.driveId
-                  + '/root/search(q=' + q + ')?$top=200';
-
-        const res   = await graphGet(url, token);
-        const items = (res && res.value) || [];
-        outcome.raw = items.length;
-        outcome.folderFacets = items.filter(it => it.folder).length;
-        if (items[0]) {
-          outcome.firstRaw = {
-            name: items[0].name || null,
-            isFolder: !!items[0].folder,
-            keys: Object.keys(items[0]).join(','),
-          };
-        }
-
-        // FOLDERS ONLY, and only where the NAME carries the ref (Graph search also
-        // matches file CONTENT, which would return documents that merely mention it).
-        const refLower = ref.toLowerCase();
-        items.filter(it => it.folder && (it.name || '').toLowerCase().indexOf(refLower) !== -1)
-             .forEach(it => {
-               folders.push({
-                 name:   it.name || null,
-                 site:   site.key,
-                 path:   (it.parentReference && it.parentReference.path) || null,
-                 webUrl: it.webUrl || null,
-               });
-               outcome.hits++;
-             });
-        outcome.ok = true;
+        // EVERY document library on the site, not just the default one.
+        const dl = await graphGet(
+          'https://graph.microsoft.com/v1.0/sites/' + site.path + '/drives?$select=id,name', token);
+        drives = (dl && dl.value) || [];
       } catch (e) {
-        outcome.error = (e && e.message ? e.message : String(e)).slice(0, 300);
+        dbg.push({ site: site.key, library: '(drive list)', error: errText(e) });
+        continue;
       }
-      sites.push(outcome);
+
+      for (const drv of drives) {
+        const row = { site: site.key, library: drv.name || drv.id, raw: 0, kept: 0, error: null };
+        try {
+          const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
+          // No $select — naming fields in a $select on search() results has proved
+          // unreliable on this tenant (cf. the boolean-dropping $select in /api/wip).
+          const url = 'https://graph.microsoft.com/v1.0/drives/' + drv.id
+                    + '/root/search(q=' + q + ')?$top=200';
+          const res = await graphGet(url, token);
+          const hits = (res && res.value) || [];
+          row.raw = hits.length;
+
+          hits.forEach(it => {
+            const name = it.name || '';
+            if (name.toLowerCase().indexOf(refLower) === -1) return;  // NAME must carry the ref
+            if (seen[it.id]) return;
+            seen[it.id] = true;
+            items.push({
+              name:     name,
+              isFolder: !!it.folder,
+              site:     site.key,
+              library:  drv.name || null,
+              path:     (it.parentReference && it.parentReference.path) || null,
+              webUrl:   it.webUrl || null,
+              modified: it.lastModifiedDateTime || null,
+              size:     typeof it.size === 'number' ? it.size : null,
+            });
+            row.kept++;
+          });
+        } catch (e) {
+          row.error = errText(e);
+        }
+        dbg.push(row);
+      }
     }
 
-    const payload = { ref: ref, folders: folders };
-    if (debug) payload.sites = sites;
+    // Most recently modified first; anything without a date goes last.
+    items.sort((a, b) => {
+      const da = a.modified ? new Date(a.modified).getTime() : -Infinity;
+      const db = b.modified ? new Date(b.modified).getTime() : -Infinity;
+      return db - da;
+    });
+
+    const payload = { ref: ref, count: items.length, items: items };
+    if (debug) payload.drives = dbg;
 
     context.res = {
       status: 200,
@@ -145,10 +157,14 @@ module.exports = async function (context, req) {
       body: JSON.stringify(payload),
     };
   } catch (err) {
-    context.log.error('Error searching case folders:', err.message);
+    context.log.error('Error searching case files:', err.message);
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
+
+function errText(e) {
+  return (e && e.message ? e.message : String(e)).slice(0, 300);
+}
 
 // ─── TOKEN (client-credentials) ──────────────────────────
 function getToken(tenantId, clientId, clientSecret) {
