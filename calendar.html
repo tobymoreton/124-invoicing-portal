@@ -194,6 +194,20 @@
           <input id="f-end" type="time"/>
         </div>
       </div>
+      <div class="row2" id="repeat-row">
+        <div class="fld">
+          <label for="f-repeat">Repeats</label>
+          <select id="f-repeat" onchange="toggleRepeat()">
+            <option value="none">Does not repeat</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+        <div class="fld" id="repeat-until-fld" style="display:none;">
+          <label for="f-repeatuntil">Repeat until</label>
+          <input id="f-repeatuntil" type="date"/>
+        </div>
+      </div>
+      <div id="series-note" style="display:none;font-size:12px;color:var(--amber);background:var(--amber-bg);border:1px solid #F0DCA8;border-radius:5px;padding:8px 10px;"></div>
       <div class="fld">
         <label for="f-location">Location <span style="text-transform:none;font-weight:400;">(optional)</span></label>
         <input id="f-location" type="text" maxlength="255" placeholder="e.g. SCCO, Thomas More Building"/>
@@ -411,6 +425,11 @@ function openAdd() {
   document.getElementById('f-start').value    = '';
   document.getElementById('f-end').value      = '';
   document.getElementById('f-category').value = 'Holiday';
+  document.getElementById('f-repeat').value = 'none';
+  document.getElementById('f-repeatuntil').value = '';
+  document.getElementById('repeat-row').style.display = 'grid';
+  document.getElementById('series-note').style.display = 'none';
+  toggleRepeat();
   resetForm();
   // Default to the signed-in user where they are on the roster; otherwise Firm-wide.
   var whoSel = document.getElementById('f-who');
@@ -469,6 +488,24 @@ function openEdit(id) {
   document.getElementById('f-start').value = (!e.isAllDay && s)  ? hhmm(s)  : '';
   document.getElementById('f-end').value   = (!e.isAllDay && en) ? hhmm(en) : '';
 
+  // A series occurrence cannot have its PATTERN changed from here — that lives on the
+  // master. Editing this occurrence is fine and creates an exception; the note says so
+  // rather than letting someone assume they have changed every Friday.
+  var isSeries = (e.type === 'occurrence' || e.type === 'exception') && e.seriesId;
+  document.getElementById('f-repeat').value = 'none';
+  document.getElementById('f-repeatuntil').value = '';
+  document.getElementById('repeat-row').style.display = isSeries ? 'none' : 'grid';
+  toggleRepeat();
+  var note = document.getElementById('series-note');
+  if (isSeries) {
+    note.textContent = 'This is one occurrence of a repeating entry. Saving changes only '
+                     + 'this occurrence. Delete removes the WHOLE series \u2014 deleting a single '
+                     + 'occurrence is not supported yet.';
+    note.style.display = 'block';
+  } else {
+    note.style.display = 'none';
+  }
+
   resetForm();
   document.getElementById('delete-btn').style.display = 'inline-block';
   if (e.webLink) {
@@ -484,9 +521,19 @@ function openEdit(id) {
 async function deleteEntry() {
   if (!_editId) return;
   var e = _byId[_editId];
-  if (!window.confirm('Delete \u201c' + ((e && e.subject) || 'this entry') + '\u201d?\n\n'
-                    + 'It goes to Deleted Items in the calendar mailbox, so it can be '
-                    + 'recovered from Outlook if this is a mistake.')) return;
+  var isSeries = e && (e.type === 'occurrence' || e.type === 'exception') && e.seriesId;
+  // Deleting an occurrence id is NOT a supported Graph operation and would fail with an
+  // unhelpful error. The series master is deleted instead, and the confirm says exactly
+  // that — no quiet surprises on a shared calendar.
+  var target = isSeries ? e.seriesId : _editId;
+  var prompt = isSeries
+    ? 'Delete the WHOLE repeating series \u201c' + ((e && e.subject) || 'this entry') + '\u201d?\n\n'
+      + 'Every occurrence goes, not just this one. It lands in Deleted Items in the '
+      + 'calendar mailbox and can be recovered from Outlook.'
+    : 'Delete \u201c' + ((e && e.subject) || 'this entry') + '\u201d?\n\n'
+      + 'It goes to Deleted Items in the calendar mailbox, so it can be recovered from '
+      + 'Outlook if this is a mistake.';
+  if (!window.confirm(prompt)) return;
 
   var msg = document.getElementById('form-msg');
   var btn = document.getElementById('delete-btn');
@@ -494,7 +541,7 @@ async function deleteEntry() {
   msg.className = 'form-msg';
   msg.textContent = 'Deleting\u2026';
   try {
-    var resp = await fetch('/api/calendar?id=' + encodeURIComponent(_editId), { method: 'DELETE' });
+    var resp = await fetch('/api/calendar?id=' + encodeURIComponent(target), { method: 'DELETE' });
     var data = await resp.json();
     if (!resp.ok) {
       msg.className = 'form-msg err';
@@ -516,6 +563,15 @@ function toggleTimes() {
   var allDay = document.getElementById('f-allday').checked;
   document.getElementById('time-row').style.display = allDay ? 'none' : 'grid';
 }
+function toggleRepeat() {
+  var weekly = document.getElementById('f-repeat').value === 'weekly';
+  document.getElementById('repeat-until-fld').style.display = weekly ? 'grid' : 'none';
+  // A repeating entry is one day per occurrence — the API rejects anything else, so the
+  // To box is pinned rather than letting someone build a request that must fail.
+  var to = document.getElementById('f-enddate');
+  if (weekly) { to.value = document.getElementById('f-date').value; to.disabled = true; }
+  else { to.disabled = false; }
+}
 
 async function saveEvent() {
   var msg  = document.getElementById('form-msg');
@@ -532,6 +588,14 @@ async function saveEvent() {
     notes:    document.getElementById('f-notes').value.trim(),
     category: document.getElementById('f-category').value,
   };
+  // Recurrence is create-only: changing a pattern from an occurrence is not offered.
+  if (!_editId) {
+    payload.repeat = document.getElementById('f-repeat').value;
+    if (payload.repeat === 'weekly') {
+      payload.repeatUntil = document.getElementById('f-repeatuntil').value;
+      payload.endDate = payload.date;
+    }
+  }
   if (!allDay) {
     payload.startTime = document.getElementById('f-start').value;
     payload.endTime   = document.getElementById('f-end').value;
@@ -541,6 +605,9 @@ async function saveEvent() {
   if (!payload.date)    { msg.className = 'form-msg err'; msg.textContent = 'Pick a date.';     return; }
   if (!allDay && !payload.startTime) {
     msg.className = 'form-msg err'; msg.textContent = 'Add a start time, or tick All day.'; return;
+  }
+  if (payload.repeat === 'weekly' && !payload.repeatUntil) {
+    msg.className = 'form-msg err'; msg.textContent = 'Give the repeat an end date.'; return;
   }
 
   btn.disabled = true;
@@ -582,6 +649,7 @@ document.getElementById('add-backdrop').addEventListener('click', function (e) {
 // Keep the To date sensible when From moves.
 document.getElementById('f-date').addEventListener('change', function () {
   var to = document.getElementById('f-enddate');
+  if (to.disabled) { to.value = this.value; return; }   // pinned while repeating
   if (!to.value || to.value < this.value) to.value = this.value;
 });
 
