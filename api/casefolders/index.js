@@ -41,6 +41,20 @@ const SITES = [
 
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
+// ── S82: THE TWO-LIBRARY SHORTLIST ──────────────────────────────────────────
+// Across every probe on 2026-07-18, only these two libraries EVER returned a
+// hit; the other 33 returned raw=0 every single time. Searching all 35 is what
+// made this endpoint unusable: v3 sequential 15.9-17.2 s; v4 Promise.all = Graph
+// 429 'activityLimitReached' on 31 of 35 and ZERO results; v5 pool-of-4 + retry
+// = correct but 43.2 s. Pooling did not avoid the throttle, it converted
+// throttling into waiting. Two calls cannot be throttled.
+//
+// Matched by NAME (case-insensitive, trimmed). If NEITHER name is found — e.g.
+// a library is renamed — we fall back to the full sweep, so a rename degrades to
+// SLOW, never to BROKEN. `?deep=1` forces the full sweep on demand, so nothing
+// is ever permanently unreachable.
+const SHORTLIST = ['working drafts (current)', 'email attachments'];
+
 function getCallerEmail(req) {
   try {
     const header = req.headers && req.headers['x-ms-client-principal'];
@@ -76,6 +90,8 @@ module.exports = async function (context, req) {
   }
 
   const debug = String((req.query && req.query.debug) || '') === '1';
+  // ?deep=1 forces the full sweep of every library (slow — see SHORTLIST above).
+  const deep  = String((req.query && req.query.deep)  || '') === '1';
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
@@ -90,32 +106,39 @@ module.exports = async function (context, req) {
     const dbg      = [];
     const seen     = {};   // dedupe by driveItem id
 
+    // 1. Enumerate every document library on both sites (two cheap calls).
+    const allDrives = [];
     for (const site of SITES) {
-      let drives = [];
       try {
-        // EVERY document library on the site, not just the default one.
         const dl = await graphGet(
           'https://graph.microsoft.com/v1.0/sites/' + site.path + '/drives?$select=id,name', token);
-        drives = (dl && dl.value) || [];
+        ((dl && dl.value) || []).forEach(d => allDrives.push({ site: site.key, drive: d }));
       } catch (e) {
         dbg.push({ site: site.key, library: '(drive list)', error: errText(e) });
-        continue;
       }
+    }
 
-      // S81 v5: BOUNDED concurrency + one 429 retry.
-      //   v3 sequential  = 15.9-17.2 s (too slow).
-      //   v4 Promise.all over all 35 libraries = Graph 429 'activityLimitReached' on
-      //      EVERY drive, 0 results in 9.0 s. Full parallelism is throttled outright.
-      // A pool of CONCURRENCY at a time, with a single retry after Retry-After on a
-      // 429, is the middle ground. Measured 2026-07-18.
-      const CONCURRENCY = 4;
-      const queue = drives.slice();
+    // 2. Pick the targets. Shortlist unless ?deep=1, or unless neither name exists.
+    const shortlisted = allDrives.filter(
+      x => SHORTLIST.indexOf(String(x.drive.name || '').trim().toLowerCase()) !== -1);
+
+    let mode, targets;
+    if (deep)                    { mode = 'deep';          targets = allDrives; }
+    else if (shortlisted.length) { mode = 'shortlist';     targets = shortlisted; }
+    else                         { mode = 'fallback-full'; targets = allDrives; }
+
+    {
+      // Bounded concurrency + one 429 retry. In shortlist mode the pool is the
+      // whole (tiny) target list, so both searches go out together.
+      const CONCURRENCY = mode === 'shortlist' ? Math.max(1, targets.length) : 4;
+      const queue = targets.slice();
 
       const worker = async () => {
         while (queue.length) {
-          const drv = queue.shift();
-          if (!drv) break;
-          const row = { site: site.key, library: drv.name || drv.id, raw: 0, kept: 0, retried: false, error: null };
+          const t = queue.shift();
+          if (!t) break;
+          const drv = t.drive;
+          const row = { site: t.site, library: drv.name || drv.id, raw: 0, kept: 0, retried: false, error: null };
           try {
             const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
             // No $select — naming fields in a $select on search() results has proved
@@ -143,7 +166,7 @@ module.exports = async function (context, req) {
               items.push({
                 name:     name,
                 isFolder: !!it.folder,
-                site:     site.key,
+                site:     t.site,
                 library:  drv.name || null,
                 path:     (it.parentReference && it.parentReference.path) || null,
                 webUrl:   it.webUrl || null,
@@ -160,7 +183,7 @@ module.exports = async function (context, req) {
       };
 
       const workers = [];
-      for (let i = 0; i < Math.min(CONCURRENCY, drives.length); i++) workers.push(worker());
+      for (let i = 0; i < Math.min(CONCURRENCY, targets.length); i++) workers.push(worker());
       await Promise.all(workers);
     }
 
@@ -173,7 +196,14 @@ module.exports = async function (context, req) {
       return db - da;
     });
 
-    const payload = { ref: ref, count: items.length, items: items };
+    const payload = {
+      ref:       ref,
+      count:     items.length,
+      mode:      mode,                 // shortlist | deep | fallback-full
+      searched:  targets.length,       // libraries actually searched
+      available: allDrives.length,     // libraries that exist
+      items:     items,
+    };
     if (debug) payload.drives = dbg;
 
     context.res = {
@@ -185,7 +215,8 @@ module.exports = async function (context, req) {
         // against a build that had not deployed yet, and one produced a wrong
         // conclusion. Any response can now be attributed to a specific build in
         // one call. BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S81-v5-pooled4-retry429',
+        'X-Api-Build': 'S82-v6-shortlist2',
+        'X-Casefolders-Mode': mode,
       },
       body: JSON.stringify(payload),
     };
