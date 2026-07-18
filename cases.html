@@ -1115,7 +1115,17 @@ function renderStagePanel(){
     stageCounts[s]=(stageCounts[s]||0)+1;
     stageCosts[s]=(stageCosts[s]||0)+computeTotalCosts(c.fields);
   });
-  const sorted=Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]);
+  // S81: "Assigned - Stage Pending" is pinned to the top of the panel regardless of
+  // count. These are cases that have been allocated to someone but never had a real
+  // stage set, so they are the ones most likely to be sitting untouched -- burying them
+  // by count is exactly backwards. Exact string verified against live SP 2026-07-18.
+  // Everything else stays sorted by count desc, as before.
+  const PIN_STAGE='Assigned - Stage Pending';
+  const sorted=Object.entries(stageCounts).sort((a,b)=>{
+    if(a[0]===PIN_STAGE&&b[0]!==PIN_STAGE) return -1;
+    if(b[0]===PIN_STAGE&&a[0]!==PIN_STAGE) return 1;
+    return b[1]-a[1];
+  });
   const maxCount=Math.max(...sorted.map(([,n])=>n),1);
   document.getElementById('stage-panel-count').textContent=(sorted.length+1)+' stages';
   const el=document.getElementById('stage-list');
