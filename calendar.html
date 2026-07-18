@@ -146,15 +146,32 @@
         <label for="f-subject">Title</label>
         <input id="f-subject" type="text" maxlength="255" placeholder="e.g. Office closed &mdash; August bank holiday"/>
       </div>
-      <div class="fld">
-        <label for="f-category">Type</label>
-        <select id="f-category">
-          <option value="Holiday">Holiday</option>
-          <option value="Court hearing">Court hearing</option>
-          <option value="Office closed">Office closed</option>
-          <option value="Training">Training</option>
-          <option value="Other">Other</option>
-        </select>
+      <div class="row2">
+        <div class="fld">
+          <label for="f-who">Who it's for</label>
+          <select id="f-who">
+            <option value="">Firm-wide</option>
+            <option value="toby">Toby</option>
+            <option value="danielle">Danielle</option>
+            <option value="lesley">Lesley</option>
+            <option value="joanna">Joanna</option>
+            <option value="tracy">Tracy</option>
+            <option value="kelly">Kelly</option>
+            <option value="tom">Tom</option>
+            <option value="julie">Julie</option>
+            <option value="daniel">Daniel</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="f-category">Type</label>
+          <select id="f-category">
+            <option value="Holiday">Holiday</option>
+            <option value="Court hearing">Court hearing</option>
+            <option value="Office closed">Office closed</option>
+            <option value="Training">Training</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -219,6 +236,21 @@
 
 var viewY, viewM;          // month currently shown (M is 0-based)
 var _events = [];
+var _me = '';              // signed-in user's first name, lower-case, if on the roster
+
+// Who the entry defaults to. An admin adding leave for a draftsman just changes the
+// dropdown — no permission gate, because the creator is recorded on every entry
+// regardless, and a shared calendar people cannot correct is a shared calendar people
+// stop trusting.
+async function whoAmI() {
+  try {
+    var resp = await fetch('/.auth/me');
+    var data = await resp.json();
+    var user = data && (data.clientPrincipal || (Array.isArray(data) ? (data[0] || {}).clientPrincipal : null));
+    var email = user && user.userDetails ? String(user.userDetails).toLowerCase() : '';
+    _me = email.indexOf('@') > -1 ? email.split('@')[0] : '';
+  } catch (e) { _me = ''; }   // not fatal — the field just defaults to Firm-wide
+}
 
 // '2026-07-18T19:00:00.0000000' → {ymd:'2026-07-18', hh:19, mi:0}. No Date().
 function parseGraph(s) {
@@ -362,6 +394,12 @@ function openAdd() {
   document.getElementById('f-start').value    = '';
   document.getElementById('f-end').value      = '';
   document.getElementById('form-msg').textContent = '';
+  // Default to the signed-in user where they are on the roster; otherwise Firm-wide.
+  var whoSel = document.getElementById('f-who');
+  whoSel.value = '';
+  for (var i = 0; i < whoSel.options.length; i++) {
+    if (whoSel.options[i].value === _me) { whoSel.value = _me; break; }
+  }
   toggleTimes();
   document.getElementById('add-backdrop').classList.add('open');
   document.getElementById('f-subject').focus();
@@ -382,6 +420,7 @@ async function saveEvent() {
     date:     document.getElementById('f-date').value,
     endDate:  document.getElementById('f-enddate').value || document.getElementById('f-date').value,
     allDay:   allDay,
+    who:      document.getElementById('f-who').value,
     location: document.getElementById('f-location').value.trim(),
     notes:    document.getElementById('f-notes').value.trim(),
     category: document.getElementById('f-category').value,
@@ -438,6 +477,7 @@ document.getElementById('f-date').addEventListener('change', function () {
   if (!to.value || to.value < this.value) to.value = this.value;
 });
 
+whoAmI();
 goToday();
 </script>
 </body>
