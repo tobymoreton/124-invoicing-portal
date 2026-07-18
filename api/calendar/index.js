@@ -39,6 +39,12 @@
  *   start/end optional — defaults to the current month padded by one week each way
  *   so a month grid's leading and trailing days are populated.
  * Returns: { mailbox, start, end, count, events: [...] }
+ *
+ * POST /api/calendar        create an event (S82 write path)
+ *   { subject, date, endDate?, startTime?, endTime?, allDay?, location?, notes?, category? }
+ *   Everyone at TMC may create. The creator's email is written into the body so the
+ *   entry has an author — app-only writes appear in Outlook as the mailbox itself, so
+ *   without this there is NO record of who added it (the S73 identity-trail lesson).
  */
 
 const https   = require('https');
@@ -47,6 +53,8 @@ const { URL } = require('url');
 const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.uk';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
+// BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
+const BUILD          = 'S82-cal-v2-write';
 
 function getCallerEmail(req) {
   try {
@@ -65,7 +73,7 @@ function getCallerEmail(req) {
 
 // Everyone at TMC can READ the shared calendar — that is the point of it.
 module.exports = async function (context, req) {
-  context.log('P124 /api/calendar called');
+  context.log('P124 /api/calendar called, method=' + req.method);
 
   const callerEmail = getCallerEmail(req);
   if (!callerEmail || callerEmail.indexOf(ALLOWED_DOMAIN) === -1) {
@@ -76,6 +84,11 @@ module.exports = async function (context, req) {
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
+    return;
+  }
+
+  if ((req.method || 'GET').toUpperCase() === 'POST') {
+    await createEvent(context, req, callerEmail, TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     return;
   }
 
@@ -123,7 +136,7 @@ module.exports = async function (context, req) {
         'Content-Type':  'application/json',
         'Cache-Control': 'no-cache',
         // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-        'X-Api-Build':   'S82-cal-v1-read',
+        'X-Api-Build':   BUILD,
         'X-Calendar-Mailbox': CAL_MAILBOX,
       },
       body: JSON.stringify({
@@ -145,7 +158,7 @@ module.exports = async function (context, req) {
                  : 500;
     context.res = {
       status: status,
-      headers: { 'Content-Type': 'application/json', 'X-Api-Build': 'S82-cal-v1-read' },
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
       body: JSON.stringify({
         error:   msg.slice(0, 400),
         mailbox: CAL_MAILBOX,
@@ -161,6 +174,106 @@ module.exports = async function (context, req) {
     };
   }
 };
+
+// ─── CREATE (POST) ───────────────────────────────────────
+// Deliberately create-only for now. Update and delete land once creation is proven
+// against live data — the S80 lesson: do not ship three verbs and debug all three.
+async function createEvent(context, req, callerEmail, tenantId, clientId, clientSecret) {
+  const b = req.body || {};
+  const fail = (status, error, hint) => {
+    context.res = {
+      status: status,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({ error: error, hint: hint || null }),
+    };
+  };
+
+  const subject = String(b.subject || '').trim();
+  const date    = String(b.date || '').trim();
+  if (!subject)                      return fail(400, 'subject is required');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'date is required as YYYY-MM-DD');
+
+  const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(b.endDate || '')) ? String(b.endDate) : date;
+  if (endDate < date) return fail(400, 'endDate is before date');
+
+  const allDay = b.allDay !== false && !b.startTime;   // default TRUE unless a time is given
+  let start, end;
+
+  if (allDay) {
+    // Graph all-day events are half-open: end is the day AFTER the last day, at 00:00.
+    // Getting this wrong is the classic off-by-one that makes a one-day holiday vanish.
+    const dayAfter = new Date(endDate + 'T00:00:00Z');
+    dayAfter.setUTCDate(dayAfter.getUTCDate() + 1);
+    start = { dateTime: date + 'T00:00:00',                          timeZone: TZ };
+    end   = { dateTime: dayAfter.toISOString().slice(0, 10) + 'T00:00:00', timeZone: TZ };
+  } else {
+    const st = /^\d{2}:\d{2}$/.test(String(b.startTime || '')) ? String(b.startTime) : null;
+    const et = /^\d{2}:\d{2}$/.test(String(b.endTime   || '')) ? String(b.endTime)   : null;
+    if (!st) return fail(400, 'startTime is required as HH:MM when the entry is not all-day');
+    const endT = et || addMinutes(st, 60);
+    if (endDate === date && endT <= st) return fail(400, 'endTime is not after startTime');
+    start = { dateTime: date    + 'T' + st   + ':00', timeZone: TZ };
+    end   = { dateTime: endDate + 'T' + endT + ':00', timeZone: TZ };
+  }
+
+  // App-only writes surface in Outlook as the mailbox itself — "automation" — so the
+  // author is recorded in the body. Without it nobody can tell who booked the hearing.
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const notes = String(b.notes || '').trim();
+  const body  = (notes ? notes + '\n\n' : '')
+              + '\u2014\nAdded via the TMC portal by ' + callerEmail + ' on ' + stamp + ' UTC.';
+
+  const payload = {
+    subject:   subject.slice(0, 255),
+    isAllDay:  allDay,
+    start:     start,
+    end:       end,
+    body:      { contentType: 'text', content: body },
+    showAs:    allDay ? 'free' : 'busy',
+  };
+  if (b.location) payload.location   = { displayName: String(b.location).slice(0, 255) };
+  if (b.category) payload.categories = [String(b.category).slice(0, 64)];
+
+  try {
+    const token = await getToken(tenantId, clientId, clientSecret);
+    const url   = 'https://graph.microsoft.com/v1.0/users/'
+                + encodeURIComponent(CAL_MAILBOX) + '/events';
+    const made  = await graphPost(url, token, payload);
+
+    context.log('Calendar event created by ' + callerEmail + ': ' + subject);
+    context.res = {
+      status: 201,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({
+        ok: true,
+        id: made && made.id,
+        subject: made && made.subject,
+        start: made && made.start,
+        end: made && made.end,
+        isAllDay: !!(made && made.isAllDay),
+        webLink: made && made.webLink,
+        createdBy: callerEmail,
+      }),
+    };
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    context.log.error('Calendar create failed:', msg);
+    const status = /Graph 403/.test(msg) ? 403 : /Graph 404/.test(msg) ? 404 : 500;
+    fail(status, msg.slice(0, 400),
+      status === 403
+        ? 'RBAC assignment missing or still cached (30 min – 2 hrs). Calendars.ReadWrite must '
+          + 'be granted via Exchange RBAC only — never consented in Entra.'
+        : status === 404
+        ? 'Mailbox not found — confirm ' + CAL_MAILBOX + ' is a mailbox, not an alias.'
+        : 'Unexpected error — see message.');
+  }
+}
+
+function addMinutes(hhmm, mins) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const t = ((h * 60 + m + mins) % 1440 + 1440) % 1440;
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+}
 
 // Default window: the current month, padded a week each side so a month grid's
 // leading/trailing days are not silently empty.
@@ -212,6 +325,42 @@ function getToken(tenantId, clientId, clientSecret) {
     });
     req.on('error', reject);
     req.write(body);
+    req.end();
+  });
+}
+
+// ─── GRAPH POST ────────────────────────────────────────
+function graphPost(url, token, payload) {
+  return new Promise(function (resolve, reject) {
+    const u    = new URL(url);
+    const data = JSON.stringify(payload);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'POST',
+      headers: {
+        Authorization:   'Bearer ' + token,
+        Accept:          'application/json',
+        'Content-Type':  'application/json',
+        'Content-Length': Buffer.byteLength(data),
+        Prefer:          'outlook.timezone="' + TZ + '"',
+      },
+    };
+
+    const req = https.request(options, function (res) {
+      let out = '';
+      res.on('data', chunk => { out += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph ' + res.statusCode + ': ' + out.slice(0, 300)));
+          return;
+        }
+        try { resolve(JSON.parse(out)); }
+        catch (e) { reject(new Error('JSON parse error: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.write(data);
     req.end();
   });
 }
