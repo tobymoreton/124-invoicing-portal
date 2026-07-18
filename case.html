@@ -730,6 +730,7 @@
     <button class="tab-btn" data-tab="caseactions">Case Actions</button>
     <button class="tab-btn" data-tab="emails">Emails</button>
     <button class="tab-btn" data-tab="attachments">Attachments</button>
+    <button class="tab-btn" data-tab="emailatt">Email Attachments</button>
     <button class="tab-btn" data-tab="expenses">Expenses</button>
   </div>
   <div class="tab-bar tab-bar-secondary">
@@ -1687,6 +1688,27 @@
         <div id="att-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No attachments for this case.</div>
       </div>
     </div>
+    <div class="tab-panel" id="tab-emailatt">
+      <div class="quick-action-bar">
+        <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
+        <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
+      </div>
+      <div class="card">
+        <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span class="card-title">📧 Email Attachments</span>
+          <span id="ea-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+        </div>
+        <div style="margin:0 0 12px;padding:10px 12px;background:rgba(181,154,106,.06);border:1px solid rgba(181,154,106,.25);border-radius:8px;font-size:12px;color:var(--grey-mid);line-height:1.5;">
+          Files that arrived <strong>as attachments on emails</strong>, saved automatically to the SharePoint
+          <em>Email Attachments</em> library. <strong>This is not a complete record.</strong> Capture depends on the
+          email reaching the automation, and a file whose case reference could not be read is stored without the
+          reference and cannot be found here. Treat it as a trail, not an inventory.
+          <br>Files <strong>you</strong> upload live on the <a href="#" onclick="return false;" data-goto-tab="attachments">Attachments</a> tab.
+        </div>
+        <div id="ea-body"></div>
+      </div>
+    </div>
+
     <div class="tab-panel" id="tab-invoicing">
       <div class="quick-action-bar">
         <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
@@ -2643,10 +2665,13 @@ async function loadCaseFiles() {
   if (!ref) { el.style.display = 'none'; return; }
   el.style.display = '';
   el.innerHTML = '<div class="cf-loading">Searching SharePoint for ' + escHtml(ref) + '\u2026</div>';
+  const _eab = document.getElementById('ea-body');
+  if (_eab) _eab.innerHTML = '<div class="cf-loading">Searching SharePoint\u2026</div>';
   try {
     const r = await fetch('/api/casefolders?ref=' + encodeURIComponent(ref));
     if (!r.ok) {
       el.innerHTML = '<div class="cf-err">Couldn\u2019t load case files \u2014 HTTP ' + r.status + '</div>';
+      eaFail('Couldn\u2019t load email attachments \u2014 HTTP ' + r.status);
       return;
     }
     const j = await r.json();
@@ -2656,6 +2681,7 @@ async function loadCaseFiles() {
   } catch (e) {
     el.innerHTML = '<div class="cf-err">Couldn\u2019t load case files \u2014 '
                  + escHtml((e && e.message) || 'network error') + '</div>';
+    eaFail('Couldn\u2019t load email attachments \u2014 ' + ((e && e.message) || 'network error'));
   }
 }
 
@@ -2675,6 +2701,7 @@ function renderCaseFiles() {
   if (!total) {
     el.innerHTML = '<div class="cf-head"><span class="cf-title">Case files in SharePoint</span></div>'
                  + '<div class="cf-empty">Nothing found carrying this reference.</div>';
+    renderEmailAtt();
     return;
   }
   const shown = _cfShowAll ? _cfItems : _cfItems.slice(0, CF_SHOW);
@@ -2713,6 +2740,77 @@ function renderCaseFiles() {
   });
 
   el.innerHTML = html;
+  renderEmailAtt();
+}
+
+// ---- Email Attachments tab (S82) -------------------------------------------
+// A FILTERED VIEW of the SAME /api/casefolders response the strip already loaded
+// (library === 'Email Attachments'). NO second endpoint and no second Graph call —
+// building one would double the traffic for nothing.
+// Written to by Make scenarios M034 (sent mail) and M034.1 (incoming mail), both
+// uploadAFile → the 'Email Attachments' document library, filename
+//   YYYYMMDD-HHmmss - <case ref> - <original filename>
+// (EXTRACTED from both blueprints, 2026-07-18). Capture is PARTIAL: mail-hook
+// dependent, ~115 all-time dead-lettered runs, and a failed ref-parse leaves the
+// file present in SharePoint but without the ref in its name — so invisible to a
+// name-contains-ref search. Hence the standing caveat in the panel markup.
+const EA_LIB = 'email attachments';
+
+function eaParse(name) {
+  const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\s*-\s*(?:\S+\s*-\s*)?([\s\S]*)$/.exec(name || '');
+  if (!m) return { when: null, label: name || '' };
+  return {
+    when:  new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]),
+    label: (m[7] || '').trim() || name
+  };
+}
+
+function eaFail(msg) {
+  const b = document.getElementById('ea-body');
+  if (b) b.innerHTML = '<div class="cf-err">' + escHtml(msg) + '</div>';
+  const s = document.getElementById('ea-summary');
+  if (s) s.textContent = '';
+}
+
+function renderEmailAtt() {
+  const b = document.getElementById('ea-body');
+  if (!b) return;
+  const rows = (_cfItems || [])
+    .filter(it => !it.isFolder && String(it.library || '').trim().toLowerCase() === EA_LIB)
+    .map(it => { const p = eaParse(it.name); return { it: it, when: p.when, label: p.label }; })
+    .sort((a, c) => {
+      const ta = a.when ? a.when.getTime() : (a.it.modified ? new Date(a.it.modified).getTime() : -Infinity);
+      const tc = c.when ? c.when.getTime() : (c.it.modified ? new Date(c.it.modified).getTime() : -Infinity);
+      return tc - ta;
+    });
+
+  const sum = document.getElementById('ea-summary');
+  if (sum) sum.textContent = rows.length ? rows.length + ' file' + (rows.length !== 1 ? 's' : '') + ' captured' : '';
+
+  if (!rows.length) {
+    b.innerHTML = '<div class="cf-empty">No email attachments captured against this reference. '
+                + 'That does not mean none were sent \u2014 see the note above.</div>';
+    return;
+  }
+
+  let html = '<table class="ca-table"><thead><tr>'
+           + '<th style="width:150px;">Received</th><th>File</th><th style="width:90px;">Size</th>'
+           + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const when = r.when
+      ? r.when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        + ' ' + String(r.when.getHours()).padStart(2, '0') + ':' + String(r.when.getMinutes()).padStart(2, '0')
+      : (fmtDate(r.it.modified) || '\u2014');
+    html += '<tr>'
+      + '<td style="white-space:nowrap;">' + escHtml(when) + '</td>'
+      + '<td>' + (r.it.webUrl
+          ? '<a href="' + escHtml(r.it.webUrl) + '" target="_blank" rel="noopener">' + escHtml(r.label) + '</a>'
+          : escHtml(r.label)) + '</td>'
+      + '<td style="white-space:nowrap;">' + escHtml(cfSize(r.it.size)) + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  b.innerHTML = html;
 }
 
 function renderDocumentBar() {
