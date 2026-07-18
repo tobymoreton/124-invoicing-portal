@@ -2672,10 +2672,30 @@ const CF_SHOW   = 3;
 // Shown only when a case has MORE THAN ONE folder — the case where the name alone
 // cannot tell them apart (two 'Forster-1736735' folders under different parents is
 // a real occurrence, not a display fault).
+// PROVEN on ref 1736735, 2026-07-18: Graph `search()` returns parentReference WITHOUT
+// a path — `path` is null on every hit. The location therefore has to come from
+// webUrl, which IS populated (the links work). No extra Graph call.
+//   https://tmcostings.sharepoint.com/sites/TMCLegalLimited/Working%20Drafts/1.Open%20Cases/2.Post%20Service/Forster-1736735
+//   → Working Drafts / 1.Open Cases / 2.Post Service
 function cfPath(p) {
   let s = String(p || '').replace(/^\/drives\/[^/]+\/root:?/, '');
   try { s = decodeURIComponent(s); } catch (e) { /* leave as-is */ }
   return s;
+}
+
+function cfLoc(it) {
+  if (it && it.path) {
+    const viaPath = cfPath(it.path);
+    if (viaPath) return viaPath.replace(/^\//, '').split('/').join(' / ');
+  }
+  const u = String((it && it.webUrl) || '');
+  if (!u) return '';
+  let p;
+  try { p = decodeURIComponent(new URL(u).pathname); } catch (e) { return ''; }
+  p = p.replace(/^\/sites\/[^/]+\//, '');   // drop /sites/TMCLegalLimited/
+  const parts = p.split('/').filter(Boolean);
+  if (parts.length) parts.pop();            // drop the item's own name
+  return parts.join(' / ');
 }
 
 async function loadCaseFiles() {
@@ -2785,10 +2805,11 @@ function renderCaseFiles() {
       const meta = [fmtDate(it.modified), cfSize(it.size)].filter(Boolean).join(' \u00b7 ');
       // min-width:0 + ellipsis — a nowrap child with no min-width blows out a flex
       // row (the S76 grid-track lesson, same mechanism).
-      const loc  = (it.isFolder && multiFolder && it.path)
-        ? '<span style="flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;'
-          + 'white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
-          + escHtml(cfPath(it.path)) + '</span>'
+      const loc0 = (it.isFolder && multiFolder) ? cfLoc(it) : '';
+      const loc  = loc0
+        ? '<span title="' + escHtml(loc0) + '" style="flex:0 1 auto;min-width:0;overflow:hidden;'
+          + 'text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
+          + escHtml(loc0) + '</span>'
         : '';
       html += '<div class="cf-row' + (it.isFolder ? ' cf-dir' : '') + '">'
         + '<span>' + icon + '</span>'
