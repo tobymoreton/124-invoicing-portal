@@ -108,6 +108,11 @@ module.exports = async function (context, req) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
+        // S81: build marker — lets a live measurement be attributed to a specific
+        // build. Added because S81's "$orderby removal changed nothing" conclusion
+        // could NOT be trusted: there was no way to tell the new build from the old.
+        // BUMP THIS ON EVERY CHANGE TO THIS FILE.
+        'X-Api-Build': 'S81-no-orderby',
       },
       body: JSON.stringify(items),
     };
@@ -169,8 +174,10 @@ async function fetchAllWIP(token) {
 
   // $expand=fields with no $select — booleans drop silently when named in $select on this tenant.
   // Server-side $filter on Billed_x003f_ still works (it’s an indexed field query, not a response field).
+  // S81: $orderby REMOVED — fetchAllWIP() re-sorts by DateCompleted desc in JS below, so the
+  // SharePoint sort was pure duplicated work on a 3,562-row query. Output is unchanged.
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields&$filter=${filter}&$top=999&$orderby=fields/field_12 desc`;
+               `?$expand=fields&$filter=${filter}&$top=999`;
 
   let url = base;
   let all = [];
