@@ -2755,6 +2755,17 @@ function renderCaseFiles() {
 // file present in SharePoint but without the ref in its name — so invisible to a
 // name-contains-ref search. Hence the standing caveat in the panel markup.
 const EA_LIB = 'email attachments';
+let _eaShowSig = false;
+let _eaShowDup = false;
+
+// Inline signature images (image001.gif and friends) are captured as real
+// attachments by Outlook. They are noise on every case — hidden by default,
+// never discarded.
+function eaIsSig(label) {
+  return /^image\d+\.(gif|png|jpe?g|bmp)$/i.test(String(label || '').trim());
+}
+function eaToggleSig() { _eaShowSig = !_eaShowSig; renderEmailAtt(); }
+function eaToggleDup() { _eaShowDup = !_eaShowDup; renderEmailAtt(); }
 
 function eaParse(name) {
   const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\s*-\s*(?:\S+\s*-\s*)?([\s\S]*)$/.exec(name || '');
@@ -2785,7 +2796,33 @@ function renderEmailAtt() {
     });
 
   const sum = document.getElementById('ea-summary');
-  if (sum) sum.textContent = rows.length ? rows.length + ' file' + (rows.length !== 1 ? 's' : '') + ' captured' : '';
+
+  // The timestamp prefix carries SECONDS, so two captures of the same file
+  // seconds apart are DIFFERENT files in SharePoint with different names. The
+  // stripped label makes them look identical, which is why the tab appeared to
+  // duplicate. Nothing is hidden: exact repeats (same original name AND same
+  // byte size) collapse to one row carrying a ×N badge, expandable.
+  const sig  = rows.filter(r =>  eaIsSig(r.label));
+  const main = rows.filter(r => !eaIsSig(r.label));
+  const list = _eaShowSig ? rows.slice() : main;
+
+  const groups = [];
+  const byKey  = {};
+  list.forEach(r => {
+    const k = String(r.label).trim().toLowerCase() + '|' + (r.it.size || 0);
+    if (byKey[k]) { byKey[k].dupes.push(r); return; }   // list is already newest-first
+    byKey[k] = { head: r, dupes: [] };
+    groups.push(byKey[k]);
+  });
+  const collapsed = list.length - groups.length;
+
+  if (sum) {
+    const bits = [];
+    if (rows.length) bits.push(rows.length + ' file' + (rows.length !== 1 ? 's' : '') + ' captured');
+    if (collapsed)   bits.push(collapsed + ' repeat' + (collapsed !== 1 ? 's' : '') + ' collapsed');
+    if (sig.length && !_eaShowSig) bits.push(sig.length + ' signature image' + (sig.length !== 1 ? 's' : '') + ' hidden');
+    sum.textContent = bits.join('  \u00b7  ');
+  }
 
   if (!rows.length) {
     b.innerHTML = '<div class="cf-empty">No email attachments captured against this reference. '
@@ -2794,22 +2831,48 @@ function renderEmailAtt() {
   }
 
   let html = '<table class="ca-table"><thead><tr>'
-           + '<th style="width:150px;">Received</th><th>File</th><th style="width:90px;">Size</th>'
+           + '<th style="width:170px;">Received</th><th>File</th><th style="width:90px;">Size</th>'
            + '</tr></thead><tbody>';
-  rows.forEach(r => {
-    const when = r.when
-      ? r.when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-        + ' ' + String(r.when.getHours()).padStart(2, '0') + ':' + String(r.when.getMinutes()).padStart(2, '0')
-      : (fmtDate(r.it.modified) || '\u2014');
-    html += '<tr>'
-      + '<td style="white-space:nowrap;">' + escHtml(when) + '</td>'
-      + '<td>' + (r.it.webUrl
-          ? '<a href="' + escHtml(r.it.webUrl) + '" target="_blank" rel="noopener">' + escHtml(r.label) + '</a>'
-          : escHtml(r.label)) + '</td>'
-      + '<td style="white-space:nowrap;">' + escHtml(cfSize(r.it.size)) + '</td>'
-      + '</tr>';
+
+  groups.forEach(g => {
+    const draw = (r, isDupe) => {
+      const when = r.when
+        ? r.when.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          + ' ' + String(r.when.getHours()).padStart(2, '0')
+          + ':' + String(r.when.getMinutes()).padStart(2, '0')
+          + ':' + String(r.when.getSeconds()).padStart(2, '0')
+        : (fmtDate(r.it.modified) || '\u2014');
+      const n = g.dupes.length + 1;
+      let cell = r.it.webUrl
+        ? '<a href="' + escHtml(r.it.webUrl) + '" target="_blank" rel="noopener">' + escHtml(r.label) + '</a>'
+        : escHtml(r.label);
+      if (!isDupe && g.dupes.length) {
+        cell += ' <button type="button" onclick="eaToggleDup()" title="Captured ' + n
+             + ' times \u2014 separate files in SharePoint, seconds apart"'
+             + ' style="margin-left:6px;border:1px solid var(--gold);background:rgba(181,154,106,.12);'
+             + 'color:var(--grey-mid);border-radius:10px;padding:0 7px;font-size:11px;font-family:inherit;cursor:pointer;">'
+             + '\u00d7' + n + (_eaShowDup ? ' \u25b4' : ' \u25be') + '</button>';
+      }
+      html += '<tr' + (isDupe ? ' style="opacity:.6;"' : '') + '>'
+        + '<td style="white-space:nowrap;' + (isDupe ? 'padding-left:22px;' : '') + '">' + escHtml(when) + '</td>'
+        + '<td>' + cell + '</td>'
+        + '<td style="white-space:nowrap;">' + escHtml(cfSize(r.it.size)) + '</td>'
+        + '</tr>';
+    };
+    draw(g.head, false);
+    if (_eaShowDup) g.dupes.forEach(d => draw(d, true));
   });
+
   html += '</tbody></table>';
+
+  if (sig.length) {
+    html += '<div style="margin-top:10px;"><button type="button" onclick="eaToggleSig()" '
+         + 'style="border:1px solid var(--gold);background:transparent;color:var(--grey-mid);'
+         + 'border-radius:6px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer;">'
+         + (_eaShowSig ? 'hide' : 'show') + ' ' + sig.length + ' signature image'
+         + (sig.length !== 1 ? 's' : '') + '</button></div>';
+  }
+
   b.innerHTML = html;
 }
 
