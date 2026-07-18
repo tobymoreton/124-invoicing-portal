@@ -151,7 +151,7 @@
     .case-name{font-family:'Spectral',serif;font-weight:400;font-size:26px;color:var(--white);line-height:1.3;}
     .case-meta{font-size:12.5px;color:rgba(245,242,235,.45);margin-top:5px;letter-spacing:.02em;}
 
-    /* ── Tab bar ──────────────────────��──────── */
+    /* ── Tab bar ─────────────────────────────── */
     .tab-bar{background:var(--navy);padding:0 32px;display:flex;justify-content:center;overflow-x:auto;gap:2px;}
     .tab-bar::-webkit-scrollbar{display:none;}
     .tab-btn{
@@ -321,7 +321,7 @@
     .interest-hero .ih-label{font-size:13px;color:#1D4ED8;font-weight:500;}
     .interest-hero .ih-value{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:#1D4ED8;}
 
-    /* ── Save bar ──────────────────────────��─── */
+    /* ── Save bar ────────────────────────────── */
     .save-bar{display:flex;align-items:center;gap:14px;padding:16px 24px;border-top:1px solid var(--grey-faint);background:var(--grey-faint);}
     .btn-save{
       background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);
@@ -2656,46 +2656,16 @@ function renderHeader() {
 // Failure is VISIBLE, never silent (audit P4).
 let _cfItems   = [];
 let _cfShowAll = false;
-// Collapse preference persists for the browser session, so someone who does not
-// want the banner does not have to dismiss it on every case they open.
-let _cfHidden  = (function () {
-  try { return sessionStorage.getItem('p124-cf-hidden') === '1'; } catch (e) { return false; }
-})();
-function toggleCaseFilesHidden() {
-  _cfHidden = !_cfHidden;
-  try { sessionStorage.setItem('p124-cf-hidden', _cfHidden ? '1' : '0'); } catch (e) { /* private mode */ }
-  renderCaseFiles();
-}
 const CF_SHOW   = 3;
 
 // '/drives/b!xxxx/root:/Bills of Costs A/Kelly' → '/Bills of Costs A/Kelly'.
 // Shown only when a case has MORE THAN ONE folder — the case where the name alone
 // cannot tell them apart (two 'Forster-1736735' folders under different parents is
 // a real occurrence, not a display fault).
-// PROVEN on ref 1736735, 2026-07-18: Graph `search()` returns parentReference WITHOUT
-// a path — `path` is null on every hit. The location therefore has to come from
-// webUrl, which IS populated (the links work). No extra Graph call.
-//   https://tmcostings.sharepoint.com/sites/TMCLegalLimited/Working%20Drafts/1.Open%20Cases/2.Post%20Service/Forster-1736735
-//   → Working Drafts / 1.Open Cases / 2.Post Service
 function cfPath(p) {
   let s = String(p || '').replace(/^\/drives\/[^/]+\/root:?/, '');
   try { s = decodeURIComponent(s); } catch (e) { /* leave as-is */ }
   return s;
-}
-
-function cfLoc(it) {
-  if (it && it.path) {
-    const viaPath = cfPath(it.path);
-    if (viaPath) return viaPath.replace(/^\//, '').split('/').join(' / ');
-  }
-  const u = String((it && it.webUrl) || '');
-  if (!u) return '';
-  let p;
-  try { p = decodeURIComponent(new URL(u).pathname); } catch (e) { return ''; }
-  p = p.replace(/^\/sites\/[^/]+\//, '');   // drop /sites/TMCLegalLimited/
-  const parts = p.split('/').filter(Boolean);
-  if (parts.length) parts.pop();            // drop the item's own name
-  return parts.join(' / ');
 }
 
 async function loadCaseFiles() {
@@ -2753,16 +2723,6 @@ function renderCaseFiles() {
   // latest CF_SHOW. 'show all' reveals the rest.
   const cfFolders = cfList.filter(it => it.isFolder);
   const cfFiles   = cfList.filter(it => !it.isFolder);
-
-  if (_cfHidden) {
-    el.innerHTML = '<div class="cf-head">'
-      + '<button class="cf-more" onclick="toggleCaseFilesHidden()">'
-      + '\uD83D\uDCC1 Show case folders and recent files'
-      + (total ? ' (' + total + ')' : '') + '</button></div>';
-    renderEmailAtt();
-    return;
-  }
-
   const shown = _cfShowAll ? cfList : cfFolders.concat(cfFiles.slice(0, CF_SHOW));
   const multiFolder = cfFolders.length > 1;
 
@@ -2782,34 +2742,19 @@ function renderCaseFiles() {
     html += '<button class="cf-more" onclick="toggleCaseFiles()">'
          + (_cfShowAll ? 'show fewer' : 'show all ' + total) + '</button>';
   }
-  html += '<button class="cf-more" onclick="toggleCaseFilesHidden()">hide all</button>';
   html += '</div>';
 
   order.forEach(lib => {
     html += '<div class="cf-lib">' + escHtml(lib) + '</div>';
-    let filesStarted = false;
     byLib[lib].forEach(it => {
-      // Sub-heading before the first FILE in each library, so the cap is explicit:
-      // these are the newest few, not everything that exists.
-      if (!it.isFolder && !filesStarted) {
-        filesStarted = true;
-        html += '<div class="cf-lib" style="opacity:.75;">'
-             + (_cfShowAll
-                 ? 'All files'
-                 : 'Most recent files' + (cfFiles.length > CF_SHOW
-                     ? ' (latest ' + Math.min(CF_SHOW, cfFiles.length) + ' of ' + cfFiles.length + ')'
-                     : ''))
-             + '</div>';
-      }
       const icon = it.isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4';
       const meta = [fmtDate(it.modified), cfSize(it.size)].filter(Boolean).join(' \u00b7 ');
       // min-width:0 + ellipsis — a nowrap child with no min-width blows out a flex
       // row (the S76 grid-track lesson, same mechanism).
-      const loc0 = (it.isFolder && multiFolder) ? cfLoc(it) : '';
-      const loc  = loc0
-        ? '<span title="' + escHtml(loc0) + '" style="flex:0 1 auto;min-width:0;overflow:hidden;'
-          + 'text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
-          + escHtml(loc0) + '</span>'
+      const loc  = (it.isFolder && multiFolder && it.path)
+        ? '<span style="flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;'
+          + 'white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
+          + escHtml(cfPath(it.path)) + '</span>'
         : '';
       html += '<div class="cf-row' + (it.isFolder ? ' cf-dir' : '') + '">'
         + '<span>' + icon + '</span>'
@@ -4382,7 +4327,7 @@ function renderCaTable() {
         ${billCell}
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
-        <td class="ca-cell ca-actions">${_emailUrl ? `<a class="ca-email-link" href="${escHtml(_emailUrl)}" target="_blank" rel="noopener" title="View email in SharePoint">\u2709</a>` : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
+        <td class="ca-cell ca-actions">${_emailUrl ? '<a class="ca-email-link" href="' + escHtml(_emailUrl) + '" target="_blank" rel="noopener" title="View email in SharePoint">\u2709</a>' : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
   });
@@ -4459,3 +4404,128 @@ async function setCaUnits(a, units, selEl) {
     if (curBrief === 'Timed letter/email') newBrief = 'Routine letter/email out';
     else if (curBrief === 'Timed telephone call') newBrief = 'Routine telephone call';
   }
+  const briefChanged = newBrief !== curBrief;
+  selEl.disabled = true;
+  try {
+    const r = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: a.id, timeSpent: newHrs, ...(briefChanged ? { brief: newBrief } : {}) }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    a.fields = a.fields || {};
+    a.fields['field_3'] = newHrs; a.fields['TimeSpentMirror'] = newHrs;
+    a.fields['Num_BillableAmount_x00a3_'] = newHrs * (parseFloat(a.fields?.['field_6']) || 0);
+    if (briefChanged) a.fields['field_9'] = newBrief;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    selEl.value = String(prevUnits); selEl.disabled = false;
+    alert('Could not update time: ' + err.message);
+  }
+}
+async function setCaBillable(a, checked, cbEl) {
+  cbEl.disabled = true;
+  try {
+    const r = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: a.id, billable: checked }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    a.fields = a.fields || {}; a.fields['Billable_x003f_'] = checked;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    cbEl.checked = !checked; cbEl.disabled = false;
+    alert('Could not update billable: ' + err.message);
+  }
+}
+async function saveCaRow(id) {
+  const scope = document.querySelector('.tab-panel.active') || document;
+  const wd = scope.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
+  const hrs = parseFloat(scope.querySelector(`.ca-edit-hrs[data-id="${id}"]`)?.value) || 0;
+  const rate = parseFloat(scope.querySelector(`.ca-edit-rate[data-id="${id}"]`)?.value) || 0;
+  const briefEl = scope.querySelector(`.ca-edit-brief[data-id="${id}"]`); const brief = briefEl ? briefEl.value : undefined;
+  const billEl = scope.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
+  const byEl = scope.querySelector(`.ca-edit-by[data-id="${id}"]`); const completedBy = byEl ? byEl.value : undefined;
+  const saveBtn = scope.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = scope.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
+  if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
+  try {
+    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable, completedBy }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const idx = caActions.findIndex(a => a.id === id);
+    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; if (completedBy !== undefined) f['Completedby_x0028_text_x0029_'] = completedBy; }
+    caEditingId = null; renderCaTable(); renderEmailsTable();
+  } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
+}
+
+// Delete a case action. Any signed-in TMC user may delete. BILLED actions are never deletable —
+// no Delete button is rendered for them, and deleteCaRow re-checks before firing — because the
+// time is already supporting an issued invoice.
+async function deleteCaRow(id) {
+  const action = caActions.find(a => a.id === id);
+  if (!action) return;
+  const f = action.fields || {};
+  if (f['Billed_x003f_']) { alert('This action has been billed and cannot be deleted.'); return; }
+  const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+  const dateStr = fmtDate(f['field_12'] || f['field_1']);
+  const wd = (f['field_2'] || '').slice(0, 120);
+  if (!confirm('Delete this action permanently?\n\n' + dateStr + ' \u00b7 ' + fmtN(hrs, 2) + ' hrs\n' + wd + '\n\nThis cannot be undone.')) return;
+  const scope = document.querySelector('.tab-panel.active') || document;
+  const delBtn = scope.querySelector(`.ca-btn-del[data-id="${id}"]`);
+  if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Deleting...'; }
+  try {
+    const resp = await fetch('/api/caseactions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    caActions = caActions.filter(a => a.id !== id);
+    caSchedule.delete(id);
+    caEditingId = null;
+    renderCaTable(); renderEmailsTable();
+  } catch (err) {
+    if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Delete action'; }
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function initAddActionPanel() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
+  const caseRate = parseFloat(caseFields?.['RateForCase']) || ''; document.getElementById('ca-add-rate').value = caseRate;
+  const nameEl = document.getElementById('ca-add-completedby');
+  // Default Completed By to the signed-in user. Exact-match only was too brittle:
+  // options are often first-name ('Toby') while switcherCallerName is full ('Toby Moreton'),
+  // so the match failed silently and the field was left on whatever sat first in the list.
+  if (switcherCallerName) {
+    const full = switcherCallerName.toLowerCase();
+    const first = full.split(' ')[0];
+    let hit = null;
+    for (const opt of nameEl.options) {
+      const v = (opt.value || '').toLowerCase();
+      if (!v) continue;
+      if (v === full) { hit = opt.value; break; }                       // exact
+      if (!hit && (v === first || v.startsWith(first + ' ') || full.startsWith(v))) hit = opt.value; // 'Toby' <-> 'Toby Moreton'
+    }
+    if (hit) nameEl.value = hit;
+  }
+  const billEl = document.getElementById('ca-add-billable'); const billLabel = document.getElementById('ca-add-billable-label');
+  billEl.addEventListener('change', () => { billLabel.textContent = billEl.checked ? 'Yes' : 'No'; });
+  const submitBtn = document.getElementById('ca-add-submit'); const newBtn = submitBtn.cloneNode(true); submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+  newBtn.addEventListener('click', submitAddAction);
+}
+
+async function submitAddAction() {
+  const msg = document.getElementById('ca-add-msg'); const btn = document.querySelector('#tab-caseactions .btn-edit-save');
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const workDone = document.getElementById('ca-add-workdone').value.trim(); const timeSpent = parseFloat(document.getElementById('ca-add-timespent').value);
+  const rate = parseFloat(document.getElementById('ca-add-rate').value) || 0; const brief = document.getElementById('ca-add-brief').value;
+  const completedBy = document.getElementById('ca-add-completedby').value; const billable = document.getElementById('ca-add-billable').checked;
+  const dateEntered = document.getElementById('ca-add-dateentered').value; const dateWorkDone = document.getElementById('ca-add-dateworkdone').value;
+  if (!workDone) { msg.className = 'edit-msg err'; msg.textContent = 'Work Done is required.'; return; }
+  if (!timeSpent || isNaN(timeSpent) || timeSpent <= 0) { msg.className = 'edit-msg err'; msg.textContent = 'Time Spent must be > 0.'; return; }
+  if (!completedBy) { msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
+  if (btn) btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  try {
+    const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseDisplayName(caseFields), caseItemId, dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
+    const created = await resp.json();
+    caActions.unshift({ id: created.id, fields: { field_1: dateEntered + 'T00:00:00Z', field_2: workDone, field_3: timeSpent, field_6: rate, field_9: brief, field_12: dateWorkDone + 'T00:00:00Z', field_16: ref, field_18: switcherCallerEmail || '', Completedby_x0028_text_x0029_: completedBy, 'Billable_x003f_': billable, 'Billed_x003f_': false, TimeSpentMirror: timeSpent, 'Num_BillableAmount_x00a3_': timeSpent * rate } });
+    document.getElementById('ca-add-workdone').value = ''; document.getElementById('ca-add-timespent').value = '';
+    const today = new Date().toISOString().slice(0, 10); document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
+    msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Added'; setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderCaTable();
+  } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
+  finally { if (btn) btn.disabled = false; }
+}
+</script>
+</body>
+</html>
