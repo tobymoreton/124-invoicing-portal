@@ -2656,16 +2656,46 @@ function renderHeader() {
 // Failure is VISIBLE, never silent (audit P4).
 let _cfItems   = [];
 let _cfShowAll = false;
+// Collapse preference persists for the browser session, so someone who does not
+// want the banner does not have to dismiss it on every case they open.
+let _cfHidden  = (function () {
+  try { return sessionStorage.getItem('p124-cf-hidden') === '1'; } catch (e) { return false; }
+})();
+function toggleCaseFilesHidden() {
+  _cfHidden = !_cfHidden;
+  try { sessionStorage.setItem('p124-cf-hidden', _cfHidden ? '1' : '0'); } catch (e) { /* private mode */ }
+  renderCaseFiles();
+}
 const CF_SHOW   = 3;
 
 // '/drives/b!xxxx/root:/Bills of Costs A/Kelly' → '/Bills of Costs A/Kelly'.
 // Shown only when a case has MORE THAN ONE folder — the case where the name alone
 // cannot tell them apart (two 'Forster-1736735' folders under different parents is
 // a real occurrence, not a display fault).
+// PROVEN on ref 1736735, 2026-07-18: Graph `search()` returns parentReference WITHOUT
+// a path — `path` is null on every hit. The location therefore has to come from
+// webUrl, which IS populated (the links work). No extra Graph call.
+//   https://tmcostings.sharepoint.com/sites/TMCLegalLimited/Working%20Drafts/1.Open%20Cases/2.Post%20Service/Forster-1736735
+//   → Working Drafts / 1.Open Cases / 2.Post Service
 function cfPath(p) {
   let s = String(p || '').replace(/^\/drives\/[^/]+\/root:?/, '');
   try { s = decodeURIComponent(s); } catch (e) { /* leave as-is */ }
   return s;
+}
+
+function cfLoc(it) {
+  if (it && it.path) {
+    const viaPath = cfPath(it.path);
+    if (viaPath) return viaPath.replace(/^\//, '').split('/').join(' / ');
+  }
+  const u = String((it && it.webUrl) || '');
+  if (!u) return '';
+  let p;
+  try { p = decodeURIComponent(new URL(u).pathname); } catch (e) { return ''; }
+  p = p.replace(/^\/sites\/[^/]+\//, '');   // drop /sites/TMCLegalLimited/
+  const parts = p.split('/').filter(Boolean);
+  if (parts.length) parts.pop();            // drop the item's own name
+  return parts.join(' / ');
 }
 
 async function loadCaseFiles() {
@@ -2723,6 +2753,16 @@ function renderCaseFiles() {
   // latest CF_SHOW. 'show all' reveals the rest.
   const cfFolders = cfList.filter(it => it.isFolder);
   const cfFiles   = cfList.filter(it => !it.isFolder);
+
+  if (_cfHidden) {
+    el.innerHTML = '<div class="cf-head">'
+      + '<button class="cf-more" onclick="toggleCaseFilesHidden()">'
+      + '\uD83D\uDCC1 Show case folders and recent files'
+      + (total ? ' (' + total + ')' : '') + '</button></div>';
+    renderEmailAtt();
+    return;
+  }
+
   const shown = _cfShowAll ? cfList : cfFolders.concat(cfFiles.slice(0, CF_SHOW));
   const multiFolder = cfFolders.length > 1;
 
@@ -2742,19 +2782,34 @@ function renderCaseFiles() {
     html += '<button class="cf-more" onclick="toggleCaseFiles()">'
          + (_cfShowAll ? 'show fewer' : 'show all ' + total) + '</button>';
   }
+  html += '<button class="cf-more" onclick="toggleCaseFilesHidden()">hide all</button>';
   html += '</div>';
 
   order.forEach(lib => {
     html += '<div class="cf-lib">' + escHtml(lib) + '</div>';
+    let filesStarted = false;
     byLib[lib].forEach(it => {
+      // Sub-heading before the first FILE in each library, so the cap is explicit:
+      // these are the newest few, not everything that exists.
+      if (!it.isFolder && !filesStarted) {
+        filesStarted = true;
+        html += '<div class="cf-lib" style="opacity:.75;">'
+             + (_cfShowAll
+                 ? 'All files'
+                 : 'Most recent files' + (cfFiles.length > CF_SHOW
+                     ? ' (latest ' + Math.min(CF_SHOW, cfFiles.length) + ' of ' + cfFiles.length + ')'
+                     : ''))
+             + '</div>';
+      }
       const icon = it.isFolder ? '\uD83D\uDCC1' : '\uD83D\uDCC4';
       const meta = [fmtDate(it.modified), cfSize(it.size)].filter(Boolean).join(' \u00b7 ');
       // min-width:0 + ellipsis — a nowrap child with no min-width blows out a flex
       // row (the S76 grid-track lesson, same mechanism).
-      const loc  = (it.isFolder && multiFolder && it.path)
-        ? '<span style="flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;'
-          + 'white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
-          + escHtml(cfPath(it.path)) + '</span>'
+      const loc0 = (it.isFolder && multiFolder) ? cfLoc(it) : '';
+      const loc  = loc0
+        ? '<span title="' + escHtml(loc0) + '" style="flex:0 1 auto;min-width:0;overflow:hidden;'
+          + 'text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--grey-mid);opacity:.85;">'
+          + escHtml(loc0) + '</span>'
         : '';
       html += '<div class="cf-row' + (it.isFolder ? ' cf-dir' : '') + '">'
         + '<span>' + icon + '</span>'
