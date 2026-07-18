@@ -4429,3 +4429,33 @@ function renderWipBox() {
 // of the known names (legacy rows hold emails or full names), it is preserved verbatim
 // as the first option so editing another field can never silently re-attribute the action.
 function caCompletedByOptions(selected) {
+  const names = ['Joanna','Tracy','Kelly','Tom','Julie','Daniel','Toby'];
+  const sel   = (selected || '').trim();
+  const known = names.some(n => n.toLowerCase() === sel.toLowerCase());
+  const opts  = [];
+  if (!sel)   opts.push('<option value="" selected>\u2014 not set \u2014</option>');
+  if (sel && !known) opts.push('<option value="' + escHtml(sel) + '" selected>' + escHtml(sel) + '</option>');
+  names.forEach(n => {
+    const isSel = known && n.toLowerCase() === sel.toLowerCase();
+    opts.push('<option value="' + escHtml(n) + '"' + (isSel ? ' selected' : '') + '>' + escHtml(n) + '</option>');
+  });
+  return opts.join('');
+}
+
+// S80: inline time (6-minute units) + billable controls on Case Actions rows — mirrors the
+// dashboard (cases.html). Time change PATCHes timeSpent only; the Routine<->Timed brief pair
+// auto-switches when crossing the 1-unit boundary. Optimistic; billed rows stay static/locked.
+async function setCaUnits(a, units, selEl) {
+  const newHrs = Math.round(units * 0.1 * 100) / 100;
+  const prevHrs = parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0;
+  const prevUnits = Math.max(1, Math.round(prevHrs / 0.1));
+  if (newHrs === prevHrs) return;
+  const curBrief = a.fields?.['field_9'] || '';
+  let newBrief = curBrief;
+  if (units > 1) {
+    if (curBrief === 'Routine letter/email out') newBrief = 'Timed letter/email';
+    else if (curBrief === 'Routine telephone call') newBrief = 'Timed telephone call';
+  } else {
+    if (curBrief === 'Timed letter/email') newBrief = 'Routine letter/email out';
+    else if (curBrief === 'Timed telephone call') newBrief = 'Routine telephone call';
+  }
