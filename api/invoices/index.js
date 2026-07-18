@@ -60,6 +60,35 @@ const FINANCE_EMAILS = [
   'lesley@tmclegal.co.uk',
 ];
 
+// ---- Default response window (S81) ----------------------------------------
+// The full ledger is 3,014 invoices / ~2.08 MB and the client paginates 18 rows
+// at a time. By default this function returns only the rows a consumer can
+// actually need; ?all=1 returns the complete history, unchanged.
+//
+// A row is IN the window if ANY limb is true:
+//   1. Not settled: |AmountOutstanding| > 0.005. Deliberately "not equal to zero",
+//      NOT "greater than zero", so OVERPAID invoices (negative outstanding)
+//      survive -- the anomaly panel's 'overpaid' rule depends on them.
+//   2. Raised within WINDOW_MONTHS.
+//   3. Any payment banked within WINDOW_MONTHS. Without this limb an old, fully
+//      settled invoice paid this month drops out and index.html's "Paid this
+//      month" stat silently under-reports. Measured 2026-07-18: this limb alone
+//      carries 99 of the 509 windowed rows.
+//
+// Measured live 2026-07-18 as toby@: 3,014 rows / 2,080.8 KB -> 509 / 357.1 KB.
+const WINDOW_MONTHS = 12;
+
+function inDefaultWindow(inv, cutoff) {
+  const o = parseFloat(inv.AmountOutstanding);
+  if (!isNaN(o) && Math.abs(o) > 0.005) return true;
+  if (inv.InvoiceDate && new Date(inv.InvoiceDate) >= cutoff) return true;
+  for (const k of [1, 2, 3]) {
+    const d = inv['PaymentDate' + k];
+    if (d && new Date(d) >= cutoff) return true;
+  }
+  return false;
+}
+
 // Decode the x-ms-client-principal header injected by Azure SWA
 function getCallerEmail(req) {
   try {
@@ -96,6 +125,17 @@ module.exports = async function (context, req) {
   // own bills. Scope is a single case — this is not a back door to the whole ledger.
   const refParam = ((req.query && req.query.ref) || '').trim();
 
+  // ?all=1 -- full history, no window. Used by index.html's admin-only background
+  // pull that feeds the anomaly panel (its 'zeroValue' and 'payNoDate' rules can
+  // hit fully-settled invoices of any age).
+  const wantAll = String((req.query && req.query.all) || '') === '1';
+
+  // ?billedrefs=1 -- distinct Our Refs carrying a drafting fee on a live invoice.
+  // Serves cases.html's billedRefs set (the 4%-of-outstanding-PC card excludes
+  // already-billed cases and needs EVERY ref ever billed, at any age). 1,538 refs
+  // / ~15 KB against 2,080.8 KB for the same job. Measured 2026-07-18.
+  const wantBilledRefs = String((req.query && req.query.billedrefs) || '') === '1';
+
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
@@ -106,15 +146,45 @@ module.exports = async function (context, req) {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     // Admins + finance get all invoices; non-admins get only their own (by DraftedByEmail)
     const invoices = await fetchAllInvoices(token, (isAdmin || isFinance || refParam) ? null : callerEmail);
-    const payload  = refParam
+    if (wantBilledRefs) {
+      const refs = [...new Set(
+        invoices
+          .filter(inv => !inv.Cancelled && (parseFloat(inv.DraftingFeeElement) || 0) > 0)
+          .map(inv => inv.Ourref)
+          .filter(Boolean)
+      )];
+      context.res = {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'X-Invoice-Window': 'billedrefs',
+        },
+        body: JSON.stringify(refs),
+      };
+      return;
+    }
+
+    let payload = refParam
       ? invoices.filter(inv => (inv.Ourref || '').toString().trim().toLowerCase() === refParam.toLowerCase())
       : invoices;
+
+    // Case-scoped reads are NEVER windowed -- the case Invoicing tab must show the
+    // whole billing history for that one case.
+    let windowed = false;
+    if (!refParam && !wantAll) {
+      const cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - WINDOW_MONTHS);
+      payload = payload.filter(inv => inDefaultWindow(inv, cutoff));
+      windowed = true;
+    }
 
     context.res = {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
+        'X-Invoice-Window': windowed ? (WINDOW_MONTHS + 'm') : 'all',
       },
       body: JSON.stringify(payload),
     };
