@@ -793,6 +793,11 @@ let callerName   = '';
 let isAdmin      = false;
 let activeFilter = null; // 'all'|'overdue'|'no-reminder'|{stage:'...'}
 let allInvoices  = []; // raw invoice items from /api/invoices, for breakdown modals
+// S81: /api/invoices now returns a 12-month + outstanding window by default, so it can
+// no longer answer "has this case ever been billed?". billedRefsAll is the distinct list
+// of Our Refs carrying a drafting fee on any live invoice, at any age, from
+// /api/invoices?billedrefs=1 (~15 KB). null = not loaded yet.
+let billedRefsAll = null;
 let pcBreakdown  = []; // [{name,ref,pc}] for 4% PC breakdown modal
 
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
@@ -1036,8 +1041,12 @@ function renderStats(){
   });
   // 4% of Outstanding PC Claimed — excludes cases already invoiced (non-cancelled invoice
   // with a drafting fee element already recorded against that Our Ref)
+  // S81: prefer the full-history ref list; fall back to the (windowed) invoice set only
+  // if it has not loaded, which UNDER-counts billed cases and so OVER-states the 4%.
   const billedRefs=new Set(
-    allInvoices.filter(inv=>!inv.Cancelled&&(parseFloat(inv.DraftingFeeElement)||0)>0).map(inv=>inv.Ourref)
+    billedRefsAll
+      ? billedRefsAll
+      : allInvoices.filter(inv=>!inv.Cancelled&&(parseFloat(inv.DraftingFeeElement)||0)>0).map(inv=>inv.Ourref)
   );
   pcBreakdown=myCases
     .filter(c=>!billedRefs.has(c.fields['Ourreference_x0028_text_x0029_']))
@@ -2173,7 +2182,7 @@ function writeCache(){
   const invSlim=allInvoices.map(inv=>pick(inv,INV));
   const actSlim=allActions.map(a=>({id:a.id,_caseRef:a._caseRef,_caseName:a._caseName,fields:pick(a.fields||{},ACT)}));
   const remSlim=allReminders.map(r=>({id:r.id,_caseRef:r._caseRef,_caseName:r._caseName,fields:pick(r.fields||{},REM)}));
-  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders:remSlim,allActions:actSlim,allInvoices:invSlim})); }catch{}
+  try{ sessionStorage.setItem(cacheKey(), JSON.stringify({cachedAt:Date.now(),allCases,wipTotal,invoicedThisMonth,allReminders:remSlim,allActions:actSlim,allInvoices:invSlim,billedRefsAll})); }catch{}
 }
 function readCache(){
   try{
@@ -2186,11 +2195,15 @@ function readCache(){
 
 // ── Full data fetch ────────────────────────────────────────────────────────
 async function fetchAllData(){
-  const [casesResp, wipResp, invResp] = await Promise.all([
+  const [casesResp, wipResp, invResp, refsResp] = await Promise.all([
     fetch('/api/cases?preload=1&_='+Date.now()),
     fetch('/api/wip').catch(()=>null),
     fetch('/api/invoices').catch(()=>null),
+    fetch('/api/invoices?billedrefs=1').catch(()=>null),
   ]);
+  if(refsResp&&refsResp.ok){
+    try{ const r=await refsResp.json(); if(Array.isArray(r)) billedRefsAll=r; }catch{}
+  }
   if(!casesResp.ok) throw new Error('HTTP '+casesResp.status);
   const data=await casesResp.json();
   allCases=data.value||[];
@@ -2239,6 +2252,7 @@ async function init(){
       invoicedThisMonth=cached.invoicedThisMonth||0;
       allReminders=cached.allReminders||[]; allActions=cached.allActions||[];
       allInvoices=cached.allInvoices||[];
+      billedRefsAll=cached.billedRefsAll||null;
       myCases=allCases.filter(c=>matchesAssigned(c.fields));
       applyDataAndRender();
       fetchAllData().then(()=>fetchSecondaryData()).then(()=>{

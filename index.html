@@ -638,7 +638,36 @@ async function load() {
     renderAllData(isAdmin, isFinance);
     writeCache(callerEmail);
     if (isAdmin) loadPOA();
+
+    // S81: the default /api/invoices response is a 12-month + outstanding window
+    // (509 of 3,014 rows measured 2026-07-18) so the page paints fast. Admin and
+    // finance keep the WHOLE ledger because the table's search box is regularly
+    // used to find invoices settled years ago (Toby, 2026-07-18) -- pull it in the
+    // background and swap it in when it lands. Deliberately NOT awaited: first
+    // paint has already happened by this point.
+    if (isAdmin || isFinance) loadFullLedger(callerEmail);
   } catch(e) { renderError(e.message); }
+}
+
+// ---- Background full-ledger pull (S81) ------------------------------------
+// Non-blocking. First paint has already happened off the windowed response; this
+// replaces allInvoices with the complete ledger and re-renders, so search, filters,
+// the age bands and the anomaly panel (whose 'zeroValue' and 'payNoDate' rules can
+// hit fully-settled invoices of any age) all see every invoice ever raised.
+// On failure the windowed set simply stays put -- the page is still correct, just
+// shorter -- and the error is surfaced rather than swallowed silently (S80 lesson).
+async function loadFullLedger(email) {
+  try {
+    const r = await fetch(API + '?all=1', { headers: { Accept: 'application/json' } });
+    if (!r.ok) { console.warn('Full ledger pull failed: HTTP ' + r.status + ' -- showing last 12 months only'); return; }
+    const full = (await r.json()).filter(inv => !inv.Cancelled);
+    if (!Array.isArray(full) || full.length <= allInvoices.length) return;
+    allInvoices = full;
+    renderAllData(_isAdmin, _isFinance);
+    writeCache(email);
+  } catch (e) {
+    console.warn('Full ledger pull failed: ' + e.message + ' -- showing last 12 months only');
+  }
 }
 
 function renderStats() {
