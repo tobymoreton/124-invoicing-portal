@@ -34,6 +34,22 @@
     .nav-link{font-size:13px;font-weight:600;color:var(--gold);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.4);border-radius:var(--radius-sm);background:rgba(201,168,76,.15);backdrop-filter:blur(4px);transition:all .18s ease;letter-spacing:.02em;}
     .nav-link:hover{background:rgba(201,168,76,.28);border-color:rgba(201,168,76,.7);color:#F5EDD0;box-shadow:0 2px 8px rgba(201,168,76,.2);}
 
+    /* S82: the news banner sits above the fold but reads as static furniture, so it
+       pulses briefly every 9s to catch the eye. Deliberately a double blink lasting
+       under a second out of every nine — long enough to notice, short enough not to
+       become the thing you are trying to ignore while working. Honoured only when the
+       banner is displayed at all; JS toggles display, this never forces it visible. */
+    @keyframes news-flash{
+      0%,100%{filter:brightness(1);box-shadow:none;}
+      2%{filter:brightness(1.32);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);}
+      4.5%{filter:brightness(1);box-shadow:none;}
+      7%{filter:brightness(1.32);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);}
+      9.5%{filter:brightness(1);box-shadow:none;}
+    }
+    #news-banner{animation:news-flash 9s ease-in-out infinite;}
+    /* Anyone who has asked their OS to stop moving things gets a static banner. */
+    @media (prefers-reduced-motion:reduce){#news-banner{animation:none;}}
+
     /* ── Page header ── */
     .page-header{
       position:relative;overflow:hidden;
