@@ -2769,9 +2769,10 @@ function eaToggleDup() { _eaShowDup = !_eaShowDup; renderEmailAtt(); }
 
 function eaParse(name) {
   const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\s*-\s*(?:\S+\s*-\s*)?([\s\S]*)$/.exec(name || '');
-  if (!m) return { when: null, label: name || '' };
+  if (!m) return { when: null, stamp: null, label: name || '' };
   return {
     when:  new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]),
+    stamp: m[1] + m[2] + m[3] + '-' + m[4] + m[5] + m[6],
     label: (m[7] || '').trim() || name
   };
 }
@@ -2783,12 +2784,34 @@ function eaFail(msg) {
   if (s) s.textContent = '';
 }
 
+// The SAME Make scenario that uploads the file also writes a Time Tracking2 row
+// per email, with EmailID = formatDate(<email date>;"YYYYMMDD-HHmmss") — the very
+// expression that builds the filename prefix. So the attachment joins to its own
+// email on that stamp, character-for-character, using data `/api/caseactions?ref=`
+// ALREADY returns (that mode uses $expand=fields with NO $select). No new call.
+// A blank means the email row genuinely is not there — never a guess.
+function eaEmailIndex() {
+  const ix = {};
+  (typeof caActions !== 'undefined' ? caActions : []).forEach(a => {
+    const f = (a && a.fields) || {};
+    const k = String(f.EmailID || '').trim();
+    if (!k || ix[k]) return;
+    ix[k] = {
+      from:    String(f.EmailFrom || '').trim(),
+      to:      String(f.EmailTo || '').trim(),
+      subject: String(f.EmailSubject || '').trim(),
+      dir:     String(f.ActionType || f.field_9 || '').trim()
+    };
+  });
+  return ix;
+}
+
 function renderEmailAtt() {
   const b = document.getElementById('ea-body');
   if (!b) return;
   const rows = (_cfItems || [])
     .filter(it => !it.isFolder && String(it.library || '').trim().toLowerCase() === EA_LIB)
-    .map(it => { const p = eaParse(it.name); return { it: it, when: p.when, label: p.label }; })
+    .map(it => { const p = eaParse(it.name); return { it: it, when: p.when, stamp: p.stamp, label: p.label }; })
     .sort((a, c) => {
       const ta = a.when ? a.when.getTime() : (a.it.modified ? new Date(a.it.modified).getTime() : -Infinity);
       const tc = c.when ? c.when.getTime() : (c.it.modified ? new Date(c.it.modified).getTime() : -Infinity);
@@ -2831,8 +2854,12 @@ function renderEmailAtt() {
   }
 
   let html = '<table class="ca-table"><thead><tr>'
-           + '<th style="width:170px;">Received</th><th>File</th><th style="width:90px;">Size</th>'
+           + '<th style="width:170px;">Received</th><th>File</th>'
+           + '<th style="width:220px;">From / To</th><th style="width:90px;">Size</th>'
            + '</tr></thead><tbody>';
+
+  const EIX = eaEmailIndex();
+  const eaAddr = a => String(a || '').split(/[;,]/)[0].trim();
 
   groups.forEach(g => {
     const draw = (r, isDupe) => {
@@ -2843,6 +2870,21 @@ function renderEmailAtt() {
           + ':' + String(r.when.getSeconds()).padStart(2, '0')
         : (fmtDate(r.it.modified) || '\u2014');
       const n = g.dupes.length + 1;
+      const e = (r.stamp && EIX[r.stamp]) || null;
+      const em = { subj: '', who: '\u2014' };
+      if (e) {
+        if (e.subject) {
+          em.subj = '<div style="font-size:11.5px;color:var(--grey-mid);margin-top:2px;">'
+                  + escHtml(e.subject) + '</div>';
+        }
+        const ef = eaAddr(e.from), et = eaAddr(e.to);
+        if (ef || et) {
+          em.who = (ef ? escHtml(ef) : '\u2014')
+                 + '<div style="opacity:.75;">\u2192 ' + (et ? escHtml(et) : '\u2014') + '</div>';
+        }
+      } else if (typeof caLoaded !== 'undefined' && !caLoaded) {
+        em.who = '<span style="opacity:.6;">loading\u2026</span>';
+      }
       let cell = r.it.webUrl
         ? '<a href="' + escHtml(r.it.webUrl) + '" target="_blank" rel="noopener">' + escHtml(r.label) + '</a>'
         : escHtml(r.label);
@@ -2855,7 +2897,8 @@ function renderEmailAtt() {
       }
       html += '<tr' + (isDupe ? ' style="opacity:.6;"' : '') + '>'
         + '<td style="white-space:nowrap;' + (isDupe ? 'padding-left:22px;' : '') + '">' + escHtml(when) + '</td>'
-        + '<td>' + cell + '</td>'
+        + '<td>' + cell + em.subj + '</td>'
+        + '<td style="font-size:11.5px;color:var(--grey-mid);">' + em.who + '</td>'
         + '<td style="white-space:nowrap;">' + escHtml(cfSize(r.it.size)) + '</td>'
         + '</tr>';
     };
@@ -4084,6 +4127,9 @@ async function attDelete(id, name) {
 document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'caseactions') { btn.addEventListener('click', () => { if (caLoaded) { renderCaTable(); initAddActionPanel(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'emails') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailsTable(); } else if (!caFetching) { loadCaseActions(); } }); }
+  // Email Attachments joins to the TT2 email rows for From/To/Subject, so it needs
+  // the same fetch — it just renders filenames until that lands.
+  if (btn.dataset.tab === 'emailatt') { btn.addEventListener('click', () => { if (caLoaded) { renderEmailAtt(); } else if (!caFetching) { loadCaseActions(); } }); }
   if (btn.dataset.tab === 'reminders') { btn.addEventListener('click', () => { if (remLoaded) { renderRemTable(); } else if (!remFetching) { loadReminders(); } }); }
   if (btn.dataset.tab === 'attachments') { btn.addEventListener('click', () => { if (attLoaded) { renderAttTable(); } else if (!attFetching) { loadAttachments(); } }); }
   if (btn.dataset.tab === 'invoicing') { btn.addEventListener('click', () => { if (!invLoaded && !invFetching) loadCaseInvoices(); }); }
@@ -4170,7 +4216,7 @@ async function loadCaseActions() {
   const controller = new AbortController(); const fetchTimeout = setTimeout(() => controller.abort(), 30000);
   try {
     const resp = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref), { signal: controller.signal }); clearTimeout(fetchTimeout); if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json(); caActions = data.value || []; caLoaded = true; caFetching = false; renderCaTable(); initAddActionPanel(); renderEmailsTable();
+    const data = await resp.json(); caActions = data.value || []; caLoaded = true; caFetching = false; renderCaTable(); initAddActionPanel(); renderEmailsTable(); renderEmailAtt();
     const deepActionId = new URLSearchParams(window.location.search).get('action');
     if (deepActionId && caActions.some(a => a.id === deepActionId)) {
       caEditingId = deepActionId; renderCaTable();
