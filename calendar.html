@@ -138,7 +138,7 @@
 <div class="backdrop" id="add-backdrop">
   <div class="modal">
     <div class="modal-head">
-      <span class="modal-title">Add calendar entry</span>
+      <span class="modal-title" id="modal-title">Add calendar entry</span>
       <button class="modal-x" onclick="closeAdd()" aria-label="Close">&times;</button>
     </div>
     <div class="modal-body">
@@ -205,6 +205,8 @@
     </div>
     <div class="modal-foot">
       <span class="form-msg" id="form-msg"></span>
+      <a id="outlook-link" class="btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Open in Outlook</a>
+      <button class="btn" id="delete-btn" onclick="deleteEntry()" style="display:none;border-color:#E7C4C4;color:var(--overdue);">Delete</button>
       <button class="btn" onclick="closeAdd()">Cancel</button>
       <button class="btn save" id="save-btn" onclick="saveEvent()">Save entry</button>
     </div>
@@ -236,6 +238,8 @@
 
 var viewY, viewM;          // month currently shown (M is 0-based)
 var _events = [];
+var _byId   = {};          // id → event, for the edit modal
+var _editId = null;        // null = creating, otherwise amending this event
 var _me = '';              // signed-in user's first name, lower-case, if on the roster
 
 // Who the entry defaults to. An admin adding leave for a draftsman just changes the
@@ -311,6 +315,8 @@ async function load() {
       return;
     }
     _events = (data && data.events) || [];
+    _byId = {};
+    _events.forEach(function (e) { if (e.id) _byId[e.id] = e; });
     stateEl.style.display = 'none';
     render(start);
   } catch (err) {
@@ -362,7 +368,8 @@ function render(start) {
       var title = esc((e.subject || '') + (e.location ? ' — ' + e.location : '')
                     + (e.preview ? '\n\n' + e.preview : ''));
       html += '<a class="ev ' + (e.isAllDay ? 'allday' : 'timed') + (e.cancelled ? ' ev-cancel' : '') + '"'
-           + (e.webLink ? ' href="' + esc(e.webLink) + '" target="_blank" rel="noopener"' : '')
+           + ' href="#" onclick="openEdit(this.getAttribute(\'data-id\'));return false;"'
+           + ' data-id="' + esc(e.id || '') + '"'
            + ' title="' + title + '">' + time + label + '</a>';
     });
     html += '</div>';
@@ -383,8 +390,18 @@ function goToday() {
 }
 
 /* ── Add entry ────────────────────────────────────────── */
+function resetForm() {
+  document.getElementById('form-msg').textContent = '';
+  document.getElementById('save-btn').disabled = false;
+  document.getElementById('delete-btn').style.display   = 'none';
+  document.getElementById('outlook-link').style.display = 'none';
+}
+
 function openAdd() {
   var today = new Date().toISOString().slice(0, 10);
+  _editId = null;
+  document.getElementById('modal-title').textContent = 'Add calendar entry';
+  document.getElementById('save-btn').textContent    = 'Save entry';
   document.getElementById('f-subject').value  = '';
   document.getElementById('f-location').value = '';
   document.getElementById('f-notes').value    = '';
@@ -393,7 +410,8 @@ function openAdd() {
   document.getElementById('f-allday').checked = true;
   document.getElementById('f-start').value    = '';
   document.getElementById('f-end').value      = '';
-  document.getElementById('form-msg').textContent = '';
+  document.getElementById('f-category').value = 'Holiday';
+  resetForm();
   // Default to the signed-in user where they are on the roster; otherwise Firm-wide.
   var whoSel = document.getElementById('f-who');
   whoSel.value = '';
@@ -403,6 +421,95 @@ function openAdd() {
   toggleTimes();
   document.getElementById('add-backdrop').classList.add('open');
   document.getElementById('f-subject').focus();
+}
+
+// Subjects are stored as 'Kelly \u2014 Annual leave'. Split the prefix back out so that
+// editing does not produce 'Kelly \u2014 Kelly \u2014 Annual leave' on the next save.
+function splitSubject(full) {
+  var m = /^([A-Za-z]+)\s\u2014\s([\s\S]+)$/.exec(String(full || ''));
+  if (!m) return { who: '', subject: String(full || '') };
+  var whoSel = document.getElementById('f-who');
+  var key = m[1].toLowerCase();
+  for (var i = 0; i < whoSel.options.length; i++) {
+    if (whoSel.options[i].value === key) return { who: key, subject: m[2] };
+  }
+  return { who: '', subject: String(full || '') };   // an em-dash that is not a name
+}
+
+// The body holds notes, then 'For: ...', then the audit trail. Only the notes belong
+// back in the textarea \u2014 the trail is preserved server-side on amend.
+function notesFromPreview(preview) {
+  var s = String(preview || '');
+  var cut = s.indexOf('For: ');
+  if (cut === -1) cut = s.indexOf('\u2014');
+  return (cut > -1 ? s.slice(0, cut) : s).trim();
+}
+
+function openEdit(id) {
+  var e = _byId[id];
+  if (!e) return;
+  _editId = id;
+
+  var sp = splitSubject(e.subject);
+  document.getElementById('modal-title').textContent = 'Edit calendar entry';
+  document.getElementById('save-btn').textContent    = 'Save changes';
+  document.getElementById('f-subject').value  = sp.subject;
+  document.getElementById('f-who').value      = sp.who;
+  document.getElementById('f-category').value = (e.categories && e.categories[0]) || 'Other';
+  document.getElementById('f-location').value = e.location || '';
+  document.getElementById('f-notes').value    = notesFromPreview(e.preview);
+  document.getElementById('f-allday').checked = !!e.isAllDay;
+
+  var s = parseGraph(e.start), en = parseGraph(e.end);
+  document.getElementById('f-date').value = s ? s.ymd : '';
+  // All-day end is exclusive \u2014 step back a day to show the last day people expect.
+  document.getElementById('f-enddate').value = en
+    ? (e.isAllDay ? addDays(en.ymd, -1) : en.ymd)
+    : (s ? s.ymd : '');
+  document.getElementById('f-start').value = (!e.isAllDay && s)  ? hhmm(s)  : '';
+  document.getElementById('f-end').value   = (!e.isAllDay && en) ? hhmm(en) : '';
+
+  resetForm();
+  document.getElementById('delete-btn').style.display = 'inline-block';
+  if (e.webLink) {
+    var link = document.getElementById('outlook-link');
+    link.href = e.webLink;
+    link.style.display = 'inline-block';
+  }
+  toggleTimes();
+  document.getElementById('add-backdrop').classList.add('open');
+  document.getElementById('f-subject').focus();
+}
+
+async function deleteEntry() {
+  if (!_editId) return;
+  var e = _byId[_editId];
+  if (!window.confirm('Delete \u201c' + ((e && e.subject) || 'this entry') + '\u201d?\n\n'
+                    + 'It goes to Deleted Items in the calendar mailbox, so it can be '
+                    + 'recovered from Outlook if this is a mistake.')) return;
+
+  var msg = document.getElementById('form-msg');
+  var btn = document.getElementById('delete-btn');
+  btn.disabled = true;
+  msg.className = 'form-msg';
+  msg.textContent = 'Deleting\u2026';
+  try {
+    var resp = await fetch('/api/calendar?id=' + encodeURIComponent(_editId), { method: 'DELETE' });
+    var data = await resp.json();
+    if (!resp.ok) {
+      msg.className = 'form-msg err';
+      msg.textContent = (data && data.error) ? data.error : ('Failed \u2014 HTTP ' + resp.status);
+      btn.disabled = false;
+      return;
+    }
+    msg.className = 'form-msg ok';
+    msg.textContent = 'Deleted.';
+    setTimeout(function () { closeAdd(); btn.disabled = false; load(); }, 450);
+  } catch (err) {
+    msg.className = 'form-msg err';
+    msg.textContent = err.message;
+    btn.disabled = false;
+  }
 }
 function closeAdd() { document.getElementById('add-backdrop').classList.remove('open'); }
 function toggleTimes() {
@@ -440,8 +547,9 @@ async function saveEvent() {
   msg.className = 'form-msg';
   msg.textContent = 'Saving…';
   try {
-    var resp = await fetch('/api/calendar', {
-      method: 'POST',
+    var url    = _editId ? ('/api/calendar?id=' + encodeURIComponent(_editId)) : '/api/calendar';
+    var resp = await fetch(url, {
+      method: _editId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
