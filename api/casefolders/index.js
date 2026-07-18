@@ -102,54 +102,66 @@ module.exports = async function (context, req) {
         continue;
       }
 
-      // S81: the per-library searches are INDEPENDENT, so they run concurrently.
-      // Run sequentially this took 15.9-17.2 s live (35 libraries on TMC Legal
-      // Limited alone) -- far too slow for a case page. Measured 2026-07-18.
-      const jobs = drives.map(async (drv) => {
-        const row = { site: site.key, library: drv.name || drv.id, raw: 0, kept: 0, error: null };
-        const found = [];
-        try {
-          const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
-          // No $select — naming fields in a $select on search() results has proved
-          // unreliable on this tenant (cf. the boolean-dropping $select in /api/wip).
-          const url = 'https://graph.microsoft.com/v1.0/drives/' + drv.id
-                    + '/root/search(q=' + q + ')?$top=200';
-          const res = await graphGet(url, token);
-          const hits = (res && res.value) || [];
-          row.raw = hits.length;
+      // S81 v5: BOUNDED concurrency + one 429 retry.
+      //   v3 sequential  = 15.9-17.2 s (too slow).
+      //   v4 Promise.all over all 35 libraries = Graph 429 'activityLimitReached' on
+      //      EVERY drive, 0 results in 9.0 s. Full parallelism is throttled outright.
+      // A pool of CONCURRENCY at a time, with a single retry after Retry-After on a
+      // 429, is the middle ground. Measured 2026-07-18.
+      const CONCURRENCY = 4;
+      const queue = drives.slice();
 
-          hits.forEach(it => {
-            const name = it.name || '';
-            if (name.toLowerCase().indexOf(refLower) === -1) return;  // NAME must carry the ref
-            found.push({
-              id:       it.id,
-              name:     name,
-              isFolder: !!it.folder,
-              site:     site.key,
-              library:  drv.name || null,
-              path:     (it.parentReference && it.parentReference.path) || null,
-              webUrl:   it.webUrl || null,
-              modified: it.lastModifiedDateTime || null,
-              size:     typeof it.size === 'number' ? it.size : null,
+      const worker = async () => {
+        while (queue.length) {
+          const drv = queue.shift();
+          if (!drv) break;
+          const row = { site: site.key, library: drv.name || drv.id, raw: 0, kept: 0, retried: false, error: null };
+          try {
+            const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
+            // No $select — naming fields in a $select on search() results has proved
+            // unreliable on this tenant (cf. the boolean-dropping $select in /api/wip).
+            const url = 'https://graph.microsoft.com/v1.0/drives/' + drv.id
+                      + '/root/search(q=' + q + ')?$top=200';
+
+            let res;
+            try {
+              res = await graphGet(url, token);
+            } catch (e1) {
+              if (String(e1 && e1.message).indexOf('Graph 429') === -1) throw e1;
+              row.retried = true;
+              await sleep(1500);
+              res = await graphGet(url, token);
+            }
+
+            const hits = (res && res.value) || [];
+            row.raw = hits.length;
+            hits.forEach(it => {
+              const name = it.name || '';
+              if (name.toLowerCase().indexOf(refLower) === -1) return;  // NAME must carry the ref
+              if (seen[it.id]) return;
+              seen[it.id] = true;
+              items.push({
+                name:     name,
+                isFolder: !!it.folder,
+                site:     site.key,
+                library:  drv.name || null,
+                path:     (it.parentReference && it.parentReference.path) || null,
+                webUrl:   it.webUrl || null,
+                modified: it.lastModifiedDateTime || null,
+                size:     typeof it.size === 'number' ? it.size : null,
+              });
+              row.kept++;
             });
-          });
-          row.kept = found.length;
-        } catch (e) {
-          row.error = errText(e);
+          } catch (e) {
+            row.error = errText(e);
+          }
+          dbg.push(row);
         }
-        return { row: row, found: found };
-      });
+      };
 
-      const results = await Promise.all(jobs);
-      results.forEach(res => {
-        dbg.push(res.row);
-        res.found.forEach(it => {
-          if (seen[it.id]) return;
-          seen[it.id] = true;
-          delete it.id;
-          items.push(it);
-        });
-      });
+      const workers = [];
+      for (let i = 0; i < Math.min(CONCURRENCY, drives.length); i++) workers.push(worker());
+      await Promise.all(workers);
     }
 
     // Folders first (they are the case's home, and Toby's naming convention is
@@ -173,7 +185,7 @@ module.exports = async function (context, req) {
         // against a build that had not deployed yet, and one produced a wrong
         // conclusion. Any response can now be attributed to a specific build in
         // one call. BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S81-v4-parallel-foldersfirst',
+        'X-Api-Build': 'S81-v5-pooled4-retry429',
       },
       body: JSON.stringify(payload),
     };
@@ -185,6 +197,10 @@ module.exports = async function (context, req) {
 
 function errText(e) {
   return (e && e.message ? e.message : String(e)).slice(0, 300);
+}
+
+function sleep(ms) {
+  return new Promise(function (r) { setTimeout(r, ms); });
 }
 
 // ─── TOKEN (client-credentials) ──────────────────────────
