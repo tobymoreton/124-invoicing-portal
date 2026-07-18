@@ -41,10 +41,13 @@
  * Returns: { mailbox, start, end, count, events: [...] }
  *
  * POST /api/calendar        create an event (S82 write path)
- *   { subject, date, endDate?, startTime?, endTime?, allDay?, location?, notes?, category? }
- *   Everyone at TMC may create. The creator's email is written into the body so the
- *   entry has an author — app-only writes appear in Outlook as the mailbox itself, so
- *   without this there is NO record of who added it (the S73 identity-trail lesson).
+ *   { subject, date, endDate?, startTime?, endTime?, allDay?, who?, location?, notes?, category? }
+ *   `who` is who the entry is FOR (validated against the staff roster; blank = firm-wide)
+ *   and is prefixed into the subject so it is legible in Outlook and on phones.
+ *   Everyone at TMC may create, and may create FOR anyone — an admin booking leave on
+ *   a draftsman's behalf is a normal case, and the creator is recorded regardless.
+ *   The creator's email is written into the body because app-only writes appear in
+ *   Outlook as the mailbox itself (the S73 identity-trail lesson).
  */
 
 const https   = require('https');
@@ -54,7 +57,26 @@ const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.u
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
 // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-const BUILD          = 'S82-cal-v2-write';
+const BUILD          = 'S82-cal-v3-who';
+
+// Who an entry is FOR — distinct from who created it. Mirrors the portal roster
+// (case.html PERSON_EMAILS) minus David, a leaver: historic data is not an issue
+// here because this calendar starts empty. Validated SERVER-side so a hand-rolled
+// POST cannot inject arbitrary text into the subject line everyone sees.
+const STAFF = {
+  toby:     'Toby',     danielle: 'Danielle', lesley: 'Lesley',
+  joanna:   'Joanna',   tracy:    'Tracy',    kelly:  'Kelly',
+  tom:      'Tom',      julie:    'Julie',    daniel: 'Daniel',
+};
+function resolveWho(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s || s === 'firm-wide' || s === 'everyone') return { ok: true, name: null };
+  const token = s.indexOf('@') > -1 ? s.split('@')[0] : s;
+  // Exact token match only — never substring: 'daniel' is a substring of 'danielle'
+  // and that exact bug bled Daniel's cases into Danielle's bucket (S65).
+  if (STAFF[token]) return { ok: true, name: STAFF[token] };
+  return { ok: false, name: null };
+}
 
 function getCallerEmail(req) {
   try {
@@ -193,6 +215,10 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
   if (!subject)                      return fail(400, 'subject is required');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'date is required as YYYY-MM-DD');
 
+  const who = resolveWho(b.who);
+  if (!who.ok) return fail(400, 'Unrecognised person: ' + String(b.who).slice(0, 60),
+                                'Must be a current member of staff, or blank for firm-wide.');
+
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(b.endDate || '')) ? String(b.endDate) : date;
   if (endDate < date) return fail(400, 'endDate is before date');
 
@@ -216,15 +242,19 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
     end   = { dateTime: endDate + 'T' + endT + ':00', timeZone: TZ };
   }
 
-  // App-only writes surface in Outlook as the mailbox itself — "automation" — so the
-  // author is recorded in the body. Without it nobody can tell who booked the hearing.
+  // The person's name goes in the SUBJECT, not just the body — it has to be legible
+  // in Outlook and on a phone, where nobody opens the entry to find out whose leave
+  // it is. 'Kelly — Annual leave'.
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
   const notes = String(b.notes || '').trim();
   const body  = (notes ? notes + '\n\n' : '')
+              + (who.name ? 'For: ' + who.name + '\n' : 'For: firm-wide\n')
               + '\u2014\nAdded via the TMC portal by ' + callerEmail + ' on ' + stamp + ' UTC.';
 
+  const fullSubject = (who.name ? who.name + ' \u2014 ' : '') + subject;
+
   const payload = {
-    subject:   subject.slice(0, 255),
+    subject:   fullSubject.slice(0, 255),
     isAllDay:  allDay,
     start:     start,
     end:       end,
@@ -252,6 +282,7 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
         end: made && made.end,
         isAllDay: !!(made && made.isAllDay),
         webLink: made && made.webLink,
+        who: who.name,
         createdBy: callerEmail,
       }),
     };
