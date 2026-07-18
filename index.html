@@ -231,6 +231,8 @@
     .btn-cancel:disabled{opacity:.4;cursor:not-allowed;}
     .drawer-action-msg{font-size:12px;color:var(--grey-mid);padding:0 24px 14px;text-align:center;}
     /* PAYMENTS ON ACCOUNT (unallocated) */
+    /* S81 (audit P4): visible failure state for any panel loaded via apiGet(). */
+    .api-fail{padding:10px 28px;font-size:12.5px;color:#991B1B;background:#FEF2F2;border-bottom:1px solid #FECACA;}
     .poa-banner{margin:0;background:var(--white);border-bottom:1px solid var(--grey-light);}
     .poa-banner.hot{background:var(--overdue-bg);border-bottom:2px solid var(--overdue);}
     .poa-head{display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 28px;flex-wrap:wrap;}
@@ -1890,17 +1892,52 @@ function filterByAge(min, max) {
 // PAYMENTS ON ACCOUNT (unallocated) — admin only (Toby, Danielle). Lives here on the
 // invoicing tab, in plain sight, because this is where payments get worked. Capture
 // only for now; allocate is the next step. Gate mirrors /api/paymentsonaccount.
+// ---- Shared GET helper (S81, audit P4) ------------------------------------
+// Three separate multi-hour misdiagnoses came from a loader that swallowed a failed
+// fetch and rendered nothing: S74 (booking-in-sheet threw, every field showed a dash),
+// S75 (loadActions() rendered [] as "No actions recorded."), S80 (loadPOA() swallowed a
+// 500 and the banner was invisible, so two rounds went on placement). A broken API and
+// an empty dataset MUST NOT look identical.
+//
+// apiGet() writes a one-line failure strip into the panel's own container instead.
+// opts.silentStatuses lists statuses that are EXPECTED and must stay invisible -- e.g.
+// 403 on an admin-only panel, where showing an error to every draftsman would be worse
+// than showing nothing at all.
+// Returns the parsed body, or null if the call failed (having already reported it).
+async function apiGet(url, containerId, opts) {
+  const o = opts || {};
+  const silent = o.silentStatuses || [];
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) {
+      if (!silent.includes(res.status)) apiFail(containerId, 'HTTP ' + res.status);
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    apiFail(containerId, (e && e.message) || 'network error');
+    return null;
+  }
+}
+
+function apiFail(containerId, detail) {
+  console.warn('apiGet failed for #' + containerId + ': ' + detail);
+  const el = containerId && document.getElementById(containerId);
+  if (!el) return;
+  el.style.display = '';
+  el.innerHTML = '<div class="api-fail">Couldn\u2019t load \u2014 ' + esc(detail) + '</div>';
+}
+
 const API_POA = '/api/paymentsonaccount';
 let _poaRows = [];
 
 async function loadPOA() {
-  try {
-    const res = await fetch(API_POA + '?open=1', { headers: { Accept: 'application/json' } });
-    if (!res.ok) return;                 // 403 for non-admins — stay hidden
-    const data = await res.json();
-    _poaRows = (data && data.rows) || [];
-    renderPOA((data && data.totalUnallocated) || 0);
-  } catch (e) { /* non-fatal */ }
+  // S81: routed through apiGet so a 500 is visible instead of silent. 403 stays
+  // silent by design -- non-admins must never see this banner or an error about it.
+  const data = await apiGet(API_POA + '?open=1', 'poa-banner', { silentStatuses: [403] });
+  if (!data) return;
+  _poaRows = data.rows || [];
+  renderPOA(data.totalUnallocated || 0);
 }
 
 function renderPOA(total) {
