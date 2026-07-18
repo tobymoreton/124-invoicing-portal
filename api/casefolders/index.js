@@ -102,8 +102,12 @@ module.exports = async function (context, req) {
         continue;
       }
 
-      for (const drv of drives) {
+      // S81: the per-library searches are INDEPENDENT, so they run concurrently.
+      // Run sequentially this took 15.9-17.2 s live (35 libraries on TMC Legal
+      // Limited alone) -- far too slow for a case page. Measured 2026-07-18.
+      const jobs = drives.map(async (drv) => {
         const row = { site: site.key, library: drv.name || drv.id, raw: 0, kept: 0, error: null };
+        const found = [];
         try {
           const q   = encodeURIComponent("'" + ref.replace(/'/g, "''") + "'");
           // No $select — naming fields in a $select on search() results has proved
@@ -117,9 +121,8 @@ module.exports = async function (context, req) {
           hits.forEach(it => {
             const name = it.name || '';
             if (name.toLowerCase().indexOf(refLower) === -1) return;  // NAME must carry the ref
-            if (seen[it.id]) return;
-            seen[it.id] = true;
-            items.push({
+            found.push({
+              id:       it.id,
               name:     name,
               isFolder: !!it.folder,
               site:     site.key,
@@ -129,17 +132,30 @@ module.exports = async function (context, req) {
               modified: it.lastModifiedDateTime || null,
               size:     typeof it.size === 'number' ? it.size : null,
             });
-            row.kept++;
           });
+          row.kept = found.length;
         } catch (e) {
           row.error = errText(e);
         }
-        dbg.push(row);
-      }
+        return { row: row, found: found };
+      });
+
+      const results = await Promise.all(jobs);
+      results.forEach(res => {
+        dbg.push(res.row);
+        res.found.forEach(it => {
+          if (seen[it.id]) return;
+          seen[it.id] = true;
+          delete it.id;
+          items.push(it);
+        });
+      });
     }
 
-    // Most recently modified first; anything without a date goes last.
+    // Folders first (they are the case's home, and Toby's naming convention is
+    // tightening around them), then most recently modified; no date sorts last.
     items.sort((a, b) => {
+      if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
       const da = a.modified ? new Date(a.modified).getTime() : -Infinity;
       const db = b.modified ? new Date(b.modified).getTime() : -Infinity;
       return db - da;
