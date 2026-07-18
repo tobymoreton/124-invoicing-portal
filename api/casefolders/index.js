@@ -169,6 +169,11 @@ module.exports = async function (context, req) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
+        // S81: build marker. Three separate measurements this session were taken
+        // against a build that had not deployed yet, and one produced a wrong
+        // conclusion. Any response can now be attributed to a specific build in
+        // one call. BUMP THIS ON EVERY CHANGE TO THIS FILE.
+        'X-Api-Build': 'S81-v4-parallel-foldersfirst',
       },
       body: JSON.stringify(payload),
     };
