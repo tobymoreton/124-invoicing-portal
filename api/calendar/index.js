@@ -64,7 +64,7 @@ const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.u
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
 // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-const BUILD          = 'S82-cal-v4-crud';
+const BUILD          = 'S82-cal-v5-recur';
 
 // Who an entry is FOR — distinct from who created it. Mirrors the portal roster
 // (case.html PERSON_EMAILS) minus David, a leaver: historic data is not an issue
@@ -162,6 +162,11 @@ module.exports = async function (context, req) {
           organizer: (e.organizer && e.organizer.emailAddress && e.organizer.emailAddress.address) || null,
           preview:   e.bodyPreview ? String(e.bodyPreview).slice(0, 1000) : null,
           cancelled: !!e.isCancelled,
+          // 'singleInstance' | 'occurrence' | 'exception' | 'seriesMaster'. calendarView
+          // returns OCCURRENCES of a series, whose ids are occurrence ids — the page
+          // needs to know that before offering to edit or delete one.
+          type:      e.type || 'singleInstance',
+          seriesId:  e.seriesMasterId || null,
           webLink:   e.webLink || null,
         });
       });
@@ -278,6 +283,36 @@ function buildEventPayload(b, callerEmail, verb) {
   // Sent even when blank on amend, so clearing a location or category actually clears it.
   payload.location   = { displayName: String(b.location || '').slice(0, 255) };
   payload.categories = b.category ? [String(b.category).slice(0, 64)] : [];
+
+  // ── Recurrence ───────────────────────────────────────────────
+  // Weekly only. 'Every Friday' is the ask; monthly and yearly rules are a poor fit for
+  // a firm calendar (bank holidays are easier added individually than expressed as a
+  // rule) and would be guesswork about what is actually wanted.
+  const rep = String(b.repeat || 'none').trim().toLowerCase();
+  if (rep === 'weekly') {
+    const until = /^\d{4}-\d{2}-\d{2}$/.test(String(b.repeatUntil || '')) ? String(b.repeatUntil) : null;
+    // An end date is REQUIRED, deliberately. A never-ending series nobody owns is how a
+    // shared calendar rots — and it cannot be tidied later without touching the master.
+    if (!until)        return { error: 'A repeating entry needs an end date.' };
+    if (until < date)  return { error: 'The repeat end date is before the start date.' };
+
+    // A repeating entry must occupy ONE day per occurrence, or the pattern and the
+    // multi-day span fight each other.
+    if (endDate !== date) {
+      return { error: 'A repeating entry has to be a single day per occurrence.',
+               hint:  'Set From and To to the same date, and use the repeat end date for how long it runs.' };
+    }
+
+    const DOW = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const dow = DOW[new Date(date + 'T00:00:00Z').getUTCDay()];
+    let interval = parseInt(b.repeatInterval, 10);
+    if (!(interval >= 1 && interval <= 52)) interval = 1;
+
+    payload.recurrence = {
+      pattern: { type: 'weekly', interval: interval, daysOfWeek: [dow], firstDayOfWeek: 'monday' },
+      range:   { type: 'endDate', startDate: date, endDate: until, recurrenceTimeZone: TZ },
+    };
+  }
 
   return { payload: payload, who: who.name, subject: subject };
 }
