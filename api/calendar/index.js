@@ -48,6 +48,13 @@
  *   a draftsman's behalf is a normal case, and the creator is recorded regardless.
  *   The creator's email is written into the body because app-only writes appear in
  *   Outlook as the mailbox itself (the S73 identity-trail lesson).
+ *
+ * PATCH /api/calendar?id=<eventId>     amend an event (same body shape as POST)
+ * DELETE /api/calendar?id=<eventId>    remove an event
+ *   Anyone at TMC may amend or remove anything — it is a shared calendar, and an entry
+ *   nobody but its author can correct is an entry that stays wrong. Every amendment
+ *   appends to the audit trail in the body rather than overwriting it. Deletes go to
+ *   the mailbox's Deleted Items and are recoverable from Outlook.
  */
 
 const https   = require('https');
@@ -57,7 +64,7 @@ const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.u
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
 // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-const BUILD          = 'S82-cal-v3-who';
+const BUILD          = 'S82-cal-v4-crud';
 
 // Who an entry is FOR — distinct from who created it. Mirrors the portal roster
 // (case.html PERSON_EMAILS) minus David, a leaver: historic data is not an issue
@@ -109,8 +116,17 @@ module.exports = async function (context, req) {
     return;
   }
 
-  if ((req.method || 'GET').toUpperCase() === 'POST') {
+  const method = (req.method || 'GET').toUpperCase();
+  if (method === 'POST') {
     await createEvent(context, req, callerEmail, TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    return;
+  }
+  if (method === 'PATCH') {
+    await updateEvent(context, req, callerEmail, TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    return;
+  }
+  if (method === 'DELETE') {
+    await deleteEvent(context, req, callerEmail, TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     return;
   }
 
@@ -144,7 +160,7 @@ module.exports = async function (context, req) {
           location:  (e.location && e.location.displayName) || null,
           categories: e.categories || [],
           organizer: (e.organizer && e.organizer.emailAddress && e.organizer.emailAddress.address) || null,
-          preview:   e.bodyPreview ? String(e.bodyPreview).slice(0, 300) : null,
+          preview:   e.bodyPreview ? String(e.bodyPreview).slice(0, 1000) : null,
           cancelled: !!e.isCancelled,
           webLink:   e.webLink || null,
         });
@@ -197,30 +213,24 @@ module.exports = async function (context, req) {
   }
 };
 
-// ─── CREATE (POST) ───────────────────────────────────────
-// Deliberately create-only for now. Update and delete land once creation is proven
-// against live data — the S80 lesson: do not ship three verbs and debug all three.
-async function createEvent(context, req, callerEmail, tenantId, clientId, clientSecret) {
-  const b = req.body || {};
-  const fail = (status, error, hint) => {
-    context.res = {
-      status: status,
-      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
-      body: JSON.stringify({ error: error, hint: hint || null }),
-    };
-  };
-
+// ─── SHARED PAYLOAD BUILDER ──────────────────────────────
+// Used by BOTH create and amend. Kept in one place deliberately: two copies of the
+// all-day half-open boundary is two chances to get it wrong, and only one of them
+// would be noticed.
+function buildEventPayload(b, callerEmail, verb) {
   const subject = String(b.subject || '').trim();
   const date    = String(b.date || '').trim();
-  if (!subject)                      return fail(400, 'subject is required');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'date is required as YYYY-MM-DD');
+  if (!subject)                          return { error: 'subject is required' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: 'date is required as YYYY-MM-DD' };
 
   const who = resolveWho(b.who);
-  if (!who.ok) return fail(400, 'Unrecognised person: ' + String(b.who).slice(0, 60),
-                                'Must be a current member of staff, or blank for firm-wide.');
+  if (!who.ok) {
+    return { error: 'Unrecognised person: ' + String(b.who).slice(0, 60),
+             hint:  'Must be a current member of staff, or blank for firm-wide.' };
+  }
 
   const endDate = /^\d{4}-\d{2}-\d{2}$/.test(String(b.endDate || '')) ? String(b.endDate) : date;
-  if (endDate < date) return fail(400, 'endDate is before date');
+  if (endDate < date) return { error: 'endDate is before date' };
 
   const allDay = b.allDay !== false && !b.startTime;   // default TRUE unless a time is given
   let start, end;
@@ -230,14 +240,14 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
     // Getting this wrong is the classic off-by-one that makes a one-day holiday vanish.
     const dayAfter = new Date(endDate + 'T00:00:00Z');
     dayAfter.setUTCDate(dayAfter.getUTCDate() + 1);
-    start = { dateTime: date + 'T00:00:00',                          timeZone: TZ };
+    start = { dateTime: date + 'T00:00:00',                                timeZone: TZ };
     end   = { dateTime: dayAfter.toISOString().slice(0, 10) + 'T00:00:00', timeZone: TZ };
   } else {
     const st = /^\d{2}:\d{2}$/.test(String(b.startTime || '')) ? String(b.startTime) : null;
     const et = /^\d{2}:\d{2}$/.test(String(b.endTime   || '')) ? String(b.endTime)   : null;
-    if (!st) return fail(400, 'startTime is required as HH:MM when the entry is not all-day');
+    if (!st) return { error: 'startTime is required as HH:MM when the entry is not all-day' };
     const endT = et || addMinutes(st, 60);
-    if (endDate === date && endT <= st) return fail(400, 'endTime is not after startTime');
+    if (endDate === date && endT <= st) return { error: 'endTime is not after startTime' };
     start = { dateTime: date    + 'T' + st   + ':00', timeZone: TZ };
     end   = { dateTime: endDate + 'T' + endT + ':00', timeZone: TZ };
   }
@@ -247,9 +257,13 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
   // it is. 'Kelly — Annual leave'.
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
   const notes = String(b.notes || '').trim();
+  const trail = String(b.trail || '').trim();   // prior audit lines, preserved on amend
   const body  = (notes ? notes + '\n\n' : '')
               + (who.name ? 'For: ' + who.name + '\n' : 'For: firm-wide\n')
-              + '\u2014\nAdded via the TMC portal by ' + callerEmail + ' on ' + stamp + ' UTC.';
+              + '\u2014\n'
+              + (trail ? trail + '\n' : '')
+              + (verb === 'amend' ? 'Amended' : 'Added')
+              + ' via the TMC portal by ' + callerEmail + ' on ' + stamp + ' UTC.';
 
   const fullSubject = (who.name ? who.name + ' \u2014 ' : '') + subject;
 
@@ -261,8 +275,27 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
     body:      { contentType: 'text', content: body },
     showAs:    allDay ? 'free' : 'busy',
   };
-  if (b.location) payload.location   = { displayName: String(b.location).slice(0, 255) };
-  if (b.category) payload.categories = [String(b.category).slice(0, 64)];
+  // Sent even when blank on amend, so clearing a location or category actually clears it.
+  payload.location   = { displayName: String(b.location || '').slice(0, 255) };
+  payload.categories = b.category ? [String(b.category).slice(0, 64)] : [];
+
+  return { payload: payload, who: who.name, subject: subject };
+}
+
+// ─── CREATE (POST) ───────────────────────────────────────
+async function createEvent(context, req, callerEmail, tenantId, clientId, clientSecret) {
+  const b = req.body || {};
+  const fail = (status, error, hint) => {
+    context.res = {
+      status: status,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({ error: error, hint: hint || null }),
+    };
+  };
+
+  const built = buildEventPayload(b, callerEmail, 'create');
+  if (built.error) return fail(400, built.error, built.hint);
+  const payload = built.payload;
 
   try {
     const token = await getToken(tenantId, clientId, clientSecret);
@@ -270,7 +303,7 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
                 + encodeURIComponent(CAL_MAILBOX) + '/events';
     const made  = await graphPost(url, token, payload);
 
-    context.log('Calendar event created by ' + callerEmail + ': ' + subject);
+    context.log('Calendar event created by ' + callerEmail + ': ' + built.subject);
     context.res = {
       status: 201,
       headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
@@ -282,7 +315,7 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
         end: made && made.end,
         isAllDay: !!(made && made.isAllDay),
         webLink: made && made.webLink,
-        who: who.name,
+        who: built.who,
         createdBy: callerEmail,
       }),
     };
@@ -290,14 +323,128 @@ async function createEvent(context, req, callerEmail, tenantId, clientId, client
     const msg = (err && err.message) || String(err);
     context.log.error('Calendar create failed:', msg);
     const status = /Graph 403/.test(msg) ? 403 : /Graph 404/.test(msg) ? 404 : 500;
-    fail(status, msg.slice(0, 400),
-      status === 403
-        ? 'RBAC assignment missing or still cached (30 min – 2 hrs). Calendars.ReadWrite must '
-          + 'be granted via Exchange RBAC only — never consented in Entra.'
-        : status === 404
-        ? 'Mailbox not found — confirm ' + CAL_MAILBOX + ' is a mailbox, not an alias.'
-        : 'Unexpected error — see message.');
+    fail(status, msg.slice(0, 400), graphHint(status));
   }
+}
+
+// ─── AMEND (PATCH) ───────────────────────────────────────
+async function updateEvent(context, req, callerEmail, tenantId, clientId, clientSecret) {
+  const b  = req.body || {};
+  const id = String((req.query && req.query.id) || b.id || '').trim();
+  const fail = (status, error, hint) => {
+    context.res = {
+      status: status,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({ error: error, hint: hint || null }),
+    };
+  };
+  if (!id) return fail(400, 'id is required');
+
+  const built = buildEventPayload(b, callerEmail, 'amend');
+  if (built.error) return fail(400, built.error, built.hint);
+
+  try {
+    const token = await getToken(tenantId, clientId, clientSecret);
+    const url   = 'https://graph.microsoft.com/v1.0/users/'
+                + encodeURIComponent(CAL_MAILBOX) + '/events/' + encodeURIComponent(id);
+
+    // Read the existing body FIRST so the audit trail survives the amendment. Doing
+    // this server-side rather than round-tripping it through the browser means the
+    // trail cannot be truncated, dropped or edited by whoever is amending.
+    let trail = '';
+    try {
+      const existing = await graphGet(url + '?$select=body', token);
+      const prior = (existing && existing.body && existing.body.content) || '';
+      const marker = prior.indexOf('\u2014');
+      if (marker > -1) {
+        trail = prior.slice(marker + 1)
+          .replace(/<[^>]*>/g, '')      // body may come back as HTML
+          .split(/\r?\n/).map(s => s.trim())
+          .filter(s => /via the TMC portal by /.test(s))
+          .join('\n');
+      }
+    } catch (e) { /* no trail recoverable — the amendment line still gets written */ }
+
+    const built2 = trail
+      ? buildEventPayload(Object.assign({}, b, { trail: trail }), callerEmail, 'amend')
+      : built;
+    const done = await graphPatch(url, token, built2.payload || built.payload);
+
+    context.log('Calendar event amended by ' + callerEmail + ': ' + built.subject);
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({
+        ok: true,
+        id: done && done.id,
+        subject: done && done.subject,
+        start: done && done.start,
+        end: done && done.end,
+        isAllDay: !!(done && done.isAllDay),
+        who: built.who,
+        amendedBy: callerEmail,
+      }),
+    };
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    context.log.error('Calendar amend failed:', msg);
+    const status = /Graph 40[34]/.test(msg) ? (/Graph 403/.test(msg) ? 403 : 404) : 500;
+    fail(status, msg.slice(0, 400),
+      status === 404 ? 'That entry no longer exists — it may already have been deleted.'
+                     : graphHint(status));
+  }
+}
+
+// ─── DELETE ──────────────────────────────────────────────
+// A real delete, not a cancelled-flag: this calendar has no attendees to notify, and
+// Outlook keeps the item in the mailbox's Deleted Items, so it is recoverable.
+async function deleteEvent(context, req, callerEmail, tenantId, clientId, clientSecret) {
+  const id = String((req.query && req.query.id) || '').trim();
+  const fail = (status, error, hint) => {
+    context.res = {
+      status: status,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({ error: error, hint: hint || null }),
+    };
+  };
+  if (!id) return fail(400, 'id is required');
+
+  try {
+    const token = await getToken(tenantId, clientId, clientSecret);
+    const url   = 'https://graph.microsoft.com/v1.0/users/'
+                + encodeURIComponent(CAL_MAILBOX) + '/events/' + encodeURIComponent(id);
+    await graphDelete(url, token);
+
+    context.log('Calendar event deleted by ' + callerEmail + ': ' + id.slice(0, 40));
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+      body: JSON.stringify({ ok: true, deleted: true, deletedBy: callerEmail }),
+    };
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    context.log.error('Calendar delete failed:', msg);
+    const status = /Graph 403/.test(msg) ? 403 : /Graph 404/.test(msg) ? 404 : 500;
+    // 404 on delete is not an error worth shouting about — the entry is gone either way.
+    if (status === 404) {
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'X-Api-Build': BUILD },
+        body: JSON.stringify({ ok: true, deleted: false, note: 'Entry was already gone.' }),
+      };
+      return;
+    }
+    fail(status, msg.slice(0, 400), graphHint(status));
+  }
+}
+
+function graphHint(status) {
+  return status === 403
+    ? 'RBAC assignment missing or still cached (30 min – 2 hrs). Calendars.ReadWrite must '
+      + 'be granted via Exchange RBAC only — never consented in Entra.'
+    : status === 404
+    ? 'Not found — confirm ' + CAL_MAILBOX + ' is a mailbox, not an alias.'
+    : 'Unexpected error — see message.';
 }
 
 function addMinutes(hhmm, mins) {
@@ -395,6 +542,46 @@ function graphPost(url, token, payload) {
     req.end();
   });
 }
+
+// ─── GRAPH PATCH / DELETE ────────────────────────────────
+function graphSend(method, url, token, payload) {
+  return new Promise(function (resolve, reject) {
+    const u    = new URL(url);
+    const data = payload ? JSON.stringify(payload) : null;
+    const headers = {
+      Authorization: 'Bearer ' + token,
+      Accept:        'application/json',
+      Prefer:        'outlook.timezone="' + TZ + '"',
+    };
+    if (data) {
+      headers['Content-Type']   = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(data);
+    }
+
+    const req = https.request(
+      { hostname: u.hostname, path: u.pathname + u.search, method: method, headers: headers },
+      function (res) {
+        let out = '';
+        res.on('data', chunk => { out += chunk; });
+        res.on('end', () => {
+          if (res.statusCode >= 400) {
+            reject(new Error('Graph ' + res.statusCode + ': ' + out.slice(0, 300)));
+            return;
+          }
+          // DELETE returns 204 with an empty body — not an error, and not JSON.
+          if (!out) { resolve({}); return; }
+          try { resolve(JSON.parse(out)); }
+          catch (e) { reject(new Error('JSON parse error: ' + e.message)); }
+        });
+      }
+    );
+    req.on('error', reject);
+    if (data) req.write(data);
+    req.end();
+  });
+}
+function graphPatch(url, token, payload) { return graphSend('PATCH', url, token, payload); }
+function graphDelete(url, token)         { return graphSend('DELETE', url, token, null); }
 
 // ─── GRAPH GET ───────────────────────────────────────────
 function graphGet(url, token) {
