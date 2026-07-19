@@ -2656,6 +2656,7 @@ function renderHeader() {
 // Failure is VISIBLE, never silent (audit P4).
 let _cfItems   = [];
 let _cfShowAll = false;
+let _cfFailed  = 0;   // S83: libraries whose SharePoint search failed (throttled)
 // Collapse preference persists for the browser session, so someone who does not
 // want the banner does not have to dismiss it on every case they open.
 let _cfHidden  = (function () {
@@ -2716,6 +2717,10 @@ async function loadCaseFiles() {
     }
     const j = await r.json();
     _cfItems   = (j && j.items) || [];
+    // S83: a Graph 429 makes the API return 200 with count:0. Without this the
+    // strip printed "Nothing found carrying this reference" for a case that has
+    // plenty of files. failed > 0 means the result set is INCOMPLETE.
+    _cfFailed  = (j && typeof j.failed === 'number') ? j.failed : 0;
     _cfShowAll = false;
     renderCaseFiles();
   } catch (e) {
@@ -2744,8 +2749,12 @@ function renderCaseFiles() {
     it => String(it.library || '').trim().toLowerCase() !== EA_LIB);
   const total = cfList.length;
   if (!total) {
+    const msg = _cfFailed
+      ? 'SharePoint search was throttled \u2014 results incomplete. '
+        + '<a href="#" onclick="loadCaseFiles();return false;">Try again</a>.'
+      : 'Nothing found carrying this reference.';
     el.innerHTML = '<div class="cf-head"><span class="cf-title">Case files in SharePoint</span></div>'
-                 + '<div class="cf-empty">Nothing found carrying this reference.</div>';
+                 + '<div class="cf-empty">' + msg + '</div>';
     renderEmailAtt();
     return;
   }
