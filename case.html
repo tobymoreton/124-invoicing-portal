@@ -2724,6 +2724,9 @@ async function loadCaseFiles() {
     _cfFailed  = (j && typeof j.failed === 'number') ? j.failed : 0;
     _cfShowAll = false;
     renderCaseFiles();
+    // S84: Re-render case actions table so ✉ links appear even when loadCaseActions()
+    // completed before loadCaseFiles() populated _cfItems (async race fix).
+    if (caLoaded) renderCaTable();
   } catch (e) {
     el.innerHTML = '<div class="cf-err">Couldn\u2019t load case files \u2014 '
                  + escHtml((e && e.message) || 'network error') + '</div>';
