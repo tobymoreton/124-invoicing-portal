@@ -4406,7 +4406,12 @@ function renderCaTable() {
       if (!body) return;
       const w = window.open('', '_blank');
       const isHtml = /<[a-z][\s\S]*>/i.test(body);
-      w.document.write(isHtml ? body : '<pre style="font-family:sans-serif;white-space:pre-wrap;padding:16px;">' + body.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>');
+      const toolbar = '<div style="position:sticky;top:0;z-index:999;background:#001B44;padding:8px 16px;display:flex;align-items:center;gap:12px;">'
+        + '<button onclick="window.close()" style="background:#B59A6A;color:#fff;border:none;border-radius:4px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;">&#8592; Close</button>'
+        + '<span style="color:rgba(245,242,235,.6);font-size:12px;">Email — close this tab to return to the portal</span>'
+        + '</div>';
+      const emailBody = isHtml ? body : '<pre style="font-family:sans-serif;white-space:pre-wrap;padding:16px;">' + body.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>';
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Email</title></head><body style="margin:0;">' + toolbar + emailBody + '</body></html>');
       w.document.close();
     });
   });
