@@ -276,6 +276,16 @@
     .tc-notes-row td{padding:0 20px 10px 20px;border-bottom:1px solid var(--grey-faint);}
     .tc-notes{padding:7px 10px;background:rgba(201,168,74,.07);border-left:2px solid var(--gold);border-radius:4px;font-size:11.5px;color:var(--navy-mid);line-height:1.45;white-space:pre-wrap;}
     .tc-notes-label{display:block;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.8;margin-bottom:2px;}
+    /* Announcement banner */
+    @keyframes news-flash{
+      0%,100%{filter:brightness(1);box-shadow:none;}
+      2%{filter:brightness(1.32);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);}
+      4.5%{filter:brightness(1);box-shadow:none;}
+      7%{filter:brightness(1.32);box-shadow:inset 0 0 0 2px rgba(255,255,255,.6);}
+      9.5%{filter:brightness(1);box-shadow:none;}
+    }
+    #news-banner{animation:news-flash 9s ease-in-out infinite;}
+    @media (prefers-reduced-motion:reduce){#news-banner{animation:none;}}
   </style>
 </head>
 <body>
@@ -294,6 +304,14 @@
   </div>
 </nav>
 
+<div id="news-banner" style="display:none;background:linear-gradient(90deg,var(--gold-mid),var(--gold));color:var(--navy);font-weight:600;font-size:13px;padding:9px 0;align-items:center;gap:12px;overflow:hidden;position:relative;">
+  <span style="flex-shrink:0;padding-left:32px;">&#128226;</span>
+  <div style="flex:1;overflow:hidden;white-space:nowrap;position:relative;height:18px;">
+    <span id="news-banner-text" style="position:absolute;white-space:nowrap;will-change:transform;"></span>
+  </div>
+  <button id="news-banner-dismiss" title="Dismiss for this session" style="flex-shrink:0;background:none;border:none;color:var(--navy);font-size:16px;cursor:pointer;opacity:.6;padding:2px 32px 2px 6px;">&times;</button>
+</div>
+
 <div class="page-header">
   <div>
     <div class="page-title">Admin Dashboard</div>
@@ -303,6 +321,7 @@
     <div class="hdr-clock" id="hdr-clock">--:--:--</div>
     <div class="hdr-date" id="hdr-date"></div>
     <div class="hdr-stats" id="hdr-stats"></div>
+    <button id="btn-post-update" style="display:none;flex-shrink:0;padding:7px 14px;border:1px solid rgba(201,168,76,.4);border-radius:4px;background:rgba(201,168,76,.15);color:var(--gold);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;">&#128226; Post Update</button>
   </div>
 </div>
 
@@ -1578,6 +1597,7 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     if(!management.includes(email)) document.body.classList.add('not-mgmt');
     adManagement=management.includes(email);
     if(email==='toby@tmclegal.co.uk'){ const b=document.getElementById('btn-att-types'); if(b) b.style.display='inline-flex'; }
+    wireBanner(email);
   }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
 })();
 
@@ -1827,6 +1847,134 @@ document.getElementById('at-save-btn').addEventListener('click',async()=>{
   }finally{ btn.disabled=false; }
 });
 // ── /Attachment Types ──
+// ── Admin announcement banner ────────────────────────────────────────────────
+const BANNER_KEY_TEXT='AdminBannerText';
+const BANNER_KEY_ACTIVE='AdminBannerActive';
+const BANNER_WRITE_EMAIL='toby@tmclegal.co.uk';
+let bannerDismissedThisSession=false;
+
+async function loadBanner(){
+  try{
+    const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT));
+    const ra=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE));
+    if(!r.ok||!ra.ok) return;
+    const data=await r.json();
+    const dataActive=await ra.json();
+    const text=data.value||'';
+    const active=dataActive.value==='1';
+    const banner=document.getElementById('news-banner');
+    const textEl=document.getElementById('news-banner-text');
+    if(active&&text&&!bannerDismissedThisSession){
+      const stars=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(escHtml)
+        .join('<span style="color:#991B1B;font-weight:900;font-size:15px;margin:0 13px;vertical-align:middle;">\u2605</span>');
+      textEl.innerHTML=stars;
+      banner.style.display='flex';
+      startMarquee(textEl);
+    }else{
+      banner.style.display='none';
+      stopMarquee();
+    }
+  }catch{/*ignore*/}
+}
+
+let marqueeFrame=null;
+function stopMarquee(){if(marqueeFrame){cancelAnimationFrame(marqueeFrame);marqueeFrame=null;}}
+function startMarquee(textEl){
+  stopMarquee();
+  const wrap=textEl.parentElement;
+  const speed=60;
+  let x=wrap.clientWidth;
+  function step(){
+    const textWidth=textEl.offsetWidth;
+    x-=speed/60;
+    if(x<-textWidth) x=wrap.clientWidth;
+    textEl.style.transform='translateX('+x+'px)';
+    marqueeFrame=requestAnimationFrame(step);
+  }
+  marqueeFrame=requestAnimationFrame(step);
+}
+
+function wireBanner(callerEmail){
+  const dismissBtn=document.getElementById('news-banner-dismiss');
+  if(dismissBtn) dismissBtn.addEventListener('click',()=>{
+    bannerDismissedThisSession=true;
+    document.getElementById('news-banner').style.display='none';
+    stopMarquee();
+  });
+  const postBtn=document.getElementById('btn-post-update');
+  const textArea=document.getElementById('pu-text');
+  const countEl=document.getElementById('pu-count');
+  if(textArea&&countEl) textArea.addEventListener('input',()=>{
+    countEl.textContent=(1000-textArea.value.length)+' characters left';
+  });
+  if(callerEmail===BANNER_WRITE_EMAIL&&postBtn){
+    postBtn.style.display='inline-flex';
+    postBtn.addEventListener('click',async()=>{
+      document.getElementById('pu-msg').textContent='';
+      try{
+        const r=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT));
+        const ra=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE));
+        const data=r.ok?await r.json():null;
+        const dataActive=ra.ok?await ra.json():null;
+        textArea.value=data&&data.value?data.value:'';
+        document.getElementById('pu-active').checked=dataActive?dataActive.value==='1':true;
+        countEl.textContent=(1000-textArea.value.length)+' characters left';
+      }catch{/*leave fields at default*/}
+      openModal('modal-post-update');
+    });
+  }
+  const saveBtn=document.getElementById('pu-save');
+  if(saveBtn) saveBtn.addEventListener('click',async()=>{
+    const msg=document.getElementById('pu-msg');
+    const text=textArea?textArea.value.trim():'';
+    const active=document.getElementById('pu-active').checked;
+    if(active&&!text){msg.style.color='#c00';msg.textContent='Enter banner text, or untick Show banner.';return;}
+    saveBtn.disabled=true;msg.style.color='';msg.textContent='Saving\u2026';
+    try{
+      const r1=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_TEXT),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:text}),
+      });
+      const r2=await fetch('/api/portalconfig?key='+encodeURIComponent(BANNER_KEY_ACTIVE),{
+        method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:active?'1':'0'}),
+      });
+      if(!r1.ok) throw new Error('HTTP '+r1.status+' '+(await r1.text()).slice(0,120));
+      if(!r2.ok) throw new Error('HTTP '+r2.status+' '+(await r2.text()).slice(0,120));
+      bannerDismissedThisSession=false;
+      msg.style.color='green';msg.textContent='\u2713 Saved';
+      loadBanner();
+      setTimeout(()=>closeModal('modal-post-update'),800);
+    }catch(err){
+      msg.style.color='#c00';msg.textContent='Failed: '+err.message;
+    }finally{saveBtn.disabled=false;}
+  });
+  loadBanner();
+}
+// ── /Admin announcement banner ────────────────────────────────────────────────
 </script>
+<div class="modal-overlay" id="modal-post-update">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <span class="modal-title">Post an Admin Announcement</span>
+      <button class="modal-close" data-close="modal-post-update">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;">Banner Text</label>
+        <textarea id="pu-text" rows="3" maxlength="1000" placeholder="One message per line — each shows separated by a star" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid rgba(255,255,255,.12);border-radius:4px;background:rgba(255,255,255,.05);color:inherit;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+        <div id="pu-count" style="font-size:11px;color:var(--grey-mid);text-align:right;margin-top:2px;">1000 characters left</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="pu-active" checked style="width:18px;height:18px;accent-color:var(--navy);" />
+        <label for="pu-active" style="font-size:13px;font-weight:500;cursor:pointer;">Show banner (uncheck to hide without deleting the text)</label>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid rgba(255,255,255,.08);">
+      <span id="pu-msg" style="flex:1;font-size:12px;"></span>
+      <button class="modal-close" data-close="modal-post-update" style="padding:7px 16px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:none;color:inherit;cursor:pointer;font-size:13px;">Cancel</button>
+      <button id="pu-save" style="padding:7px 16px;border:none;border-radius:4px;background:var(--gold);color:var(--navy);font-weight:600;cursor:pointer;font-size:13px;">Save</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
