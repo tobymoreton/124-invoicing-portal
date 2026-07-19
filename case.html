@@ -4386,7 +4386,7 @@ function renderCaTable() {
       const billCell = billed
         ? `<td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>`
         : `<td class="ca-cell ca-center"><input type="checkbox" class="ca-bill-inline" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>`;
-      const _emailUrl = (() => { const eid = String(f.EmailID || '').trim(); return eid ? eaCfEmailUrl(eid) : null; })();
+      const _hasEmail = !!(f['FullEmail'] || '').trim();
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
         <td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${escHtml(brief)}">${escHtml(brief)}</td>
         <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>
@@ -4395,9 +4395,20 @@ function renderCaTable() {
         ${billCell}
         <td class="ca-cell ca-center">${billed ? '<span class="ca-billed-badge">Billed</span>' : '\u2212'}</td>
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
-        <td class="ca-cell ca-actions">${_emailUrl ? '<a class="ca-email-link" href="' + escHtml(_emailUrl) + '" target="_blank" rel="noopener" title="View email in SharePoint">\u2709</a>' : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
+        <td class="ca-cell ca-actions">${_hasEmail ? '<button class="ca-email-btn" data-id="' + escHtml(id) + '" title="View full email" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 4px 0 0;">\u2709</button>' : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.ca-email-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = caActions.find(x => x.id === btn.dataset.id);
+      const body = (a && a.fields && a.fields['FullEmail']) || '';
+      if (!body) return;
+      const w = window.open('', '_blank');
+      const isHtml = /<[a-z][\s\S]*>/i.test(body);
+      w.document.write(isHtml ? body : '<pre style="font-family:sans-serif;white-space:pre-wrap;padding:16px;">' + body.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>');
+      w.document.close();
+    });
   });
   tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderCaTable(); renderEmailsTable(); }); });
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderCaTable(); renderEmailsTable(); }); });
