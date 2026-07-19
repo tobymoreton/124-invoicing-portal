@@ -1668,6 +1668,7 @@ function renderActionsPanel(){
         '<div class="ca-panel-val ca-val-cell">'+(val>0?fmt(val):'—')+'</div>'+
         '<select class="ca-units" title="Time claimed (6-minute units) — pick a larger value to increase">'+unitOpts+'</select>'+
         '<label class="ca-bill" style="color:'+(billable?'var(--grey-mid)':'var(--red)')+';"><input type="checkbox" class="ca-bill-cb"'+(billable?' checked':'')+'/><span class="ca-bill-lbl">'+(billable?'Billable':'Non-billable')+'</span></label>'+
+        ((a.fields?.['FullEmail']||'').trim() ? '<button class="ca-email-btn" title="View full email" style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px 0 0;">\u2709</button>' : '')+
       '</div>';
     const uSel=row.querySelector('.ca-units');
     const vCell=row.querySelector('.ca-val-cell');
@@ -1678,6 +1679,23 @@ function renderActionsPanel(){
     const bLbl=row.querySelector('.ca-bill-lbl');
     bWrap.addEventListener('click',ev=>ev.stopPropagation());
     bCb.addEventListener('change',ev=>{ ev.stopPropagation(); setActionBillable(a,bCb.checked,bCb,bLbl,bWrap); });
+    const eBt=row.querySelector('.ca-email-btn');
+    if(eBt){
+      eBt.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        const body=(a.fields?.['FullEmail']||'').trim();
+        if(!body)return;
+        const w=window.open('','_blank');
+        const isHtml=/<[a-z][\s\S]*>/i.test(body);
+        const toolbar='<div style="position:sticky;top:0;z-index:999;background:#001B44;padding:8px 16px;display:flex;align-items:center;gap:12px;">'
+          +'<button onclick="window.close()" style="background:#B59A6A;color:#fff;border:none;border-radius:4px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;">&#8592; Close</button>'
+          +'<span style="color:rgba(245,242,235,.6);font-size:12px;">Email — close this tab to return to the portal</span>'
+          +'</div>';
+        const emailBody=isHtml?body:'<pre style="font-family:sans-serif;white-space:pre-wrap;padding:16px;">'+body.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre>';
+        w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Email</title></head><body style="margin:0;">'+toolbar+emailBody+'</body></html>');
+        w.document.close();
+      });
+    }
     row.addEventListener('click',ev=>{ if(ev.target.closest('.ca-units')||ev.target.closest('.ca-bill')) return; openEditActionModal(a); });
     el.appendChild(row);
   });
