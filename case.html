@@ -4292,6 +4292,7 @@ function renderEmailsTable() {
     const amtRaw = parseFloat(f['Num_BillableAmount_x00a3_']);
     const amt = (!isNaN(amtRaw) && amtRaw > 0) ? amtRaw : hrs * rate;
     const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
+    const _hasEmail = !!(f['FullEmail'] || '').trim();
     const isEditing = caEditingId === id;
     const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = 'ca-row'; tr.style.borderLeft = '3px solid ' + bs.c;
     if (isEditing) {
@@ -4315,9 +4316,25 @@ function renderEmailsTable() {
         + `<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>`
         + `<td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>`
         + `<td class="ca-cell ca-center">${billable ? '\u2714' : '<span style="color:#991B1B;">\u2717</span>'}</td>`
-        + `<td class="ca-cell ca-actions"><button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
+        + `<td class="ca-cell ca-actions">${_hasEmail ? '<button class="ca-email-btn" data-id="' + escHtml(id) + '" title="View full email" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 4px 0 0;">\u2709</button>' : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
     tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('.ca-email-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = caActions.find(x => x.id === btn.dataset.id);
+      const body = (a && a.fields && a.fields['FullEmail']) || '';
+      if (!body) return;
+      const w = window.open('', '_blank');
+      const isHtml = /<[a-z][\s\S]*>/i.test(body);
+      const toolbar = '<div style="position:sticky;top:0;z-index:999;background:#001B44;padding:8px 16px;display:flex;align-items:center;gap:12px;">'
+        + '<button onclick="window.close()" style="background:#B59A6A;color:#fff;border:none;border-radius:4px;padding:5px 14px;font-size:13px;font-weight:600;cursor:pointer;">&#8592; Close</button>'
+        + '<span style="color:rgba(245,242,235,.6);font-size:12px;">Email — close this tab to return to the portal</span>'
+        + '</div>';
+      const emailBody = isHtml ? body : '<pre style="font-family:sans-serif;white-space:pre-wrap;padding:16px;">' + body.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre>';
+      w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Email</title></head><body style="margin:0;">' + toolbar + emailBody + '</body></html>');
+      w.document.close();
+    });
   });
   tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderEmailsTable(); renderCaTable(); }); });
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderEmailsTable(); renderCaTable(); }); });
