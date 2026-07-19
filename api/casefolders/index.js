@@ -146,14 +146,22 @@ module.exports = async function (context, req) {
             const url = 'https://graph.microsoft.com/v1.0/drives/' + drv.id
                       + '/root/search(q=' + q + ')?$top=200';
 
+            // S83: two retries with escalating backoff. A search that is
+            // throttled to death must NOT look like a genuine empty result —
+            // see `failed` in the payload below.
             let res;
-            try {
-              res = await graphGet(url, token);
-            } catch (e1) {
-              if (String(e1 && e1.message).indexOf('Graph 429') === -1) throw e1;
-              row.retried = true;
-              await sleep(1500);
-              res = await graphGet(url, token);
+            let attempt = 0;
+            for (;;) {
+              try {
+                res = await graphGet(url, token);
+                break;
+              } catch (e1) {
+                if (String(e1 && e1.message).indexOf('Graph 429') === -1) throw e1;
+                attempt++;
+                if (attempt > 2) throw e1;
+                row.retried = true;
+                await sleep(attempt === 1 ? 1500 : 4000);
+              }
             }
 
             const hits = (res && res.value) || [];
@@ -201,6 +209,10 @@ module.exports = async function (context, req) {
       count:     items.length,
       mode:      mode,                 // shortlist | deep | fallback-full
       searched:  targets.length,       // libraries actually searched
+      // S83: libraries whose search FAILED (Graph 429 throttling, mostly). If
+      // this is > 0 the result set is INCOMPLETE and count:0 does not mean
+      // "nothing exists" — case.html must say "search failed", not "nothing found".
+      failed:    dbg.filter(function (r) { return !!r.error; }).length,
       available: allDrives.length,     // libraries that exist
       items:     items,
     };
@@ -215,7 +227,7 @@ module.exports = async function (context, req) {
         // against a build that had not deployed yet, and one produced a wrong
         // conclusion. Any response can now be attributed to a specific build in
         // one call. BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S82-v6-shortlist2',
+        'X-Api-Build': 'S83-v7-failed-count',
         'X-Casefolders-Mode': mode,
       },
       body: JSON.stringify(payload),
