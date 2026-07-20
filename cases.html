@@ -1196,6 +1196,31 @@ async function markRemDone(remId, rowEl){
   }
 }
 
+// Inline due-date change straight from the dashboard row, so a reminder can be pushed back or
+// pulled forward without opening the case. Writes Duedate ONLY - nothing else on the reminder is
+// touched - then re-renders so the row moves band (overdue / due today / this week / later).
+async function setRemDue(r,dateStr,inputEl){
+  const prev=String(r.fields?.['Duedate']||'').slice(0,10);
+  if(!dateStr||dateStr===prev) return;
+  inputEl.disabled=true;
+  try{
+    const res=await fetch('/api/reminders',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:r.id,fields:{Duedate:dateStr+'T00:00:00Z'}}),
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    r.fields=r.fields||{};
+    r.fields['Duedate']=dateStr+'T00:00:00Z';
+    try{ writeCache(); }catch(e){}
+    renderRemPanel();
+  }catch(err){
+    inputEl.value=prev;
+    inputEl.disabled=false;
+    alert('Couldn\u2019t change the due date: '+err.message);
+  }
+}
+
 // ── Render reminders panel ─────────────────────────────────────────────────
 function renderRemPanel(){
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1241,8 +1266,14 @@ function renderRemPanel(){
         (detail?'<div class="rem-detail">'+escHtml(detail.length>80?detail.slice(0,80)+'\u2026':detail)+'</div>':'')+
       '</div>'+
       priBadge+
-      '<button class="rem-done-btn" title="Mark complete" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">\u2713 Done</button>';
+      '<div style="flex-shrink:0;margin-left:8px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">'+
+        '<button class="rem-done-btn" title="Mark complete" style="padding:4px 10px;border:1.5px solid var(--green);border-radius:var(--radius-sm);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">\u2713 Done</button>'+
+        '<input type="date" class="rem-due-input" title="Change the due date" value="'+escHtml(String(f['Duedate']||'').slice(0,10))+'" style="font-family:\'IBM Plex Sans\',sans-serif;font-size:10.5px;color:var(--navy);border:1.5px solid rgba(27,42,74,.18);border-radius:5px;padding:2px 4px;background:var(--white);cursor:pointer;max-width:116px;" />'+
+      '</div>';
     row.querySelector('.rem-done-btn').addEventListener('click',e=>{e.stopPropagation();markRemDone(r.id,row);});
+    const dueInput=row.querySelector('.rem-due-input');
+    dueInput.addEventListener('click',e=>e.stopPropagation());
+    dueInput.addEventListener('change',e=>{e.stopPropagation();setRemDue(r,dueInput.value,dueInput);});
     row.addEventListener('click',()=>{window.location.href='case.html?ref='+encodeURIComponent(r._caseRef)+'&reminder='+encodeURIComponent(r.id)+'#tab-reminders';});
     return row;
   };
