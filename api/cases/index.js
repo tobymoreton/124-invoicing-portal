@@ -130,6 +130,7 @@ const SELECT_FIELDS = [
   'DailyInterestRate_Text',
   // Booking In tab
   'DateReceived',
+  'DateAssigned',
   'Turnaround_x0020__x0001f3af_',
   'FeeEarner_x0028_fromFM_x0029_',
   'Work_x0020_In_x0020_Progress',
