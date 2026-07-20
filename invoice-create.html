@@ -427,7 +427,7 @@
         <div class="spinner" id="issue-spinner"></div>
         <span id="btn-issue-label">Preview Draft Invoice</span>
       </button>
-      <p class="issue-note">Opens the rendered draft for review before it is created. The invoice number is assigned when Lesley issues it.</p>
+      <p class="issue-note" id="issue-note">Opens the rendered draft for review before it is created. The invoice number is assigned when Lesley issues it.</p>
       <div id="issue-status" class="status-msg"></div>
     </div>
   </div>
@@ -952,7 +952,22 @@ function recalc() {
   el('drafted-by-required').style.display = hasDraftingFee ? 'inline' : 'none';
   el('inp-drafted-by').style.borderColor  = draftedByMissing ? 'var(--error)' : '';
 
-  el('btn-issue').disabled = !hasSomething || draftedByMissing;
+  // A disabled Preview button used to give no reason at all - just a no-entry cursor. Lesley hit
+  // this every time: she is deliberately NOT in the Drafted by list (she issues invoices, she does
+  // not draft bills), so the auto-select leaves it blank for her where it fills itself in for a
+  // draftsman. Say out loud what is blocking the button instead of leaving her to guess.
+  const blockReason = draftedByMissing
+    ? 'Choose who drafted the bill above \u2014 the box starts blank unless you are one of the draftsmen.'
+    : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.' : '');
+  const issueBtn=el('btn-issue');
+  issueBtn.disabled = !!blockReason;
+  issueBtn.title    = blockReason || 'Open the rendered draft for review';
+  const noteEl=el('issue-note');
+  if(noteEl){
+    noteEl.textContent = blockReason || 'Opens the rendered draft for review before it is created. The invoice number is assigned when Lesley issues it.';
+    noteEl.style.color = blockReason ? 'var(--error)' : '';
+    noteEl.style.fontWeight = blockReason ? '600' : '';
+  }
 
   selectedCase.computed = {
     draftingFee, laFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,

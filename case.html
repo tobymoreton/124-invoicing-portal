@@ -1426,6 +1426,17 @@
             <div class="field"><label>Payment 2 Date</label><input type="date" id="fi-IPD2" disabled /></div>
             <div class="field"><label>Payment 3 Date</label><input type="date" id="fi-IPD3" disabled /></div>
           </div>
+          <!-- S84: interim payments as a share of the bill. The denominator is the SAME
+               Total Costs Claimed (IP) figure the Costs Claimed tab shows (computed.totalCostsClaimed
+               = IP profit costs + VAT on PC + disbursements + VAT on disbursements + counsel + VAT on
+               counsel). It is NOT the interest tab's "Interest Calculated On", which can be overridden
+               per case, and it does NOT deduct pre-authority payments - this box answers one question
+               only: how much of the bill as claimed has actually come in as interim payments. -->
+          <dl class="read-grid" style="margin-top:18px;">
+            <div class="read-row"><dt>Total Interim Payments</dt><dd id="ip-sumTotal">&mdash;</dd></div>
+            <div class="read-row"><dt>Total Costs Claimed (IP)</dt><dd id="ip-costsClaimed">&mdash;</dd></div>
+            <div class="read-row highlight"><dt>Received as % of costs claimed</dt><dd id="ip-pctClaimed">&mdash;</dd></div>
+          </dl>
         </div>
       </div>
     </div>
@@ -3412,6 +3423,13 @@ function renderInterestTab() {
   setNum('fi-SumOverride', f['SumForInterestCalculationOverrid']); setNum('fi-PreAuth', f['TotalPreAuthorityPayments']); setNum('fi-CoA', f['CostsOfAssessmentForInterestTabO']);
   setNum('fi-IP1', f['InterimPayment1']); setNum('fi-IP2', f['InterimPayment2']); setNum('fi-IP3', f['InterimPayment3']);
   setDate('fi-IPD1', f['InterimPaymentDate1']); setDate('fi-IPD2', f['InterimPaymentDate2']); setDate('fi-IPD3', f['InterimPaymentDate3']);
+  // Interim Payments tab summary. Denominator is the Costs Claimed tab's own total, so the two
+  // pages can never disagree; shows an em dash rather than 0% when nothing has been claimed yet.
+  const ipTotal = i.totalInterim || 0;
+  const ipDen   = parseFloat(computed && computed.totalCostsClaimed) || 0;
+  setText('ip-sumTotal',     fmt(ipTotal));
+  setText('ip-costsClaimed', ipDen > 0 ? fmt(ipDen) : '\u2014');
+  setText('ip-pctClaimed',   ipDen > 0 ? fmtN(ipTotal / ipDen * 100, 1) + '%' : '\u2014');
 }
 
 function renderNotesTab() {
