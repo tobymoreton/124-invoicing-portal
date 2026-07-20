@@ -322,6 +322,7 @@ function getToken(tenantId, clientId, clientSecret) {
         } catch (e) { reject(e); }
       });
     });
+    req.setTimeout(20000, () => { req.destroy(new Error('Token request timeout (20s)')); });
     req.on('error', reject);
     req.write(body);
     req.end();
@@ -363,6 +364,7 @@ function graphPost(url, token, body) {
         try { resolve(JSON.parse(data)); } catch (e) { reject(new Error(`JSON parse: ${e.message}`)); }
       });
     });
+    req.setTimeout(20000, () => { req.destroy(new Error('Graph POST timeout (20s)')); });
     req.on('error', reject);
     req.write(bodyStr);
     req.end();
@@ -384,6 +386,7 @@ function graphPatch(url, token, body) {
         resolve(data ? JSON.parse(data) : {});
       });
     });
+    req.setTimeout(20000, () => { req.destroy(new Error('Graph PATCH timeout (20s)')); });
     req.on('error', reject);
     req.write(bodyStr);
     req.end();
@@ -404,6 +407,7 @@ function graphDelete(url, token) {
         resolve({});
       });
     });
+    req.setTimeout(20000, () => { req.destroy(new Error('Graph DELETE timeout (20s)')); });
     req.on('error', reject);
     req.end();
   });
