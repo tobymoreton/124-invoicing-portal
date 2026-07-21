@@ -1535,7 +1535,7 @@
                   <input type="checkbox" id="rem-add-admin" style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Admin?
                 </label>
                 <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--navy);cursor:pointer;">
-                  <input type="checkbox" id="rem-add-email" style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Email?
+                  <input type="checkbox" id="rem-add-email" checked style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Email?
                 </label>
               </div>
               <div style="display:flex;gap:10px;align-items:center;">
@@ -4065,7 +4065,7 @@ async function submitAddReminder() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
     remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: event, Brief: detail, Priority: priority, 'Completed_x003f_': false, 'Admin_x003f_': admin, Ourreference_x0028_text_x0029_: ref } });
-    document.getElementById('rem-add-detail').value = ''; document.getElementById('rem-add-admin').checked = false; document.getElementById('rem-add-email').checked = false;
+    document.getElementById('rem-add-detail').value = ''; document.getElementById('rem-add-admin').checked = false; document.getElementById('rem-add-email').checked = true;
     document.getElementById('rem-add-duedate').value = new Date().toISOString().slice(0,10);
     msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Added';
     setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderRemTable();
