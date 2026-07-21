@@ -1,47 +1,57 @@
 /**
  * P124 — Invoicing Portal
- * Azure Function: /api/createinvoice
+ * Azure Function: /api/createdraft
  *
- * Creates a draft invoice. Admin-only.
+ * Creates a DRAFT invoice. Open to all authenticated TMC Legal staff
+ * (draftsmen, finance, and admins). Lesley issues via api/issueinvoice.
+ *
+ * Two-stage workflow:
+ *   DRAFT (this function)  — any TMC staff member creates the draft. Writes invoice HTML + figures
+ *                            to Invoice Library with InvoiceDate BLANK and
+ *                            AmountDue = 0, so the calculated Status field reads
+ *                            "Draft". Creates one Line Item per checked WIP entry.
+ *                            NO invoice number consumed. NO Cases patch. NO WIP marking.
+ *   ISSUE (api/issueinvoice, Lesley) — consumes invoice number, sets InvoiceDate
+ *                            + AmountDue (Status flips to "Issued"), marks WIP billed,
+ *                            updates Line Items with real invoice number.
  *
  * POST body (JSON):
- *   pdfBase64       string   — base64-encoded PDF bytes
- *   invoiceDate     string   — ISO date string (from browser, today)
- *   computed        object   — selectedCase.computed from invoice-create.html
- *   caseFields      object   — selectedCase.fields from invoice-create.html
- *   caseSpId        string   — SharePoint item ID of the case
- *   checkedWipIds   string[] — SP item IDs of checked (billable) WIP entries
+ *   pdfBase64        string    — base64-encoded invoice HTML (print-ready)
+ *   computed         object    — selectedCase.computed from invoice-create.html
+ *   caseFields       object    — selectedCase.fields from invoice-create.html
+ *   checkedWipIds    string[]  — SP item IDs of checked WIP entries
+ *   checkedWipEntries object[] — full entry data for Line Items creation:
+ *                                [{_id, DateCompleted, WorkDone, HoursSpent, Rate,
+ *                                   CaseName, OurRef, Email}]
  *
- * Sequence:
- *   1. Get next invoice number from counter list (read → delete → write N+1)
- *   2. Upload PDF to Invoice Library
- *   3. Patch Invoice Library item metadata
- *   4. Patch Cases list item
- *   5. Patch each checked Time Tracking2 entry (Billed = true)
+ * Returns: { fileName, pdfUrl, status: 'Draft' }
  *
- * Returns: { invoiceNumber, pdfUrl }
+ * Invoice Library GUID:  5c366b19-0da9-4be9-b68f-60e6a0209cdb
+ * Line Items list GUID:  496468a5-e2ed-48db-8826-58cb08844eee
  */
 
 const https   = require('https');
 const { URL } = require('url');
 
-const SITE_PATH      = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
-const INVOICE_LIB    = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
-const CASES_LIST     = 'ae420bda-e550-499c-b337-90e4f33617c1';
-const TT2_LIST       = '67db204c-30a5-4f4d-b276-60852d9967e1';
-const COUNTER_LIST   = '7366b72d-02c4-4db1-a48b-907dfc7a33c7';
+const SITE_PATH    = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const INVOICE_LIB  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const LINE_ITEMS   = '496468a5-e2ed-48db-8826-58cb08844eee';
+const CASES_LIST   = 'ae420bda-e550-499c-b337-90e4f33617c1';
 
-const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+// Draft creation is open to ALL authenticated TMC Legal staff:
+// draftsmen create drafts; Lesley (finance) and admins can too.
+// The SWA Entra SSO gate already restricts callers to the firm's tenant;
+// the domain check below is defence-in-depth at the API layer.
+const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 module.exports = async function (context, req) {
-  context.log('P124 /api/createinvoice called');
+  context.log('P124 /api/createdraft called');
 
-  // Admin only
   const callerEmail = getCallerEmail(req);
-  if (!callerEmail || !ADMIN_EMAILS.includes(callerEmail)) {
-    context.res = { status: 403, body: 'Forbidden — admin access required.' };
+  if (!callerEmail || !callerEmail.endsWith(ALLOWED_DOMAIN)) {
+    context.res = { status: 403, body: 'Forbidden — TMC Legal sign-in required.' };
     return;
   }
 
@@ -51,7 +61,6 @@ module.exports = async function (context, req) {
     return;
   }
 
-  // Parse body
   let body;
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -60,147 +69,190 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { pdfBase64, invoiceDate, computed, caseFields, caseSpId, checkedWipIds } = body || {};
+  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries } = body || {};
+  if (!pdfBase64 || !computed || !caseFields) {
+    context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields.' };
+    return;
+  }
 
-  if (!pdfBase64 || !computed || !caseFields || !caseSpId) {
-    context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields, caseSpId.' };
+  // The bill drafter must be expressly chosen on the form every time. It is a wage-bearing
+  // field, so it is never inferred from the caller - Lesley raising an invoice must still say
+  // who drafted the bill.
+  const DRAFTERS = [
+    'joanna@tmclegal.co.uk','tracy@tmclegal.co.uk','kelly@tmclegal.co.uk',
+    'tom@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk',
+    'toby@tmclegal.co.uk',
+  ];
+  const draftedByEmail = String((computed && computed.draftedByEmail) || '').trim().toLowerCase();
+  if (!draftedByEmail || !DRAFTERS.includes(draftedByEmail)) {
+    context.res = { status: 400, body: 'Drafted by must be set to a member of the drafting team before a draft can be created.' };
     return;
   }
 
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
-    // ── Step 1: Get next invoice number ──────────────────────────────────────
-    context.log('Step 1: Getting invoice number from counter list');
-    const invoiceNumber = await consumeInvoiceNumber(token, context);
-    context.log('Invoice number assigned:', invoiceNumber);
-
-    // ── Step 2: Upload PDF to Invoice Library ─────────────────────────────────
-    context.log('Step 2: Uploading PDF');
-    const fileName  = invoiceNumber + '.html';
-    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-    const uploadResult = await uploadPdf(token, fileName, pdfBuffer, context);
-    const driveItemId = uploadResult.id;
-    const pdfUrl      = uploadResult.webUrl;
-    context.log('PDF uploaded, driveItemId:', driveItemId);
-
-    // ── Step 3: Patch Invoice Library item metadata ───────────────────────────
-    context.log('Step 3: Patching Invoice Library metadata');
-    const invDate    = invoiceDate ? new Date(invoiceDate) : new Date();
-    const dueDateObj = new Date(invDate); dueDateObj.setDate(dueDateObj.getDate() + 30);
-    const invDateISO = invDate.toISOString().split('T')[0];
-    const dueDateISO = dueDateObj.toISOString().split('T')[0];
+    // ── Duplicate draft check ─────────────────────────────────────────────────
+    // Prevent creating a second draft for the same case while one already exists.
+    // Query Invoice Library for any item where Ourref matches, OrderDetails is
+    // blank (not yet issued), and Cancelled is not true.
+    const caseRef = caseFields.Ourreference_x0028_text_x0029_ || '';
+    if (caseRef) {
+      context.log('Checking for existing draft for ref:', caseRef);
+      const dupCheckUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+        + '/lists/' + INVOICE_LIB + '/items'
+        + '?$expand=fields($select=id,Ourref,OrderDetails,Cancelled)'
+        + '&$filter=fields/Ourref eq \'' + caseRef.replace(/'/g, "''") + '\''
+        + '&$top=50';
+      const dupResult = await graphGetUnindexed(dupCheckUrl, token);
+      const existingDraft = (dupResult.value || []).find(item => {
+        const f = item.fields || {};
+        return !f.OrderDetails && !f.Cancelled;
+      });
+      if (existingDraft) {
+        context.res = {
+          status: 409,
+          body: 'A draft invoice already exists for this case. Cancel or issue it before creating a new one.',
+        };
+        return;
+      }
+      context.log('No existing draft found — proceeding.');
+    }
 
     const invoiceType = resolveInvoiceType(computed);
 
-    // Get the SP list item ID for the uploaded file (need it for PATCH /fields)
-    const listItemId = await getListItemIdForDriveItem(token, driveItemId, context);
+    // ── Draft filename ────────────────────────────────────────────────────────
+    // No invoice number at draft stage (assigned by Lesley at issue).
+    // Use: DRAFT - {caseName} - {YYYY-MM-DD HHmm}.html
+    const now      = new Date();
+    const stamp    = now.toISOString().slice(0, 16).replace('T', ' ').replace(':', '');
+    const safeName = (caseFields.Title || 'Case').replace(/[\\\/:*?"<>|]/g, '-').slice(0, 80);
+    const fileName = 'DRAFT - ' + safeName + ' - ' + stamp + '.html';
+
+    // ── Upload draft HTML to Invoice Library ──────────────────────────────────
+    context.log('Uploading draft:', fileName);
+    const pdfBuffer    = Buffer.from(pdfBase64, 'base64');
+    const uploadResult = await uploadFile(token, fileName, pdfBuffer);
+    const driveItemId  = uploadResult.id;
+    const pdfUrl       = uploadResult.webUrl;
+    context.log('Draft uploaded, driveItemId:', driveItemId);
+
+    // ── Patch metadata ────────────────────────────────────────────────────────
+    // Figures populated; InvoiceDate intentionally omitted (blank) + AmountDue
+    // intentionally omitted (defaults to 0) → calculated Status field = "Draft"
+    const listItemId = await getListItemIdForDriveItem(token, driveItemId);
     context.log('Invoice Library list item ID:', listItemId);
 
+    // Store checked WIP ids as CSV so the issue stage can mark exactly those billed
+    const wipIdsCsv = Array.isArray(checkedWipIds) ? checkedWipIds.join(',') : '';
+
     const metadataFields = {
-      Title:                      invoiceNumber,
-      InvoiceDate:                invDateISO,
-      Casename:                   caseFields.Title || '',
-      Invoicetype:                invoiceType,
-      LAorIP:                     caseFields.LAorIP || '',
-      AmountDue:                  computed.grand || 0,
-      DraftedByEmail:             callerEmail,
-      Net:                        computed.subTotal || 0,
-      VAT:                        computed.vat || 0,
-      DraftingFeeElement:         computed.draftingFee || 0,
-      Expenses:                   (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
-      OrderDetails:               invoiceNumber,
-      Ourref:                     caseFields.Ourreference_x0028_text_x0029_ || '',
-      Theirref:                   caseFields.ClientCaseReference || '',
-      Case_x0020_ID:              caseFields.caseID_text || '',
-      _ExtendedDescription:        computed.timedWorkLine || '',
-      DueDate:                    dueDateISO,
+      Title:                invoiceType + ' draft — ' + (caseFields.Title || ''),
+      Casename:             caseFields.Title || '',
+      Invoicetype:          invoiceType,
+      Net:                  computed.subTotal  || 0,
+      VAT:                  computed.vat       || 0,
+      DraftingFeeElement:   computed.draftingFee || 0,
+      Expenses:             (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
+      Ourref:               caseFields.Ourreference_x0028_text_x0029_ || '',
+      Theirref:             caseFields.ClientCaseReference || '',
+      LAorIP:               caseFields.InterPartesorLegalAid || '',
+      _ExtendedDescription: computed.timedWorkLine || '',
+      DraftedByEmail:       draftedByEmail,
+      VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
+      DraftWipIds:          wipIdsCsv,
+      // DELIBERATELY OMITTED to keep Status = "Draft":
+      //   InvoiceDate  — blank
+      //   AmountDue    — 0 / omitted
+      //   OrderDetails (invoice number) — assigned at issue
     };
 
-    await patchListItem(token, INVOICE_LIB, listItemId, metadataFields, context);
-    context.log('Step 3 complete');
+    await patchListItem(token, INVOICE_LIB, listItemId, metadataFields);
+    context.log('Draft metadata written. Calculated Status = "Draft".');
 
-    // ── Step 4: Patch Cases list item ─────────────────────────────────────────
-    context.log('Step 4: Patching Cases list item', caseSpId);
-    const caseFieldsPatch = {
-      Invoice_x0020_number:              invoiceNumber,
-      Invoice_x0020_date:                invDateISO,
-      Drafting_x0020_fee_x0020_amount:   computed.draftingFee || 0,
-      Timed_x0020_work_x0020_fee_x0020:  computed.timedFee || 0,
-      DraftingYetToBeInvoiced:           false,
-    };
-    await patchListItem(token, CASES_LIST, caseSpId, caseFieldsPatch, context);
-    context.log('Step 4 complete');
-
-    // ── Step 5: Mark Time Tracking2 entries as Billed ─────────────────────────
-    if (checkedWipIds && checkedWipIds.length > 0) {
-      context.log('Step 5: Marking', checkedWipIds.length, 'WIP entries as Billed');
-      for (const wipId of checkedWipIds) {
-        await patchListItem(token, TT2_LIST, wipId, {
-          'Billed_x003f_': true,
-          InvoiceNumber:   invoiceNumber,
-          InvoiceDate:     invDateISO,
-        }, context);
+    // ── Create Line Items ─────────────────────────────────────────────────────
+    // One Line Item per checked WIP entry. InvoiceIDRef left blank — the real
+    // invoice number is assigned at issue stage and written back then.
+    // field_7 stores the TT2 source ID as a back-link for the issue stage.
+    const entriesToBill = Array.isArray(checkedWipEntries) ? checkedWipEntries : [];
+    if (entriesToBill.length > 0) {
+      context.log('Creating', entriesToBill.length, 'Line Item(s)…');
+      let liCreated = 0;
+      let liFailed  = 0;
+      for (const entry of entriesToBill) {
+        try {
+          const liFields = {
+            Title:    entry.WorkDone   || entry.CaseName || caseFields.Title || '', // SP required field
+            field_1:  entry.WorkDone   || '',       // Work Done (text)
+            field_2:  entry.HoursSpent || 0,        // Time (hours)
+            field_3:  entry.Rate       || 0,        // Rate £/hr
+            field_5:  entry.OurRef     || caseFields.Ourreference_x0028_text_x0029_ || '', // Our Reference
+            field_7:  String(entry._id || ''),      // TT2 source ID (back-link)
+            CaseName:          entry.CaseName   || caseFields.Title || '',
+            'caseName_x0020__x0001f455_': entry.CaseName || caseFields.Title || '',
+            CompletedByEmail:  entry.Email        || '',
+            'BillableYorN_x0020__x2753_': true,
+            InvoiceType: invoiceType,               // plain string — Graph app-only
+            // InvoiceIDRef intentionally blank (assigned at issue)
+            // CompletedBy (Person) — cannot write via Graph app-only; omitted
+            // caseID (Lookup)      — cannot reliably write via Graph app-only; omitted
+          };
+          // Date: write as ISO string if present
+          if (entry.DateCompleted) {
+            liFields['Completed_x0020_on'] = new Date(entry.DateCompleted).toISOString();
+          }
+          await createListItem(token, LINE_ITEMS, liFields);
+          liCreated++;
+        } catch (liErr) {
+          context.log.error('Line Item creation failed for TT2 id', entry._id, ':', liErr.message);
+          liFailed++;
+          // Don't abort — continue with remaining entries
+        }
       }
-      context.log('Step 5 complete');
-    } else {
-      context.log('Step 5: No WIP entries to mark');
+      context.log('Line Items: created=' + liCreated + ', failed=' + liFailed);
     }
 
-    // ── Done ──────────────────────────────────────────────────────────────────
+    // ── Write MinimumFee back to the Cases list ──────────────────────────
+    // The portal exposes two minimum-fee ticks (IP £375 / LA £50). The Cases list
+    // has a single Yes/No MinimumFee column, so the two ticks are reduced to one
+    // boolean: Yes if either minimum was applied, else No. Non-fatal — a failed
+    // case write must not roll back a successfully created draft.
+    if (caseItemId) {
+      try {
+        const minimumFee = !!(computed.minimumFeeIp || computed.minimumFeeLa);
+        await patchListItem(token, CASES_LIST, caseItemId, { MinimumFee: minimumFee });
+        context.log('Cases MinimumFee set to ' + minimumFee + ' on item ' + caseItemId);
+      } catch (caseErr) {
+        context.log.error('Cases MinimumFee patch failed for item ' + caseItemId + ':', caseErr.message);
+      }
+    }
+
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoiceNumber, pdfUrl }),
+      body: JSON.stringify({ fileName, pdfUrl, status: 'Draft' }),
     };
 
   } catch (err) {
-    context.log.error('createinvoice error:', err.message, err.stack);
+    context.log.error('createdraft error:', err.message, err.stack);
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
 
-// ── Invoice number counter ────────────────────────────────────────────────────
-// Counter list holds one item. We read it, capture the number, delete it,
-// write N+1 back. All server-side so it is atomic within this function instance.
+// ── Invoice type ──────────────────────────────────────────────────────────────
 
-async function consumeInvoiceNumber(token, context) {
-  const listUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-    + '/lists/' + COUNTER_LIST + '/items?$expand=fields&$top=1';
-  const page = await graphGet(listUrl, token);
-  const items = page.value || [];
-  if (!items.length) throw new Error('Counter list is empty — cannot assign invoice number.');
-
-  const item          = items[0];
-  const itemId        = item.id;
-  const currentNumber = item.fields.InvoiceNumber || item.fields.Title;
-  if (!currentNumber) throw new Error('Counter list item has no InvoiceNumber or Title field.');
-
-  const invoiceNumber = String(currentNumber).trim();
-
-  // Parse next number: handles purely numeric ("1042") or prefixed ("TMC-1042")
-  const match = invoiceNumber.match(/^(.*?)(\d+)$/);
-  if (!match) throw new Error('Cannot parse invoice number format: ' + invoiceNumber);
-  const prefix         = match[1];
-  const nextNum        = parseInt(match[2], 10) + 1;
-  const nextPadded     = String(nextNum).padStart(match[2].length, '0');
-  const nextInvoiceNum = prefix + nextPadded;
-
-  // Patch in place — update counter to N+1 (no delete permission needed)
-  await graphPatch(
-    'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-    + '/lists/' + COUNTER_LIST + '/items/' + itemId + '/fields',
-    token,
-    { Title: nextInvoiceNum, InvoiceNumber: nextInvoiceNum }
-  );
-
-  return invoiceNumber;
+function resolveInvoiceType(computed) {
+  const d = computed.draftingFee > 0;
+  const t = computed.timedFee    > 0;
+  if (d && t) return 'Drafting and timed work';
+  if (d)      return 'Drafting only';
+  if (t)      return 'Timed work only';
+  return 'Other';
 }
 
-// ── PDF upload ────────────────────────────────────────────────────────────────
-// Simple upload (<4 MB) via PUT to Invoice Library drive root.
+// ── File upload ───────────────────────────────────────────────────────────────
 
-async function uploadPdf(token, fileName, pdfBuffer, context) {
+async function uploadFile(token, fileName, buffer) {
   const driveUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
     + '/lists/' + INVOICE_LIB + '/drive';
   const driveInfo = await graphGet(driveUrl, token);
@@ -210,14 +262,12 @@ async function uploadPdf(token, fileName, pdfBuffer, context) {
   const uploadUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
     + '/root:/' + encodeURIComponent(fileName) + ':/content';
 
-  const result = await graphPut(uploadUrl, token, pdfBuffer, 'text/html');
-  if (!result.id) throw new Error('PDF upload did not return a DriveItem id.');
+  const result = await graphPut(uploadUrl, token, buffer, 'text/html');
+  if (!result.id) throw new Error('Draft upload did not return a DriveItem id.');
   return result;
 }
 
-// ── Get SP list item ID for a DriveItem ───────────────────────────────────────
-
-async function getListItemIdForDriveItem(token, driveItemId, context) {
+async function getListItemIdForDriveItem(token, driveItemId) {
   const driveUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
     + '/lists/' + INVOICE_LIB + '/drive';
   const driveInfo = await graphGet(driveUrl, token);
@@ -231,23 +281,16 @@ async function getListItemIdForDriveItem(token, driveItemId, context) {
   return spId;
 }
 
-// ── Invoice type ──────────────────────────────────────────────────────────────
-
-function resolveInvoiceType(computed) {
-  const d = computed.draftingFee > 0;
-  const t = computed.timedFee    > 0;
-  if (d && t) return 'Drafting and timed work';
-  if (d)      return 'Drafting only';
-  if (t)      return 'Timed work only';
-  return 'Other';
-}
-
-// ── Patch SP list item fields ─────────────────────────────────────────────────
-
-async function patchListItem(token, listGuid, itemId, fields, context) {
+async function patchListItem(token, listGuid, itemId, fields) {
   const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
     + '/lists/' + listGuid + '/items/' + itemId + '/fields';
   await graphPatch(url, token, fields);
+}
+
+async function createListItem(token, listGuid, fields) {
+  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+    + '/lists/' + listGuid + '/items';
+  return await graphPost(url, token, { fields });
 }
 
 // ── Identity ──────────────────────────────────────────────────────────────────
@@ -314,10 +357,7 @@ function graphGet(url, token) {
       hostname: u.hostname,
       path:     u.pathname + u.search,
       method:   'GET',
-      headers: {
-        Authorization: 'Bearer ' + token,
-        Accept:        'application/json',
-      },
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
     };
     const req = https.request(options, function (res) {
       let data = '';
@@ -325,6 +365,38 @@ function graphGet(url, token) {
       res.on('end', () => {
         if (res.statusCode >= 400) {
           reject(new Error('Graph GET ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// Like graphGet but adds the Prefer header to allow filtering on non-indexed SP columns.
+// Graph will still work but warns the query may fail randomly on very large lists.
+function graphGetUnindexed(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept:        'application/json',
+        Prefer:        'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph GET (unindexed) ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
           return;
         }
         try { resolve(JSON.parse(data)); }
@@ -396,33 +468,6 @@ function graphPost(url, token, body) {
     });
     req.on('error', reject);
     req.write(payload);
-    req.end();
-  });
-}
-
-function graphDelete(url, token) {
-  return new Promise(function (resolve, reject) {
-    const u = new URL(url);
-    const options = {
-      hostname: u.hostname,
-      path:     u.pathname + u.search,
-      method:   'DELETE',
-      headers: {
-        Authorization: 'Bearer ' + token,
-      },
-    };
-    const req = https.request(options, function (res) {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        if (res.statusCode >= 400) {
-          reject(new Error('Graph DELETE ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
-          return;
-        }
-        resolve();
-      });
-    });
-    req.on('error', reject);
     req.end();
   });
 }
