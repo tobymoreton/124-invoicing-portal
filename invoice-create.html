@@ -667,10 +667,13 @@ async function loadFigures(fields) {
   el('inp-timed-work-line').value = wipLineOverride || 'Work done per attached schedule';
   delete el('inp-timed-work-line').dataset.userEdited;
 
-  // Auto-select logged-in user if they're in the draftsmen list
+  // The bill drafter is wage-bearing, so it is never inferred from the signed-in user. It is
+  // pre-filled only from BillDraftedByText on the case record, where that has been set; otherwise
+  // it starts blank and must be chosen before anything can be created.
   const draftedBySelect = el('inp-drafted-by');
   const draftedByOpts = Array.from(draftedBySelect.options).map(o => o.value);
-  draftedBySelect.value = draftedByOpts.includes(callerEmail) ? callerEmail : '';
+  const caseDrafter = String(fields.BillDraftedByText || '').trim().toLowerCase();
+  draftedBySelect.value = draftedByOpts.includes(caseDrafter) ? caseDrafter : '';
 
   // Override / minimum-fee controls for the newly selected case.
   // If the case is flagged MinimumFee=Yes, pre-tick the minimum on whichever
@@ -946,10 +949,11 @@ function recalc() {
   const hasSomething = draftingFee > 0 || laFee > 0 || timedFee > 0 || bespokeAmt > 0;
   const hasDraftingFee = draftingFee > 0 || laFee > 0;
   const draftedBy = (el('inp-drafted-by').value || '').trim();
-  const draftedByMissing = hasDraftingFee && !draftedBy;
+  const draftedByMissing = !draftedBy;
 
-  // Show required asterisk and red border when drafting fee present but no drafter selected
-  el('drafted-by-required').style.display = hasDraftingFee ? 'inline' : 'none';
+  // Required on every invoice, not just those carrying a drafting fee - the field decides who
+  // gets paid for the work.
+  el('drafted-by-required').style.display = 'inline';
   el('inp-drafted-by').style.borderColor  = draftedByMissing ? 'var(--error)' : '';
 
   // A disabled Preview button used to give no reason at all - just a no-entry cursor. Lesley hit
@@ -957,7 +961,7 @@ function recalc() {
   // not draft bills), so the auto-select leaves it blank for her where it fills itself in for a
   // draftsman. Say out loud what is blocking the button instead of leaving her to guess.
   const blockReason = draftedByMissing
-    ? 'Choose who drafted the bill above \u2014 the box starts blank unless you are one of the draftsmen.'
+    ? 'Choose who drafted the bill above \u2014 it must be set on every invoice.'
     : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.' : '');
   const issueBtn=el('btn-issue');
   issueBtn.disabled = !!blockReason;
@@ -1054,11 +1058,11 @@ async function buildInvoiceData() {
 async function openPreview() {
   if (!selectedCase || !selectedCase.computed) return;
 
-  // Validate: drafted-by required when a drafting fee is charged
+  // Validate: drafted-by is required on every invoice
   const _draftedBy   = (el('inp-drafted-by').value || '').trim();
   const _draftingFee = selectedCase.computed.draftingFee || 0;
   const _laFee       = selectedCase.computed.laFee || 0;
-  if ((_draftingFee > 0 || _laFee > 0) && !_draftedBy) {
+  if (!_draftedBy) {
     showMsg('issue-status', 'Please select who drafted the bill before creating the draft invoice.', 'error');
     el('inp-drafted-by').focus();
     return;

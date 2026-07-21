@@ -737,6 +737,8 @@
   <div class="briefing-modal" style="max-width:640px;">
     <div class="briefing-modal-head">
       <span class="briefing-modal-title" id="invoiced-modal-title">Invoiced This Month Breakdown</span>
+      <button type="button" class="wip-toggle" style="margin-left:auto;margin-right:8px;" onclick="exportInvoicedCsv()">Export CSV</button>
+      <button type="button" class="wip-toggle" style="margin-right:8px;" onclick="printInvoicedBreakdown()">Print / PDF</button>
       <button class="briefing-modal-close" data-close-breakdown="modal-invoiced">&times;</button>
     </div>
     <div id="invoiced-breakdown-list" style="max-height:60vh;overflow-y:auto;padding:12px 20px;"></div>
@@ -2172,19 +2174,121 @@ function openWipBreakdown(){
   }
   document.getElementById('modal-wip').classList.add('open');
 }
-function openInvoicedBreakdown(){
+// Invoiced breakdown. Line items are fetched once on first open and cached; each invoice row
+// expands to show the work that makes it up, plus the drafting fee element where there is one.
+let invLineItems=null;
+let invLineItemsErr='';
+const invExpanded=new Set();
+
+function fmtDay(s){ if(!s) return '\u2014'; const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:'\u2014'; }
+
+function lineItemsFor(invNo){
+  if(!invLineItems||!invNo) return [];
+  const key=String(invNo).trim().toLowerCase();
+  return invLineItems.filter(li=>String(li.InvoiceIDRef||'').trim().toLowerCase()===key)
+    .sort((a,b)=>String(a.CompletedOn||'').localeCompare(String(b.CompletedOn||'')));
+}
+
+function lineItemsHtml(inv){
+  const no=String(inv.OrderDetails||'');
+  if(invLineItems===null) return '<div style="font-size:12px;color:var(--grey-mid);padding:8px 4px;">Loading line items\u2026</div>';
+  if(invLineItemsErr) return '<div style="font-size:12px;color:var(--red);padding:8px 4px;">Line items unavailable: '+escHtml(invLineItemsErr)+'</div>';
+  const lis=lineItemsFor(no);
+  const draft=inv.DraftingFeeElement||0;
+  if(!lis.length&&!draft) return '<div style="font-size:12px;color:var(--grey-mid);padding:8px 4px;">No line items recorded against this invoice.</div>';
+  let h='<table class="bd-table" style="margin:0;font-size:12px;"><thead><tr><th>Date</th><th>Work done</th><th class="r">Units</th><th class="r">Rate</th><th class="r">Value</th></tr></thead><tbody>';
+  lis.forEach(li=>{
+    h+='<tr><td style="white-space:nowrap;">'+fmtDay(li.CompletedOn)+'</td><td>'+escHtml(li.WorkDone||'\u2014')+'</td><td class="r">'+(li.TimeSpent!=null?li.TimeSpent:'\u2014')+'</td><td class="r">'+(li.Rate!=null?fmt(li.Rate):'\u2014')+'</td><td class="r">'+fmt(li.Value||0)+'</td></tr>';
+  });
+  if(draft) h+='<tr><td>\u2014</td><td>Drafting fee element</td><td class="r">\u2014</td><td class="r">\u2014</td><td class="r">'+fmt(draft)+'</td></tr>';
+  const sub=lis.reduce((s,li)=>s+(li.Value||0),0)+(draft||0);
+  h+='<tr style="font-weight:700;"><td colspan="4">Line items total</td><td class="r">'+fmt(sub)+'</td></tr></tbody></table>';
+  return h;
+}
+
+function renderInvoicedBreakdown(){
   const el=document.getElementById('invoiced-breakdown-list');
   const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
   const titleEl=document.getElementById('invoiced-modal-title');
   if(titleEl) titleEl.textContent='Invoiced '+(invoicedPeriod==='this'?'This':'Last')+' Month Breakdown';
-  if(!rows.length){el.innerHTML='<div class="bd-empty">No invoices '+(invoicedPeriod==='this'?'this':'last')+' month.</div>';}
-  else{
-    const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
-    el.innerHTML='<table class="bd-table"><thead><tr><th>Case</th><th>Invoice #</th><th class="r">Net</th></tr></thead><tbody>'
-      +rows.map(inv=>'<tr style="cursor:pointer;" onclick="window.location.href=\'case.html?ref=\'+encodeURIComponent(\''+(inv.Ourref||'').replace(/'/g,"\\'")+'\')">'+'<td><strong>'+escHtml(inv.Casename||inv.Ourref||'')+'</strong><br><span style="font-size:11px;color:var(--grey-mid);">'+escHtml(inv.Ourref||'')+'</span></td><td style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+escHtml(String(inv.OrderDetails||'\u2014'))+'</td><td class="r">'+fmt(inv.Net||0)+'</td></tr>').join('')
-      +'<tr style="font-weight:700;background:var(--grey-faint);"><td colspan="2">Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+')</td><td class="r">'+fmt(tot)+'</td></tr></tbody></table>';
+  if(!rows.length){
+    el.innerHTML='<div class="bd-empty">No invoices '+(invoicedPeriod==='this'?'this':'last')+' month.</div>';
+    return;
   }
+  const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
+  let html='<table class="bd-table"><thead><tr><th style="width:18px;"></th><th>Case</th><th>Invoice #</th><th class="r">Net</th></tr></thead><tbody>';
+  rows.forEach(inv=>{
+    const no=String(inv.OrderDetails||'');
+    const isOpen=invExpanded.has(no);
+    html+='<tr class="inv-row" data-inv="'+escHtml(no)+'" style="cursor:pointer;">'
+      +'<td style="color:var(--grey-mid);">'+(isOpen?'\u25be':'\u25b8')+'</td>'
+      +'<td><strong>'+escHtml(inv.Casename||inv.Ourref||'')+'</strong><br><span style="font-size:11px;color:var(--grey-mid);">'+escHtml(inv.Ourref||'')+'</span></td>'
+      +'<td style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+escHtml(no||'\u2014')+'</td>'
+      +'<td class="r">'+fmt(inv.Net||0)+'</td></tr>'
+      +'<tr'+(isOpen?'':' style="display:none;"')+'><td></td><td colspan="3" style="padding:0 0 10px 0;">'+lineItemsHtml(inv)+'</td></tr>';
+  });
+  html+='<tr style="font-weight:700;background:var(--grey-faint);"><td colspan="3">Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+')</td><td class="r">'+fmt(tot)+'</td></tr></tbody></table>';
+  el.innerHTML=html;
+  el.querySelectorAll('.inv-row').forEach(tr=>{
+    tr.addEventListener('click',()=>{
+      const no=tr.dataset.inv;
+      if(invExpanded.has(no)) invExpanded.delete(no); else invExpanded.add(no);
+      renderInvoicedBreakdown();
+    });
+  });
+}
+
+async function loadInvLineItems(){
+  if(invLineItems!==null) return;
+  try{
+    const r=await fetch('/api/lineitems',{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    invLineItems=Array.isArray(d)?d:(d.value||[]);
+  }catch(err){ invLineItems=[]; invLineItemsErr=err.message; }
+  if(document.getElementById('modal-invoiced').classList.contains('open')) renderInvoicedBreakdown();
+}
+
+function openInvoicedBreakdown(){
+  renderInvoicedBreakdown();
   document.getElementById('modal-invoiced').classList.add('open');
+  loadInvLineItems();
+}
+
+// One CSV row per line item, falling back to one row per invoice where there are none.
+function exportInvoicedCsv(){
+  const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const out=[['Invoice #','Invoice date','Case','Our ref','Invoice net','Line date','Work done','Units','Rate','Line value'].map(q).join(',')];
+  rows.forEach(inv=>{
+    const no=String(inv.OrderDetails||'');
+    const lis=lineItemsFor(no);
+    if(!lis.length){ out.push([no,fmtDay(inv.InvoiceDate),inv.Casename||'',inv.Ourref||'',inv.Net||0,'','','','',''].map(q).join(',')); return; }
+    lis.forEach(li=>out.push([no,fmtDay(inv.InvoiceDate),inv.Casename||'',inv.Ourref||'',inv.Net||0,fmtDay(li.CompletedOn),li.WorkDone||'',li.TimeSpent!=null?li.TimeSpent:'',li.Rate!=null?li.Rate:'',li.Value||0].map(q).join(',')));
+  });
+  const blob=new Blob(['\ufeff'+out.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='invoiced-'+(invoicedPeriod==='this'?'this':'last')+'-month.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+// Opens a clean print view - the browser's own "Save as PDF" is the PDF export.
+function printInvoicedBreakdown(){
+  const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
+  const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
+  let body='<h1>Invoiced '+(invoicedPeriod==='this'?'this':'last')+' month</h1>'
+    +'<p>'+escHtml(callerEmail||'')+' &middot; generated '+fmtDay(new Date().toISOString())+'</p>';
+  rows.forEach(inv=>{
+    body+='<h2>'+escHtml(inv.Casename||inv.Ourref||'')+' &middot; '+escHtml(String(inv.OrderDetails||''))+' &middot; '+fmt(inv.Net||0)+'</h2>'+lineItemsHtml(inv);
+  });
+  body+='<h2>Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+'): '+fmt(tot)+'</h2>';
+  const w=window.open('','_blank');
+  if(!w){ alert('Pop-up blocked \u2014 allow pop-ups for this site to print.'); return; }
+  w.document.write('<html><head><title>Invoiced breakdown</title><style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;padding:24px;}h1{font-size:18px;}h2{font-size:13px;margin:18px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top;}th.r,td.r{text-align:right;}</style></head><body>'+body+'</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(()=>w.print(),300);
 }
 function openWipPeriodBreakdown(){
   const el=document.getElementById('wip-period-breakdown-list');
