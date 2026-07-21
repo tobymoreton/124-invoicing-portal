@@ -44,6 +44,7 @@ const SELECT_FIELDS = [
   'Case_x0020_ID',
   'DraftedByEmail',       // Mirror of DraftedBy/Email — use this, not DraftedBy
   'DraftingFeeElement',   // Drafting fee portion of invoice
+  'BespokeMirror',        // Text mirror of the Bespoke Yes/No column - Graph drops Boolean fields
   'VAT',                  // VAT amount
   'Net',                  // Net amount (ex VAT)
   'Cancelled',            // Boolean — filter these out
@@ -149,7 +150,7 @@ module.exports = async function (context, req) {
     if (wantBilledRefs) {
       const refs = [...new Set(
         invoices
-          .filter(inv => !inv.Cancelled && (parseFloat(inv.DraftingFeeElement) || 0) > 0)
+          .filter(inv => !inv.Cancelled && !inv.Bespoke && (parseFloat(inv.DraftingFeeElement) || 0) > 0)
           .map(inv => inv.Ourref)
           .filter(Boolean)
       )];
@@ -320,6 +321,7 @@ function normalise(item) {
     Case_x0020_ID:      f.Case_x0020_ID       || null,
     DraftedByEmail:     f.DraftedByEmail      || null,
     DraftingFeeElement: toNum(f.DraftingFeeElement),
+    Bespoke:            String(f.BespokeMirror || '').trim().toLowerCase() === 'yes',
     VAT:                toNum(f.VAT),
     Net:                toNum(f.Net),
     Cancelled:          f.Cancelled           || false,
