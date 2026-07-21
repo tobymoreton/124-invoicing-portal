@@ -19,6 +19,7 @@ const https  = require('https');
 const { URL } = require('url');
 
 const LIST_GUID  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const LINEITEMS_GUID = '496468a5-e2ed-48db-8826-58cb08844eee';
 const SITE_PATH  = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
 const SELECT_FIELDS = [
@@ -137,6 +138,15 @@ module.exports = async function (context, req) {
   // / ~15 KB against 2,080.8 KB for the same job. Measured 2026-07-18.
   const wantBilledRefs = String((req.query && req.query.billedrefs) || '') === '1';
 
+  // ?myshare=this|last -- the caller's own share of that calendar month's invoicing.
+  // A draftsman is paid on the work they did, not on the invoices they happened to raise, so
+  // this returns their own timed work plus the non-timed remainder (drafting fee, LA fee and
+  // bespoke) of any invoice where they are the drafter. Computed here rather than in the browser
+  // because /api/lineitems scopes a draftsman to their own lines -- the client cannot see an
+  // invoice's full line-item total and would credit them with other people's time.
+  const myShareMode = String((req.query && req.query.myshare) || '').trim().toLowerCase();
+  const wantMyShare = myShareMode === 'this' || myShareMode === 'last';
+
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
     context.res = { status: 500, body: 'Missing required app settings.' };
@@ -146,7 +156,9 @@ module.exports = async function (context, req) {
   try {
     const token    = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
     // Admins + finance get all invoices; non-admins get only their own (by DraftedByEmail)
-    const invoices = await fetchAllInvoices(token, (isAdmin || isFinance || refParam) ? null : callerEmail);
+    // myshare needs the whole ledger: a draftsman can have timed work on an invoice somebody
+    // else drafted. Only their own aggregated figures are returned, never the raw rows.
+    const invoices = await fetchAllInvoices(token, (isAdmin || isFinance || refParam || wantMyShare) ? null : callerEmail);
     if (wantBilledRefs) {
       const refs = [...new Set(
         invoices
@@ -162,6 +174,65 @@ module.exports = async function (context, req) {
           'X-Invoice-Window': 'billedrefs',
         },
         body: JSON.stringify(refs),
+      };
+      return;
+    }
+
+    if (wantMyShare) {
+      const totals = await fetchLineItemTotals(token);
+      const { year, month } = monthAnchor(myShareMode);
+      const rows = [];
+      let timed = 0;
+      let remainder = 0;
+
+      for (const inv of invoices) {
+        if (inv.Cancelled || !inv.InvoiceDate) continue;
+        const d = new Date(inv.InvoiceDate);
+        if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month) continue;
+
+        const agg       = totals.get(String(inv.OrderDetails || '').trim()) || { total: 0, byPerson: {} };
+        const mine      = agg.byPerson[callerEmail] || 0;
+        const isDrafter = (inv.DraftedByEmail || '').toLowerCase() === callerEmail;
+        // The remainder is everything on the invoice that is not somebody's timed work.
+        const rest      = isDrafter ? Math.max(0, (inv.Net || 0) - agg.total) : 0;
+        if (!mine && !rest) continue;
+
+        rows.push({
+          OrderDetails: inv.OrderDetails,
+          InvoiceDate:  inv.InvoiceDate,
+          Casename:     inv.Casename,
+          Ourref:       inv.Ourref,
+          Net:          inv.Net || 0,
+          Bespoke:      inv.Bespoke || false,
+          drafter:      inv.DraftedByEmail || null,
+          isDrafter,
+          myTimed:      +mine.toFixed(2),
+          myRemainder:  +rest.toFixed(2),
+          myShare:      +(mine + rest).toFixed(2),
+        });
+        timed     += mine;
+        remainder += rest;
+      }
+
+      rows.sort((a, b) => new Date(b.InvoiceDate) - new Date(a.InvoiceDate));
+
+      context.res = {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'X-Invoice-Window': 'myshare-' + myShareMode,
+        },
+        body: JSON.stringify({
+          mode:      myShareMode,
+          year,
+          month:     month + 1,
+          caller:    callerEmail,
+          timed:     +timed.toFixed(2),
+          remainder: +remainder.toFixed(2),
+          total:     +(timed + remainder).toFixed(2),
+          rows,
+        }),
       };
       return;
     }
@@ -194,6 +265,42 @@ module.exports = async function (context, req) {
     context.res = { status: 500, body: `Error: ${err.message}` };
   }
 };
+
+// ─── LINE ITEM TOTALS PER INVOICE ───────────────────
+// ValueMirror is a plain currency column mirroring the calculated Value field, which Graph
+// app-only cannot read. Rows with no InvoiceIDRef are unbilled and ignored here.
+async function fetchLineItemTotals(token) {
+  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LINEITEMS_GUID}/items` +
+               `?$expand=fields($select=InvoiceIDRef,CompletedByEmail,ValueMirror)&$top=999`;
+
+  const totals = new Map();
+  let url = base;
+
+  while (url) {
+    const page = await graphGet(url, token);
+    for (const item of (page.value || [])) {
+      const f   = item.fields || {};
+      const ref = String(f.InvoiceIDRef || '').trim();
+      if (!ref) continue;
+      const who = String(f.CompletedByEmail || '').trim().toLowerCase();
+      const val = toNum(f.ValueMirror);
+      if (!totals.has(ref)) totals.set(ref, { total: 0, byPerson: {} });
+      const agg = totals.get(ref);
+      agg.total += val;
+      if (who) agg.byPerson[who] = (agg.byPerson[who] || 0) + val;
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+
+  return totals;
+}
+
+// Start of this calendar month, or the one before it. UTC throughout to match SP dates.
+function monthAnchor(mode) {
+  const now = new Date();
+  const d   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (mode === 'last' ? -1 : 0), 1));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+}
 
 // ─── TOKEN (client-credentials) ──────────────────────────
 function getToken(tenantId, clientId, clientSecret) {
