@@ -402,7 +402,7 @@
       <div class="stat-card" id="card-invoiced">
         <div class="stat-card-accent"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="stat-card-label" style="margin-bottom:0;">Invoiced<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About Invoiced"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The net value you have invoiced in the chosen calendar month (excludes cancelled invoices); switch to last month with the toggle. Click for a per-invoice breakdown.</span></button></div>
+          <div class="stat-card-label" style="margin-bottom:0;">My Invoiced Work<button type="button" class="info-btn info-left" style="margin-left:5px;" aria-label="About My Invoiced Work"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your own share of what was invoiced in the month: your timed work on any invoice, plus the drafting fee, LA fee or bespoke charge on bills you drafted. Not the full value of invoices you raised. Click for a per-invoice breakdown.</span></button></div>
           <div style="display:flex;gap:4px;">
             <button id="inv-toggle-this" class="wip-toggle active" onclick="event.stopPropagation();setInvoicedPeriod('this')">This</button>
             <button id="inv-toggle-last" class="wip-toggle" onclick="event.stopPropagation();setInvoicedPeriod('last')">Last</button>
@@ -1966,25 +1966,44 @@ function setWipPeriod(p){
 }
 
 // ── Daily Briefing ────────────────────────────────────────────────────────
-// Invoiced card helpers. Both months are derived from allInvoices at render time, so
-// switching between them costs no fetch.
-function invoicedRows(mode){
-  const now=new Date();
-  const anchor=new Date(now.getFullYear(),now.getMonth()+(mode==='last'?-1:0),1);
-  const yr=anchor.getFullYear(), mo=anchor.getMonth();
-  return allInvoices.filter(inv=>{
-    if(inv.Cancelled||!inv.InvoiceDate) return false;
-    if((inv.DraftedByEmail||'').toLowerCase()!==callerEmail) return false;
-    const d=new Date(inv.InvoiceDate);
-    return d.getFullYear()===yr&&d.getMonth()===mo;
-  });
+// My share of the month's invoicing. The server computes this: a draftsman cannot see other
+// people's line items, so working it out in the browser would credit them with somebody else's
+// time. Their share is their own timed work plus the non-timed remainder (drafting fee, LA fee,
+// bespoke) of any invoice they drafted.
+const myShare={this:null,last:null};
+const myShareErr={this:'',last:''};
+const myShareLoading={this:false,last:false};
+
+async function loadMyShare(mode){
+  if(myShare[mode]||myShareLoading[mode]) return;
+  myShareLoading[mode]=true;
+  try{
+    const r=await fetch('/api/invoices?myshare='+mode,{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    myShare[mode]=await r.json();
+    myShareErr[mode]='';
+  }catch(err){ myShareErr[mode]=err.message; }
+  myShareLoading[mode]=false;
+  if(invoicedPeriod===mode){
+    updateInvoicedCard();
+    if(document.getElementById('modal-invoiced').classList.contains('open')) renderInvoicedBreakdown();
+  }
 }
+
 function updateInvoicedCard(){
-  const total=invoicedRows(invoicedPeriod).reduce((s,inv)=>s+(inv.Net||0),0);
-  document.getElementById('stat-invoiced').textContent=total>0?fmt(total):'\u2014';
+  const data=myShare[invoicedPeriod];
+  const el=document.getElementById('stat-invoiced');
   const sub=document.getElementById('stat-invoiced-sub');
-  if(sub) sub.textContent=invoicedPeriod==='this'?'net, current calendar month':'net, previous calendar month';
+  if(!data){
+    if(!myShareErr[invoicedPeriod]) loadMyShare(invoicedPeriod);
+    el.textContent=myShareErr[invoicedPeriod]?'\u2014':'\u2026';
+    if(sub) sub.textContent=myShareErr[invoicedPeriod]?('unavailable \u2014 '+myShareErr[invoicedPeriod]):'working out your share\u2026';
+    return;
+  }
+  el.textContent=data.total>0?fmt(data.total):'\u2014';
+  if(sub) sub.textContent='your work, '+(invoicedPeriod==='this'?'current':'previous')+' calendar month';
 }
+
 function setInvoicedPeriod(p){
   invoicedPeriod=p;
   document.getElementById('inv-toggle-this').classList.toggle('active',p==='this');
@@ -2193,41 +2212,48 @@ function lineItemsHtml(inv){
   const no=String(inv.OrderDetails||'');
   if(invLineItems===null) return '<div style="font-size:12px;color:var(--grey-mid);padding:8px 4px;">Loading line items\u2026</div>';
   if(invLineItemsErr) return '<div style="font-size:12px;color:var(--red);padding:8px 4px;">Line items unavailable: '+escHtml(invLineItemsErr)+'</div>';
-  const lis=lineItemsFor(no);
-  const draft=inv.DraftingFeeElement||0;
-  if(!lis.length&&!draft) return '<div style="font-size:12px;color:var(--grey-mid);padding:8px 4px;">No line items recorded against this invoice.</div>';
+  const lis=lineItemsFor(no).filter(li=>String(li.CompletedByEmail||'').toLowerCase()===callerEmail);
+  const rest=inv.myRemainder||0;
+  if(!lis.length&&!rest) return '<div style="font-size:12px;color:var(--grey-mid);padding:8px 4px;">Nothing on this invoice is attributed to you.</div>';
   let h='<table class="bd-table" style="margin:0;font-size:12px;"><thead><tr><th>Date</th><th>Work done</th><th class="r">Units</th><th class="r">Rate</th><th class="r">Value</th></tr></thead><tbody>';
   lis.forEach(li=>{
     h+='<tr><td style="white-space:nowrap;">'+fmtDay(li.CompletedOn)+'</td><td>'+escHtml(li.WorkDone||'\u2014')+'</td><td class="r">'+(li.TimeSpent!=null?li.TimeSpent:'\u2014')+'</td><td class="r">'+(li.Rate!=null?fmt(li.Rate):'\u2014')+'</td><td class="r">'+fmt(li.Value||0)+'</td></tr>';
   });
-  if(draft) h+='<tr><td>\u2014</td><td>Drafting fee element</td><td class="r">\u2014</td><td class="r">\u2014</td><td class="r">'+fmt(draft)+'</td></tr>';
-  const sub=lis.reduce((s,li)=>s+(li.Value||0),0)+(draft||0);
-  h+='<tr style="font-weight:700;"><td colspan="4">Line items total</td><td class="r">'+fmt(sub)+'</td></tr></tbody></table>';
+  if(rest) h+='<tr><td>\u2014</td><td>'+(inv.Bespoke?'Bespoke charge':'Drafting fee')+' \u2014 you drafted this bill</td><td class="r">\u2014</td><td class="r">\u2014</td><td class="r">'+fmt(rest)+'</td></tr>';
+  h+='<tr style="font-weight:700;"><td colspan="4">Your share</td><td class="r">'+fmt(inv.myShare||0)+'</td></tr>';
+  const other=(inv.Net||0)-(inv.myShare||0);
+  if(other>0.005) h+='<tr style="color:var(--grey-mid);"><td colspan="4">Other fee earners on this invoice</td><td class="r">'+fmt(other)+'</td></tr>';
+  h+='</tbody></table>';
   return h;
 }
 
 function renderInvoicedBreakdown(){
   const el=document.getElementById('invoiced-breakdown-list');
-  const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
+  const data=myShare[invoicedPeriod];
   const titleEl=document.getElementById('invoiced-modal-title');
-  if(titleEl) titleEl.textContent='Invoiced '+(invoicedPeriod==='this'?'This':'Last')+' Month Breakdown';
-  if(!rows.length){
-    el.innerHTML='<div class="bd-empty">No invoices '+(invoicedPeriod==='this'?'this':'last')+' month.</div>';
+  if(titleEl) titleEl.textContent='My Invoiced Work \u2014 '+(invoicedPeriod==='this'?'This':'Last')+' Month';
+  if(!data){
+    el.innerHTML='<div class="bd-empty">'+(myShareErr[invoicedPeriod]?('Unavailable \u2014 '+escHtml(myShareErr[invoicedPeriod])):'Working out your share\u2026')+'</div>';
     return;
   }
-  const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
-  let html='<table class="bd-table"><thead><tr><th style="width:18px;"></th><th>Case</th><th>Invoice #</th><th class="r">Net</th></tr></thead><tbody>';
+  const rows=data.rows||[];
+  if(!rows.length){
+    el.innerHTML='<div class="bd-empty">Nothing invoiced for your work '+(invoicedPeriod==='this'?'this':'last')+' month.</div>';
+    return;
+  }
+  let html='<table class="bd-table"><thead><tr><th style="width:18px;"></th><th>Case</th><th>Invoice #</th><th class="r">Invoice net</th><th class="r">Your share</th></tr></thead><tbody>';
   rows.forEach(inv=>{
     const no=String(inv.OrderDetails||'');
     const isOpen=invExpanded.has(no);
     html+='<tr class="inv-row" data-inv="'+escHtml(no)+'" style="cursor:pointer;">'
       +'<td style="color:var(--grey-mid);">'+(isOpen?'\u25be':'\u25b8')+'</td>'
-      +'<td><strong>'+escHtml(inv.Casename||inv.Ourref||'')+'</strong><br><span style="font-size:11px;color:var(--grey-mid);">'+escHtml(inv.Ourref||'')+'</span></td>'
+      +'<td><strong>'+escHtml(inv.Casename||inv.Ourref||'')+'</strong><br><span style="font-size:11px;color:var(--grey-mid);">'+escHtml(inv.Ourref||'')+(inv.isDrafter?' \u00b7 you drafted':'')+'</span></td>'
       +'<td style="font-family:\'IBM Plex Mono\',monospace;font-size:12px;">'+escHtml(no||'\u2014')+'</td>'
-      +'<td class="r">'+fmt(inv.Net||0)+'</td></tr>'
-      +'<tr'+(isOpen?'':' style="display:none;"')+'><td></td><td colspan="3" style="padding:0 0 10px 0;">'+lineItemsHtml(inv)+'</td></tr>';
+      +'<td class="r" style="color:var(--grey-mid);">'+fmt(inv.Net||0)+'</td>'
+      +'<td class="r"><strong>'+fmt(inv.myShare||0)+'</strong></td></tr>'
+      +'<tr'+(isOpen?'':' style="display:none;"')+'><td></td><td colspan="4" style="padding:0 0 10px 0;">'+lineItemsHtml(inv)+'</td></tr>';
   });
-  html+='<tr style="font-weight:700;background:var(--grey-faint);"><td colspan="3">Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+')</td><td class="r">'+fmt(tot)+'</td></tr></tbody></table>';
+  html+='<tr style="font-weight:700;background:var(--grey-faint);"><td colspan="3">Your timed work '+fmt(data.timed)+' + drafting '+fmt(data.remainder)+'</td><td class="r"></td><td class="r">'+fmt(data.total)+'</td></tr></tbody></table>';
   el.innerHTML=html;
   el.querySelectorAll('.inv-row').forEach(tr=>{
     tr.addEventListener('click',()=>{
@@ -2257,36 +2283,36 @@ function openInvoicedBreakdown(){
 
 // One CSV row per line item, falling back to one row per invoice where there are none.
 function exportInvoicedCsv(){
-  const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
+  const data=myShare[invoicedPeriod];
+  if(!data){ alert('Still working out your share \u2014 try again in a moment.'); return; }
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  const out=[['Invoice #','Invoice date','Case','Our ref','Invoice net','Line date','Work done','Units','Rate','Line value'].map(q).join(',')];
-  rows.forEach(inv=>{
-    const no=String(inv.OrderDetails||'');
-    const lis=lineItemsFor(no);
-    if(!lis.length){ out.push([no,fmtDay(inv.InvoiceDate),inv.Casename||'',inv.Ourref||'',inv.Net||0,'','','','',''].map(q).join(',')); return; }
-    lis.forEach(li=>out.push([no,fmtDay(inv.InvoiceDate),inv.Casename||'',inv.Ourref||'',inv.Net||0,fmtDay(li.CompletedOn),li.WorkDone||'',li.TimeSpent!=null?li.TimeSpent:'',li.Rate!=null?li.Rate:'',li.Value||0].map(q).join(',')));
+  const out=[['Invoice #','Invoice date','Case','Our ref','Invoice net','You drafted','Your timed work','Your drafting/bespoke','Your share'].map(q).join(',')];
+  (data.rows||[]).forEach(inv=>{
+    out.push([inv.OrderDetails,fmtDay(inv.InvoiceDate),inv.Casename||'',inv.Ourref||'',inv.Net||0,inv.isDrafter?'Yes':'No',inv.myTimed||0,inv.myRemainder||0,inv.myShare||0].map(q).join(','));
   });
+  out.push(['','','','','','TOTAL',data.timed,data.remainder,data.total].map(q).join(','));
   const blob=new Blob(['\ufeff'+out.join('\r\n')],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='invoiced-'+(invoicedPeriod==='this'?'this':'last')+'-month.csv';
+  a.href=url; a.download='my-invoiced-work-'+(invoicedPeriod==='this'?'this':'last')+'-month.csv';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
 // Opens a clean print view - the browser's own "Save as PDF" is the PDF export.
 function printInvoicedBreakdown(){
-  const rows=invoicedRows(invoicedPeriod).sort((a,b)=>new Date(b.InvoiceDate)-new Date(a.InvoiceDate));
-  const tot=rows.reduce((s,inv)=>s+(inv.Net||0),0);
-  let body='<h1>Invoiced '+(invoicedPeriod==='this'?'this':'last')+' month</h1>'
+  const data=myShare[invoicedPeriod];
+  if(!data){ alert('Still working out your share \u2014 try again in a moment.'); return; }
+  const rows=data.rows||[];
+  let body='<h1>My invoiced work \u2014 '+(invoicedPeriod==='this'?'this':'last')+' month</h1>'
     +'<p>'+escHtml(callerEmail||'')+' &middot; generated '+fmtDay(new Date().toISOString())+'</p>';
   rows.forEach(inv=>{
-    body+='<h2>'+escHtml(inv.Casename||inv.Ourref||'')+' &middot; '+escHtml(String(inv.OrderDetails||''))+' &middot; '+fmt(inv.Net||0)+'</h2>'+lineItemsHtml(inv);
+    body+='<h2>'+escHtml(inv.Casename||inv.Ourref||'')+' &middot; '+escHtml(String(inv.OrderDetails||''))+' &middot; your share '+fmt(inv.myShare||0)+' of '+fmt(inv.Net||0)+'</h2>'+lineItemsHtml(inv);
   });
-  body+='<h2>Total ('+rows.length+' invoice'+(rows.length!==1?'s':'')+'): '+fmt(tot)+'</h2>';
+  body+='<h2>Timed work '+fmt(data.timed)+' + drafting '+fmt(data.remainder)+' = '+fmt(data.total)+'</h2>';
   const w=window.open('','_blank');
   if(!w){ alert('Pop-up blocked \u2014 allow pop-ups for this site to print.'); return; }
-  w.document.write('<html><head><title>Invoiced breakdown</title><style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;padding:24px;}h1{font-size:18px;}h2{font-size:13px;margin:18px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top;}th.r,td.r{text-align:right;}</style></head><body>'+body+'</body></html>');
+  w.document.write('<html><head><title>My invoiced work</title><style>body{font-family:Arial,Helvetica,sans-serif;font-size:12px;padding:24px;}h1{font-size:18px;}h2{font-size:13px;margin:18px 0 4px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top;}th.r,td.r{text-align:right;}</style></head><body>'+body+'</body></html>');
   w.document.close(); w.focus();
   setTimeout(()=>w.print(),300);
 }
