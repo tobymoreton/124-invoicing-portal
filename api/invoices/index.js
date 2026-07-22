@@ -193,8 +193,13 @@ module.exports = async function (context, req) {
         const agg       = totals.get(String(inv.OrderDetails || '').trim()) || { total: 0, byPerson: {} };
         const mine      = agg.byPerson[callerEmail] || 0;
         const isDrafter = (inv.DraftedByEmail || '').toLowerCase() === callerEmail;
-        // The remainder is everything on the invoice that is not somebody's timed work.
-        const rest      = isDrafter ? Math.max(0, (inv.Net || 0) - agg.total) : 0;
+        // The drafter's non-timed entitlement is the invoice's DraftingFeeElement when it
+        // carries one (IP drafting invoices). LA, bespoke and timed-only invoices leave
+        // DraftingFeeElement at 0, so those fall back to the Net-minus-timed residual as before.
+        const dfe       = inv.DraftingFeeElement || 0;
+        const rest      = isDrafter
+          ? (dfe > 0 ? dfe : Math.max(0, (inv.Net || 0) - agg.total))
+          : 0;
         if (!mine && !rest) continue;
 
         rows.push({
@@ -222,6 +227,7 @@ module.exports = async function (context, req) {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
           'X-Invoice-Window': 'myshare-' + myShareMode,
+          'X-Api-Build': 'S84-myshare-draftingfee',
         },
         body: JSON.stringify({
           mode:      myShareMode,
