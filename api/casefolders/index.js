@@ -53,7 +53,14 @@ const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 // a library is renamed — we fall back to the full sweep, so a rename degrades to
 // SLOW, never to BROKEN. `?deep=1` forces the full sweep on demand, so nothing
 // is ever permanently unreachable.
-const SHORTLIST = ['working drafts (current)', 'email attachments'];
+// S84 CORRECTION: the 2026-07-18 probe was run against Toby's own cases, whose files
+// live in Working Drafts. Draftsmen's case folders live in the TMC-File site's DEFAULT
+// library, named 'Documents' (e.g. 'McCalla - 1741294'). That library was never in the
+// shortlist, so for those users the endpoint returned count=0 with failed=0 - a silent,
+// convincing "nothing found". Tracy reported it 2026-07-23; confirmed live the next day
+// (ref 1741294: shortlist raw=0; deep raw=29 kept=1, site TMC-File, library Documents).
+// Lesson: a shortlist derived from one user's data is a shortlist fitted to one user.
+const SHORTLIST = ['working drafts (current)', 'email attachments', 'documents'];
 
 function getCallerEmail(req) {
   try {
@@ -227,7 +234,7 @@ module.exports = async function (context, req) {
         // against a build that had not deployed yet, and one produced a wrong
         // conclusion. Any response can now be attributed to a specific build in
         // one call. BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S83-v7-failed-count',
+        'X-Api-Build': 'S84-v8-documents-in-shortlist',
         'X-Casefolders-Mode': mode,
       },
       body: JSON.stringify(payload),
