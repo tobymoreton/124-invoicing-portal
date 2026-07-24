@@ -4292,12 +4292,13 @@ async function quickServeReminder(eventName, btn) {
   const msg = document.getElementById('rem-quick-msg');
   const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
   const duedate = new Date().toISOString().slice(0,10);
+  const note = (prompt('Add a note for this reminder? Optional \u2014 leave blank and click OK to skip.', '') || '').trim();
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
-    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseDisplayName(caseFields) || ref), duedate: duedate + 'T00:00:00Z', event: eventName, priority: 'Medium', detail: '', admin: true, emailReminder: true, completed: false }) });
+    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseDisplayName(caseFields) || ref), duedate: duedate + 'T00:00:00Z', event: eventName, priority: 'Medium', detail: note, admin: true, emailReminder: true, completed: false }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
     const created = await resp.json();
-    remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: eventName, Brief: '', Priority: 'Medium', 'Completed_x003f_': false, 'Admin_x003f_': true, Ourreference_x0028_text_x0029_: ref } });
+    remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: eventName, Brief: note, Priority: 'Medium', 'Completed_x003f_': false, 'Admin_x003f_': true, Ourreference_x0028_text_x0029_: ref } });
     msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Sent to Admin';
     setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderRemTable();
   } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
