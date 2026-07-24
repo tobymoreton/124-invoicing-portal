@@ -999,9 +999,22 @@
             <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
             <div class="field"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
             <div class="field"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
+            <div class="field" id="scn-fee-tmc-wrap"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:4px;"><input type="checkbox" id="scn-fee-tmc-time" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC drafting time in fee base? (as-drawn basis only)</label></div>
           </div>
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Recovery</span></div>
+        <dl class="read-grid" style="margin-top:4px;">
+          <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="scn-r-GrossPC">—</dd></div>
+          <div class="read-row"><dt>Net Profit Costs Recovery</dt><dd id="scn-r-NetBefore">—</dd></div>
+          <div class="read-row"><dt>Drafting Fee</dt><dd id="scn-r-DraftingFee">—</dd></div>
+          <div class="read-row" style="font-weight:700;"><dt style="font-weight:700;">Net Profit Costs Recovery (after Drafting Fee)</dt><dd id="scn-r-NetAfter" style="font-weight:700;">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery Against Claimed Profit Costs</dt><dd id="scn-r-PctPC">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="scn-r-PctBill">—</dd></div>
+          <div class="read-row" style="font-weight:700;"><dt style="font-weight:700;">Difference vs Current Settlement Sheet</dt><dd id="scn-r-Delta" style="font-weight:700;">—</dd></div>
+        </dl>
       </div>
       </div>
       <div class="scn-right">
@@ -1058,18 +1071,6 @@
           <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="scn-r-COA">—</span></dd></div>
           <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
           <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
-        </dl>
-      </div>
-      <div class="card">
-        <div class="card-head"><span class="card-title">Recovery</span></div>
-        <dl class="read-grid" style="margin-top:4px;">
-          <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="scn-r-GrossPC">—</dd></div>
-          <div class="read-row"><dt>Net Profit Costs Recovery</dt><dd id="scn-r-NetBefore">—</dd></div>
-          <div class="read-row"><dt>Drafting Fee</dt><dd id="scn-r-DraftingFee">—</dd></div>
-          <div class="read-row" style="font-weight:700;"><dt style="font-weight:700;">Net Profit Costs Recovery (after Drafting Fee)</dt><dd id="scn-r-NetAfter" style="font-weight:700;">—</dd></div>
-          <div class="read-row pct"><dt>% Recovery Against Claimed Profit Costs</dt><dd id="scn-r-PctPC">—</dd></div>
-          <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="scn-r-PctBill">—</dd></div>
-          <div class="read-row"><dt>Difference vs Current Settlement Sheet</dt><dd id="scn-r-Delta">—</dd></div>
         </dl>
       </div>
       </div>
@@ -3480,6 +3481,7 @@ function scnResetDefaults(){
   scnEl('scn-fee-basis').value = _feePct > 0 ? (_settFeeOnDrawn ? 'drawn' : 'assessed') : 'fixed';
   scnEl('scn-fee-pct').value = _feePct || '';
   scnEl('scn-fee-fixed').value = _storedFee ? _storedFee.toFixed(2) : '';
+  scnEl('scn-fee-tmc-time').checked = _settFeeOnDrawn;
 }
 function computeScenario(){
   const f = caseFields, c = computed;
@@ -3494,6 +3496,7 @@ function computeScenario(){
   const feeBasis = scnEl('scn-fee-basis').value;
   const feePctIn = scnNum('scn-fee-pct');
   const fixedFee = scnNum('scn-fee-fixed');
+  const feeTmcTime = scnEl('scn-fee-tmc-time').checked;
   const vatPct    = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const vatHelper = 1 + vatPct;
   const disbIncVAT = c.disbIncVAT || 0;
@@ -3506,7 +3509,9 @@ function computeScenario(){
   const totalLiab    = disbIncVAT + counselEff + (coaMode === 'none' ? 0 : totalCOA) + otherTMC;
   const grossPC   = costsElement - counselEff - disbIncVAT - coaDeduct - otherTMC;
   const netBefore = vatPct === 0 ? grossPC : grossPC / vatHelper;
-  const drawnCosts = (c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0);
+  const drawnCosts = feeTmcTime
+    ? ((c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0))
+    : (c.claimedPC||0);
   const draftingFee = feeBasis === 'fixed' ? round2(fixedFee)
     : round2((feeBasis === 'drawn' ? drawnCosts : netBefore) * feePctIn / 100);
   const vatOnDrafting = !!(f['VatOnDraftingFee_x003f_']);
@@ -3525,6 +3530,7 @@ function renderScenarioTab(){
   scnEl('scn-interest-date').disabled = (s.intMode === 'none');
   scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
   scnEl('scn-fee-fixed').disabled = (s.feeBasis !== 'fixed');
+  scnEl('scn-fee-tmc-time').disabled = (s.feeBasis !== 'drawn');
   const f = caseFields, c = computed;
   setText('scn-d-case', caseDisplayName(f) || '—');
   setText('scn-d-clientref', f['ClientCaseReference'] || '—');
