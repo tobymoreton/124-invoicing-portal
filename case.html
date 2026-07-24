@@ -1601,6 +1601,7 @@
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <button type="button" class="btn-edit-save" id="rem-quick-formal" style="display:inline-flex;justify-content:center;width:100%;">Send to Admin for Formal Service</button>
                 <button type="button" class="btn-edit-save" id="rem-quick-informal" style="display:inline-flex;justify-content:center;width:100%;">Send to Admin for Informal Service</button>
+                <button type="button" class="btn-edit-save" id="rem-quick-part8" style="display:inline-flex;justify-content:center;width:100%;">Send to Admin for Part 8</button>
                 <span class="edit-msg" id="rem-quick-msg"></span>
               </div>
               <div class="field"><label>Due Date</label><input type="date" id="rem-add-duedate" /></div>
@@ -4277,9 +4278,9 @@ function initAddRemPanel() {
   const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
   const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
-  ['rem-quick-formal','rem-quick-informal'].forEach(id => {
+  ['rem-quick-formal','rem-quick-informal','rem-quick-part8'].forEach(id => {
     const b = document.getElementById(id); const nb = b.cloneNode(true); b.parentNode.replaceChild(nb, b);
-    nb.addEventListener('click', () => quickServeReminder(id === 'rem-quick-formal' ? 'Serve formally' : 'Serve informally', nb));
+    nb.addEventListener('click', () => quickServeReminder(id === 'rem-quick-formal' ? 'Serve formally' : id === 'rem-quick-part8' ? 'Issue Part 8' : 'Serve informally', nb));
   });
 }
 
