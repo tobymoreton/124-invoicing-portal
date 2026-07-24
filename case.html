@@ -1027,7 +1027,7 @@
           <div class="interest-row"><span>TMC Reference</span><span id="scn-d-tmcref">—</span></div>
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
-          <div class="interest-row"><span>Costs Element of Figure</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Costs Element of Figure (net of interest &amp; COA)</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
         </div>
       </div>
@@ -2298,7 +2298,6 @@ function computeFigures() {
   const totalCOA       = coa + clientExpenses;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const _netDraftingFeeStored = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
   const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
@@ -2343,7 +2342,7 @@ function computeFigures() {
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
   const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC) : netBeforeDrafting;
-  const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : _netDraftingFeeStored;
+  const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
   const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
@@ -3478,10 +3477,9 @@ function scnResetDefaults(){
   const exclCOA = f['Offerincludescostsofsssessment_x'] === true || f['Offerincludescostsofsssessment_x'] === 'true' || f['Offerincludescostsofsssessment_x'] === 1;
   scnEl('scn-coa-mode').value = exclCOA ? 'ontop' : 'within';
   const _feePct = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
-  const _storedFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
   scnEl('scn-fee-basis').value = _feePct > 0 ? (_settFeeOnDrawn ? 'drawn' : 'assessed') : 'fixed';
   scnEl('scn-fee-pct').value = _feePct || '';
-  scnEl('scn-fee-fixed').value = _storedFee ? _storedFee.toFixed(2) : '';
+  scnEl('scn-fee-fixed').value = '';
   scnEl('scn-fee-tmc-time').checked = _settFeeOnDrawn;
 }
 function computeScenario(){
@@ -3505,10 +3503,10 @@ function computeScenario(){
   const otherTMC   = c.otherTMC   || 0;
   const hasAuth    = !!f['DateofAuthoritytoAssess'];
   const interestAmt = (intMode === 'none' || !hasAuth || !asAt || !figure) ? 0 : round2(interestTotalAsAt(f, figure, asAt));
-  const costsElement = intMode === 'within' ? Math.max(0, figure - interestAmt) : figure;
   const coaDeduct    = coaMode === 'within' ? totalCOA : 0;
+  const costsElement = Math.max(0, figure - (intMode === 'within' ? interestAmt : 0) - coaDeduct);
   const totalLiab    = disbIncVAT + counselEff + (coaMode === 'none' ? 0 : totalCOA) + otherTMC;
-  const grossPC   = costsElement - counselEff - disbIncVAT - coaDeduct - otherTMC;
+  const grossPC   = costsElement - counselEff - disbIncVAT - otherTMC;
   const netBefore = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const drawnCosts = feeTmcTime
     ? ((c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0))
@@ -3551,7 +3549,7 @@ function renderScenarioTab(){
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
-  setText('scn-r-DraftingFee', fmt(s.draftingFee) + (s.feeBasis === 'fixed' ? ' (fixed)' : s.feeBasis === 'drawn' ? ' (' + s.feePctIn + '% as drawn)' : ' (' + s.feePctIn + '% as assessed)'));
+  setText('scn-r-DraftingFee', fmt(s.draftingFee) + (s.feeBasis === 'fixed' ? ' (fixed)' : s.feeBasis === 'drawn' ? ' (' + s.feePctIn + '% as drawn' + (scnEl('scn-fee-tmc-time').checked ? ', incl TMC time)' : ')') : ' (' + s.feePctIn + '% as assessed)'));
   setText('scn-r-NetAfter', fmt(s.netAfter));
   setText('scn-r-PctPC', fmtPct(s.pctPC));
   setText('scn-r-PctBill', fmtPct(s.pctBill));
