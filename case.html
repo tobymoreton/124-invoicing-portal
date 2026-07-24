@@ -977,6 +977,16 @@
       <div style="background:rgba(181,154,106,.12);border:1px solid rgba(181,154,106,.45);border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--navy);">
         🧪 <strong>Playground.</strong> Nothing on this tab is saved and nothing here changes any real case figure. Experiment freely — Reset pulls the current case figures back in.
       </div>
+      <style>
+        .scn-layout{display:grid;grid-template-columns:360px minmax(0,1fr);gap:18px;align-items:start;}
+        .scn-left{position:sticky;top:12px;}
+        .scn-left .detail-grid{grid-template-columns:1fr;gap:12px;}
+        #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
+        #tab-scenarios .interest-row{padding:6px 0;}
+        @media(max-width:1100px){.scn-layout{grid-template-columns:1fr;}.scn-left{position:static;}}
+      </style>
+      <div class="scn-layout">
+      <div class="scn-left">
       <div class="card">
         <div class="card-head"><span class="card-title">Scenario Inputs</span><button type="button" class="info-btn" aria-label="About Scenario Inputs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the scenario figure from the Authority to Assess date at 8%, netting interim payments, and can be paid on top of the figure or included within it; costs of assessment likewise. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
@@ -986,11 +996,15 @@
             <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="none">Not included</option><option value="ontop">Paid on top of the figure</option><option value="within">Included within the figure</option></select></div>
             <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
             <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included within the figure</option><option value="ontop">Paid on top of the figure</option><option value="none">Ignore</option></select></div>
-            <div class="field"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:22px;"><input type="checkbox" id="scn-include-tmc" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC time in fee base?</label></div>
+            <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
+            <div class="field"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
+            <div class="field"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
           </div>
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
         </div>
       </div>
+      </div>
+      <div class="scn-right">
       <div class="card">
         <div class="card-head"><span class="card-title">Settlement Details</span></div>
         <div class="card-body" style="padding:0 22px;">
@@ -1057,6 +1071,8 @@
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="scn-r-PctBill">—</dd></div>
           <div class="read-row"><dt>Difference vs Current Settlement Sheet</dt><dd id="scn-r-Delta">—</dd></div>
         </dl>
+      </div>
+      </div>
       </div>
     </div><!-- /tab-scenarios -->
 
@@ -3459,7 +3475,11 @@ function scnResetDefaults(){
   scnEl('scn-interest-date').value = new Date().toISOString().substring(0,10);
   const exclCOA = f['Offerincludescostsofsssessment_x'] === true || f['Offerincludescostsofsssessment_x'] === 'true' || f['Offerincludescostsofsssessment_x'] === 1;
   scnEl('scn-coa-mode').value = exclCOA ? 'ontop' : 'within';
-  scnEl('scn-include-tmc').checked = _settFeeOnDrawn;
+  const _feePct = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
+  const _storedFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
+  scnEl('scn-fee-basis').value = _feePct > 0 ? (_settFeeOnDrawn ? 'drawn' : 'assessed') : 'fixed';
+  scnEl('scn-fee-pct').value = _feePct || '';
+  scnEl('scn-fee-fixed').value = _storedFee ? _storedFee.toFixed(2) : '';
 }
 function computeScenario(){
   const f = caseFields, c = computed;
@@ -3471,7 +3491,9 @@ function computeScenario(){
   const coaMode = scnEl('scn-coa-mode').value;
   const asAtStr = scnEl('scn-interest-date').value;
   const asAt    = asAtStr ? new Date(asAtStr) : null;
-  const feeOnDrawn = scnEl('scn-include-tmc').checked;
+  const feeBasis = scnEl('scn-fee-basis').value;
+  const feePctIn = scnNum('scn-fee-pct');
+  const fixedFee = scnNum('scn-fee-fixed');
   const vatPct    = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const vatHelper = 1 + vatPct;
   const disbIncVAT = c.disbIncVAT || 0;
@@ -3484,10 +3506,9 @@ function computeScenario(){
   const totalLiab    = disbIncVAT + counselEff + (coaMode === 'none' ? 0 : totalCOA) + otherTMC;
   const grossPC   = costsElement - counselEff - disbIncVAT - coaDeduct - otherTMC;
   const netBefore = vatPct === 0 ? grossPC : grossPC / vatHelper;
-  const feePctIP  = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
-  const storedFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
-  const drawnBase = feeOnDrawn ? ((c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)) : netBefore;
-  const draftingFee = feePctIP > 0 ? round2(drawnBase * feePctIP / 100) : storedFee;
+  const drawnCosts = (c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0);
+  const draftingFee = feeBasis === 'fixed' ? round2(fixedFee)
+    : round2((feeBasis === 'drawn' ? drawnCosts : netBefore) * feePctIn / 100);
   const vatOnDrafting = !!(f['VatOnDraftingFee_x003f_']);
   const netAfter = vatOnDrafting ? netBefore - draftingFee * vatHelper : netBefore - draftingFee;
   const pctPC   = (c.claimedPC || 0) > 0 ? netAfter / c.claimedPC : 0;
@@ -3495,13 +3516,15 @@ function computeScenario(){
   const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
   return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
            costsElement, coaDeduct, totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
-           grossPC, netBefore, draftingFee, netAfter, pctPC, pctBill };
+           grossPC, netBefore, draftingFee, feeBasis, feePctIn, netAfter, pctPC, pctBill };
 }
 function renderScenarioTab(){
   if (!scnEl('scn-figure')) return;
   if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
   const s = computeScenario();
   scnEl('scn-interest-date').disabled = (s.intMode === 'none');
+  scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
+  scnEl('scn-fee-fixed').disabled = (s.feeBasis !== 'fixed');
   const f = caseFields, c = computed;
   setText('scn-d-case', caseDisplayName(f) || '—');
   setText('scn-d-clientref', f['ClientCaseReference'] || '—');
@@ -3521,7 +3544,7 @@ function renderScenarioTab(){
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
-  setText('scn-r-DraftingFee', fmt(s.draftingFee));
+  setText('scn-r-DraftingFee', fmt(s.draftingFee) + (s.feeBasis === 'fixed' ? ' (fixed)' : s.feeBasis === 'drawn' ? ' (' + s.feePctIn + '% as drawn)' : ' (' + s.feePctIn + '% as assessed)'));
   setText('scn-r-NetAfter', fmt(s.netAfter));
   setText('scn-r-PctPC', fmtPct(s.pctPC));
   setText('scn-r-PctBill', fmtPct(s.pctBill));
