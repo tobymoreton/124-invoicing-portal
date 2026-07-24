@@ -1622,7 +1622,7 @@
                   <option>Finalise Replies</option><option>Finalise Budget</option>
                   <option selected>General reminder</option>
                   <option>Get Counsel reduction</option><option>Important reminder</option>
-                  <option>Invoice</option><option>Issue Invoice - Draft done</option>
+                  <option>Invoice</option><option>Issue Invoice</option><option>Issue Invoice - Draft done</option>
                   <option>Issue Part 8</option><option>Lodge completed bill</option>
                   <option>Make Offer</option><option>Mediation</option>
                   <option>Meeting</option><option>Points of Dispute due</option>
@@ -4190,7 +4190,7 @@ async function loadReminders() {
   } catch (err) { remFetching = false; remLoaded = false; document.getElementById('rem-loading').textContent = 'Failed to load reminders: ' + err.message; }
 }
 
-const REM_EVENTS = ['Approve Bill','CCMC','Chase Chambers','Chase Client','Chase Court','Chase HJA \u2013 Emailed 7 days ago','Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer','Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies','Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice','Issue Invoice - Draft done','Issue Part 8','Lodge completed bill','Make Offer','Mediation','Meeting','Points of Dispute due','Prepare for CCMC','Prepare for Detailed Assessment','Prepare for Mediation','Prepare for Without Prejudice call','Relay offer to Client','Replies due','Request Detailed Assessment','Request Provisional Assessment','Review','Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally','Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget','Start Precedent R','Start Replies','Without Prejudice call'];
+const REM_EVENTS = ['Approve Bill','CCMC','Chase Chambers','Chase Client','Chase Court','Chase HJA \u2013 Emailed 7 days ago','Chase Other Side for Interim','Chase Other Side for Interim & Offer','Chase Other Side for Offer','Chase Other Side for response','Detailed Assessment','Finalise Bill','Finalise Replies','Finalise Budget','General reminder','Get Counsel reduction','Important reminder','Invoice','Issue Invoice','Issue Invoice - Draft done','Issue Part 8','Lodge completed bill','Make Offer','Mediation','Meeting','Points of Dispute due','Prepare for CCMC','Prepare for Detailed Assessment','Prepare for Mediation','Prepare for Without Prejudice call','Relay offer to Client','Replies due','Request Detailed Assessment','Request Provisional Assessment','Review','Send Bill to Client','Send Budget to Client','Send Replies to Client','Serve formally','Serve informally','Serve Precedent H','Serve Precedent R','Start Bill','Start Budget','Start Precedent R','Start Replies','Without Prejudice call'];
 const REM_PRIORITIES = ['High','Medium','Low'];
 
 function renderRemTable() {
