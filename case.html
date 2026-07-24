@@ -991,39 +991,69 @@
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
         </div>
       </div>
-      <div class="two-col">
-        <div class="card">
-          <div class="card-head"><span class="card-title">Scenario Liabilities</span></div>
-          <dl class="liab-grid">
-            <div class="liab-row"><dt>Disbursements inc VAT</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
-            <div class="liab-row"><dt>Counsel's Fees payable</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
-            <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="scn-r-COA">—</span></dd></div>
-            <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
-            <div class="liab-row total"><dt>Total Liabilities</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
-          </dl>
-        </div>
-        <div class="card">
-          <div class="card-head"><span class="card-title">Figure Make-Up</span></div>
-          <div class="card-body" style="padding:0 22px;">
-            <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
-            <div class="interest-row"><span>Costs Element of Figure</span><span id="scn-r-CostsElement">—</span></div>
-            <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
-          </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Settlement Details</span></div>
+        <div class="card-body" style="padding:0 22px;">
+          <div class="interest-row"><span>Case</span><span id="scn-d-case">—</span></div>
+          <div class="interest-row"><span>Client Reference</span><span id="scn-d-clientref">—</span></div>
+          <div class="interest-row"><span>TMC Reference</span><span id="scn-d-tmcref">—</span></div>
+          <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
+          <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
+          <div class="interest-row"><span>Costs Element of Figure</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Scenario Recovery</span></div>
-        <div style="padding:16px 22px 0;">
-          <div class="recovery-highlight">
-            <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
-            <span class="rh-value" id="scn-r-NetAfter">—</span>
-          </div>
+        <div class="card-head"><span class="card-title">Costs Claimed</span></div>
+        <div class="card-body">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--navy);">
+            <thead><tr>
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid var(--navy);"></th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Profit Costs</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">TMC PC in Bill</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Disbursements</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Counsel's Fees</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Total Claimed</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td style="text-align:left;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);">Net</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="scn-c-pc-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="scn-c-tmcpc-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="scn-c-disb-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="scn-c-counsel-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="scn-c-total-net">—</td>
+              </tr>
+              <tr style="font-weight:600;">
+                <td style="text-align:left;padding:7px 10px;">VAT Inclusive</td>
+                <td style="text-align:right;padding:7px 10px;" id="scn-c-pc-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="scn-c-tmcpc-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="scn-c-disb-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="scn-c-counsel-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="scn-c-total-vat">—</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span></div>
+        <dl class="liab-grid">
+          <div class="liab-row"><dt>Disbursements</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
+          <div class="liab-row"><dt>Counsel's Fees</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
+          <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="scn-r-COA">—</span></dd></div>
+          <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
+          <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Recovery</span></div>
         <dl class="read-grid" style="margin-top:4px;">
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="scn-r-GrossPC">—</dd></div>
-          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="scn-r-NetBefore">—</dd></div>
-          <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="scn-r-DraftingFee">—</dd></div>
-          <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="scn-r-PctPC">—</dd></div>
+          <div class="read-row"><dt>Net Profit Costs Recovery</dt><dd id="scn-r-NetBefore">—</dd></div>
+          <div class="read-row"><dt>Drafting Fee</dt><dd id="scn-r-DraftingFee">—</dd></div>
+          <div class="read-row" style="font-weight:700;"><dt style="font-weight:700;">Net Profit Costs Recovery (after Drafting Fee)</dt><dd id="scn-r-NetAfter" style="font-weight:700;">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery Against Claimed Profit Costs</dt><dd id="scn-r-PctPC">—</dd></div>
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="scn-r-PctBill">—</dd></div>
           <div class="read-row"><dt>Difference vs Current Settlement Sheet</dt><dd id="scn-r-Delta">—</dd></div>
         </dl>
@@ -3467,6 +3497,15 @@ function renderScenarioTab(){
   if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
   const s = computeScenario();
   scnEl('scn-interest-date').disabled = (s.intMode === 'none');
+  const f = caseFields, c = computed;
+  setText('scn-d-case', caseDisplayName(f) || '—');
+  setText('scn-d-clientref', f['ClientCaseReference'] || '—');
+  setText('scn-d-tmcref', f['Ourreference_x0028_text_x0029_'] || '—');
+  setText('scn-d-figure', s.figure ? fmt(s.figure) : '—');
+  setText('scn-c-pc-net', fmt(c.claimedPC)); setText('scn-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0)));
+  setText('scn-c-disb-net', fmt(c.disbursements)); setText('scn-c-counsel-net', fmt(c.counselClaimed)); setText('scn-c-total-net', fmt(c.netTotalClaimed));
+  setText('scn-c-pc-vat', fmt(c.pcIncVAT)); setText('scn-c-tmcpc-vat', fmt(c.tmcPCIncVAT));
+  setText('scn-c-disb-vat', fmt(c.disbIncVAT)); setText('scn-c-counsel-vat', fmt(c.counselIncVAT)); setText('scn-c-total-vat', fmt(c.totalClaimed));
   setText('scn-r-Disb', fmt(s.disbIncVAT));
   setText('scn-r-Counsel', s.pct === 100 ? fmt(s.counselEff) : fmt(s.counselEff) + ' (' + s.pct + '% of ' + fmt(s.counselBase) + ')');
   setText('scn-r-COA', s.coaMode === 'none' ? 'Ignored' : s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' (on top)' : fmt(s.totalCOA));
