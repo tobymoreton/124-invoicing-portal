@@ -1578,6 +1578,11 @@
           <div class="card">
             <div class="card-head"><span class="card-title">Add Reminder</span><button type="button" class="info-btn" aria-label="About Add Reminder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Create a new reminder for this case.</span></button></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button type="button" class="btn-edit-save" id="rem-quick-formal" style="display:inline-flex;justify-content:center;width:100%;">Send to Admin for Formal Service</button>
+                <button type="button" class="btn-edit-save" id="rem-quick-informal" style="display:inline-flex;justify-content:center;width:100%;">Send to Admin for Informal Service</button>
+                <span class="edit-msg" id="rem-quick-msg"></span>
+              </div>
               <div class="field"><label>Due Date</label><input type="date" id="rem-add-duedate" /></div>
               <div class="field"><label>Event</label>
                 <select id="rem-add-event" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
@@ -4234,6 +4239,26 @@ function initAddRemPanel() {
   const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
   const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
+  ['rem-quick-formal','rem-quick-informal'].forEach(id => {
+    const b = document.getElementById(id); const nb = b.cloneNode(true); b.parentNode.replaceChild(nb, b);
+    nb.addEventListener('click', () => quickServeReminder(id === 'rem-quick-formal' ? 'Serve formally' : 'Serve informally', nb));
+  });
+}
+
+async function quickServeReminder(eventName, btn) {
+  const msg = document.getElementById('rem-quick-msg');
+  const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  const duedate = new Date().toISOString().slice(0,10);
+  btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
+  try {
+    const resp = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, title: (caseDisplayName(caseFields) || ref), duedate: duedate + 'T00:00:00Z', event: eventName, priority: 'Medium', detail: '', admin: true, emailReminder: true, completed: false }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + await resp.text());
+    const created = await resp.json();
+    remActions.unshift({ id: created.id, fields: { Duedate: duedate + 'T00:00:00Z', Event: eventName, Brief: '', Priority: 'Medium', 'Completed_x003f_': false, 'Admin_x003f_': true, Ourreference_x0028_text_x0029_: ref } });
+    msg.className = 'edit-msg ok'; msg.textContent = '\u2713 Sent to Admin';
+    setTimeout(() => { msg.textContent = ''; msg.className = 'edit-msg'; }, 3000); renderRemTable();
+  } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
+  finally { btn.disabled = false; }
 }
 
 async function submitAddReminder() {
