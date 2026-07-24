@@ -979,7 +979,8 @@
       </div>
       <style>
         .scn-layout{display:grid;grid-template-columns:460px minmax(0,1fr);gap:18px;align-items:start;}
-        .scn-left{position:sticky;top:12px;}
+        .scn-left{position:sticky;top:12px;min-width:0;}
+        .scn-right{min-width:0;}
         .scn-left .detail-grid{grid-template-columns:1fr;gap:12px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
@@ -1009,6 +1010,17 @@
           </div>
         </div>
       </div>
+      </div>
+      <div class="scn-right">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Settlement Details</span></div>
+        <div class="card-body" style="padding:0 22px;">
+          <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
+          <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
+          <div class="interest-row"><span>Costs Element of Figure (net of interest &amp; COA)</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Recovery</span></div>
         <dl class="read-grid" style="margin-top:4px;">
@@ -1021,24 +1033,10 @@
           <div class="read-row"><dt>Drafting Fee</dt><dd id="scn-r-DraftingFee">—</dd></div>
         </dl>
       </div>
-      </div>
-      <div class="scn-right">
-      <div class="card">
-        <div class="card-head"><span class="card-title">Settlement Details</span></div>
-        <div class="card-body" style="padding:0 22px;">
-          <div class="interest-row"><span>Case</span><span id="scn-d-case">—</span></div>
-          <div class="interest-row"><span>Client Reference</span><span id="scn-d-clientref">—</span></div>
-          <div class="interest-row"><span>TMC Reference</span><span id="scn-d-tmcref">—</span></div>
-          <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
-          <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
-          <div class="interest-row"><span>Costs Element of Figure (net of interest &amp; COA)</span><span id="scn-r-CostsElement">—</span></div>
-          <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
-        </div>
-      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Costs Claimed</span></div>
         <div class="card-body">
-          <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--navy);">
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--navy);">
             <thead><tr>
               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid var(--navy);"></th>
               <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Profit Costs</th>
@@ -1065,7 +1063,7 @@
                 <td style="text-align:right;padding:7px 10px;" id="scn-c-total-vat">—</td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
       <div class="card">
@@ -3538,9 +3536,6 @@ function renderScenarioTab(){
   scnEl('scn-fee-fixed-wrap').style.display = (s.feeBasis === 'fixed') ? '' : 'none';
   scnEl('scn-fee-tmc-wrap').style.display = (s.feeBasis === 'drawn') ? '' : 'none';
   const f = caseFields, c = computed;
-  setText('scn-d-case', caseDisplayName(f) || '—');
-  setText('scn-d-clientref', f['ClientCaseReference'] || '—');
-  setText('scn-d-tmcref', f['Ourreference_x0028_text_x0029_'] || '—');
   setText('scn-d-figure', s.figure ? fmt(s.figure) : '—');
   setText('scn-c-pc-net', fmt(c.claimedPC)); setText('scn-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0)));
   setText('scn-c-disb-net', fmt(c.disbursements)); setText('scn-c-counsel-net', fmt(c.counselClaimed)); setText('scn-c-total-net', fmt(c.netTotalClaimed));
