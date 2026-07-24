@@ -998,11 +998,15 @@
             <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
             <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included within the figure</option><option value="ontop">Paid on top of the figure</option><option value="none">Ignore</option></select></div>
             <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
-            <div class="field"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
-            <div class="field"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
-            <div class="field" id="scn-fee-tmc-wrap"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:4px;"><input type="checkbox" id="scn-fee-tmc-time" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC drafting time in fee base? (as-drawn basis only)</label></div>
+            <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
+            <div class="field" id="scn-fee-fixed-wrap"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
+            <div class="field" id="scn-fee-tmc-wrap"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:4px;"><input type="checkbox" id="scn-fee-tmc-time" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC drafting time in fee base?</label></div>
           </div>
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(27,42,74,.1);">
+            <label style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:6px;">Drafting Fee Invoice Line</label>
+            <div id="scn-invoice-line" style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--navy);background:var(--cream);border:1px solid rgba(27,42,74,.12);border-radius:6px;padding:8px 12px;min-height:18px;">—</div>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -3520,7 +3524,7 @@ function computeScenario(){
   const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
   return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
            costsElement, coaDeduct, totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
-           grossPC, netBefore, draftingFee, feeBasis, feePctIn, netAfter, pctPC, pctBill };
+           grossPC, netBefore, draftingFee, feeBasis, feePctIn, feeBaseAmount: (feeBasis === 'drawn' ? drawnCosts : netBefore), netAfter, pctPC, pctBill };
 }
 function renderScenarioTab(){
   if (!scnEl('scn-figure')) return;
@@ -3530,6 +3534,9 @@ function renderScenarioTab(){
   scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
   scnEl('scn-fee-fixed').disabled = (s.feeBasis !== 'fixed');
   scnEl('scn-fee-tmc-time').disabled = (s.feeBasis !== 'drawn');
+  scnEl('scn-fee-pct-wrap').style.display = (s.feeBasis === 'fixed') ? 'none' : '';
+  scnEl('scn-fee-fixed-wrap').style.display = (s.feeBasis === 'fixed') ? '' : 'none';
+  scnEl('scn-fee-tmc-wrap').style.display = (s.feeBasis === 'drawn') ? '' : 'none';
   const f = caseFields, c = computed;
   setText('scn-d-case', caseDisplayName(f) || '—');
   setText('scn-d-clientref', f['ClientCaseReference'] || '—');
@@ -3555,6 +3562,14 @@ function renderScenarioTab(){
   setText('scn-r-PctBill', fmtPct(s.pctBill));
   const d = s.netAfter - (computed.netAfterDrafting || 0);
   setText('scn-r-Delta', !s.figure ? '—' : (d >= 0 ? '+' : '\u2212') + fmt(Math.abs(d)));
+  let ipLine = '';
+  if (s.feeBasis === 'fixed') {
+    ipLine = s.draftingFee > 0 ? 'Preparing Draft Bill of Costs' : '';
+  } else if (s.feePctIn > 0 && s.feeBaseAmount > 0) {
+    const basisShort = s.feeBasis === 'drawn' ? 'As Drawn' : 'As Recovered';
+    ipLine = 'Preparing Draft Bill of Costs | ' + s.feePctIn + '% of ' + fmt(s.feeBaseAmount) + ' ' + basisShort;
+  }
+  setText('scn-invoice-line', ipLine || '—');
 }
 (function wireScenarioTab(){
   const panel = document.getElementById('tab-scenarios');
