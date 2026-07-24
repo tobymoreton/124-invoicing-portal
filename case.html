@@ -739,6 +739,7 @@
     <button class="tab-btn" data-tab="interest">Interest</button>
     <button class="tab-btn" data-tab="offers">Offers</button>
     <button class="tab-btn" data-tab="settlement">Settlement</button>
+    <button class="tab-btn" data-tab="scenarios">Settlement Scenarios</button>
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
     <button class="tab-btn" data-tab="noterefine">noteRefine</button>
     <button class="tab-btn" data-tab="incamera">inCamera</button>
@@ -970,6 +971,64 @@
         </button>
       </div>
     </div><!-- /tab-settlement -->
+
+    <!-- ════════ SETTLEMENT SCENARIOS TAB (playground — never saves, never touches live figures) ════════ -->
+    <div class="tab-panel" id="tab-scenarios">
+      <div style="background:rgba(181,154,106,.12);border:1px solid rgba(181,154,106,.45);border-radius:8px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:var(--navy);">
+        🧪 <strong>Playground.</strong> Nothing on this tab is saved and nothing here changes any real case figure. Experiment freely — Reset pulls the current case figures back in.
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Scenario Inputs</span><button type="button" class="info-btn" aria-label="About Scenario Inputs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the scenario figure from the Authority to Assess date at 8%, netting interim payments, and can be paid on top of the figure or included within it; costs of assessment likewise. Nothing on this tab is saved anywhere.</span></button></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
+            <div class="field"><label>Counsel's Fees Payable (%)</label><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" /></div>
+            <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="none">Not included</option><option value="ontop">Paid on top of the figure</option><option value="within">Included within the figure</option></select></div>
+            <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
+            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included within the figure</option><option value="ontop">Paid on top of the figure</option><option value="none">Ignore</option></select></div>
+            <div class="field"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:22px;"><input type="checkbox" id="scn-include-tmc" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC time in fee base?</label></div>
+          </div>
+          <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Scenario Liabilities</span></div>
+          <dl class="liab-grid">
+            <div class="liab-row"><dt>Disbursements inc VAT</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
+            <div class="liab-row"><dt>Counsel's Fees payable</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
+            <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="scn-r-COA">—</span></dd></div>
+            <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
+            <div class="liab-row total"><dt>Total Liabilities</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
+          </dl>
+        </div>
+        <div class="card">
+          <div class="card-head"><span class="card-title">Figure Make-Up</span></div>
+          <div class="card-body" style="padding:0 22px;">
+            <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
+            <div class="interest-row"><span>Costs Element of Figure</span><span id="scn-r-CostsElement">—</span></div>
+            <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Scenario Recovery</span></div>
+        <div style="padding:16px 22px 0;">
+          <div class="recovery-highlight">
+            <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
+            <span class="rh-value" id="scn-r-NetAfter">—</span>
+          </div>
+        </div>
+        <dl class="read-grid" style="margin-top:4px;">
+          <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="scn-r-GrossPC">—</dd></div>
+          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="scn-r-NetBefore">—</dd></div>
+          <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="scn-r-DraftingFee">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="scn-r-PctPC">—</dd></div>
+          <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="scn-r-PctBill">—</dd></div>
+          <div class="read-row"><dt>Difference vs Current Settlement Sheet</dt><dd id="scn-r-Delta">—</dd></div>
+        </dl>
+      </div>
+    </div><!-- /tab-scenarios -->
 
     <!-- ════════ OFFERS TAB ════════ -->
     <div class="tab-panel" id="tab-offers">
@@ -2077,6 +2136,7 @@ function renderCaseUI(firstPaint) {
   renderBookingInTab();
   renderOpponentTab();
   renderSettlementTab();
+  renderScenarioTab();
   renderOffersTab();
   renderCostsTab();
   renderInterestTab();
@@ -3349,6 +3409,91 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
   } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Save failed: ' + err.message; }
   finally { btn.disabled = false; }
 });
+
+// ══════════════ SETTLEMENT SCENARIOS (S86, playground — computes locally, never saves) ══════════════
+// Mirrors the live Settlement maths (computeFigures / interestTotalAsAt) but takes its inputs
+// from the scenario controls. Writes NOTHING: no API call, no caseFields mutation, no save.
+let _scnDefaultsSet = false;
+function scnEl(id){ return document.getElementById(id); }
+function scnNum(id){ const e = scnEl(id); const n = parseFloat(e && e.value); return isNaN(n) ? 0 : n; }
+function scnResetDefaults(){
+  const f = caseFields, c = computed;
+  scnEl('scn-figure').value = c.offerOrSettlement ? c.offerOrSettlement.toFixed(2) : '';
+  scnEl('scn-counsel-pct').value = 100;
+  scnEl('scn-interest-mode').value = 'none';
+  scnEl('scn-interest-date').value = new Date().toISOString().substring(0,10);
+  const exclCOA = f['Offerincludescostsofsssessment_x'] === true || f['Offerincludescostsofsssessment_x'] === 'true' || f['Offerincludescostsofsssessment_x'] === 1;
+  scnEl('scn-coa-mode').value = exclCOA ? 'ontop' : 'within';
+  scnEl('scn-include-tmc').checked = _settFeeOnDrawn;
+}
+function computeScenario(){
+  const f = caseFields, c = computed;
+  const figure      = scnNum('scn-figure');
+  const pct         = scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct');
+  const counselBase = parseFloat(f['Counselsfeespayable']) || 0;
+  const counselEff  = round2(counselBase * pct / 100);
+  const intMode = scnEl('scn-interest-mode').value;
+  const coaMode = scnEl('scn-coa-mode').value;
+  const asAtStr = scnEl('scn-interest-date').value;
+  const asAt    = asAtStr ? new Date(asAtStr) : null;
+  const feeOnDrawn = scnEl('scn-include-tmc').checked;
+  const vatPct    = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  const vatHelper = 1 + vatPct;
+  const disbIncVAT = c.disbIncVAT || 0;
+  const totalCOA   = c.totalCOA   || 0;
+  const otherTMC   = c.otherTMC   || 0;
+  const hasAuth    = !!f['DateofAuthoritytoAssess'];
+  const interestAmt = (intMode === 'none' || !hasAuth || !asAt || !figure) ? 0 : round2(interestTotalAsAt(f, figure, asAt));
+  const costsElement = intMode === 'within' ? Math.max(0, figure - interestAmt) : figure;
+  const coaDeduct    = coaMode === 'within' ? totalCOA : 0;
+  const totalLiab    = disbIncVAT + counselEff + (coaMode === 'none' ? 0 : totalCOA) + otherTMC;
+  const grossPC   = costsElement - counselEff - disbIncVAT - coaDeduct - otherTMC;
+  const netBefore = vatPct === 0 ? grossPC : grossPC / vatHelper;
+  const feePctIP  = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
+  const storedFee = parseFloat(f['Net_x0020_Drafting_x0020_Fee']) || 0;
+  const drawnBase = feeOnDrawn ? ((c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)) : netBefore;
+  const draftingFee = feePctIP > 0 ? round2(drawnBase * feePctIP / 100) : storedFee;
+  const vatOnDrafting = !!(f['VatOnDraftingFee_x003f_']);
+  const netAfter = vatOnDrafting ? netBefore - draftingFee * vatHelper : netBefore - draftingFee;
+  const pctPC   = (c.claimedPC || 0) > 0 ? netAfter / c.claimedPC : 0;
+  const pctBill = (c.totalBill || 0) > 0 ? figure   / c.totalBill : 0;
+  const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
+  return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
+           costsElement, coaDeduct, totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
+           grossPC, netBefore, draftingFee, netAfter, pctPC, pctBill };
+}
+function renderScenarioTab(){
+  if (!scnEl('scn-figure')) return;
+  if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
+  const s = computeScenario();
+  scnEl('scn-interest-date').disabled = (s.intMode === 'none');
+  setText('scn-r-Disb', fmt(s.disbIncVAT));
+  setText('scn-r-Counsel', s.pct === 100 ? fmt(s.counselEff) : fmt(s.counselEff) + ' (' + s.pct + '% of ' + fmt(s.counselBase) + ')');
+  setText('scn-r-COA', s.coaMode === 'none' ? 'Ignored' : s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' (on top)' : fmt(s.totalCOA));
+  setText('scn-r-Other', fmt(s.otherTMC));
+  setText('scn-r-TotalLiab', fmt(s.totalLiab));
+  setText('scn-r-Interest', s.intMode === 'none' ? 'Not included' : !s.hasAuth ? 'No Authority to Assess date (Interest tab)' : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (paid on top)' : fmt(s.interestAmt) + ' (within the figure)');
+  setText('scn-r-CostsElement', fmt(s.costsElement));
+  setText('scn-r-TotalReceived', fmt(s.totalReceived));
+  setText('scn-r-GrossPC', fmt(s.grossPC));
+  setText('scn-r-NetBefore', fmt(s.netBefore));
+  setText('scn-r-DraftingFee', fmt(s.draftingFee));
+  setText('scn-r-NetAfter', fmt(s.netAfter));
+  setText('scn-r-PctPC', fmtPct(s.pctPC));
+  setText('scn-r-PctBill', fmtPct(s.pctBill));
+  const d = s.netAfter - (computed.netAfterDrafting || 0);
+  setText('scn-r-Delta', !s.figure ? '—' : (d >= 0 ? '+' : '\u2212') + fmt(Math.abs(d)));
+}
+(function wireScenarioTab(){
+  const panel = document.getElementById('tab-scenarios');
+  if (!panel) return;
+  panel.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', renderScenarioTab);
+    el.addEventListener('change', renderScenarioTab);
+  });
+  const rb = document.getElementById('scn-reset');
+  if (rb) rb.addEventListener('click', () => { scnResetDefaults(); renderScenarioTab(); });
+})();
 
 function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
