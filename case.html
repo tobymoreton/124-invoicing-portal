@@ -1600,9 +1600,10 @@
             <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <div style="font-size:12px;font-weight:600;color:var(--navy);text-transform:uppercase;letter-spacing:.4px;">Admin Requests</div>
+                <button type="button" class="btn-edit-save" id="rem-quick-part8" data-event="Issue Part 8" style="display:inline-flex;justify-content:center;width:100%;">Part 8</button>
+                <button type="button" class="btn-edit-save" id="rem-quick-invoice" data-event="Issue Invoice" style="display:inline-flex;justify-content:center;width:100%;">Invoice</button>
                 <button type="button" class="btn-edit-save" id="rem-quick-formal" data-event="Serve formally" style="display:inline-flex;justify-content:center;width:100%;">Formal Service</button>
                 <button type="button" class="btn-edit-save" id="rem-quick-informal" data-event="Serve informally" style="display:inline-flex;justify-content:center;width:100%;">Informal Service</button>
-                <button type="button" class="btn-edit-save" id="rem-quick-part8" data-event="Issue Part 8" style="display:inline-flex;justify-content:center;width:100%;">Part 8</button>
                 <button type="button" class="btn-edit-save" id="rem-quick-da" data-event="Request Detailed Assessment" style="display:inline-flex;justify-content:center;width:100%;">Detailed Assessment</button>
                 <button type="button" class="btn-edit-save" id="rem-quick-pa" data-event="Request Provisional Assessment" style="display:inline-flex;justify-content:center;width:100%;">Provisional Assessment</button>
                 <span class="edit-msg" id="rem-quick-msg"></span>
@@ -4281,7 +4282,7 @@ function initAddRemPanel() {
   const today = new Date().toISOString().slice(0,10); document.getElementById('rem-add-duedate').value = today;
   const btn = document.getElementById('rem-add-submit'); const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
   newBtn.addEventListener('click', submitAddReminder);
-  ['rem-quick-formal','rem-quick-informal','rem-quick-part8','rem-quick-da','rem-quick-pa'].forEach(id => {
+  ['rem-quick-part8','rem-quick-invoice','rem-quick-formal','rem-quick-informal','rem-quick-da','rem-quick-pa'].forEach(id => {
     const b = document.getElementById(id); const nb = b.cloneNode(true); b.parentNode.replaceChild(nb, b);
     nb.addEventListener('click', () => quickServeReminder(nb.dataset.event, nb));
   });
