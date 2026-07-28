@@ -114,6 +114,10 @@
     .bespoke-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:7px 10px;width:100%;outline:none;transition:border-color var(--transition);}
     .bespoke-input:focus{border-color:var(--gold);background:var(--white);}
 
+    /* Bespoke jump button */
+    .btn-bespoke-jump{width:100%;padding:12px 18px;background:var(--gold-pale);border:1.5px solid var(--gold);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--navy);cursor:pointer;margin-bottom:22px;transition:background var(--transition),color var(--transition);}
+    .btn-bespoke-jump:hover{background:var(--gold);color:var(--white);}
+
     /* Totals */
     .totals-block{margin-top:20px;border-top:2px solid var(--grey-light);padding-top:14px;}
     .totals-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;}
@@ -208,6 +212,8 @@
       <div class="card-title">Step 2 &mdash; Review &amp; Adjust Figures</div>
       <div id="figures-loading" class="loading-figures">Loading figures&hellip;</div>
       <div id="figures-content" style="display:none;">
+
+        <button type="button" class="btn-bespoke-jump" id="btn-bespoke-jump">Bespoke Invoice?</button>
 
         <!-- Drafting Fee — IP -->
         <div class="section-sub">Drafting Fee (Inter Partes)</div>
@@ -384,15 +390,40 @@
         </div>
 
         <!-- Bespoke -->
-        <div class="section-sub">Bespoke Invoice (optional)</div>
-        <div class="bespoke-grid">
+        <div class="section-sub" id="bespoke-section">Bespoke Invoice (optional)</div>
+
+        <div class="form-row">
+          <span class="form-label">Invoice attributed to</span>
+          <span class="form-value">
+            <select class="form-select" id="inp-bespoke-attributed-to">
+              <option value="">&mdash; select &mdash;</option>
+              <option value="joanna@tmclegal.co.uk">Joanna</option>
+              <option value="tracy@tmclegal.co.uk">Tracy</option>
+              <option value="kelly@tmclegal.co.uk">Kelly</option>
+              <option value="tom@tmclegal.co.uk">Tom</option>
+              <option value="julie@tmclegal.co.uk">Julie</option>
+              <option value="daniel@tmclegal.co.uk">Daniel</option>
+              <option value="toby@tmclegal.co.uk">Toby</option>
+            </select>
+          </span>
+        </div>
+
+        <div class="bespoke-grid" style="margin-top:12px;">
           <div class="bespoke-cell">
-            <label>Bespoke Time Line</label>
+            <label>Bespoke Time Line 1</label>
             <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter&hellip;" />
           </div>
           <div class="bespoke-cell">
-            <label>Bespoke Time Amount (&pound;)</label>
+            <label>Bespoke Time Amount 1 (&pound;)</label>
             <input type="number" class="bespoke-input" id="inp-bespoke-amount" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Time Line 2</label>
+            <input type="text" class="bespoke-input" id="inp-bespoke-line-2" placeholder="e.g. Additional work on matter&hellip;" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Time Amount 2 (&pound;)</label>
+            <input type="number" class="bespoke-input" id="inp-bespoke-amount-2" min="0" step="0.01" placeholder="0.00" />
           </div>
           <div class="bespoke-cell">
             <label>Bespoke Expenses Line</label>
@@ -678,6 +709,7 @@ async function loadFigures(fields) {
   const draftedByOpts = Array.from(draftedBySelect.options).map(o => o.value);
   const caseDrafter = String(fields.BillDraftedByText || '').trim().toLowerCase();
   draftedBySelect.value = draftedByOpts.includes(caseDrafter) ? caseDrafter : '';
+  el('inp-bespoke-attributed-to').value = draftedBySelect.value;
 
   // Override / minimum-fee controls for the newly selected case.
   // If the case is flagged MinimumFee=Yes, pre-tick the minimum on whichever
@@ -765,14 +797,25 @@ function renderWipTable() {
 
 // ── Listeners ─────────────────────────────────────────────
 function initListeners() {
-  ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-expenses','inp-bespoke-expenses-vat']
+  ['inp-fee-pct','inp-la-fee-pct','inp-limit-timed','inp-timed-override','inp-drafting-override','inp-la-drafting-override','inp-bespoke-amount','inp-bespoke-amount-2','inp-bespoke-expenses','inp-bespoke-expenses-vat']
     .forEach(id => el(id).addEventListener('input', recalc));
   el('inp-basis').addEventListener('change', recalc);
   el('inp-timed-work-line').addEventListener('input', () => { el('inp-timed-work-line').dataset.userEdited = '1'; });
   el('inp-timed-work-line').addEventListener('change', recalc);
   el('inp-bespoke-line').addEventListener('change', recalc);
+  el('inp-bespoke-line-2').addEventListener('change', recalc);
   el('inp-bespoke-expenses-line').addEventListener('change', recalc);
-  el('inp-drafted-by').addEventListener('change', recalc);
+  // Drafted by and the Bespoke section's Invoice attributed to are the same underlying
+  // field, shown in two places — keep them mirrored both ways.
+  el('inp-drafted-by').addEventListener('change', () => {
+    el('inp-bespoke-attributed-to').value = el('inp-drafted-by').value;
+    recalc();
+  });
+  el('inp-bespoke-attributed-to').addEventListener('change', () => {
+    el('inp-drafted-by').value = el('inp-bespoke-attributed-to').value;
+    recalc();
+  });
+  el('btn-bespoke-jump').addEventListener('click', activateBespokeMode);
   el('inp-include-tmc').addEventListener('change', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
 
@@ -821,7 +864,9 @@ function recalc() {
   if (el('row-include-tmc')) el('row-include-tmc').style.display = isDrawn ? '' : 'none';
   const laProfitCosts  = selectedCase._laProfitCosts || 0; // always As Drawn
   const limitTimed     = parseFloat(el('inp-limit-timed').value) || 0;
-  const bespokeAmt     = parseFloat(el('inp-bespoke-amount').value) || 0;
+  const bespokeAmt1    = parseFloat(el('inp-bespoke-amount').value) || 0;
+  const bespokeAmt2    = parseFloat(el('inp-bespoke-amount-2').value) || 0;
+  const bespokeAmt     = bespokeAmt1 + bespokeAmt2;
   const bespokeExp     = parseFloat(el('inp-bespoke-expenses').value) || 0;
   const bespokeExpVat  = parseFloat(el('inp-bespoke-expenses-vat').value) || 0;
 
@@ -987,6 +1032,10 @@ function recalc() {
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
     timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
+    bespokeLines: [
+      { line: el('inp-bespoke-line').value,   amount: bespokeAmt1 },
+      { line: el('inp-bespoke-line-2').value, amount: bespokeAmt2 },
+    ],
     bespokeExpensesLine: el('inp-bespoke-expenses-line').value,
     draftedByEmail:     draftedBy,
     wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
@@ -1005,6 +1054,28 @@ function recalc() {
   } else {
     el('figures-status').className = 'status-msg';
   }
+}
+
+// ── Bespoke jump button ──────────────────────────────────
+// Zeroes every figure outside the Bespoke section and unticks all timed work,
+// then jumps down to it. Deliberately does NOT clear the bespoke fields
+// themselves or the Invoice attributed to selection.
+function activateBespokeMode() {
+  if (!selectedCase) return;
+  el('inp-fee-pct').value = 0;
+  el('inp-la-fee-pct').value = 0;
+  el('inp-drafting-override').value = '';
+  el('inp-min-fee-ip').checked = false;
+  el('inp-la-drafting-override').value = '';
+  el('inp-min-fee-la').checked = false;
+  el('inp-include-tmc').checked = false;
+  el('inp-limit-timed').value = '';
+  el('inp-timed-override').value = '';
+  el('wip-tbody').querySelectorAll('.wip-check').forEach(chk => { chk.checked = false; });
+  recalc();
+  const target = el('bespoke-section');
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el('inp-bespoke-line').focus();
 }
 
 // ── Preview -> Approve -> Create Draft ──────────────────
@@ -1053,6 +1124,7 @@ async function buildInvoiceData() {
     timedWorkLine:     c.timedWorkLine,
     bespokeAmt:        c.bespokeAmt || 0,
     bespokeInvoiceLine: c.bespokeInvoiceLine || '',
+    bespokeLines:      c.bespokeLines || [],
     expenses:          (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
     bespokeExpensesLine: c.bespokeExpensesLine || '',
     vatOnDrafting:   c.vatOnDrafting,
@@ -1079,8 +1151,17 @@ async function openPreview() {
   const _bespokeAmt  = parseFloat(el('inp-bespoke-amount').value) || 0;
   const _bespokeLine = (el('inp-bespoke-line').value || '').trim();
   if (_bespokeAmt > 0 && !_bespokeLine) {
-    showMsg('issue-status', 'Please enter a Bespoke Invoice Line description before creating the draft.', 'error');
+    showMsg('issue-status', 'Please enter a description for Bespoke Time Line 1 before creating the draft.', 'error');
     el('inp-bespoke-line').focus();
+    return;
+  }
+
+  // Validate: second bespoke time line, same rule
+  const _bespokeAmt2  = parseFloat(el('inp-bespoke-amount-2').value) || 0;
+  const _bespokeLine2 = (el('inp-bespoke-line-2').value || '').trim();
+  if (_bespokeAmt2 > 0 && !_bespokeLine2) {
+    showMsg('issue-status', 'Please enter a description for Bespoke Time Line 2 before creating the draft.', 'error');
+    el('inp-bespoke-line-2').focus();
     return;
   }
 
@@ -1137,12 +1218,24 @@ async function approveDraft() {
     // Capture the previewed invoice as base64 (same data object -> identical output)
     const pdfBase64 = await captureInvoicePdf(_previewData);
 
+    // A bill carrying only bespoke figures (no drafting fee, no ticked timed work)
+    // supersedes the case's timesheet entirely — every existing unbilled time entry
+    // for this case is closed off on issue, not just whatever was ticked (which is
+    // nothing, in the normal bespoke flow). Line Items are NOT created for these —
+    // only checkedWipEntries drives Line Item creation, and that stays as whatever
+    // was actually ticked.
+    const isBespokeOnly = (c.draftingFee || 0) <= 0 && (c.laFee || 0) <= 0 && (c.timedFee || 0) <= 0
+      && ((c.bespokeAmt || 0) > 0 || (c.bespokeExp || 0) > 0 || (c.bespokeExpVat || 0) > 0);
+    const wipIdsForBilling = isBespokeOnly
+      ? _allWipEntries.filter(e => !e.Billed && e._id).map(e => e._id)
+      : (c.checkedWipIds || []);
+
     const payload = {
       pdfBase64,
       computed:          c,
       caseFields:        f,
       caseItemId:        selectedCase.id || '',
-      checkedWipIds:     c.checkedWipIds     || [],
+      checkedWipIds:     wipIdsForBilling,
       checkedWipEntries: c.checkedWipEntries || [],
     };
 
