@@ -385,14 +385,18 @@
 
         <!-- Bespoke -->
         <div class="section-sub">Bespoke Invoice (optional)</div>
-        <div class="bespoke-cell" style="margin-bottom:12px;">
-          <label>Bespoke Invoice Line</label>
-          <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter&hellip;" />
-        </div>
         <div class="bespoke-grid">
           <div class="bespoke-cell">
-            <label>Bespoke Amount (&pound;)</label>
+            <label>Bespoke Time Line</label>
+            <input type="text" class="bespoke-input" id="inp-bespoke-line" placeholder="e.g. Additional work on matter&hellip;" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Time Amount (&pound;)</label>
             <input type="number" class="bespoke-input" id="inp-bespoke-amount" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div class="bespoke-cell">
+            <label>Bespoke Expenses Line</label>
+            <input type="text" class="bespoke-input" id="inp-bespoke-expenses-line" placeholder="e.g. Court fee, courier&hellip;" />
           </div>
           <div class="bespoke-cell">
             <label>Bespoke Expenses (&pound;)</label>
@@ -767,6 +771,7 @@ function initListeners() {
   el('inp-timed-work-line').addEventListener('input', () => { el('inp-timed-work-line').dataset.userEdited = '1'; });
   el('inp-timed-work-line').addEventListener('change', recalc);
   el('inp-bespoke-line').addEventListener('change', recalc);
+  el('inp-bespoke-expenses-line').addEventListener('change', recalc);
   el('inp-drafted-by').addEventListener('change', recalc);
   el('inp-include-tmc').addEventListener('change', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
@@ -982,6 +987,7 @@ function recalc() {
     timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
     timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
+    bespokeExpensesLine: el('inp-bespoke-expenses-line').value,
     draftedByEmail:     draftedBy,
     wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
       idx:      +tr.getAttribute('data-idx'),
@@ -1048,6 +1054,7 @@ async function buildInvoiceData() {
     bespokeAmt:        c.bespokeAmt || 0,
     bespokeInvoiceLine: c.bespokeInvoiceLine || '',
     expenses:          (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
+    bespokeExpensesLine: c.bespokeExpensesLine || '',
     vatOnDrafting:   c.vatOnDrafting,
     logoDataUrl,
     scheduleLines:   c.scheduleLines || [],
@@ -1074,6 +1081,16 @@ async function openPreview() {
   if (_bespokeAmt > 0 && !_bespokeLine) {
     showMsg('issue-status', 'Please enter a Bespoke Invoice Line description before creating the draft.', 'error');
     el('inp-bespoke-line').focus();
+    return;
+  }
+
+  // Validate: bespoke expenses require a description line too
+  const _bespokeExp     = parseFloat(el('inp-bespoke-expenses').value) || 0;
+  const _bespokeExpVat  = parseFloat(el('inp-bespoke-expenses-vat').value) || 0;
+  const _bespokeExpLine = (el('inp-bespoke-expenses-line').value || '').trim();
+  if ((_bespokeExp > 0 || _bespokeExpVat > 0) && !_bespokeExpLine) {
+    showMsg('issue-status', 'Please enter a Bespoke Expenses Line description before creating the draft.', 'error');
+    el('inp-bespoke-expenses-line').focus();
     return;
   }
 
