@@ -21,9 +21,11 @@
  *   timedHours       number
  *   timedRate        number       ignored when timedWorkLine is supplied
  *   timedWorkLine    string|null  override text (already includes hours — don't append again)
- *   bespokeAmt        number       bespoke invoice amount (0 if none); VAT at 20% applied
- *   bespokeInvoiceLine string      bespoke line description
- *   expenses         number       default 0
+ *   bespokeAmt        number       bespoke invoice amount TOTAL (0 if none); VAT at 20% applied
+ *   bespokeInvoiceLine string      legacy single bespoke line description — used only if bespokeLines is absent/empty
+ *   bespokeLines     Array|null   [{line, amount}, ...] — rendered as separate line items (zero-amount lines skipped); falls back to bespokeInvoiceLine/bespokeAmt as one row when absent
+ *   expenses         number       default 0 (combined bespoke expenses + expenses VAT)
+ *   bespokeExpensesLine string    bespoke expenses line description — falls back to "Expenses" if blank
  *   vatOnDrafting    boolean      if true, VAT applies to draftingFee AND laFee
  *   logoDataUrl      string|null  base64 data URL for logo (inline); falls back to filename
  *   scheduleLines    Array|null   [{date, workDone, hours, rate, amount}] — appended as Schedule of Work
@@ -141,8 +143,14 @@ function generateInvoiceHTML(data) {
   const subTotal = draftingFee + laFee + timedFee + bespokeAmt;
   const grand    = subTotal + vat + expenses;
 
+  // Bespoke lines: rendered as separate rows when supplied; falls back to a single
+  // row (bespokeInvoiceLine/bespokeAmt) when bespokeLines is absent or empty.
+  const bespokeLines = (Array.isArray(data.bespokeLines) ? data.bespokeLines : [])
+    .filter(function (bl) { return (parseFloat(bl.amount) || 0) > 0; });
+  const bespokeLineCount = bespokeLines.length > 0 ? bespokeLines.length : (hasBespoke ? 1 : 0);
+
   // Sub-total row shown when more than one line item is present
-  const lineCount = (hasDrafting ? 1 : 0) + (hasLaFee ? 1 : 0) + (hasTimed ? 1 : 0) + (hasBespoke ? 1 : 0);
+  const lineCount = (hasDrafting ? 1 : 0) + (hasLaFee ? 1 : 0) + (hasTimed ? 1 : 0) + bespokeLineCount;
   const hasBoth   = lineCount > 1;
 
   // Timed work description line — do NOT append hours when timedWorkLine is supplied
@@ -170,7 +178,14 @@ function generateInvoiceHTML(data) {
     rows.push('<tr><td style="text-align:left;padding-right:8mm">' + timedLine + '</td><td>' + _fmtGBP(timedFee) + '</td></tr>');
   }
   if (hasBespoke) {
-    rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(data.bespokeInvoiceLine || 'Additional work') + '</td><td>' + _fmtGBP(bespokeAmt) + '</td></tr>');
+    if (bespokeLines.length > 0) {
+      bespokeLines.forEach(function (bl) {
+        const amt = parseFloat(bl.amount) || 0;
+        rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(bl.line || 'Additional work') + '</td><td>' + _fmtGBP(amt) + '</td></tr>');
+      });
+    } else {
+      rows.push('<tr><td style="text-align:left;padding-right:8mm">' + _esc(data.bespokeInvoiceLine || 'Additional work') + '</td><td>' + _fmtGBP(bespokeAmt) + '</td></tr>');
+    }
   }
   const lineRows = rows.join('');
 
@@ -178,7 +193,7 @@ function generateInvoiceHTML(data) {
   const tots = [];
   if (hasBoth) tots.push('<tr><td>Sub Total</td><td style="white-space:nowrap">' + _fmtGBP(subTotal) + '</td></tr>');
   tots.push('<tr><td>VAT @ 20%</td><td>' + _fmtGBP(vat) + '</td></tr>');
-  if (hasExpenses) tots.push('<tr><td>Expenses</td><td>' + _fmtGBP(expenses) + '</td></tr>');
+  if (hasExpenses) tots.push('<tr><td>' + _esc(data.bespokeExpensesLine || 'Expenses') + '</td><td>' + _fmtGBP(expenses) + '</td></tr>');
   tots.push('<tr class="grand-total"><td>Grand Total</td><td>' + _fmtGBP(grand) + '</td></tr>');
   const totalsRows = tots.join('');
 
