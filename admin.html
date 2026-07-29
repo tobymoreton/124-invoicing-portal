@@ -1521,11 +1521,12 @@ async function holdCase(caseId,rowEl,selEl){
     const caseObj=allCases.find(c=>c.id===caseId);
     if(caseObj){ caseObj.fields['StatusMirror']='On Hold'; }
     rowEl.classList.add('uc-row-on-hold');
+    selEl.value='on-hold';
   }catch(err){
     alert('Failed to put on hold: '+err.message);
+    selEl.value='';
   }finally{
     selEl.disabled=false;
-    selEl.value='';
   }
 }
 
