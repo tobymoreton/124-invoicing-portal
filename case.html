@@ -4719,7 +4719,7 @@ function renderCaTable() {
 
 function renderWipBox() {
   const body = document.getElementById('ca-wip-body'); if (!body) return;
-  const unbilled = caActions.filter(a => { const f = a.fields || {}; return !f['Billed_x003f_'] && (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) > 0; });
+  const unbilled = caActions.filter(a => { const f = a.fields || {}; const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0; return billable && !f['Billed_x003f_'] && (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) > 0; });
   if (!unbilled.length) { body.innerHTML = '<span style="font-size:13px;color:var(--grey-mid);">No unbilled time on this case.</span>'; return; }
   const totalAmt = unbilled.reduce((s, a) => { const f = a.fields || {}; const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0; const stored = parseFloat(f['Num_BillableAmount_x00a3_']); return s + (!isNaN(stored) && stored > 0 ? stored : hrs * rate); }, 0);
   const totalHrs = unbilled.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
