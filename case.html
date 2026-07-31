@@ -1113,6 +1113,16 @@
             <span style="color:var(--grey-mid);">Offer net of interest (info only - not on settlement sheet):</span>
             <strong id="ov-offer-net-interest" style="margin-left:6px;">&mdash;</strong>
           </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:230px;padding:8px 12px;background:var(--cream,#f6f1e7);border:1px solid var(--gold-soft,#e6d9b8);border-radius:8px;font-size:13px;color:var(--navy);">
+              <span style="color:var(--grey-mid);">% of Costs Claimed:</span>
+              <strong id="ov-offer-pct-claimed" style="margin-left:6px;">&mdash;</strong>
+            </div>
+            <div style="flex:1;min-width:230px;padding:8px 12px;background:var(--cream,#f6f1e7);border:1px solid var(--gold-soft,#e6d9b8);border-radius:8px;font-size:13px;color:var(--navy);">
+              <span style="color:var(--grey-mid);">% of PC (excl TMC fees):</span>
+              <strong id="ov-offer-pct-pc" style="margin-left:6px;">&mdash;</strong>
+            </div>
+          </div>
         </div>
       </div>
     </div><!-- /tab-offers -->
@@ -2199,6 +2209,7 @@ function renderCaseUI(firstPaint) {
   renderScenarioTab();
   renderOffersTab();
   renderCostsTab();
+  renderVatZeroBanner();
   renderInterestTab();
   renderNotesTab();
   updateBillDraftedBanner();
@@ -3595,6 +3606,35 @@ function renderSettlementTab() {
   setText('r-DraftingFee', fmt(c.netDraftingFee)); setText('r-PctPC', fmtPct(c.pctPC)); setText('r-PctBill', fmtPct(c.pctBill));
 }
 
+// Red alert strip shown at the top of Costs Claimed, Offers, Settlement and Settlement Scenarios
+// whenever VAT % Claimed is nil — either explicitly 0 or never entered. Both produce identical
+// maths (every VAT figure on the case comes out at zero), so both are flagged, with the wording
+// saying which it is. Injected rather than hard-coded into each panel so there is one source of
+// truth for the copy. Purely a warning: it changes no figure and blocks nothing.
+const VAT_BANNER_TABS = ['tab-costs', 'tab-offers', 'tab-settlement', 'tab-scenarios'];
+function renderVatZeroBanner() {
+  const raw   = caseFields['VAT_x0020__x0025__x0020_Claimed'];
+  const blank = raw === null || raw === undefined || raw === '';
+  const zero  = (parseFloat(raw) || 0) === 0;
+  const show  = blank || zero;
+  const msg   = blank
+    ? '⚠️ <strong>VAT % Claimed has not been entered</strong> — it is being treated as 0%, so every VAT figure on this case is nil. Check this is intentional and set it on the Costs Claimed tab.'
+    : '⚠️ <strong>VAT is set at 0%</strong> — every VAT figure on this case is therefore nil. Check this is intentional; change it on the Costs Claimed tab.';
+  VAT_BANNER_TABS.forEach(id => {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    let b = panel.querySelector('.vat-zero-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.className = 'vat-zero-banner';
+      b.style.cssText = 'margin:0 0 16px;padding:12px 20px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15);color:#991B1B;font-size:13.5px;line-height:1.5;';
+      panel.insertBefore(b, panel.firstChild);
+    }
+    b.innerHTML = msg;
+    b.style.display = show ? 'block' : 'none';
+  });
+}
+
 function renderOffersTab() {
   const f = caseFields;
   setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']); setNum('f-BottomLine', f['BottomLine']); setNum('f-LikelyTopEnd', f['LikelyTopEnd']);
@@ -3605,6 +3645,10 @@ function renderOffersTab() {
   const _lod = f['DateOfLastOffer'] ? new Date(f['DateOfLastOffer']) : null;
   const _netInt = (_lo > 0 && _lod) ? _lo - interestTotalAsAt(f, _lo, _lod) : null;
   setText('ov-offer-net-interest', _netInt != null ? fmt(_netInt) : '—');
+  // Same maths as the Settlement tab's "% Recovery Against Overall Bill" and "% Recovery of
+  // Profit Costs" — reads the shared computed object so the two tabs can never disagree.
+  setText('ov-offer-pct-claimed', fmtPct(computed.pctBill));
+  setText('ov-offer-pct-pc', fmtPct(computed.pctPC));
 }
 
 function renderCostsTab() {
@@ -3868,7 +3912,7 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderVatZeroBanner(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
   else btn.disabled = false;
 });
 
