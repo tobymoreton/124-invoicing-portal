@@ -100,20 +100,26 @@ module.exports = async function (context, req) {
       (item.fields?.['field_16'] || '').toString().trim() === ref
     );
 
-    // Filter 2: exclude entries with no recorded time AND explicitly non-billable.
-    // ⚠️  Billable_x003f_ written via Graph POST is unreliable on this tenant —
-    //      Graph reads it back as false even when SP UI shows Yes and the value
-    //      was written as true. Confirmed via debug 2026-07-02: portal-created entries
-    //      returned Billable=false despite SP showing Billable=Yes.
-    //      Fix: include any entry that has actual recorded time (field_3 > 0 or
-    //      TimeSpentMirror > 0) regardless of Billable flag. Only exclude entries
-    //      that are BOTH explicitly non-billable AND have no recorded time.
+    // Filter 2: exclude entries explicitly marked non-billable.
+    //
+    // 🔴 2026-08-03 — REVERSED a 2026-07-02 workaround. That workaround returned true for
+    // ANY row with hrs > 0, regardless of the Billable flag, on the premise that
+    // Billable_x003f_ reads back unreliably through Graph (portal-created entries were seen
+    // returning false while the SP UI showed Yes).
+    //
+    // That premise is FALSE on current data. Case 1736520 splits 23 true / 90 false — a
+    // clean, correct split — and the workaround was pulling all 90 explicitly non-billable
+    // rows (£261.00) into the COA total, returning £2,001.00 where the Unbilled WIP panel
+    // and the draftsman both said £1,740.00. That is exactly the "amounts still showing
+    // albeit the bill box is unchecked" reported by Kelly Townshend: the box she was
+    // unticking is Billable?, not Billed?.
+    //
+    // Explicit false is now always excluded. Rows where the flag is ABSENT stay in —
+    // caseactions POST deliberately omits Billable_x003f_ (boolean writes unreliable on
+    // this tenant), so portal-created entries read as undefined rather than false and must
+    // not be silently dropped from a costs figure.
     const billableMatches = refMatches.filter(item => {
-      const f   = item.fields || {};
-      const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
-      // Has time recorded — include regardless of unreliable Billable boolean
-      if (hrs > 0) return true;
-      // No time recorded — only include if not explicitly marked non-billable
+      const f = item.fields || {};
       return f['Billable_x003f_'] !== false;
     });
 
