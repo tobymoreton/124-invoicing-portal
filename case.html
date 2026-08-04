@@ -426,6 +426,31 @@
       background:#fdecea;border-left:3px solid #b00020;border-radius:var(--radius-sm);
       color:#8a0016;font-size:11px;line-height:1.4;font-weight:500;white-space:normal;
     }
+    /* 2026-08-03: Case rate bar on the Case Actions tab. RateForCase drives BOTH the
+       Add Action rate box and M034's field_6 mapping, so a blank one silently books
+       every new entry at zero. It has to be impossible to miss. */
+    .ca-rate-bar{
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      margin-bottom:14px;padding:10px 14px;border-radius:var(--radius);
+      background:var(--white);border:1px solid var(--grey-light);border-left:4px solid var(--navy);
+    }
+    .ca-rate-bar.missing{
+      background:#fdecea;border-color:#f0b4ab;border-left:4px solid #b00020;
+    }
+    .ca-rate-bar .ca-rate-label{font-size:13px;font-weight:600;color:var(--navy);}
+    .ca-rate-bar.missing .ca-rate-label{color:#8a0016;}
+    .ca-rate-bar .ca-rate-sub{font-size:11px;color:var(--grey-mid);flex-basis:100%;line-height:1.4;}
+    .ca-rate-bar.missing .ca-rate-sub{color:#8a0016;font-weight:500;}
+    .ca-rate-bar input{
+      width:110px;padding:6px 9px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);
+      font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;
+    }
+    .ca-rate-bar button{
+      padding:6px 14px;font-size:11.5px;font-weight:600;letter-spacing:.04em;
+      background:var(--navy);color:var(--gold);border:none;border-radius:var(--radius-sm);cursor:pointer;
+    }
+    .ca-rate-bar button:disabled{opacity:.5;cursor:not-allowed;}
+    .ca-rate-bar .ca-rate-msg{font-size:11.5px;font-weight:600;}
     .coa-picker{
       display:none;position:absolute;z-index:100;
       background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
@@ -1689,6 +1714,13 @@
     <div class="tab-panel" id="tab-caseactions">
       <div style="display:flex;gap:22px;align-items:flex-start;">
         <div style="flex:1;min-width:0;">
+          <div class="ca-rate-bar" id="ca-rate-bar" hidden>
+            <span class="ca-rate-label" id="ca-rate-label"></span>
+            <input type="number" id="ca-rate-input" step="0.01" min="0" placeholder="145.00" />
+            <button type="button" id="ca-rate-save">Save rate</button>
+            <span class="ca-rate-msg" id="ca-rate-msg"></span>
+            <span class="ca-rate-sub" id="ca-rate-sub"></span>
+          </div>
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
               <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
@@ -4920,7 +4952,69 @@ async function deleteCaRow(id) {
   }
 }
 
+// 2026-08-03: RateForCase is the single source of the hourly rate for this case. It feeds
+// the Add Action rate box below AND M034's field_6 mapping when it logs a sent email. When
+// it is blank, both write no rate and the entry books at GBP 0.00 - 71 entries / 8.0 hrs
+// were lost that way on case 1736520 before anyone noticed. Surface it, loudly, where the
+// time actually gets recorded.
+function renderCaseRateBar() {
+  const bar = document.getElementById('ca-rate-bar');
+  if (!bar) return;
+  const lbl = document.getElementById('ca-rate-label');
+  const sub = document.getElementById('ca-rate-sub');
+  const inp = document.getElementById('ca-rate-input');
+  const msg = document.getElementById('ca-rate-msg');
+  const rate = parseFloat(caseFields?.['RateForCase']);
+  const set  = !isNaN(rate) && rate > 0;
+
+  bar.hidden = false;
+  bar.classList.toggle('missing', !set);
+  msg.textContent = '';
+  inp.value = set ? rate : '';
+
+  if (set) {
+    lbl.textContent = 'Case rate: £' + rate.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/hr';
+    sub.textContent = 'Used for new time entries here and for emails logged automatically. Change it above and save.';
+  } else {
+    lbl.textContent = 'NO CASE RATE SET';
+    sub.textContent = 'Time recorded on this case is saving with NO VALUE - both here and from automatic email logging. Set the rate now. Existing unrated entries are not fixed by this and must be corrected individually.';
+  }
+
+  const old = document.getElementById('ca-rate-save');
+  const fresh = old.cloneNode(true);
+  old.parentNode.replaceChild(fresh, old);
+  fresh.addEventListener('click', saveCaseRate);
+}
+
+async function saveCaseRate() {
+  const inp = document.getElementById('ca-rate-input');
+  const msg = document.getElementById('ca-rate-msg');
+  const btn = document.getElementById('ca-rate-save');
+  const val = parseFloat(inp.value);
+  if (isNaN(val) || val <= 0) {
+    msg.style.color = '#b00020'; msg.textContent = 'Enter a rate greater than 0.';
+    return;
+  }
+  btn.disabled = true; msg.style.color = ''; msg.textContent = 'Saving…';
+  try {
+    const resp = await fetch('/api/caseupdate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: caseItemId, fields: { RateForCase: val } }),
+    });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    caseFields['RateForCase'] = val;
+    msg.style.color = '#0a7a34'; msg.textContent = '✓ Saved';
+    renderCaseRateBar();
+    // Repoint the Add Action rate box at the value just saved.
+    document.getElementById('ca-add-rate').value = val;
+    setTimeout(() => { const m = document.getElementById('ca-rate-msg'); if (m) m.textContent = ''; }, 3000);
+  } catch (err) {
+    msg.style.color = '#b00020'; msg.textContent = 'Save failed: ' + err.message;
+  } finally { btn.disabled = false; }
+}
+
 function initAddActionPanel() {
+  renderCaseRateBar();
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
   const caseRate = parseFloat(caseFields?.['RateForCase']) || ''; document.getElementById('ca-add-rate').value = caseRate;
