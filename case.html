@@ -3861,7 +3861,7 @@ document.getElementById('f-ClientPaidExpenses')?.addEventListener('input', _upda
 document.querySelectorAll('.coa-opt').forEach(btn => {
   btn.addEventListener('click', async (e) => {
     e.stopPropagation(); coaPicker.classList.remove('open');
-    const mode = btn.dataset.mode; const calcBtn = document.getElementById('btn-calc-coa');
+    const mode = btn.dataset.mode; const calcBtn = document.getElementById('btn-calc-coa'); calcBtn.style.color = '';
     calcBtn.disabled = true; calcBtn.textContent = '\u2026';
     const ref = (caseFields['Ourreference_x0028_text_x0029_'] || '').trim();
     try {
@@ -3874,6 +3874,18 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
       document.getElementById('f-Costsofassessment').value = coaIncVAT || '';
       const _exp = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
       setText('r-TotalCOA', fmt((coaIncVAT || 0) + _exp));
+      // 2026-08-03: /api/coa no longer values a timed entry at zero just because it has
+      // no rate - it reports them as unratedCount/unratedHours instead. While that is
+      // above zero the COA figure is an UNDERSTATEMENT, so say so, and leave the message
+      // on screen (the success path below auto-clears after 3s; this must not).
+      if (data.unratedCount > 0) {
+        calcBtn.textContent = '(!) ' + data.valuedCount + ' valued, ' + data.unratedCount
+                            + ' entries (' + data.unratedHours + ' hrs) have NO RATE and are NOT included'
+                            + ((data.limit && data.limit > 0) ? ' (capped)' : '');
+        calcBtn.style.color = '#b00020';
+        calcBtn.disabled = false;
+        return;
+      }
       const limitNote = (data.limit && data.limit > 0) ? ' (capped at \u00a3' + data.limit.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) + ')' : '';
       calcBtn.textContent = '\u2713 ' + data.count + ' entries' + limitNote;
       setTimeout(() => { calcBtn.textContent = '\u26a1 Calculate'; calcBtn.disabled = false; }, 3000);
@@ -4930,6 +4942,15 @@ async function submitAddAction() {
   if (!workDone) { msg.className = 'edit-msg err'; msg.textContent = 'Work Done is required.'; return; }
   if (!timeSpent || isNaN(timeSpent) || timeSpent <= 0) { msg.className = 'edit-msg err'; msg.textContent = 'Time Spent must be > 0.'; return; }
   if (!completedBy) { msg.className = 'edit-msg err'; msg.textContent = 'Completed By is required.'; return; }
+  // 2026-08-03: the rate box is pre-filled from RateForCase and is left EMPTY when the
+  // case has no rate. `parseFloat(...) || 0` then submitted rate 0, the API wrote
+  // field_6: 0, and the entry booked at nothing with no warning. Billable time must
+  // never be saved unrated - refuse it instead.
+  if (billable && (!rate || isNaN(rate) || rate <= 0)) {
+    msg.className = 'edit-msg err';
+    msg.textContent = 'Rate is required for billable time - this case has no default rate, so enter one or untick Billable.';
+    return;
+  }
   if (btn) btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
   try {
     const resp = await fetch('/api/caseactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, caseName: caseDisplayName(caseFields), caseItemId, dateEntered: dateEntered ? dateEntered + 'T00:00:00Z' : new Date().toISOString(), dateWorkDone: dateWorkDone ? dateWorkDone + 'T00:00:00Z' : new Date().toISOString(), brief, completedBy, email: switcherCallerEmail || '', rate, timeSpent, workDone, billable }) });
