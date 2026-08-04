@@ -127,14 +127,35 @@ module.exports = async function (context, req) {
     // otherwise compute from TimeSpentMirror × field_6.
     // Fall back to field_3 (raw hrs) if TimeSpentMirror not yet set by PA mirror —
     // portal-created entries write field_3 but PA mirror may not have run yet.
+    //
+    // 🔴 2026-08-03 — SILENT ZERO FIXED. An entry with recorded hours but no stored
+    // amount and no usable rate used to fall through `parseFloat(f['field_6']) || 0`
+    // and contribute £0.00 to the COA total with nothing said. On case 1736520 that
+    // lost 71 entries / 8.0 hours (~£1,160 at £145) out of 113.
+    // Source is upstream — Make044 writes Billable Amount = 0 and omits field_6 on
+    // every row it creates, Make034 on some — but THIS is where a data gap turned
+    // into a wrong number on a bill.
+    // Those entries are now counted and reported, never valued. We do NOT substitute
+    // a rate: a blank is recoverable, a wrong charge on a bill is not.
+    let unratedCount = 0;
+    let unratedHours = 0;
     const sum = entries.reduce((acc, entry) => {
-      const f   = entry.fields || {};
-      const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
-      const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
-      const val = !isNaN(amt) && amt > 0
-        ? amt
-        : hrs * (parseFloat(f['field_6']) || 0);
-      return acc + val;
+      const f    = entry.fields || {};
+      const amt  = parseFloat(f['Num_BillableAmount_x00a3_']);
+      const hrs  = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+      const rate = parseFloat(f['field_6']);
+
+      // Stored billable amount wins where it is actually populated.
+      if (!isNaN(amt) && amt > 0) return acc + amt;
+
+      // Time recorded but nothing to value it with — report, do not guess, do not zero-fill.
+      if (hrs > 0 && (isNaN(rate) || rate <= 0)) {
+        unratedCount++;
+        unratedHours = Math.round((unratedHours + hrs) * 100) / 100;
+        return acc;
+      }
+
+      return acc + hrs * (isNaN(rate) ? 0 : rate);
     }, 0);
 
     context.res = {
@@ -145,6 +166,12 @@ module.exports = async function (context, req) {
         count: entries.length,
         limit: limit,
         mode:  mode,
+        // Entries that carry recorded time but could not be valued (no stored amount,
+        // no rate). NOT included in `sum`. If unratedCount > 0 the COA figure is an
+        // UNDERSTATEMENT and the caller must say so — see case.html COA picker.
+        valuedCount:  entries.length - unratedCount,
+        unratedCount: unratedCount,
+        unratedHours: unratedHours,
       }),
     };
   } catch (err) {
