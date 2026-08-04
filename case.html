@@ -4736,8 +4736,19 @@ function renderCaTable() {
   if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; renderWipBox(); return; }
   empty.style.display = 'none';
   const totalHrs = caActions.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
-  const totalAmt = caActions.reduce((s, a) => { const f = a.fields || {}; const amt = parseFloat(f['Num_BillableAmount_x00a3_']); const val = !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0); return s + val; }, 0);
-  summary.textContent = caActions.length + ' actions \u00b7 ' + fmtN(totalHrs, 2) + ' hrs \u00b7 ' + fmt(totalAmt);
+  const _rowVal = f => { const amt = parseFloat(f['Num_BillableAmount_x00a3_']); return !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0); };
+  const totalAmt = caActions.reduce((s, a) => s + _rowVal(a.fields || {}), 0);
+  // 2026-08-03: this header counts EVERY row on the case, chargeable or not, while the
+  // Unbilled WIP box beside it counts only billable-and-unbilled. On case 1736520 that read
+  // GBP 2,001.00 here against GBP 1,740.00 there and looked like a bug in one of them. It is
+  // not - the gap is 90 rows marked Billable = false. Show the billable subtotal so the two
+  // panels reconcile on sight instead of being re-derived by hand every time.
+  const _caNonBillable = caActions.filter(a => (a.fields || {})['Billable_x003f_'] === false);
+  const _caBillableAmt = caActions.reduce((s, a) => { const f = a.fields || {}; return f['Billable_x003f_'] === false ? s : s + _rowVal(f); }, 0);
+  const _caBillableNote = _caNonBillable.length
+    ? '   (' + fmt(_caBillableAmt) + ' billable, ' + _caNonBillable.length + ' non-billable excluded)'
+    : '';
+  summary.textContent = caActions.length + ' actions \u00b7 ' + fmtN(totalHrs, 2) + ' hrs \u00b7 ' + fmt(totalAmt) + _caBillableNote;
   caActions.forEach(action => {
     const f = action.fields || {}; const id = action.id;
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0;
