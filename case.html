@@ -419,6 +419,13 @@
     }
     .btn-calc:hover{background:var(--navy-mid);}
     .btn-calc:disabled{opacity:.5;cursor:not-allowed;}
+    /* 2026-08-03: unrated-time warning. Must NOT live inside .btn-calc - that button is
+       navy with white-space:nowrap, so a long message overflowed it and was unreadable. */
+    .coa-warn{
+      margin-top:6px;padding:6px 9px;max-width:340px;
+      background:#fdecea;border-left:3px solid #b00020;border-radius:var(--radius-sm);
+      color:#8a0016;font-size:11px;line-height:1.4;font-weight:500;white-space:normal;
+    }
     .coa-picker{
       display:none;position:absolute;z-index:100;
       background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius);
@@ -921,6 +928,7 @@
                     <button class="coa-opt" data-mode="all">All billable actions</button>
                   </div>
                 </div>
+                <div class="coa-warn" id="coa-warn" hidden></div>
               </dd>
             </div>
             <div class="liab-row"><dt>Client paid expenses</dt><dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd></div>
@@ -3862,6 +3870,8 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
   btn.addEventListener('click', async (e) => {
     e.stopPropagation(); coaPicker.classList.remove('open');
     const mode = btn.dataset.mode; const calcBtn = document.getElementById('btn-calc-coa'); calcBtn.style.color = '';
+    const _coaWarn = document.getElementById('coa-warn');
+    if (_coaWarn) { _coaWarn.hidden = true; _coaWarn.textContent = ''; }
     calcBtn.disabled = true; calcBtn.textContent = '\u2026';
     const ref = (caseFields['Ourreference_x0028_text_x0029_'] || '').trim();
     try {
@@ -3879,10 +3889,14 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
       // above zero the COA figure is an UNDERSTATEMENT, so say so, and leave the message
       // on screen (the success path below auto-clears after 3s; this must not).
       if (data.unratedCount > 0) {
-        calcBtn.textContent = '(!) ' + data.valuedCount + ' valued, ' + data.unratedCount
-                            + ' entries (' + data.unratedHours + ' hrs) have NO RATE and are NOT included'
-                            + ((data.limit && data.limit > 0) ? ' (capped)' : '');
-        calcBtn.style.color = '#b00020';
+        if (_coaWarn) {
+          _coaWarn.textContent = data.unratedCount + ' of ' + data.count + ' entries ('
+                               + data.unratedHours + ' hrs) have NO RATE and are NOT included in this figure - '
+                               + data.valuedCount + ' valued.'
+                               + ((data.limit && data.limit > 0) ? ' Capped at the case limit.' : '');
+          _coaWarn.hidden = false;
+        }
+        calcBtn.textContent = '⚡ Calculate';
         calcBtn.disabled = false;
         return;
       }
