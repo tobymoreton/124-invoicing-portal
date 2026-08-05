@@ -1,80 +1,196 @@
 /**
  * P124 — Invoicing Portal
- * Azure Function: /api/wip
+ * Azure Function: /api/cases
  *
- * Fetches unbilled billable actions from the SP Time Tracking2 list using
- * client-credentials (app-only Graph auth). Returns a normalised JSON array.
+ * Searches the SP Cases list via Graph (app-only client-credentials auth).
+ * Admin-only — returns 403 for non-admins.
  *
- * WIP definition: Billable? = true AND Billed? = false
- * Both fields are indexed in SP — filtered server-side via Graph $filter.
+ * Query params:
+ *   q       — free-text search string (matches case name or our ref, client-side)
+ *   top     — max results (default 10, max 20)
+ *   preload — if '1', returns all non-closed cases with no top cap (used for client-side cache)
+ *   closed  — with preload=1, if '1' CLOSED cases are included too. Opt-in only, so the default
+ *             preload payload stays lean. admin.html's "Show Closed" toggle needs this: without
+ *             it the client filters a set that can never contain a closed case (S69 fix).
  *
- * ⚠️  READ-ONLY — no write operations in this function.
- * ⚠️  Completedby (User field) returns null via Graph app-only auth.
- *     Use Completedby_x0028_text_x0029_ (Text mirror) instead.
- * ⚠️  BillableAmount£ (Num_BillableAmount_x00a3_) is a native Currency field — safe for Graph.
- *
- * Access: ALL authenticated users (Admin/Finance/Draftsman) see the FULL WIP schedule,
- * unfiltered by who completed the work. (Prior per-draftsman filter on field_18 email
- * REMOVED 2026-07-01 — it silently dropped valid entries, including some the draftsman
- * had completed themselves, and this schedule must show all work to anyone raising an
- * invoice.) isAdmin/isFinance are still computed for potential future use but no longer
- * gate what WIP data is returned.
- *
- * List: Time Tracking2
- * GUID: 67db204c-30a5-4f4d-b276-60852d9967e1
+ * List: Cases
+ * GUID: ae420bda-e550-499c-b337-90e4f33617c1
  */
 
-const https  = require('https');
+const https   = require('https');
 const { URL } = require('url');
 
-const LIST_GUID = '67db204c-30a5-4f4d-b276-60852d9967e1';
+const LIST_GUID = 'ae420bda-e550-499c-b337-90e4f33617c1';
 const SITE_PATH = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
-
-// NOTE: Do NOT restrict to a $select list on this tenant.
-// Boolean fields (Billable_x003f_, Billed_x003f_) are silently dropped from
-// Graph responses when explicitly named in $expand=fields($select=...).
-// Restriction removed 2026-07-01 — use $expand=fields (all fields) instead.
-// Confirmed pattern: same fix applied to /api/coa and /api/caseactions.
-// SELECT_FIELDS constant retained here as documentation of which fields are
-// consumed by the normalise() function, but it is NOT passed to Graph.
-const SELECT_FIELDS_DOC = [
-  'id',
-  'Completedby_x0028_text_x0029_', // Draftsman name (text mirror of User field)
-  'field_18',                       // Email (text) — draftsman email
-  'Casename_x0028_text_x0029_',     // Case name (text mirror)
-  'field_16',                       // Our reference
-  'field_12',                       // Date Completed
-  'TimeSpentMirror',                // Hours spent (Number mirror)
-  'field_6',                        // Rate £/hr
-  'ProRataApportionment',           // % apportionment — part of the SP "Billable amount" formula
-  'Num_BillableAmount_x00a3_',      // ⚠️ FALLBACK ONLY since S101 (2026-08-05) — stale snapshot,
-                                    //    read solely when there are hours but no usable rate.
-                                    //    See liveValue() at the foot of this file.
-  'field_2',                        // Work done (Note) — free-text description
-  'Billable_x003f_',                // Billable? boolean (indexed) — NOT reliable in $select on this tenant
-  'Billed_x003f_',                  // Billed? boolean (indexed) — NOT reliable in $select on this tenant
-];
+const CLIENT_FIRMS_GUID = '901e8cbd-8760-4051-9eb0-0d5c0db1c06d';
 
 const ADMIN_EMAILS = [
   'toby@tmclegal.co.uk',
   'danielle@tmclegal.co.uk',
 ];
 
-// Finance tier: sees all draftsman WIP but not the main invoice ledger/table
+// All authenticated users can search cases (draftsmen need this to create drafts)
 const FINANCE_EMAILS = [
   'lesley@tmclegal.co.uk',
 ];
 
-// Decode the x-ms-client-principal header injected by Azure SWA
+const SELECT_FIELDS = [
+  'Title',
+  'Ourreference_x0028_text_x0029_',
+  'Net_x0020_Drafting_x0020_Fee',
+  'Drafting_x0020_fee_x0020_line',
+  'VatOnDraftingFee_x003f_',
+  'TimedWorkLineOverride',
+  'Firm_x0028_text_x0029_',
+  'FirmLookupId',
+  'Address1_x0028_text_x0029_',
+  'Address2_x0028_text_x0029_',
+  'Address3_x0028_text_x0029_',
+  'Address4_x0028_text_x0029_',
+  'Address5_x0028_text_x0029_',
+  'ClientCaseReference',
+  'DraftingYetToBeInvoiced',
+  'caseID_text',
+  'Fee_x0025__x0028_number_x0029_',
+  'LAA_x0020_Drafting_x0020_Fee_x00',
+  'Minfee_x0025__x0028_number_x0029',
+  'RateForCase',
+  // S102 (2026-08-05) — two-period rates. RateForCase is the CURRENT rate; entries with a
+  // Date Work Done before RateChangeDate are valued at RatePriorPeriod instead. Both blank
+  // = single-rate case, behaves exactly as before. PA555/PA555.1 apply the same test when
+  // they stamp field_6. MUST be listed here or the portal cannot read them back (S66 lesson).
+  'RatePriorPeriod',
+  'RateChangeDate',
+  'ProvisionalDraftingFee',
+  'ProvisionalMinDraftingFee',
+  'LegalAidOnlyProfitCosts',
+  'TimedWorkBillableFromOverride',
+  'StatusMirror',
+  'CaseAckByDraftsman',
+  // Idempotency marker for PA124.12 (assignment email). Holds the assignee that was last emailed;
+  // the flow sends only when assignedToTextValue differs from it. MUST be selectable here or the
+  // portal cannot read it back and the backfill can never see its own work (S66 lesson: a new SP
+  // column is invisible to the portal until it is in this list).
+  'AssignNotifiedTo',
+  'ProfitCostsClaimed_x0028_Ex_x002',
+  'GrossProfitCostsRecoveredAf',
+  'VAT_x0020__x0025__x0020_Claimed',
+  'Drafting_x0020_fee_x0020_basis',
+  'InterPartesorLegalAid',
+  'MinimumFee',
+  // Full case name fields
+  'fullCaseNameMirror',
+  'Fullcasenameoveride',
+  'CaseNameForOpenCases',
+  'OurPartyFirstName',
+  'OurPartySurname',
+  'OpponentPartyName',
+  'Morethanonedefendant_x003f_',
+  'Andothers_x003f_',
+  'MultiClaimants',
+  'MultiDefendants',
+  // Settlement & offers
+  'Settlementamount',
+  'PayingPartysLastOffer',
+  'FigureForSettlementSheet',
+  'DateSettled0',
+  'Offerincludescostsofsssessment_x',
+  'Offerincludesinterest_x003f_',
+  'BottomLine',
+  'LikelyTopEnd',
+  'ProfitCostsatAdvisedRates',
+  // Costs claimed
+  'DraftingTimeClaimed',
+  'NonVatableTMCDraftingTime',
+  'CounselsFeesClaimed',
+  'DisbursementsClaimed',
+  'VATonDisbursements',
+  'Costsofassessment',
+  'OtherTMCInvoices_ex_x0020_bill',
+  'NonVatableProfitCosts',
+  'OtherTMCPCVatable',
+  'OtherTMCFeesVatable',
+  'NonVatableCounselFees',
+  'NonVatableLAAPC',
+  'ClientPaidExpenses',
+  'BillDraftedByText',
+  'Other_x0020_TMC_x0020_PC_x0020__',
+  'TMC_x0020_drafting_x0020_time_x0',
+  // Recovery
+  'Counselsfeespayable',
+  'NetProfitCostsRecoveredBeforeDra',
+  'Limit_x0020_Costs_x0020_of_x0020',
+  'PreLimitedCostsOfAssessment',
+  // Interest — plain stored fields only (all calculated fields return null via Graph)
+  'SumForInterestCalculationOverrid',
+  'TotalPreAuthorityPayments',
+  'DateofAuthoritytoAssess',
+  'InterimPayment1',
+  'InterimPayment2',
+  'InterimPayment3',
+  'InterimPaymentDate1',
+  'InterimPaymentDate2',
+  'InterimPaymentDate3',
+  'CostsOfAssessmentForInterestTabO',
+  'TotalInterestToDate_Text',
+  'DailyInterestRate_Text',
+  // Booking In tab
+  'DateReceived',
+  'DateAssigned',
+  'Turnaround_x0020__x0001f3af_',
+  'FeeEarner_x0028_fromFM_x0029_',
+  'Work_x0020_In_x0020_Progress',
+  'Add_x0020_To_x0020_Title',
+  'Notes',
+  'draftingNotes',
+  'Acknowledgmentemail',
+  'AcknowledgmentSent',
+  'Deadline',
+  'PrimaryFundingType',
+  'CaseTrack',
+  'Task',
+  'Casetype',
+  // Opponent & Court tab
+  'Opponentreference',
+  'opponentReference2',
+  'opponentFirmMirror',
+  'OpponentFirm2Mirror',
+  'opponentCaseworker2Mirror',
+  'opponentCaseworkerMirror',
+  'ServiceEmail',
+  'CourtName_Text',
+  'Division',
+  'ClaimNo',
+  'Litigant_x0020_in_x0020_Person_x',
+  'Opponent_x0020_Address_x0020_1',
+  'Opponent_x0020_Address_x0020_2',
+  'Opponent_x0020_Address_x0020_3',
+  'Opponent_x0020_Address_x0020_4',
+  'Opponent_x0020_Address_x0020_5',
+  // Case Overview tab
+  'assignedToTextValue',
+  'AssignedToMirror',
+  'coAssignedMirror',
+  'Draftsmanemail',
+  'Current_x0020_Position',
+  'CP_x0020_Last_x0020_Updated',
+  'Flags',
+  'LastAction',
+  'Last_x0020_Reminder',
+  'DateServedInformally0',
+  'DatePart8Issued',
+  'DateServedFormally0',
+  'PODS_x0020_Due',
+  'PODS_x0020_Received',
+].join(',');
+
 function getCallerEmail(req) {
   try {
     const header = req.headers && req.headers['x-ms-client-principal'];
     if (!header) return null;
     const decoded = Buffer.from(header, 'base64').toString('utf8');
     const principal = JSON.parse(decoded);
-    // userDetails is the most reliable field for AAD (always contains UPN/email)
     if (principal.userDetails) return principal.userDetails.toLowerCase();
-    // Fallback: hunt through claims
     const claim = (principal.claims || []).find(
       c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
         || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
@@ -84,17 +200,14 @@ function getCallerEmail(req) {
 }
 
 module.exports = async function (context, req) {
-  context.log('P124 /api/wip called');
+  context.log('P124 /api/cases called');
 
-  // Identity check
+  // All authenticated users can search cases
   const callerEmail = getCallerEmail(req);
   if (!callerEmail) {
-    context.res = { status: 403, body: 'Forbidden — could not determine caller identity.' };
+    context.res = { status: 403, body: 'Forbidden — you must be signed in.' };
     return;
   }
-
-  const isAdmin   = ADMIN_EMAILS.includes(callerEmail);
-  const isFinance = FINANCE_EMAILS.includes(callerEmail);
 
   const { TENANT_ID, CLIENT_ID, CLIENT_SECRET } = process.env;
   if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
@@ -102,42 +215,235 @@ module.exports = async function (context, req) {
     return;
   }
 
+  const q          = (req.query.q || '').trim().toLowerCase();
+  const top        = Math.min(parseInt(req.query.top, 10) || 10, 20);
+  const includeAll = req.query.all === '1';
+  const preload    = req.query.preload === '1';
+  const id         = (req.query.id || '').trim();
+
+  // Direct ID lookup: fallback path for cases with no assigned reference (e.g. Infowise-created
+  // cases awaiting a real TMC reference) — case.html cannot find these via ref-equality match,
+  // so this lets the portal open them by SharePoint item ID instead.
+  if (id) {
+    try {
+      const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const result = await getCaseById(token, id);
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+        body: JSON.stringify(result),
+      };
+    } catch (err) {
+      context.log.error('Error fetching case by id:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
+
+  // Preload mode: return all non-closed cases for client-side cache — no q required.
+  // closed=1 includes closed cases as well (admin.html "Show Closed").
+  if (preload) {
+    try {
+      const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+      const result = await getAllOpenCases(token, req.query.closed === '1');
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=300' },
+        body: JSON.stringify(result),
+      };
+    } catch (err) {
+      context.log.error('Error preloading cases:', err.message);
+      context.res = { status: 500, body: 'Error: ' + err.message };
+    }
+    return;
+  }
+
+  if (!q || q.length < 2) {
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify({ value: [] }),
+    };
+    return;
+  }
+
   try {
-    const token   = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const items   = await fetchAllWIP(token);
+    const token  = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+    const result = await searchCases(token, q, top, includeAll);
 
     context.res = {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        // S81: build marker — lets a live measurement be attributed to a specific
-        // build. Added because S81's "$orderby removal changed nothing" conclusion
-        // could NOT be trusted: there was no way to tell the new build from the old.
-        // BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S101-live-wipvalue',
-      },
-      body: JSON.stringify(items),
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify(result),
     };
   } catch (err) {
-    context.log.error('Error fetching WIP:', err.message);
-    context.res = { status: 500, body: `Error: ${err.message}` };
+    context.log.error('Error searching cases:', err.message);
+    context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
 
-// ─── TOKEN (client-credentials) ──────────────────────────
+async function getCaseById(token, id) {
+  var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items/' + encodeURIComponent(id)
+          + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')';
+  var item = await graphGet(url, token);
+  await resolveMissingFirms(token, [item]);
+  return { value: [{ id: item.id, fields: item.fields || {} }] };
+}
+
+async function getAllOpenCases(token, includeClosed) {
+  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
+           + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
+
+  var url = base;
+  var all = [];
+  while (url) {
+    var page = await graphGet(url, token);
+    all = all.concat(page.value || []);
+    url = page['@odata.nextLink'] || null;
+  }
+
+  const open = includeClosed ? all : all.filter(function(item) {
+    var status = ((item.fields || {}).StatusMirror || '').toLowerCase();
+    return status !== 'closed';
+  });
+
+  await resolveMissingFirms(token, open);
+
+  return {
+    value: open.map(function(item) {
+      return { id: item.id, fields: item.fields || {} };
+    }),
+  };
+}
+
+async function searchCases(token, q, top, includeAll) {
+  var base = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID + '/items'
+           + '?$expand=fields($select=' + encodeURIComponent(SELECT_FIELDS) + ')&$top=500';
+
+  var url = base;
+  var all = [];
+  while (url) {
+    var page = await graphGet(url, token);
+    all = all.concat(page.value || []);
+    url = page['@odata.nextLink'] || null;
+  }
+
+  const matches = all.filter(function(item) {
+    var f      = item.fields || {};
+    var title  = (f.Title || '').toLowerCase();
+    var ref    = (f['Ourreference_x0028_text_x0029_'] || '').toLowerCase();
+    var status = (f.StatusMirror || '').toLowerCase();
+    // Exclude closed cases unless caller requests all (e.g. direct ref lookup from case.html)
+    if (!includeAll && status === 'closed') return false;
+    return title.indexOf(q) !== -1 || ref.indexOf(q) !== -1;
+  });
+
+  var sliced = matches.slice(0, top);
+  await resolveMissingFirms(token, sliced);
+
+  return {
+    value: sliced.map(function(item) {
+      return { id: item.id, fields: item.fields || {} };
+    }),
+  };
+}
+
+// Resolve blank Firm text mirrors directly from the Firm Lookup id via the Client Firms list.
+// Infowise-created cases do not get Firm_x0028_text_x0029_ populated until the item is re-saved
+// (the PA mirror flow fires on save). This fills the firm name at read time from the raw Firm
+// Lookup id (FirmLookupId), removing that re-save dependency for the firm name specifically.
+// Safe by construction: only fills where the mirror is blank; never overwrites an existing value.
+// Silent no-op if FirmLookupId is absent or the Client Firms fetch fails (degrades to blank firm).
+var ADDR_MAP = [
+  ['Address1_x0028_text_x0029_', 'AddressLine1'],
+  ['Address2_x0028_text_x0029_', 'AddressLine2'],
+  ['Address3_x0028_text_x0029_', 'AddressLine3'],
+  ['Address4_x0028_text_x0029_', 'AddressLine4'],
+  ['Address5_x0028_text_x0029_', 'Address_x0020_Line_x0020_5'],
+];
+
+async function resolveMissingFirms(token, items) {
+  try {
+    // Two lookup paths, because the portal and Infowise populate cases differently:
+    //  - Infowise-created cases carry FirmLookupId (a real SP Lookup) but the text mirror
+    //    Firm_x0028_text_x0029_ stays blank until the item is re-saved.
+    //  - Portal-created/edited cases (case.html's Firm dropdown) write ONLY
+    //    Firm_x0028_text_x0029_ as plain text — Graph app-only cannot write SP Lookup
+    //    fields at all, so FirmLookupId is never set on that path. Name is all we have.
+    var needsById   = false;
+    var needsByName = false;
+    (items || []).forEach(function(item) {
+      var f = item.fields || {};
+      var addrBlank = ADDR_MAP.some(function(pair) { return !(f[pair[0]] || '').trim(); });
+      if (!addrBlank && (f['Firm_x0028_text_x0029_'] || '').trim()) return;
+      if (f.FirmLookupId) needsById = true;
+      else if ((f['Firm_x0028_text_x0029_'] || '').trim()) needsByName = true;
+    });
+    if (!needsById && !needsByName) return;
+
+    var url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + CLIENT_FIRMS_GUID + '/items'
+            + '?$expand=fields($select=Title,AddressLine1,AddressLine2,AddressLine3,AddressLine4,Address_x0020_Line_x0020_5)&$top=999';
+    var byId = {};
+    var byNameList = {}; // lowercased trimmed Title -> array of field sets (duplicates possible)
+    while (url) {
+      var page = await graphGet(url, token);
+      (page.value || []).forEach(function(fi) {
+        var flds = fi.fields || {};
+        byId[String(fi.id)] = flds;
+        var key = (flds.Title || '').trim().toLowerCase();
+        if (key) { (byNameList[key] = byNameList[key] || []).push(flds); }
+      });
+      url = page['@odata.nextLink'] || null;
+    }
+
+    (items || []).forEach(function(item) {
+      var f = item.fields || {};
+      var firm = null;
+      if (f.FirmLookupId) {
+        firm = byId[String(f.FirmLookupId)] || null;
+      } else {
+        var nameKey = (f['Firm_x0028_text_x0029_'] || '').trim().toLowerCase();
+        if (nameKey) {
+          var candidates = byNameList[nameKey] || [];
+          // Ambiguous (duplicate firm names in Client Firms) — do not guess which one.
+          // Leaving it blank is the honest outcome per the no-fabrication rule; a wrong
+          // address is worse than a missing one.
+          if (candidates.length === 1) firm = candidates[0];
+        }
+      }
+      if (!firm) return;
+
+      var name = (firm.Title || '').trim();
+      if (!(f['Firm_x0028_text_x0029_'] || '').trim() && name) f['Firm_x0028_text_x0029_'] = name;
+
+      // Address mirrors on the case go stale/blank on Infowise-created cases for the same reason
+      // the firm name does (the PA mirror flow only fires on save). Fill blanks at read time from
+      // the Client Firms row. Note line 5's internal name differs from lines 1-4.
+      ADDR_MAP.forEach(function(pair) {
+        var caseField = pair[0], firmField = pair[1];
+        if (!(f[caseField] || '').trim()) {
+          var v = (firm[firmField] || '').trim();
+          if (v) f[caseField] = v;
+        }
+      });
+    });
+  } catch (e) {
+    // Silent no-op - keep the request succeeding with a blank firm rather than erroring.
+  }
+}
+
 function getToken(tenantId, clientId, clientSecret) {
-  return new Promise((resolve, reject) => {
-    const body = new URLSearchParams({
+  return new Promise(function(resolve, reject) {
+    var body = new URLSearchParams({
       grant_type:    'client_credentials',
       client_id:     clientId,
       client_secret: clientSecret,
       scope:         'https://graph.microsoft.com/.default',
     }).toString();
 
-    const options = {
+    var options = {
       hostname: 'login.microsoftonline.com',
-      path:     `/${tenantId}/oauth2/v2.0/token`,
+      path:     '/' + tenantId + '/oauth2/v2.0/token',
       method:   'POST',
       headers: {
         'Content-Type':   'application/x-www-form-urlencoded',
@@ -145,15 +451,15 @@ function getToken(tenantId, clientId, clientSecret) {
       },
     };
 
-    const req = https.request(options, res => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
+    var req = https.request(options, function(res) {
+      var data = '';
+      res.on('data', function(chunk) { data += chunk; });
+      res.on('end', function() {
         try {
-          const json = JSON.parse(data);
+          var json = JSON.parse(data);
           if (json.access_token) resolve(json.access_token);
-          else reject(new Error(`Token error: ${json.error_description || data}`));
-        } catch (e) { reject(e); }
+          else reject(new Error('Token error: ' + (json.error_description || data)));
+        } catch(e) { reject(e); }
       });
     });
     req.on('error', reject);
@@ -162,144 +468,32 @@ function getToken(tenantId, clientId, clientSecret) {
   });
 }
 
-// ─── FETCH ALL WIP (handles pagination) ──────────────────
-// Both Billable? and Billed? are indexed — safe to use in Graph $filter.
-// No caller-based filtering — WIP schedule must show ALL work to ANY authenticated
-// user who can create an invoice, regardless of role or who completed the work.
-// (Draftsman-only-sees-own-WIP restriction REMOVED 2026-07-01 — was filtering on
-//  field_18 (email), which is not a reliable "who did the work" identifier and
-//  was silently dropping valid entries, incl. some Tom Winyard himself completed.)
-async function fetchAllWIP(token) {
-  // Filter: not yet billed (Billable flag unreliable — many valid WIP entries have Billable=false)
-  const wipFilter = `fields/Billed_x003f_ eq false`;
-
-  const filter = encodeURIComponent(wipFilter);
-
-  // $expand=fields with no $select — booleans drop silently when named in $select on this tenant.
-  // Server-side $filter on Billed_x003f_ still works (it’s an indexed field query, not a response field).
-  // S81: $orderby REMOVED — fetchAllWIP() re-sorts by DateCompleted desc in JS below, so the
-  // SharePoint sort was pure duplicated work on a 3,562-row query. Output is unchanged.
-  const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LIST_GUID}/items` +
-               `?$expand=fields&$filter=${filter}&$top=999`;
-
-  let url = base;
-  let all = [];
-
-  while (url) {
-    const page  = await graphGet(url, token);
-    const items = (page.value || []).map(normalise);
-    all = all.concat(items);
-    url = page['@odata.nextLink'] || null;
-  }
-
-  // Sort by DateCompleted desc (most recent first)
-  all.sort((a, b) => {
-    const da = a.DateCompleted ? new Date(a.DateCompleted).getTime() : 0;
-    const db = b.DateCompleted ? new Date(b.DateCompleted).getTime() : 0;
-    return db - da;
-  });
-
-  return all;
-}
-
-// ─── GRAPH GET ───────────────────────────────────────────
 function graphGet(url, token) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const options = {
+  return new Promise(function(resolve, reject) {
+    var u = new URL(url);
+    var options = {
       hostname: u.hostname,
       path:     u.pathname + u.search,
       method:   'GET',
       headers: {
-        Authorization:    `Bearer ${token}`,
-        Accept:           'application/json',
-        ConsistencyLevel: 'eventual',
+        Authorization: 'Bearer ' + token,
+        Accept:        'application/json',
       },
     };
 
-    const req = https.request(options, res => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
+    var req = https.request(options, function(res) {
+      var data = '';
+      res.on('data', function(chunk) { data += chunk; });
+      res.on('end', function() {
         if (res.statusCode >= 400) {
-          reject(new Error(`Graph ${res.statusCode}: ${data.slice(0, 200)}`));
+          reject(new Error('Graph ' + res.statusCode + ': ' + data.slice(0, 300)));
           return;
         }
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error(`JSON parse error: ${e.message}`)); }
+        catch(e) { reject(new Error('JSON parse error: ' + e.message)); }
       });
     });
     req.on('error', reject);
     req.end();
   });
-}
-
-// ─── NORMALISE ───────────────────────────────────────────
-function normalise(item) {
-  const f = item.fields || {};
-  return {
-    _id:           String(item.id),
-    DraftsmanName: f['Completedby_x0028_text_x0029_'] || null, // text mirror of User field
-    Email:         f.field_18                          || null, // draftsman email
-    CaseName:      f['Casename_x0028_text_x0029_']    || null, // text mirror of case name
-    OurRef:        f.field_16                          || null,
-    DateCompleted: f.field_12                          || null,
-    HoursSpent:    toNum(f.TimeSpentMirror),
-    Rate:          toNum(f.field_6),
-    // WIPValue — 🔴 2026-08-05 (S101): NO LONGER READS Num_BillableAmount_x00a3_.
-    // That column is a SNAPSHOT of the SP calculated column "Billable amount", stamped by
-    // PA043 on create and — until it was auto-disabled 12/07/2026 (AlwaysFailingDetected,
-    // i.e. failing since ~28/06/2026) — by PA043.1 on every edit. With PA043.1 dead the
-    // snapshot is frozen: change a rate or the hours and the stored figure does not move.
-    // Preferring it meant every corrected rate was ignored and the superseded amount kept
-    // being reported. Diagnosed on case 1741297 (rate corrected 145 -> 125; stored amount
-    // stuck at 0.1 x 145 = 14.50 across 100+ rows).
-    // This function is UNBILLED-ONLY (see fetchAllWIP: $filter Billed_x003f_ eq false), so
-    // no billed row's historic invoiced amount is at stake here — always value live.
-    // Mirrors the SP formula except its Billable?=FALSE -> 0 gate, deliberately NOT applied
-    // so displayed values are unchanged for non-billable rows (Billable is returned
-    // separately below and callers filter on it themselves).
-    WIPValue:      liveValue(f),
-    WorkDone:        f.field_2                           || null,
-    Billable:      f['Billable_x003f_']                || false,
-    Billed:        f['Billed_x003f_']                  || false,
-  };
-}
-
-function toNum(v) {
-  const n = parseFloat(v);
-  return isNaN(n) ? null : n;
-}
-
-// ─── LIVE VALUE ──────────────────────────────────────────
-// 2026-08-05 (S101). The authoritative value of a timed entry is the SP CALCULATED column
-// "Billable amount" (Billable_x0020_amount):
-//   =IF(Billable?=FALSE,0,[Time Spent (hrs) ⏳]*[Rate 💹]*IF(ProRataApportionment="",1,
-//                                                            ProRataApportionment/100))
-// SharePoint recalculates it on every change, so it is never stale. We do NOT read it,
-// for two reasons: (1) Graph returns calculated columns as a locale-formatted STRING —
-// verified live 05/08/2026, it comes back as "$12.50", dollar sign and all, so it would
-// need brittle symbol-stripping; (2) its Billable?=FALSE -> 0 gate would silently change
-// what non-billable rows display, which is beyond the scope of this fix.
-// So: same arithmetic, computed here from typed inputs, WITHOUT the Billable gate.
-// ProRataApportionment is applied (it is 100 on current data, so a no-op today, but it is
-// part of the firm's definition of the figure and omitting it would be wrong the day it
-// is not 100).
-// Returns null when there is nothing to value — never 0, so a data gap stays visible.
-function liveValue(f) {
-  const hrs  = toNum(f.TimeSpentMirror != null ? f.TimeSpentMirror : f.field_3);
-  const rate = toNum(f.field_6);
-  // 🔴 NEVER value at zero where there are hours but no usable rate. MEASURED on the live
-  // list 05/08/2026 before this change shipped: 201 unbilled rows carry 51.1 hrs with
-  // field_6 = 0 but a stamped amount totalling £7,115. Valuing those live would have
-  // silently wiped that £7,115 — precisely the silent-zero fault /api/coa fixed on
-  // 2026-08-03. Keep the last stamped value instead; it is the only figure we have.
-  if (hrs != null && hrs > 0 && (rate == null || rate <= 0)) {
-    const snap = toNum(f['Num_BillableAmount_x00a3_']);
-    return (snap != null && snap > 0) ? snap : null;
-  }
-  if (hrs == null || rate == null) return null;
-  const pro  = toNum(f.ProRataApportionment);
-  const factor = (pro == null || pro <= 0) ? 1 : pro / 100;
-  return Math.round(hrs * rate * factor * 100) / 100;
 }
