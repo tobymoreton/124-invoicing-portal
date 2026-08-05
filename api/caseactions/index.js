@@ -130,7 +130,7 @@ module.exports = async function (context, req) {
         const ALL_FIELDS = [
           'field_1','field_2','field_3','field_6','field_9','field_12','field_16','field_18',
           'Completedby_x0028_text_x0029_','Casename_x0028_text_x0029_',
-          'Billable_x003f_','Billed_x003f_','Num_BillableAmount_x00a3_',
+          'Billable_x003f_','Billed_x003f_','Num_BillableAmount_x00a3_','ProRataApportionment',
           'TimeSpentMirror','CreatedUTC','Title',
         ].join(',');
         let url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items`
