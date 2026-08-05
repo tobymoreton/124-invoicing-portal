@@ -101,6 +101,20 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
 .hide{display:none !important;}
 .foot{text-align:center;font-size:11px;color:var(--grey-mid);padding:6px 0 2px;}
 .foot a{color:var(--gold);}
+
+/* ── Home launcher ── */
+.hello{font-family:'Spectral',serif;font-weight:300;font-size:24px;padding:14px 4px 2px;}
+.hello span{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:11px;letter-spacing:.07em;
+            text-transform:uppercase;color:var(--grey-mid);margin-top:5px;}
+.tiles{display:grid;gap:12px;margin:16px 0 10px;}
+.tile{display:block;width:100%;text-align:left;background:var(--white);border:none;
+      border-left:4px solid var(--gold);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 18px;}
+.tile:active{background:var(--grey-faint);}
+.tile-ico{display:block;font-size:26px;line-height:1;margin-bottom:9px;}
+.tile-txt{display:block;font-size:19px;font-weight:600;}
+.tile-sub{display:block;font-size:12.5px;color:var(--grey-mid);margin-top:3px;}
+.tile.alert{border-left-color:var(--overdue);}
+.tile.alert .tile-sub{color:var(--overdue);font-weight:600;}
 </style>
 </head>
 <body>
@@ -115,15 +129,43 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
 
 <div class="wrap">
 
-  <!-- ══════════ HOME ══════════ -->
+  <!-- ══════════ HOME — launcher ══════════ -->
   <div id="viewHome">
+    <div class="hello" id="hello"></div>
+
+    <div class="tiles">
+      <button class="tile" id="tileRem" data-go="rem">
+        <span class="tile-ico">📋</span>
+        <span class="tile-txt">See reminders</span>
+        <span class="tile-sub" id="tileRemSub">Loading&hellip;</span>
+      </button>
+      <button class="tile" data-go="addrem">
+        <span class="tile-ico">⏰</span>
+        <span class="tile-txt">Add reminder</span>
+        <span class="tile-sub">Pick a case, set a date</span>
+      </button>
+      <button class="tile" data-go="addact">
+        <span class="tile-ico">✍️</span>
+        <span class="tile-txt">Add action</span>
+        <span class="tile-sub">Log time against a case</span>
+      </button>
+    </div>
+
+    <div class="foot"><a href="/index.html">Full portal &rarr;</a></div>
+  </div>
+
+  <!-- ══════════ CASE PICKER ══════════ -->
+  <div id="viewPick" class="hide">
     <div class="card">
       <div class="search-box">
         <input type="search" id="caseSearch" placeholder="Search a case — name or reference" autocomplete="off"/>
       </div>
       <div id="caseList"><div class="empty">Loading cases&hellip;</div></div>
     </div>
+  </div>
 
+  <!-- ══════════ REMINDERS ══════════ -->
+  <div id="viewRem" class="hide">
     <div class="card">
       <div class="card-head">
         <span class="card-title">My reminders</span>
@@ -131,8 +173,6 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
       </div>
       <div id="homeRemList"><div class="empty">Loading&hellip;</div></div>
     </div>
-
-    <div class="foot"><a href="/index.html">Full portal &rarr;</a></div>
   </div>
 
   <!-- ══════════ CASE ══════════ -->
@@ -315,12 +355,65 @@ function rateForDate(f, iso){
   CASES     = caseRes.value || [];
   REMINDERS = remRes.value  || [];
 
+  renderHello();
   renderCaseList('');
   renderHomeReminders();
   wire();
 })();
 
-/* ── Home: case list ────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────── */
+/* ── Navigation ──────────────────────────────────────────────────────── */
+let MODE = null;           // 'addrem' | 'addact' — what the case picker is being used for
+let BACK_TO = 'viewHome';  // where the back arrow returns to
+
+function showView(id){
+  ['viewHome','viewPick','viewRem','viewCase'].forEach(v => $(v).classList.toggle('hide', v !== id));
+  $('backBtn').classList.toggle('hide', id === 'viewHome');
+  window.scrollTo(0,0);
+}
+function renderHello(){
+  const h = new Date().getHours();
+  const salutation = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const n = nameFromEmail(ME);
+  $('hello').innerHTML = esc(salutation + (n ? ', ' + n + '.' : '.')) +
+    '<span>' + esc(new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})) + '</span>';
+}
+function goHome(){
+  CUR = null; MODE = null; BACK_TO = 'viewHome';
+  $('barTitle').textContent = 'TMC Legal';
+  $('barSub').textContent   = ME || '';
+  renderHomeReminders();
+  showView('viewHome');
+}
+function goPick(mode){
+  MODE = mode; BACK_TO = 'viewHome';
+  $('barTitle').textContent = mode === 'addrem' ? 'Add reminder' : 'Add action';
+  $('barSub').textContent   = 'choose a case';
+  $('caseSearch').value = '';
+  renderCaseList('');
+  showView('viewPick');
+}
+function goReminders(){
+  BACK_TO = 'viewHome';
+  $('barTitle').textContent = 'My reminders';
+  $('barSub').textContent   = ME || '';
+  renderHomeReminders();
+  showView('viewRem');
+}
+function goBack(){
+  if(BACK_TO === 'viewRem')  return goReminders();
+  if(BACK_TO === 'viewPick') return goPick(MODE);
+  goHome();
+}
+function setTab(which){
+  const act = which === 'actions';
+  $('tabActions').classList.toggle('on', act);
+  $('tabReminders').classList.toggle('on', !act);
+  $('paneActions').classList.toggle('hide', !act);
+  $('paneReminders').classList.toggle('hide', act);
+}
+
+/* ── Case picker ────────────────────────────────────────────────── */
 function myCases(){
   return CASES.filter(c => {
     const a = (c.fields?.assignedToTextValue || '').toLowerCase();
@@ -398,6 +491,14 @@ function renderHomeReminders(){
   badge.textContent = urgent ? urgent + ' need' + (urgent > 1 ? '' : 's') + ' action' : (list.length ? list.length + ' this week' : 'all clear');
   badge.classList.toggle('urgent', urgent > 0);
 
+  const tsub = $('tileRemSub');
+  if(tsub){
+    tsub.textContent = urgent ? urgent + ' overdue or due today'
+                     : list.length ? list.length + ' due this week'
+                     : 'Nothing due';
+    $('tileRem').classList.toggle('alert', urgent > 0);
+  }
+
   if(!list.length){
     $('homeRemList').innerHTML = '<div class="empty ok">\u2705 Nothing overdue or due this week.</div>';
     return;
@@ -420,15 +521,14 @@ function renderHomeReminders(){
 }
 
 /* ── Open a case ────────────────────────────────────────────────────────── */
-async function openCase(item){
+async function openCase(item, from){
   CUR = item;
+  BACK_TO = from || 'viewHome';
   const f = item.fields || {};
   $('barTitle').textContent = caseName(f);
   $('barSub').textContent   = caseRef(f);
-  $('backBtn').classList.remove('hide');
-  $('viewHome').classList.add('hide');
-  $('viewCase').classList.remove('hide');
-  window.scrollTo(0,0);
+  setTab(MODE === 'addrem' ? 'reminders' : 'actions');
+  showView('viewCase');
 
   $('aDate').value = todayISO();
   $('rDue').value  = '';
@@ -440,17 +540,6 @@ async function openCase(item){
   $('actList').innerHTML = '<div class="empty">Loading&hellip;</div>';
   await loadActions();
 }
-function goHome(){
-  CUR = null;
-  $('barTitle').textContent = 'TMC Legal';
-  $('barSub').textContent   = ME || '';
-  $('backBtn').classList.add('hide');
-  $('viewCase').classList.add('hide');
-  $('viewHome').classList.remove('hide');
-  renderHomeReminders();
-  window.scrollTo(0,0);
-}
-
 function renderRateBar(){
   const f = CUR.fields || {};
   const r = rateForDate(f, $('aDate').value || todayISO());
@@ -654,7 +743,7 @@ function wire(){
     const row = e.target.closest('[data-case]');
     if(!row) return;
     const item = CASES.find(c => String(c.id) === row.getAttribute('data-case'));
-    if(item) openCase(item);
+    if(item) openCase(item, 'viewPick');
   });
 
   $('homeRemList').addEventListener('click', e => {
@@ -664,7 +753,7 @@ function wire(){
     if(main){
       const ref = main.getAttribute('data-ref');
       const item = CASES.find(c => caseRef(c.fields||{}) === ref);
-      if(item) openCase(item); else toast('That case is not in the open list.', true);
+      if(item) openCase(item, 'viewRem'); else toast('That case is not in the open list.', true);
     }
   });
 
@@ -673,16 +762,15 @@ function wire(){
     if(done) completeReminder(done.getAttribute('data-done'), done);
   });
 
-  $('backBtn').addEventListener('click', goHome);
+  $('backBtn').addEventListener('click', goBack);
 
-  $('tabActions').addEventListener('click', () => {
-    $('tabActions').classList.add('on'); $('tabReminders').classList.remove('on');
-    $('paneActions').classList.remove('hide'); $('paneReminders').classList.add('hide');
-  });
-  $('tabReminders').addEventListener('click', () => {
-    $('tabReminders').classList.add('on'); $('tabActions').classList.remove('on');
-    $('paneReminders').classList.remove('hide'); $('paneActions').classList.add('hide');
-  });
+  document.querySelectorAll('[data-go]').forEach(t => t.addEventListener('click', () => {
+    const g = t.getAttribute('data-go');
+    if(g === 'rem') goReminders(); else goPick(g);
+  }));
+
+  $('tabActions').addEventListener('click', () => setTab('actions'));
+  $('tabReminders').addEventListener('click', () => setTab('reminders'));
 
   $('timeChips').addEventListener('click', e => {
     const c = e.target.closest('[data-hrs]');
