@@ -1717,6 +1717,12 @@
           <div class="ca-rate-bar" id="ca-rate-bar" hidden>
             <span class="ca-rate-label" id="ca-rate-label"></span>
             <input type="number" id="ca-rate-input" step="0.01" min="0" placeholder="145.00" />
+            <!-- S102 2026-08-05: optional second rate period. Leave both blank for a
+                 single-rate case — behaves exactly as before. -->
+            <span style="font-size:12px;color:var(--grey-mid);">from</span>
+            <input type="date" id="ca-rate-changedate" style="width:145px;" />
+            <span style="font-size:12px;color:var(--grey-mid);">· before that £</span>
+            <input type="number" id="ca-rate-prior" step="0.01" min="0" placeholder="—" style="width:95px;" />
             <button type="button" id="ca-rate-save">Save rate</button>
             <span class="ca-rate-msg" id="ca-rate-msg"></span>
             <span class="ca-rate-sub" id="ca-rate-sub"></span>
@@ -5008,6 +5014,19 @@ async function deleteCaRow(id) {
 // it is blank, both write no rate and the entry books at GBP 0.00 - 71 entries / 8.0 hrs
 // were lost that way on case 1736520 before anyone noticed. Surface it, loudly, where the
 // time actually gets recorded.
+// S102 (2026-08-05) — the rate that applies to work done on a given date. Mirrors the test
+// PA555/PA555.1 apply when they stamp field_6, so what the portal offers and what the flow
+// later writes agree. Blank RatePriorPeriod or RateChangeDate = single-rate case.
+// Comparison is on yyyy-MM-dd strings, same as the flow expression.
+function caRateForDate(isoDate) {
+  const cur   = parseFloat(caseFields?.['RateForCase']);
+  const prior = parseFloat(caseFields?.['RatePriorPeriod']);
+  const chg   = caseFields?.['RateChangeDate'];
+  if (!isNaN(prior) && prior > 0 && chg && isoDate
+      && String(isoDate).slice(0, 10) < String(chg).slice(0, 10)) return prior;
+  return isNaN(cur) ? '' : cur;
+}
+
 function renderCaseRateBar() {
   const bar = document.getElementById('ca-rate-bar');
   if (!bar) return;
@@ -5023,9 +5042,23 @@ function renderCaseRateBar() {
   msg.textContent = '';
   inp.value = set ? rate : '';
 
+  // S102 (2026-08-05) — optional second rate period. Both blank = single-rate case.
+  const priorEl = document.getElementById('ca-rate-prior');
+  const dateEl  = document.getElementById('ca-rate-changedate');
+  const prior   = parseFloat(caseFields?.['RatePriorPeriod']);
+  const chg     = caseFields?.['RateChangeDate'];
+  const twoRate = !isNaN(prior) && prior > 0 && !!chg;
+  if (priorEl) priorEl.value = (!isNaN(prior) && prior > 0) ? prior : '';
+  if (dateEl)  dateEl.value  = chg ? String(chg).slice(0, 10) : '';
+
   if (set) {
-    lbl.textContent = 'Case rate: £' + rate.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/hr';
-    sub.textContent = 'Used for new time entries here and for emails logged automatically. Change it above and save.';
+    const money = n => '£' + n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    lbl.textContent = twoRate
+      ? 'Case rate: ' + money(rate) + '/hr from ' + fmtDate(chg) + '  ·  ' + money(prior) + '/hr before'
+      : 'Case rate: ' + money(rate) + '/hr';
+    sub.textContent = twoRate
+      ? 'Each entry is rated from its own Date Work Done. Applies to unbilled time only — billed time keeps the rate it was invoiced at.'
+      : 'Used for new time entries here and for emails logged automatically. Change it above and save.';
   } else {
     lbl.textContent = 'NO CASE RATE SET';
     sub.textContent = 'Time recorded on this case is saving with NO VALUE - both here and from automatic email logging. Set the rate now. Existing unrated entries are not fixed by this and must be corrected individually.';
@@ -5046,18 +5079,41 @@ async function saveCaseRate() {
     msg.style.color = '#b00020'; msg.textContent = 'Enter a rate greater than 0.';
     return;
   }
+  // S102 — second rate period. Both fields or neither: a prior rate with no boundary date
+  // (or a date with no prior rate) is silently ignored by PA555, which is worse than
+  // refusing it here.
+  const priorRaw = (document.getElementById('ca-rate-prior')?.value || '').trim();
+  const chgRaw   = (document.getElementById('ca-rate-changedate')?.value || '').trim();
+  const prior    = parseFloat(priorRaw);
+  const hasPrior = priorRaw !== '' && !isNaN(prior) && prior > 0;
+  const hasDate  = chgRaw !== '';
+  if (hasPrior !== hasDate) {
+    msg.style.color = '#b00020';
+    msg.textContent = 'Enter BOTH an earlier rate and the date it changed, or clear both.';
+    return;
+  }
+  const fields = {
+    RateForCase:     val,
+    RatePriorPeriod: hasPrior ? prior : null,
+    RateChangeDate:  hasDate  ? chgRaw + 'T00:00:00Z' : null,
+  };
   btn.disabled = true; msg.style.color = ''; msg.textContent = 'Saving…';
   try {
     const resp = await fetch('/api/caseupdate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId: caseItemId, fields: { RateForCase: val } }),
+      body: JSON.stringify({ itemId: caseItemId, fields }),
     });
     if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
-    caseFields['RateForCase'] = val;
-    msg.style.color = '#0a7a34'; msg.textContent = '✓ Saved';
+    caseFields['RateForCase']     = val;
+    caseFields['RatePriorPeriod'] = fields.RatePriorPeriod;
+    caseFields['RateChangeDate']  = fields.RateChangeDate;
+    msg.style.color = '#0a7a34';
+    msg.textContent = hasPrior
+      ? '✓ Saved — tick ApplyRateNow on the case to re-rate existing entries'
+      : '✓ Saved';
     renderCaseRateBar();
-    // Repoint the Add Action rate box at the value just saved.
-    document.getElementById('ca-add-rate').value = val;
+    // Repoint the Add Action rate box, honouring the date it is currently set to.
+    document.getElementById('ca-add-rate').value = caRateForDate(document.getElementById('ca-add-dateworkdone')?.value);
     setTimeout(() => { const m = document.getElementById('ca-rate-msg'); if (m) m.textContent = ''; }, 3000);
   } catch (err) {
     msg.style.color = '#b00020'; msg.textContent = 'Save failed: ' + err.message;
@@ -5068,7 +5124,16 @@ function initAddActionPanel() {
   renderCaseRateBar();
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('ca-add-dateentered').value = today; document.getElementById('ca-add-dateworkdone').value = today;
-  const caseRate = parseFloat(caseFields?.['RateForCase']) || ''; document.getElementById('ca-add-rate').value = caseRate;
+  // S102 — the Add Action rate follows the Date Work Done, not just RateForCase, so time
+  // backdated before the rate change is entered at the earlier rate rather than today's.
+  const wdEl = document.getElementById('ca-add-dateworkdone');
+  document.getElementById('ca-add-rate').value = caRateForDate(wdEl?.value);
+  if (wdEl && !wdEl.dataset.rateHooked) {
+    wdEl.dataset.rateHooked = '1';
+    wdEl.addEventListener('change', () => {
+      document.getElementById('ca-add-rate').value = caRateForDate(wdEl.value);
+    });
+  }
   const nameEl = document.getElementById('ca-add-completedby');
   // Default Completed By to the signed-in user. Exact-match only was too brittle:
   // options are often first-name ('Toby') while switcherCallerName is full ('Toby Moreton'),
