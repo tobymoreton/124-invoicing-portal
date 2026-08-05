@@ -336,6 +336,14 @@ function caseName(f){
   return f.CaseNameForOpenCases || f.fullCaseNameMirror || f.Title || caseRef(f) || '\u2014';
 }
 
+/* Completion. CompletedMirror is the intended source of truth, but it is blank on
+   older rows — the mirror was added after they were written. The Yes/No column itself
+   DOES read back through Graph when it is true (it is only `false` that gets silently
+   dropped on this tenant), so both are checked. Either one saying done means done. */
+function isDone(f){
+  return (f?.CompletedMirror || '') === 'Yes' || f?.['Completed_x003f_'] === true;
+}
+
 /* Mirrors PA555/PA555.1 and case.html's caRateForDate() exactly — same yyyy-MM-dd
    string comparison — so what this page offers is what the flow later writes.
    No RateChangeDate, or no RatePriorPeriod, means the current rate for everything. */
@@ -482,7 +490,7 @@ function isMine(f){
 }
 function inScope(r){
   const f = r.fields || {};
-  if((f.CompletedMirror||'') === 'Yes') return false;
+  if(isDone(f)) return false;
   if(REM_SCOPE === 'all' && IS_ADMIN) return true;
   return isMine(f);
 }
@@ -709,7 +717,7 @@ async function saveAction(){
 /* ── Reminders on the open case ─────────────────────────────────────────── */
 function renderCaseReminders(){
   const ref = caseRef(CUR.fields || {});
-  const list = REMINDERS.filter(r => caseRef(r.fields||{}) === ref && (r.fields?.CompletedMirror||'') !== 'Yes')
+  const list = REMINDERS.filter(r => caseRef(r.fields||{}) === ref && !isDone(r.fields||{}))
     .sort((a,b) => String(a.fields?.Duedate||'').localeCompare(String(b.fields?.Duedate||'')));
   $('remBadge').textContent = list.length ? list.length + ' open' : 'none';
   if(!list.length){ $('remList').innerHTML = '<div class="empty">No open reminders on this case.</div>'; return; }
@@ -779,7 +787,7 @@ async function completeReminder(id, btn){
     });
     if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
     const hit = REMINDERS.find(r => String(r.id) === String(id));
-    if(hit){ hit.fields = hit.fields || {}; hit.fields.CompletedMirror = 'Yes'; }
+    if(hit){ hit.fields = hit.fields || {}; hit.fields.CompletedMirror = 'Yes'; hit.fields['Completed_x003f_'] = true; }
     toast('Marked done.');
     if(CUR) renderCaseReminders(); else renderHomeReminders();
   }catch(e){
