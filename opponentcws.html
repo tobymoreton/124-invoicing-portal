@@ -191,7 +191,6 @@
 
 <script>
 const LIST = 'opponentcws';
-const WRITE_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk','lesley@tmclegal.co.uk'];
 let allItems = [];
 let firmNames = [];
 let editId = null;
@@ -215,7 +214,11 @@ async function load(){
       fetch('/api/reflists?list=' + LIST),
       fetch('/api/reflists?list=opponentfirms'),
     ]);
-    isWriter = WRITE_EMAILS.includes(email);
+    // Any authenticated TMC user can add and edit reference data (Toby's S73 call
+    // after Tracy was blocked mid-case) — the api/reflists backend has allowed it
+    // since then; this front-end gate was never updated. Delete stays restricted
+    // server-side to Toby/Danielle/Lesley.
+    isWriter = !!email;
     if(!rCW.ok) throw new Error('HTTP ' + rCW.status);
     const dataCW = await rCW.json();
     allItems = (dataCW.value || []);

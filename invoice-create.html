@@ -722,13 +722,18 @@ async function loadFigures(fields) {
   el('inp-min-fee-la').checked         = caseMinFee && laHasFigures;
   el('inp-la-drafting-override').value = (caseMinFee && laHasFigures) ? '50' : '';
   el('inp-timed-override').value       = '';
-  el('inp-include-tmc').checked        = false;
 
-  // Bhatt Murphy never include TMC time in the drafting fee calc — lock the control off.
-  const lockTMC = (fields.Firm_x0028_text_x0029_ || '').toLowerCase().indexOf('bhatt murphy') !== -1;
+  // TMC time goes into the drafting fee calc by DEFAULT. Two client firms never
+  // allow it — Bhatt Murphy and TV Edwards — so for those the box is forced off
+  // and locked. Matched on 'bhatt' / 'edwards' anywhere in the client firm name
+  // (Toby's call 04/08/2026); note that also catches any other firm whose name
+  // contains 'Edwards'.
+  const firmTxt = (fields.Firm_x0028_text_x0029_ || '').toLowerCase();
+  const lockTMC = firmTxt.indexOf('bhatt') !== -1 || firmTxt.indexOf('edwards') !== -1;
+  el('inp-include-tmc').checked       = !lockTMC;
   el('inp-include-tmc').disabled      = lockTMC;
   el('row-include-tmc').style.opacity = lockTMC ? '0.45' : '';
-  el('row-include-tmc').title         = lockTMC ? 'Not available for Bhatt Murphy' : '';
+  el('row-include-tmc').title         = lockTMC ? 'Not available for this client firm' : '';
 
   selectedCase._profitCosts          = profitCosts;
   selectedCase._laProfitCosts        = laProfitCosts;
