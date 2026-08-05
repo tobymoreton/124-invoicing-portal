@@ -117,6 +117,8 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
 .tile.alert .tile-sub{color:var(--overdue);font-weight:600;}
 .ctl-note{padding:9px 14px;font-size:12px;color:var(--grey-mid);border-bottom:1px solid var(--grey-light);}
 .linkish{background:none;border:none;padding:0;font-size:12px;color:var(--gold);text-decoration:underline;}
+.due-inline{border:1px solid var(--grey-light);border-radius:5px;padding:2px 6px;font-size:12px;
+            background:var(--white);color:var(--navy);font-family:'IBM Plex Mono',monospace;}
 </style>
 </head>
 <body>
@@ -290,7 +292,7 @@ const $  = id => document.getElementById(id);
 const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
 const money = n => '\u00a3' + Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate = v => { if(!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
-const fmtDateFull = v => { if(!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
+const dueVal = v => String(v || '').slice(0,10);   // SP stores an ISO string; the first 10 chars are the date input's format
 const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const trunc = (s,n) => s && s.length > n ? s.slice(0,n) + '\u2026' : (s || '');
 
@@ -332,8 +334,20 @@ function toast(msg, bad){
 
 /* ── Case helpers ───────────────────────────────────────────────────────── */
 function caseRef(f){ return (f['Ourreference_x0028_text_x0029_']||'').trim(); }
+/* Case name. Every candidate field is blank on some cases and, on closed ones, Title
+   is frequently just the reference over again — which is why the reminders list was
+   still showing bare numbers. Take the first candidate that is non-empty AND is not
+   simply the reference, then fall back to composing from the party names. */
 function caseName(f){
-  return f.CaseNameForOpenCases || f.fullCaseNameMirror || f.Title || caseRef(f) || '\u2014';
+  const ref = caseRef(f);
+  const pick = [f?.Fullcasenameoveride, f?.fullCaseNameMirror, f?.CaseNameForOpenCases, f?.Title]
+    .map(v => (v || '').trim())
+    .find(v => v && v !== ref);
+  if(pick) return pick;
+  const ours = [(f?.OurPartySurname||'').trim(), (f?.OurPartyFirstName||'').trim()].filter(Boolean).join(', ');
+  const opp  = (f?.OpponentPartyName || '').trim();
+  if(ours && opp) return ours + ' v ' + opp;
+  return ours || opp || ref || '\u2014';
 }
 
 /* Completion. CompletedMirror is the intended source of truth, but it is blank on
@@ -572,8 +586,10 @@ function renderHomeReminders(){
     return '<div class="row">' +
       '<div class="row-main" data-ref="' + esc(ref) + '">' +
         '<div class="row-title">' + esc(trunc(c ? c.name : (ref || '\u2014'), 40)) +
-          (c && c.closed ? ' <span class="pill p-soon">closed</span>' : '') + '</div>' +
-        '<div class="row-sub">' + esc(f.Event || 'Reminder') + ' \u00b7 due ' + esc(fmtDateFull(f.Duedate)) + '</div>' +
+          (c ? (c.closed ? ' <span class="pill p-soon">closed</span>' : '')
+             : ' <span class="pill p-overdue">no case record</span>') + '</div>' +
+        '<div class="row-sub">' + esc(f.Event || 'Reminder') + ' \u00b7 due ' +
+          '<input type="date" class="due-inline" data-due="' + esc(r.id) + '" value="' + esc(dueVal(f.Duedate)) + '"/></div>' +
         (f.Brief ? '<div class="row-note">' + esc(f.Brief) + '</div>' : '') +
       '</div>' +
       '<div style="text-align:right;">' +
@@ -726,7 +742,7 @@ function renderCaseReminders(){
     const b = dueBucket(f.Duedate);
     return '<div class="row"><div class="row-main">' +
       '<div class="row-title">' + esc(f.Event || f.Title || 'Reminder') + '</div>' +
-      '<div class="row-sub">Due ' + esc(fmtDate(f.Duedate)) + (f.Priority ? ' \u00b7 ' + esc(f.Priority) : '') + '</div>' +
+      '<div class="row-sub">Due <input type="date" class="due-inline" data-due="' + esc(r.id) + '" value="' + esc(dueVal(f.Duedate)) + '"/>' + (f.Priority ? ' \u00b7 ' + esc(f.Priority) : '') + '</div>' +
       (f.Brief ? '<div class="row-note">' + esc(f.Brief) + '</div>' : '') +
       '</div><div style="text-align:right;">' +
       (b ? '<div><span class="pill p-' + b + '">' + esc(b === 'overdue' ? 'Overdue' : b === 'today' ? 'Today' : 'This week') + '</span></div>' : '') +
@@ -774,9 +790,30 @@ async function saveReminder(){
   }
 }
 
-/* Completion is read from CompletedMirror everywhere in this estate — the
-   Yes/No column itself is unreliable through Graph app-only. Both are sent;
-   the mirror is the one that decides what anybody sees. */
+/* Push a new due date straight from the list. The reminders PATCH takes an arbitrary
+   field bag, so no backend change is needed. */
+async function updateDue(id, val, el){
+  if(!val) return;
+  el.disabled = true;
+  try{
+    const res = await fetch('/api/reminders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: id, fields: { Duedate: val + 'T00:00:00Z' } }),
+    });
+    if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
+    const hit = REMINDERS.find(r => String(r.id) === String(id));
+    if(hit){ hit.fields = hit.fields || {}; hit.fields.Duedate = val + 'T00:00:00Z'; }
+    toast('Due date updated.');
+    if(CUR) renderCaseReminders(); else renderHomeReminders();
+  }catch(e){
+    toast('Not updated: ' + e.message, true);
+    el.disabled = false;
+  }
+}
+
+/* Both completion fields are written. The mirror is what most of the estate reads;
+   the Yes/No column is what older rows were ticked in. See isDone(). */
 async function completeReminder(id, btn){
   btn.disabled = true; btn.textContent = '\u2026';
   try{
@@ -813,6 +850,7 @@ function wire(){
   });
 
   $('homeRemList').addEventListener('click', e => {
+    if(e.target.closest('[data-due]')) return;   // tapping the date picker must not open the case
     const done = e.target.closest('[data-done]');
     if(done){ completeReminder(done.getAttribute('data-done'), done); return; }
     const main = e.target.closest('[data-ref]');
@@ -821,6 +859,15 @@ function wire(){
       const item = CASES.find(c => caseRef(c.fields||{}) === ref);
       if(item) openCase(item, 'viewRem'); else toast('That case is not in the open list.', true);
     }
+  });
+
+  $('homeRemList').addEventListener('change', e => {
+    const d = e.target.closest('[data-due]');
+    if(d) updateDue(d.getAttribute('data-due'), d.value, d);
+  });
+  $('remList').addEventListener('change', e => {
+    const d = e.target.closest('[data-due]');
+    if(d) updateDue(d.getAttribute('data-due'), d.value, d);
   });
 
   $('remCtl').addEventListener('click', e => {
