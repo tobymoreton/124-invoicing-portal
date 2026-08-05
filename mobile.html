@@ -115,6 +115,8 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
 .tile-sub{display:block;font-size:12.5px;color:var(--grey-mid);margin-top:3px;}
 .tile.alert{border-left-color:var(--overdue);}
 .tile.alert .tile-sub{color:var(--overdue);font-weight:600;}
+.ctl-note{padding:9px 14px;font-size:12px;color:var(--grey-mid);border-bottom:1px solid var(--grey-light);}
+.linkish{background:none;border:none;padding:0;font-size:12px;color:var(--gold);text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -171,6 +173,7 @@ input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} 
         <span class="card-title">My reminders</span>
         <span class="card-badge" id="homeRemBadge"></span>
       </div>
+      <div id="remCtl"></div>
       <div id="homeRemList"><div class="empty">Loading&hellip;</div></div>
     </div>
   </div>
@@ -287,11 +290,15 @@ const $  = id => document.getElementById(id);
 const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
 const money = n => '\u00a3' + Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate = v => { if(!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
+const fmtDateFull = v => { if(!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
 const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
 const trunc = (s,n) => s && s.length > n ? s.slice(0,n) + '\u2026' : (s || '');
 
 let ME = null, IS_ADMIN = false, MY_NAME = '';
-let CASES = [], REMINDERS = [];
+let CASES = [], REMINDERS = [], CASE_BY_REF = {};
+let REM_SCOPE = 'mine';   // admins only: 'mine' | 'all'
+let REM_CLOSED = false;   // include reminders still hanging off closed cases
+const REM_CAP = 25;
 let CUR = null;          // { id, fields } of the open case
 let CUR_ACTIONS = [];
 
@@ -349,10 +356,23 @@ function rateForDate(f, iso){
   $('barSub').textContent = ME || 'not signed in';
 
   const [caseRes, remRes] = await Promise.all([
-    fetch('/api/cases?preload=1').then(r => r.ok ? r.json() : {value:[]}).catch(() => ({value:[]})),
+    fetch('/api/cases?preload=1&closed=1').then(r => r.ok ? r.json() : {value:[]}).catch(() => ({value:[]})),
     fetch('/api/reminders?all=1&open=1').then(r => r.ok ? r.json() : {value:[]}).catch(() => ({value:[]})),
   ]);
-  CASES     = caseRes.value || [];
+  // Closed cases are pulled too — not to work on, but so that a reminder still hanging
+  // off a closed case can be named and set aside rather than showing as a bare reference.
+  const allCases = caseRes.value || [];
+  CASE_BY_REF = {};
+  allCases.forEach(c => {
+    const f = c.fields || {}; const ref = caseRef(f);
+    if(!ref) return;
+    CASE_BY_REF[ref] = {
+      name:     caseName(f),
+      assignee: (f.assignedToTextValue || '').toLowerCase(),
+      closed:   (f.StatusMirror || '').toLowerCase() === 'closed',
+    };
+  });
+  CASES     = allCases.filter(c => (c.fields?.StatusMirror || '').toLowerCase() !== 'closed');
   REMINDERS = remRes.value  || [];
 
   renderHello();
@@ -451,20 +471,33 @@ function renderCaseList(q){
 }
 
 /* ── Home: my reminders ─────────────────────────────────────────────────── */
-/* Ownership follows today.html: an explicit remindee wins; otherwise the case
-   assignee; an unassigned case is shared. Admins see everything. */
+/* Whose reminder is it: an explicit remindee wins, else the case assignee, else an
+   unassigned case is shared. Admins get an Everyone toggle rather than the whole
+   estate by default — 246 rows is not a to-do list. */
+function isMine(f){
+  const remindee = (f['Add_x0020_a_x0020_remindee_x0020']||'').toLowerCase();
+  if(remindee) return remindee === ME;
+  const a = CASE_BY_REF[caseRef(f)]?.assignee || '';
+  return !a || a === ME;
+}
+function inScope(r){
+  const f = r.fields || {};
+  if((f.CompletedMirror||'') === 'Yes') return false;
+  if(REM_SCOPE === 'all' && IS_ADMIN) return true;
+  return isMine(f);
+}
 function myReminders(){
-  const assignees = {};
-  CASES.forEach(c => { const f = c.fields||{}; const r = caseRef(f); if(r) assignees[r] = (f.assignedToTextValue||'').toLowerCase(); });
   return REMINDERS.filter(r => {
-    const f = r.fields || {};
-    if((f.CompletedMirror||'') === 'Yes') return false;
-    if(IS_ADMIN) return true;
-    const remindee = (f['Add_x0020_a_x0020_remindee_x0020']||'').toLowerCase();
-    if(remindee) return remindee === ME;
-    const a = assignees[caseRef(f)] || '';
-    return !a || a === ME;
+    if(!inScope(r)) return false;
+    if(!REM_CLOSED && CASE_BY_REF[caseRef(r.fields||{})]?.closed) return false;
+    return true;
   });
+}
+function closedHidden(){
+  if(REM_CLOSED) return 0;
+  return REMINDERS.filter(r => inScope(r)
+    && CASE_BY_REF[caseRef(r.fields||{})]?.closed
+    && dueBucket(r.fields?.Duedate)).length;
 }
 function dueBucket(v){
   const d = new Date(v);
@@ -478,13 +511,19 @@ function dueBucket(v){
   return null;
 }
 function renderHomeReminders(){
-  const names = {};
-  CASES.forEach(c => { const f = c.fields||{}; const r = caseRef(f); if(r) names[r] = caseName(f); });
   const rank = { overdue:0, today:1, soon:2 };
+  const today = new Date(); today.setHours(0,0,0,0);
+
   const list = myReminders()
     .map(r => ({ r, b: dueBucket(r.fields?.Duedate) }))
     .filter(x => x.b)
-    .sort((a,b) => rank[a.b] - rank[b.b] || String(a.r.fields.Duedate).localeCompare(String(b.r.fields.Duedate)));
+    .sort((a,b) => {
+      if(rank[a.b] !== rank[b.b]) return rank[a.b] - rank[b.b];
+      const ad = String(a.r.fields?.Duedate||''), bd = String(b.r.fields?.Duedate||'');
+      // Within overdue, newest first — a week late deserves attention ahead of
+      // something eighteen months late that nobody has ever closed off.
+      return a.b === 'overdue' ? bd.localeCompare(ad) : ad.localeCompare(bd);
+    });
 
   const urgent = list.filter(x => x.b !== 'soon').length;
   const badge = $('homeRemBadge');
@@ -499,25 +538,44 @@ function renderHomeReminders(){
     $('tileRem').classList.toggle('alert', urgent > 0);
   }
 
+  const hidden = closedHidden();
+  $('remCtl').innerHTML =
+    (IS_ADMIN
+      ? '<div class="seg" style="margin:10px 12px 0;">' +
+        '<button data-scope="mine"' + (REM_SCOPE === 'mine' ? ' class="on"' : '') + '>Mine</button>' +
+        '<button data-scope="all"'  + (REM_SCOPE === 'all'  ? ' class="on"' : '') + '>Everyone</button>' +
+        '</div>' : '') +
+    ((hidden || REM_CLOSED)
+      ? '<div class="ctl-note">' +
+        (REM_CLOSED ? 'Including reminders on closed cases' : hidden + ' on closed cases hidden') +
+        ' \u00b7 <button class="linkish" data-closed="1">' + (REM_CLOSED ? 'hide them' : 'show them') + '</button></div>'
+      : '');
+
   if(!list.length){
     $('homeRemList').innerHTML = '<div class="empty ok">\u2705 Nothing overdue or due this week.</div>';
     return;
   }
-  $('homeRemList').innerHTML = list.map(({r,b}) => {
+  $('homeRemList').innerHTML = list.slice(0, REM_CAP).map(({r,b}) => {
     const f = r.fields || {};
     const ref = caseRef(f);
-    const lbl = b === 'overdue' ? 'Overdue' : b === 'today' ? 'Today' : fmtDate(f.Duedate);
+    const c = CASE_BY_REF[ref];
+    const days = Math.round((today - new Date(f.Duedate)) / 86400000);
+    const lbl = b === 'overdue' ? days + 'd late' : b === 'today' ? 'Today' : fmtDate(f.Duedate);
     return '<div class="row">' +
       '<div class="row-main" data-ref="' + esc(ref) + '">' +
-        '<div class="row-title">' + esc(f.Event || 'Reminder') + '</div>' +
-        '<div class="row-sub">' + esc(trunc(names[ref] || ref || '\u2014', 40)) + '</div>' +
+        '<div class="row-title">' + esc(trunc(c ? c.name : (ref || '\u2014'), 40)) +
+          (c && c.closed ? ' <span class="pill p-soon">closed</span>' : '') + '</div>' +
+        '<div class="row-sub">' + esc(f.Event || 'Reminder') + ' \u00b7 due ' + esc(fmtDateFull(f.Duedate)) + '</div>' +
         (f.Brief ? '<div class="row-note">' + esc(f.Brief) + '</div>' : '') +
       '</div>' +
       '<div style="text-align:right;">' +
         '<div><span class="pill p-' + b + '">' + esc(lbl) + '</span></div>' +
         '<button class="tick" style="margin-top:7px;" data-done="' + esc(r.id) + '">Done</button>' +
       '</div></div>';
-  }).join('');
+  }).join('') +
+  (list.length > REM_CAP
+    ? '<div class="empty">Showing the ' + REM_CAP + ' most pressing of ' + list.length + '. Clear some and the rest come up.</div>'
+    : '');
 }
 
 /* ── Open a case ────────────────────────────────────────────────────────── */
@@ -755,6 +813,12 @@ function wire(){
       const item = CASES.find(c => caseRef(c.fields||{}) === ref);
       if(item) openCase(item, 'viewRem'); else toast('That case is not in the open list.', true);
     }
+  });
+
+  $('remCtl').addEventListener('click', e => {
+    const sc = e.target.closest('[data-scope]');
+    if(sc){ REM_SCOPE = sc.getAttribute('data-scope'); renderHomeReminders(); return; }
+    if(e.target.closest('[data-closed]')){ REM_CLOSED = !REM_CLOSED; renderHomeReminders(); }
   });
 
   $('remList').addEventListener('click', e => {
