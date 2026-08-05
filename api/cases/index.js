@@ -55,6 +55,12 @@ const SELECT_FIELDS = [
   'LAA_x0020_Drafting_x0020_Fee_x00',
   'Minfee_x0025__x0028_number_x0029',
   'RateForCase',
+  // S102 (2026-08-05) — two-period rates. RateForCase is the CURRENT rate; entries with a
+  // Date Work Done before RateChangeDate are valued at RatePriorPeriod instead. Both blank
+  // = single-rate case, behaves exactly as before. PA555/PA555.1 apply the same test when
+  // they stamp field_6. MUST be listed here or the portal cannot read them back (S66 lesson).
+  'RatePriorPeriod',
+  'RateChangeDate',
   'ProvisionalDraftingFee',
   'ProvisionalMinDraftingFee',
   'LegalAidOnlyProfitCosts',
