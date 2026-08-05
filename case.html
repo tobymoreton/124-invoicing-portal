@@ -429,9 +429,13 @@
     /* 2026-08-03: Case rate bar on the Case Actions tab. RateForCase drives BOTH the
        Add Action rate box and M034's field_6 mapping, so a blank one silently books
        every new entry at zero. It has to be impossible to miss. */
+    /* S102b 2026-08-05: was a single wrapping flex ROW of bare inputs with hint text
+       between them. At the real panel width the "before that £" caption and its box landed
+       on different lines, so it read as gibberish and you could not tell which box was
+       which. Now a column: summary line, then labelled field groups, then the sub-note. */
     .ca-rate-bar{
-      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-      margin-bottom:14px;padding:10px 14px;border-radius:var(--radius);
+      display:flex;flex-direction:column;align-items:flex-start;gap:9px;
+      margin-bottom:14px;padding:11px 14px;border-radius:var(--radius);
       background:var(--white);border:1px solid var(--grey-light);border-left:4px solid var(--navy);
     }
     .ca-rate-bar.missing{
@@ -439,11 +443,20 @@
     }
     .ca-rate-bar .ca-rate-label{font-size:13px;font-weight:600;color:var(--navy);}
     .ca-rate-bar.missing .ca-rate-label{color:#8a0016;}
-    .ca-rate-bar .ca-rate-sub{font-size:11px;color:var(--grey-mid);flex-basis:100%;line-height:1.4;}
+    .ca-rate-bar .ca-rate-sub{font-size:11px;color:var(--grey-mid);line-height:1.4;}
     .ca-rate-bar.missing .ca-rate-sub{color:#8a0016;font-weight:500;}
+    .ca-rate-bar .ca-rate-fields{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+    .ca-rate-bar .ca-rate-f{display:flex;flex-direction:column;gap:3px;}
+    .ca-rate-bar .ca-rate-f > span{
+      font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);
+    }
+    .ca-rate-bar.missing .ca-rate-f > span{color:#8a0016;}
     .ca-rate-bar input{
       width:110px;padding:6px 9px;border:1.5px solid var(--gold);border-radius:var(--radius-sm);
       font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--navy);text-align:right;
+    }
+    .ca-rate-bar input[type=date]{
+      width:152px;text-align:left;font-family:'IBM Plex Sans',sans-serif;
     }
     .ca-rate-bar button{
       padding:6px 14px;font-size:11.5px;font-weight:600;letter-spacing:.04em;
@@ -1716,15 +1729,19 @@
         <div style="flex:1;min-width:0;">
           <div class="ca-rate-bar" id="ca-rate-bar" hidden>
             <span class="ca-rate-label" id="ca-rate-label"></span>
-            <input type="number" id="ca-rate-input" step="0.01" min="0" placeholder="145.00" />
-            <!-- S102 2026-08-05: optional second rate period. Leave both blank for a
-                 single-rate case — behaves exactly as before. -->
-            <span style="font-size:12px;color:var(--grey-mid);">from</span>
-            <input type="date" id="ca-rate-changedate" style="width:145px;" />
-            <span style="font-size:12px;color:var(--grey-mid);">· before that £</span>
-            <input type="number" id="ca-rate-prior" step="0.01" min="0" placeholder="—" style="width:95px;" />
-            <button type="button" id="ca-rate-save">Save rate</button>
-            <span class="ca-rate-msg" id="ca-rate-msg"></span>
+            <!-- S102 2026-08-05: optional second rate period. Leave "Applies from" and
+                 "Earlier rate" blank for a single-rate case — behaves exactly as before.
+                 S102b: each input now carries its own caption. -->
+            <div class="ca-rate-fields">
+              <label class="ca-rate-f"><span>Current rate £/hr</span>
+                <input type="number" id="ca-rate-input" step="0.01" min="0" placeholder="125.00" /></label>
+              <label class="ca-rate-f"><span>Applies from</span>
+                <input type="date" id="ca-rate-changedate" /></label>
+              <label class="ca-rate-f"><span>Earlier rate £/hr</span>
+                <input type="number" id="ca-rate-prior" step="0.01" min="0" placeholder="none" /></label>
+              <button type="button" id="ca-rate-save">Save rate</button>
+              <span class="ca-rate-msg" id="ca-rate-msg"></span>
+            </div>
             <span class="ca-rate-sub" id="ca-rate-sub"></span>
           </div>
           <div class="card">
@@ -5047,7 +5064,9 @@ function renderCaseRateBar() {
   const dateEl  = document.getElementById('ca-rate-changedate');
   const prior   = parseFloat(caseFields?.['RatePriorPeriod']);
   const chg     = caseFields?.['RateChangeDate'];
-  const twoRate = !isNaN(prior) && prior > 0 && !!chg;
+  // S102b: only call it a two-period case when the rates actually DIFFER. With both boxes
+  // at 95 the summary read "£95.00/hr from 28/01/2026 · £95.00/hr before", which is noise.
+  const twoRate = !isNaN(prior) && prior > 0 && !!chg && prior !== rate;
   if (priorEl) priorEl.value = (!isNaN(prior) && prior > 0) ? prior : '';
   if (dateEl)  dateEl.value  = chg ? String(chg).slice(0, 10) : '';
 
