@@ -4638,6 +4638,47 @@ const EMAIL_STYLES = {
   'incoming email':           { bg: '#F3E8FF', c: '#6B21A8' },
   'timed letter/email':       { bg: '#FFEDD5', c: '#9A3412' },
 };
+// 🔴 2026-08-05 (S101) — SINGLE SOURCE FOR THE VALUE OF A TIMED ENTRY.
+// Num_BillableAmount_x00a3_ ("BillableAmount£") is only a SNAPSHOT of the SharePoint
+// CALCULATED column "Billable amount":
+//   =IF(Billable?=FALSE,0,[Time Spent (hrs) ⏳]*[Rate 💹]*IF(ProRataApportionment="",1,
+//                                                            ProRataApportionment/100))
+// It is stamped by PA043 when a row is created, and was stamped by PA043.1 on every edit —
+// until PA043.1 was auto-disabled on 12/07/2026 (AlwaysFailingDetected, i.e. failing since
+// ~28/06/2026). Since then the snapshot has been frozen: correct a rate or the hours and
+// the stored figure does not move. Every reader below preferred that snapshot, so a
+// corrected rate was never reflected and the old money came straight back on reload —
+// saveCaRow() patches the in-memory copy, so it looked right until the page was reloaded.
+// Reported on case 1741297 as "the rates revert overnight". The rate was right all along
+// (£125); the stored amount was stuck at the superseded £145.
+//   BILLED rows     -> keep the snapshot. It is what was actually invoiced and must never
+//                      be restated at today's rate.
+//   EVERYTHING ELSE -> valued live from hours × rate × pro-rata.
+// We deliberately do NOT read Billable_x0020_amount itself: Graph returns calculated
+// columns as a locale-formatted STRING ("$12.50" — verified live 05/08/2026), and its
+// Billable?=FALSE -> 0 gate would change what non-billable rows display, which is outside
+// the scope of this fix. Same arithmetic, from typed inputs, without that gate.
+function caRowValue(f) {
+  f = f || {};
+  if (f['Billed_x003f_']) {
+    const snap = parseFloat(f['Num_BillableAmount_x00a3_']);
+    if (!isNaN(snap) && snap > 0) return snap;
+  }
+  const hrs  = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+  const rate = parseFloat(f['field_6']) || 0;
+  // 🔴 NEVER value at zero where there are hours but no usable rate. MEASURED on the live
+  // list 05/08/2026 before this change shipped: 201 unbilled rows carry 51.1 hrs with
+  // field_6 = 0 but a stamped amount totalling £7,115. Valuing those live would have
+  // silently wiped that £7,115 — precisely the silent-zero fault /api/coa fixed on
+  // 2026-08-03. Keep the last stamped value instead; it is the only figure we have.
+  if (hrs > 0 && rate <= 0) {
+    const snap = parseFloat(f['Num_BillableAmount_x00a3_']);
+    if (!isNaN(snap) && snap > 0) return snap;
+  }
+  const pro  = parseFloat(f['ProRataApportionment']);
+  return hrs * rate * ((isNaN(pro) || pro <= 0) ? 1 : pro / 100);
+}
+
 function renderEmailsTable() {
   const tbody = document.getElementById('em-tbody'); if (!tbody) return;
   const loadingEl = document.getElementById('em-loading'); const emptyEl = document.getElementById('em-empty'); const summary = document.getElementById('em-summary');
@@ -4662,8 +4703,7 @@ function renderEmailsTable() {
     const workDone = f['field_2'] || '';
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
     const rate = parseFloat(f['field_6']) || 0;
-    const amtRaw = parseFloat(f['Num_BillableAmount_x00a3_']);
-    const amt = (!isNaN(amtRaw) && amtRaw > 0) ? amtRaw : hrs * rate;
+    const amt = caRowValue(f); // S101 — was: stored snapshot if > 0, else hrs × rate
     const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
     const _hasEmail = !!(f['FullEmail'] || '').trim();
     const isEditing = caEditingId === id;
@@ -4736,7 +4776,7 @@ function renderCaTable() {
   if (!caActions.length) { empty.style.display = 'block'; summary.textContent = ''; renderWipBox(); return; }
   empty.style.display = 'none';
   const totalHrs = caActions.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
-  const _rowVal = f => { const amt = parseFloat(f['Num_BillableAmount_x00a3_']); return !isNaN(amt) && amt > 0 ? amt : (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) * (parseFloat(f['field_6']) || 0); };
+  const _rowVal = caRowValue; // S101 — was an inline stored-snapshot-wins copy of this logic
   const totalAmt = caActions.reduce((s, a) => s + _rowVal(a.fields || {}), 0);
   // 2026-08-03: this header counts EVERY row on the case, chargeable or not, while the
   // Unbilled WIP box beside it counts only billable-and-unbilled. On case 1736520 that read
@@ -4752,7 +4792,7 @@ function renderCaTable() {
   caActions.forEach(action => {
     const f = action.fields || {}; const id = action.id;
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0;
-    const amt = (() => { const a = parseFloat(f['Num_BillableAmount_x00a3_']); return (!isNaN(a) && a > 0) ? a : hrs * rate; })();
+    const amt = caRowValue(f); // S101 — was: stored snapshot if > 0, else hrs × rate
     const billed = !!(f['Billed_x003f_']); const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
     const dateStr = fmtDate(f['field_12'] || f['field_1']); const byName = f['Completedby_x0028_text_x0029_'] || f['field_18'] || ''; const workDone = f['field_2'] || ''; const brief = f['field_9'] || '';
     const isEditing = caEditingId === id; const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
@@ -4834,13 +4874,13 @@ function renderWipBox() {
   const body = document.getElementById('ca-wip-body'); if (!body) return;
   const unbilled = caActions.filter(a => { const f = a.fields || {}; const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0; return billable && !f['Billed_x003f_'] && (parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0) > 0; });
   if (!unbilled.length) { body.innerHTML = '<span style="font-size:13px;color:var(--grey-mid);">No unbilled time on this case.</span>'; return; }
-  const totalAmt = unbilled.reduce((s, a) => { const f = a.fields || {}; const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0; const stored = parseFloat(f['Num_BillableAmount_x00a3_']); return s + (!isNaN(stored) && stored > 0 ? stored : hrs * rate); }, 0);
+  const totalAmt = unbilled.reduce((s, a) => s + caRowValue(a.fields || {}), 0); // S101 — was: stored snapshot if > 0, else hrs × rate
   const totalHrs = unbilled.reduce((s, a) => s + (parseFloat(a.fields?.['TimeSpentMirror'] || a.fields?.['field_3']) || 0), 0);
   const byPerson = {};
   unbilled.forEach(a => {
     const f = a.fields || {}; const name = (f['Completedby_x0028_text_x0029_'] || f['field_18'] || 'Unknown').split(' ')[0];
     const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; const rate = parseFloat(f['field_6']) || 0;
-    const stored = parseFloat(f['Num_BillableAmount_x00a3_']); const val = !isNaN(stored) && stored > 0 ? stored : hrs * rate;
+    const val = caRowValue(f); // S101 — was: stored snapshot if > 0, else hrs × rate
     if (!byPerson[name]) byPerson[name] = { hrs: 0, amt: 0 };
     byPerson[name].hrs += hrs; byPerson[name].amt += val;
   });
