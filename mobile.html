@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#001B44"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="TMC"/>
+<title>TMC Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --navy:#001B44;--navy-mid:#253A60;--gold:#B59A6A;
+  --cream:#F5F2EB;--cream-dark:#ECE8DF;--white:#FFFFFF;
+  --grey-mid:#6B7280;--grey-light:#E5E1D6;--grey-faint:#F0EDE6;
+  --green:#065F46;--green-pale:#ECFDF5;
+  --overdue:#991B1B;--overdue-bg:#FEF2F2;
+  --amber:#92400E;--amber-bg:#FFFBEB;
+  --radius:8px;
+  --shadow:0 1px 3px rgba(27,42,74,.10),0 4px 16px rgba(27,42,74,.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);font-size:15px;line-height:1.45;
+     padding-bottom:env(safe-area-inset-bottom);}
+input,select,textarea,button{font-family:inherit;font-size:16px;color:inherit;} /* 16px stops iOS zoom-on-focus */
+
+/* ── Top bar ── */
+.bar{background:var(--navy);color:var(--white);padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+     position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;min-height:52px;}
+.bar-back{background:none;border:1px solid rgba(201,168,76,.4);color:var(--gold);border-radius:6px;
+          padding:6px 11px;font-size:14px;line-height:1;}
+.bar-title{font-family:'Spectral',serif;font-weight:300;font-size:17px;flex:1;min-width:0;
+           white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-sub{font-size:11px;color:rgba(201,168,76,.8);font-family:'IBM Plex Mono',monospace;}
+
+.wrap{padding:12px 12px 60px;max-width:640px;margin:0 auto;}
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:12px;}
+.card-head{padding:11px 14px;border-bottom:1px solid var(--grey-light);display:flex;
+           align-items:center;justify-content:space-between;gap:8px;}
+.card-title{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;}
+.card-badge{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--grey-mid);}
+.card-badge.urgent{color:var(--overdue);font-weight:600;}
+
+/* ── Segmented control ── */
+.seg{display:flex;background:var(--cream-dark);border-radius:8px;padding:3px;margin-bottom:12px;}
+.seg button{flex:1;border:none;background:none;padding:9px 4px;border-radius:6px;font-size:13px;font-weight:500;color:var(--grey-mid);}
+.seg button.on{background:var(--white);color:var(--navy);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+
+/* ── Search / inputs ── */
+.field{padding:10px 14px;border-bottom:1px solid var(--grey-light);}
+.field:last-child{border-bottom:none;}
+.field label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+             color:var(--grey-mid);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--grey-light);border-radius:6px;
+             padding:10px 11px;background:var(--white);}
+.field textarea{min-height:74px;resize:vertical;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--gold);outline-offset:-1px;}
+.search-box{padding:10px 12px;}
+.search-box input{width:100%;border:1px solid var(--grey-light);border-radius:8px;padding:12px 13px;}
+
+/* ── Buttons ── */
+.btn{display:block;width:100%;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:600;
+     background:var(--navy);color:var(--white);}
+.btn:disabled{opacity:.45;}
+.btn-ghost{background:none;border:1px solid var(--grey-light);color:var(--navy-mid);font-weight:500;}
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.chip{border:1px solid var(--grey-light);background:var(--white);border-radius:14px;padding:6px 12px;font-size:13px;}
+.chip.on{background:var(--navy);color:var(--white);border-color:var(--navy);}
+
+/* ── Rows ── */
+.row{padding:11px 14px;border-bottom:1px solid var(--grey-light);display:flex;gap:10px;align-items:flex-start;}
+.row:last-child{border-bottom:none;}
+.row-main{flex:1;min-width:0;}
+.row-title{font-size:14px;font-weight:600;}
+.row-sub{font-size:12px;color:var(--grey-mid);margin-top:2px;}
+.row-note{font-size:12.5px;color:var(--navy-mid);margin-top:3px;
+          display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.row-right{text-align:right;white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--grey-mid);}
+.tick{border:1px solid var(--grey-light);background:var(--white);border-radius:6px;padding:8px 11px;font-size:13px;}
+.tick:active{background:var(--green-pale);}
+.pill{display:inline-block;padding:2px 8px;border-radius:11px;font-size:10px;font-weight:600;}
+.p-overdue{background:var(--overdue-bg);color:var(--overdue);}
+.p-today{background:var(--amber-bg);color:var(--amber);}
+.p-soon{background:var(--grey-faint);color:var(--grey-mid);}
+
+.rate-bar{padding:9px 14px;background:var(--cream-dark);font-size:12px;display:flex;
+          justify-content:space-between;align-items:center;gap:8px;}
+.rate-bar strong{font-family:'IBM Plex Mono',monospace;}
+.rate-bar.warn{background:var(--overdue-bg);color:var(--overdue);}
+
+.empty{padding:22px 14px;text-align:center;color:var(--grey-mid);font-size:13.5px;}
+.empty.ok{color:var(--green);}
+.toast{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:99;
+       background:var(--navy);color:var(--white);padding:13px 15px;border-radius:8px;font-size:14px;
+       box-shadow:var(--shadow);opacity:0;transform:translateY(12px);transition:all .2s ease;pointer-events:none;}
+.toast.show{opacity:1;transform:none;}
+.toast.bad{background:var(--overdue);}
+.hide{display:none !important;}
+.foot{text-align:center;font-size:11px;color:var(--grey-mid);padding:6px 0 2px;}
+.foot a{color:var(--gold);}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <button class="bar-back hide" id="backBtn">&larr;</button>
+  <div style="flex:1;min-width:0;">
+    <div class="bar-title" id="barTitle">TMC Legal</div>
+    <div class="bar-sub" id="barSub"></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ══════════ HOME ══════════ -->
+  <div id="viewHome">
+    <div class="card">
+      <div class="search-box">
+        <input type="search" id="caseSearch" placeholder="Search a case — name or reference" autocomplete="off"/>
+      </div>
+      <div id="caseList"><div class="empty">Loading cases&hellip;</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">My reminders</span>
+        <span class="card-badge" id="homeRemBadge"></span>
+      </div>
+      <div id="homeRemList"><div class="empty">Loading&hellip;</div></div>
+    </div>
+
+    <div class="foot"><a href="/index.html">Full portal &rarr;</a></div>
+  </div>
+
+  <!-- ══════════ CASE ══════════ -->
+  <div id="viewCase" class="hide">
+    <div class="rate-bar" id="rateBar"></div>
+
+    <div class="seg" style="margin-top:12px;">
+      <button id="tabActions" class="on">Actions</button>
+      <button id="tabReminders">Reminders</button>
+    </div>
+
+    <!-- Actions -->
+    <div id="paneActions">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Add an action</span></div>
+        <div class="field">
+          <label for="aDate">Date work done</label>
+          <input type="date" id="aDate"/>
+        </div>
+        <div class="field">
+          <label for="aTime">Time spent (hours)</label>
+          <input type="number" id="aTime" step="0.1" min="0.1" inputmode="decimal" placeholder="0.1"/>
+          <div class="chiprow" id="timeChips"></div>
+        </div>
+        <div class="field">
+          <label for="aBrief">Type of work</label>
+          <select id="aBrief"></select>
+        </div>
+        <div class="field">
+          <label for="aWork">Work done</label>
+          <textarea id="aWork" placeholder="Describe the work"></textarea>
+        </div>
+        <div class="field">
+          <button class="btn" id="aSave">Save action</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Recent actions</span>
+          <span class="card-badge" id="actBadge"></span>
+        </div>
+        <div id="actList"><div class="empty">Loading&hellip;</div></div>
+      </div>
+    </div>
+
+    <!-- Reminders -->
+    <div id="paneReminders" class="hide">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Add a reminder</span></div>
+        <div class="field">
+          <label for="rEvent">Event</label>
+          <input type="text" id="rEvent" placeholder="e.g. Chase PODs"/>
+        </div>
+        <div class="field">
+          <label for="rDue">Due date</label>
+          <input type="date" id="rDue"/>
+        </div>
+        <div class="field">
+          <label for="rPriority">Priority</label>
+          <select id="rPriority">
+            <option>High</option><option selected>Medium</option><option>Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="rDetail">Detail (optional)</label>
+          <textarea id="rDetail" placeholder="Anything you'll need to remember"></textarea>
+        </div>
+        <div class="field">
+          <button class="btn" id="rSave">Save reminder</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Open reminders</span>
+          <span class="card-badge" id="remBadge"></span>
+        </div>
+        <div id="remList"><div class="empty">Loading&hellip;</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────────────────────────
+   P124 — mobile.html
+   Read/write companion to the portal, sized for a phone.
+   Endpoints used (all pre-existing, no backend change):
+     GET   /api/cases?preload=1            — open cases + rates
+     GET   /api/caseactions?ref=           — this case's time entries
+     POST  /api/caseactions                — add an entry (TT2)
+     GET   /api/reminders?all=1&open=1     — every open reminder
+     POST  /api/reminders                  — add a reminder
+     PATCH /api/reminders                  — mark one complete
+   ───────────────────────────────────────────────────────────────────────── */
+
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+
+/* Type-of-work options for a new action (TT2 field_9, a SharePoint Choice column).
+   Only the server-side default is known for certain, so the list is grown at runtime
+   from the values already present on the case. TOBY: paste the full SP choice list
+   here and the runtime merge below becomes belt-and-braces. */
+const BRIEF_SEED = ['Preparation/Perusal'];
+
+const $  = id => document.getElementById(id);
+const esc = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+const money = n => '\u00a3' + Number(n||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = v => { if(!v) return '\u2014'; const d = new Date(v); return isNaN(d) ? v : d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); };
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const trunc = (s,n) => s && s.length > n ? s.slice(0,n) + '\u2026' : (s || '');
+
+let ME = null, IS_ADMIN = false, MY_NAME = '';
+let CASES = [], REMINDERS = [];
+let CUR = null;          // { id, fields } of the open case
+let CUR_ACTIONS = [];
+
+/* ── Auth ───────────────────────────────────────────────────────────────── */
+async function getCallerEmail(){
+  try{
+    const r = await fetch('/.auth/me');
+    if(!r.ok) return null;
+    const d = await r.json();
+    const pr = d.clientPrincipal || {};
+    if(pr.userDetails) return pr.userDetails.toLowerCase();
+    const c = (pr.claims||[]).find(c => ['preferred_username','email','upn'].includes(c.typ));
+    return c ? c.val.toLowerCase() : null;
+  }catch{ return null; }
+}
+const nameFromEmail = e => {
+  const first = (e||'').split('@')[0].split('.')[0];
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : '';
+};
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+let toastTimer = null;
+function toast(msg, bad){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('bad', !!bad);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), bad ? 5200 : 2600);
+}
+
+/* ── Case helpers ───────────────────────────────────────────────────────── */
+function caseRef(f){ return (f['Ourreference_x0028_text_x0029_']||'').trim(); }
+function caseName(f){
+  return f.CaseNameForOpenCases || f.fullCaseNameMirror || f.Title || caseRef(f) || '\u2014';
+}
+
+/* Mirrors PA555/PA555.1 and case.html's caRateForDate() exactly — same yyyy-MM-dd
+   string comparison — so what this page offers is what the flow later writes.
+   No RateChangeDate, or no RatePriorPeriod, means the current rate for everything. */
+function rateForDate(f, iso){
+  const d   = (iso || '').slice(0,10);
+  const chg = (f.RateChangeDate || '').slice(0,10);
+  const cur = parseFloat(f.RateForCase);
+  const pri = parseFloat(f.RatePriorPeriod);
+  if(chg && d && d < chg && !isNaN(pri)) return pri;
+  return isNaN(cur) ? null : cur;
+}
+
+/* ── Boot ───────────────────────────────────────────────────────────────── */
+(async () => {
+  ME = await getCallerEmail();
+  IS_ADMIN = ADMIN_EMAILS.includes(ME || '');
+  MY_NAME = nameFromEmail(ME);
+  $('barSub').textContent = ME || 'not signed in';
+
+  const [caseRes, remRes] = await Promise.all([
+    fetch('/api/cases?preload=1').then(r => r.ok ? r.json() : {value:[]}).catch(() => ({value:[]})),
+    fetch('/api/reminders?all=1&open=1').then(r => r.ok ? r.json() : {value:[]}).catch(() => ({value:[]})),
+  ]);
+  CASES     = caseRes.value || [];
+  REMINDERS = remRes.value  || [];
+
+  renderCaseList('');
+  renderHomeReminders();
+  wire();
+})();
+
+/* ── Home: case list ────────────────────────────────────────────────────── */
+function myCases(){
+  return CASES.filter(c => {
+    const a = (c.fields?.assignedToTextValue || '').toLowerCase();
+    return a && a === ME;
+  });
+}
+function renderCaseList(q){
+  const term = (q||'').trim().toLowerCase();
+  let list, heading;
+  if(term.length >= 2){
+    list = CASES.filter(c => {
+      const f = c.fields || {};
+      return caseName(f).toLowerCase().includes(term) || caseRef(f).toLowerCase().includes(term);
+    }).slice(0, 30);
+    heading = null;
+  } else {
+    list = myCases().slice(0, 30);
+    heading = 'my cases';
+  }
+  if(!list.length){
+    $('caseList').innerHTML = '<div class="empty">' +
+      (term.length >= 2 ? 'No open case matches that.' : 'No cases assigned to you \u2014 search above.') +
+      '</div>';
+    return;
+  }
+  $('caseList').innerHTML =
+    (heading ? '<div class="row" style="padding:7px 14px;background:var(--grey-faint);"><div class="row-main"><span class="card-title">' + heading + ' \u00b7 ' + list.length + '</span></div></div>' : '') +
+    list.map(c => {
+      const f = c.fields || {};
+      return '<div class="row" data-case="' + esc(c.id) + '">' +
+        '<div class="row-main"><div class="row-title">' + esc(trunc(caseName(f), 46)) + '</div>' +
+        '<div class="row-sub">' + esc(caseRef(f)) + (f.StatusMirror ? ' \u00b7 ' + esc(f.StatusMirror) : '') + '</div></div>' +
+        '<div class="row-right">&rsaquo;</div></div>';
+    }).join('');
+}
+
+/* ── Home: my reminders ─────────────────────────────────────────────────── */
+/* Ownership follows today.html: an explicit remindee wins; otherwise the case
+   assignee; an unassigned case is shared. Admins see everything. */
+function myReminders(){
+  const assignees = {};
+  CASES.forEach(c => { const f = c.fields||{}; const r = caseRef(f); if(r) assignees[r] = (f.assignedToTextValue||'').toLowerCase(); });
+  return REMINDERS.filter(r => {
+    const f = r.fields || {};
+    if((f.CompletedMirror||'') === 'Yes') return false;
+    if(IS_ADMIN) return true;
+    const remindee = (f['Add_x0020_a_x0020_remindee_x0020']||'').toLowerCase();
+    if(remindee) return remindee === ME;
+    const a = assignees[caseRef(f)] || '';
+    return !a || a === ME;
+  });
+}
+function dueBucket(v){
+  const d = new Date(v);
+  if(isNaN(d)) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  const w = new Date(t); w.setDate(w.getDate() + 7);
+  d.setHours(0,0,0,0);
+  if(d < t) return 'overdue';
+  if(d.getTime() === t.getTime()) return 'today';
+  if(d <= w) return 'soon';
+  return null;
+}
+function renderHomeReminders(){
+  const names = {};
+  CASES.forEach(c => { const f = c.fields||{}; const r = caseRef(f); if(r) names[r] = caseName(f); });
+  const rank = { overdue:0, today:1, soon:2 };
+  const list = myReminders()
+    .map(r => ({ r, b: dueBucket(r.fields?.Duedate) }))
+    .filter(x => x.b)
+    .sort((a,b) => rank[a.b] - rank[b.b] || String(a.r.fields.Duedate).localeCompare(String(b.r.fields.Duedate)));
+
+  const urgent = list.filter(x => x.b !== 'soon').length;
+  const badge = $('homeRemBadge');
+  badge.textContent = urgent ? urgent + ' need' + (urgent > 1 ? '' : 's') + ' action' : (list.length ? list.length + ' this week' : 'all clear');
+  badge.classList.toggle('urgent', urgent > 0);
+
+  if(!list.length){
+    $('homeRemList').innerHTML = '<div class="empty ok">\u2705 Nothing overdue or due this week.</div>';
+    return;
+  }
+  $('homeRemList').innerHTML = list.map(({r,b}) => {
+    const f = r.fields || {};
+    const ref = caseRef(f);
+    const lbl = b === 'overdue' ? 'Overdue' : b === 'today' ? 'Today' : fmtDate(f.Duedate);
+    return '<div class="row">' +
+      '<div class="row-main" data-ref="' + esc(ref) + '">' +
+        '<div class="row-title">' + esc(f.Event || 'Reminder') + '</div>' +
+        '<div class="row-sub">' + esc(trunc(names[ref] || ref || '\u2014', 40)) + '</div>' +
+        (f.Brief ? '<div class="row-note">' + esc(f.Brief) + '</div>' : '') +
+      '</div>' +
+      '<div style="text-align:right;">' +
+        '<div><span class="pill p-' + b + '">' + esc(lbl) + '</span></div>' +
+        '<button class="tick" style="margin-top:7px;" data-done="' + esc(r.id) + '">Done</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+/* ── Open a case ────────────────────────────────────────────────────────── */
+async function openCase(item){
+  CUR = item;
+  const f = item.fields || {};
+  $('barTitle').textContent = caseName(f);
+  $('barSub').textContent   = caseRef(f);
+  $('backBtn').classList.remove('hide');
+  $('viewHome').classList.add('hide');
+  $('viewCase').classList.remove('hide');
+  window.scrollTo(0,0);
+
+  $('aDate').value = todayISO();
+  $('rDue').value  = '';
+  $('aTime').value = ''; $('aWork').value = '';
+  $('rEvent').value = ''; $('rDetail').value = '';
+  renderChips(null);
+  renderRateBar();
+  renderCaseReminders();
+  $('actList').innerHTML = '<div class="empty">Loading&hellip;</div>';
+  await loadActions();
+}
+function goHome(){
+  CUR = null;
+  $('barTitle').textContent = 'TMC Legal';
+  $('barSub').textContent   = ME || '';
+  $('backBtn').classList.add('hide');
+  $('viewCase').classList.add('hide');
+  $('viewHome').classList.remove('hide');
+  renderHomeReminders();
+  window.scrollTo(0,0);
+}
+
+function renderRateBar(){
+  const f = CUR.fields || {};
+  const r = rateForDate(f, $('aDate').value || todayISO());
+  const bar = $('rateBar');
+  if(r == null || r <= 0){
+    bar.className = 'rate-bar warn';
+    bar.innerHTML = '<span>\u26a0\ufe0f No hourly rate on this case</span><span>Set it in the portal first</span>';
+  } else {
+    const twoRate = (f.RateChangeDate || '') && !isNaN(parseFloat(f.RatePriorPeriod));
+    bar.className = 'rate-bar';
+    bar.innerHTML = '<span>Rate for this entry <strong>' + money(r) + '</strong>/hr</span>' +
+      (twoRate ? '<span style="color:var(--grey-mid);font-size:11px;">two rate periods \u00b7 from date</span>' : '');
+  }
+}
+
+/* ── Actions ────────────────────────────────────────────────────────────── */
+async function loadActions(){
+  const ref = caseRef(CUR.fields || {});
+  try{
+    const res = await fetch('/api/caseactions?ref=' + encodeURIComponent(ref));
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    CUR_ACTIONS = d.value || [];
+  }catch(e){
+    CUR_ACTIONS = [];
+    $('actList').innerHTML = '<div class="empty">Could not load actions \u2014 ' + esc(e.message) + '</div>';
+    return;
+  }
+  // Type-of-work list and the caller's own "Completed by" spelling both come from
+  // real data on the case rather than being guessed.
+  const briefs = new Set(BRIEF_SEED);
+  CUR_ACTIONS.forEach(a => { const b = a.fields?.field_9; if(b) briefs.add(b); });
+  const sel = $('aBrief'), keep = sel.value;
+  sel.innerHTML = [...briefs].sort().map(b => '<option>' + esc(b) + '</option>').join('');
+  if(keep && briefs.has(keep)) sel.value = keep;
+
+  const mine = CUR_ACTIONS.find(a => (a.fields?.field_18 || '').toLowerCase() === ME &&
+                                     (a.fields?.['Completedby_x0028_text_x0029_'] || '').trim());
+  if(mine) MY_NAME = mine.fields['Completedby_x0028_text_x0029_'].trim();
+
+  renderActions();
+}
+function renderActions(){
+  const list = CUR_ACTIONS.slice(0, 15);
+  const unbilledHrs = CUR_ACTIONS
+    .filter(a => a.fields?.['Billed_x003f_'] !== true)
+    .reduce((s,a) => s + (parseFloat(a.fields?.TimeSpentMirror || a.fields?.field_3) || 0), 0);
+  $('actBadge').textContent = CUR_ACTIONS.length + ' total \u00b7 ' + unbilledHrs.toFixed(1) + 'h unbilled';
+
+  if(!list.length){ $('actList').innerHTML = '<div class="empty">No actions recorded yet.</div>'; return; }
+  $('actList').innerHTML = list.map(a => {
+    const f = a.fields || {};
+    const hrs = parseFloat(f.TimeSpentMirror || f.field_3) || 0;
+    const who = (f['Completedby_x0028_text_x0029_'] || '').trim();
+    return '<div class="row"><div class="row-main">' +
+      '<div class="row-note" style="-webkit-line-clamp:2;font-weight:500;">' + esc(f.field_2 || '\u2014') + '</div>' +
+      '<div class="row-sub">' + esc(fmtDate(f.field_12 || f.field_1)) + (who ? ' \u00b7 ' + esc(who) : '') +
+        (f.field_9 ? ' \u00b7 ' + esc(f.field_9) : '') + '</div>' +
+      '</div><div class="row-right">' + hrs.toFixed(1) + 'h</div></div>';
+  }).join('');
+}
+function renderChips(active){
+  $('timeChips').innerHTML = ['0.1','0.2','0.3','0.5','1.0','2.0']
+    .map(v => '<button class="chip' + (v === active ? ' on' : '') + '" data-hrs="' + v + '">' + v + 'h</button>').join('');
+}
+
+async function saveAction(){
+  const f = CUR.fields || {};
+  const date = $('aDate').value || todayISO();
+  const hrs  = parseFloat($('aTime').value);
+  const work = $('aWork').value.trim();
+  const rate = rateForDate(f, date);
+
+  if(!work){ toast('Describe the work first.', true); return; }
+  if(isNaN(hrs) || hrs <= 0){ toast('Enter the time spent.', true); return; }
+  // S96 rule — the portal refuses to save billable time with no rate. A zero-rated
+  // entry is invisible money: it reconciles to nothing and drifts silently.
+  if(rate == null || rate <= 0){ toast('This case has no hourly rate. Set it in the portal before logging time.', true); return; }
+
+  const btn = $('aSave'); btn.disabled = true; btn.textContent = 'Saving\u2026';
+  try{
+    const res = await fetch('/api/caseactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref:          caseRef(f),
+        caseItemId:   CUR.id,
+        caseName:     caseName(f),
+        workDone:     work,
+        timeSpent:    hrs,
+        rate:         rate,
+        brief:        $('aBrief').value || undefined,
+        dateWorkDone: date,
+        completedBy:  MY_NAME,
+        email:        ME,
+      }),
+    });
+    if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
+    $('aTime').value = ''; $('aWork').value = ''; renderChips(null);
+    toast('Action saved \u2014 ' + hrs.toFixed(1) + 'h at ' + money(rate));
+    await loadActions();
+  }catch(e){
+    toast('Not saved: ' + e.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Save action';
+  }
+}
+
+/* ── Reminders on the open case ─────────────────────────────────────────── */
+function renderCaseReminders(){
+  const ref = caseRef(CUR.fields || {});
+  const list = REMINDERS.filter(r => caseRef(r.fields||{}) === ref && (r.fields?.CompletedMirror||'') !== 'Yes')
+    .sort((a,b) => String(a.fields?.Duedate||'').localeCompare(String(b.fields?.Duedate||'')));
+  $('remBadge').textContent = list.length ? list.length + ' open' : 'none';
+  if(!list.length){ $('remList').innerHTML = '<div class="empty">No open reminders on this case.</div>'; return; }
+  $('remList').innerHTML = list.map(r => {
+    const f = r.fields || {};
+    const b = dueBucket(f.Duedate);
+    return '<div class="row"><div class="row-main">' +
+      '<div class="row-title">' + esc(f.Event || f.Title || 'Reminder') + '</div>' +
+      '<div class="row-sub">Due ' + esc(fmtDate(f.Duedate)) + (f.Priority ? ' \u00b7 ' + esc(f.Priority) : '') + '</div>' +
+      (f.Brief ? '<div class="row-note">' + esc(f.Brief) + '</div>' : '') +
+      '</div><div style="text-align:right;">' +
+      (b ? '<div><span class="pill p-' + b + '">' + esc(b === 'overdue' ? 'Overdue' : b === 'today' ? 'Today' : 'This week') + '</span></div>' : '') +
+      '<button class="tick" style="margin-top:7px;" data-done="' + esc(r.id) + '">Done</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+async function saveReminder(){
+  const f = CUR.fields || {};
+  const event = $('rEvent').value.trim();
+  const due   = $('rDue').value;
+  if(!event){ toast('Give the reminder an event.', true); return; }
+  if(!due){ toast('Pick a due date.', true); return; }
+
+  const btn = $('rSave'); btn.disabled = true; btn.textContent = 'Saving\u2026';
+  try{
+    const res = await fetch('/api/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ref:      caseRef(f),
+        title:    caseName(f),
+        event:    event,
+        duedate:  due + 'T00:00:00Z',
+        priority: $('rPriority').value,
+        detail:   $('rDetail').value.trim() || null,
+        remindee: ME,
+      }),
+    });
+    if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
+    const created = await res.json();
+    REMINDERS.push({ id: created.id, fields: created.fields || {
+      Event: event, Duedate: due + 'T00:00:00Z', Priority: $('rPriority').value,
+      Brief: $('rDetail').value.trim(), 'Ourreference_x0028_text_x0029_': caseRef(f),
+      'Add_x0020_a_x0020_remindee_x0020': ME,
+    }});
+    $('rEvent').value = ''; $('rDetail').value = ''; $('rDue').value = '';
+    toast('Reminder saved.');
+    renderCaseReminders();
+  }catch(e){
+    toast('Not saved: ' + e.message, true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Save reminder';
+  }
+}
+
+/* Completion is read from CompletedMirror everywhere in this estate — the
+   Yes/No column itself is unreliable through Graph app-only. Both are sent;
+   the mirror is the one that decides what anybody sees. */
+async function completeReminder(id, btn){
+  btn.disabled = true; btn.textContent = '\u2026';
+  try{
+    const res = await fetch('/api/reminders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: id, fields: { CompletedMirror: 'Yes', 'Completed_x003f_': true } }),
+    });
+    if(!res.ok) throw new Error(await res.text() || ('HTTP ' + res.status));
+    const hit = REMINDERS.find(r => String(r.id) === String(id));
+    if(hit){ hit.fields = hit.fields || {}; hit.fields.CompletedMirror = 'Yes'; }
+    toast('Marked done.');
+    if(CUR) renderCaseReminders(); else renderHomeReminders();
+  }catch(e){
+    toast('Not updated: ' + e.message, true);
+    btn.disabled = false; btn.textContent = 'Done';
+  }
+}
+
+/* ── Wiring ─────────────────────────────────────────────────────────────── */
+function wire(){
+  let searchTimer = null;
+  $('caseSearch').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    const v = e.target.value;
+    searchTimer = setTimeout(() => renderCaseList(v), 160);
+  });
+
+  $('caseList').addEventListener('click', e => {
+    const row = e.target.closest('[data-case]');
+    if(!row) return;
+    const item = CASES.find(c => String(c.id) === row.getAttribute('data-case'));
+    if(item) openCase(item);
+  });
+
+  $('homeRemList').addEventListener('click', e => {
+    const done = e.target.closest('[data-done]');
+    if(done){ completeReminder(done.getAttribute('data-done'), done); return; }
+    const main = e.target.closest('[data-ref]');
+    if(main){
+      const ref = main.getAttribute('data-ref');
+      const item = CASES.find(c => caseRef(c.fields||{}) === ref);
+      if(item) openCase(item); else toast('That case is not in the open list.', true);
+    }
+  });
+
+  $('remList').addEventListener('click', e => {
+    const done = e.target.closest('[data-done]');
+    if(done) completeReminder(done.getAttribute('data-done'), done);
+  });
+
+  $('backBtn').addEventListener('click', goHome);
+
+  $('tabActions').addEventListener('click', () => {
+    $('tabActions').classList.add('on'); $('tabReminders').classList.remove('on');
+    $('paneActions').classList.remove('hide'); $('paneReminders').classList.add('hide');
+  });
+  $('tabReminders').addEventListener('click', () => {
+    $('tabReminders').classList.add('on'); $('tabActions').classList.remove('on');
+    $('paneReminders').classList.remove('hide'); $('paneActions').classList.add('hide');
+  });
+
+  $('timeChips').addEventListener('click', e => {
+    const c = e.target.closest('[data-hrs]');
+    if(!c) return;
+    const v = c.getAttribute('data-hrs');
+    $('aTime').value = v;
+    renderChips(v);
+  });
+  $('aTime').addEventListener('input', () => renderChips(null));
+  $('aDate').addEventListener('change', renderRateBar);
+
+  $('aSave').addEventListener('click', saveAction);
+  $('rSave').addEventListener('click', saveReminder);
+}
+</script>
+</body>
+</html>
