@@ -129,8 +129,9 @@ module.exports = async function (context, req) {
       return true;
     });
 
-    // Sum — use Num_BillableAmount_x00a3_ if populated (billed entries),
-    // otherwise compute from TimeSpentMirror × field_6.
+    // Sum — BILLED entries use the stored Num_BillableAmount_x00a3_ (what was invoiced);
+    // everything else is computed live from TimeSpentMirror × field_6 × ProRataApportionment.
+    // (Changed 2026-08-05, S101 — see the red note inside the reduce below.)
     // Fall back to field_3 (raw hrs) if TimeSpentMirror not yet set by PA mirror —
     // portal-created entries write field_3 but PA mirror may not have run yet.
     //
@@ -147,12 +148,25 @@ module.exports = async function (context, req) {
     let unratedHours = 0;
     const sum = entries.reduce((acc, entry) => {
       const f    = entry.fields || {};
-      const amt  = parseFloat(f['Num_BillableAmount_x00a3_']);
       const hrs  = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
       const rate = parseFloat(f['field_6']);
+      const pro  = parseFloat(f['ProRataApportionment']);
+      const factor = (isNaN(pro) || pro <= 0) ? 1 : pro / 100;
 
-      // Stored billable amount wins where it is actually populated.
-      if (!isNaN(amt) && amt > 0) return acc + amt;
+      // 🔴 2026-08-05 (S101) — THE STORED AMOUNT NO LONGER WINS ON UNBILLED ROWS.
+      // Num_BillableAmount_x00a3_ is a SNAPSHOT of the SP calculated column
+      // "Billable amount", stamped by PA043 on create and by PA043.1 on every edit —
+      // except PA043.1 was auto-disabled on 12/07/2026 (AlwaysFailingDetected, so failing
+      // since ~28/06/2026). Since then the snapshot never moves when a rate or the hours
+      // change, and preferring it here meant a corrected rate was silently ignored and the
+      // superseded figure carried into a costs-of-assessment total. Found on case 1741297:
+      // rate corrected 145 -> 125, stored amount stuck at 0.1 x 145 = 14.50 on 100+ rows.
+      // BILLED rows still keep the snapshot — that figure is what was actually invoiced and
+      // must not be restated at today's rate. Everything else is valued live below.
+      if (f['Billed_x003f_'] === true) {
+        const amt = parseFloat(f['Num_BillableAmount_x00a3_']);
+        if (!isNaN(amt) && amt > 0) return acc + amt;
+      }
 
       // Time recorded but nothing to value it with — report, do not guess, do not zero-fill.
       if (hrs > 0 && (isNaN(rate) || rate <= 0)) {
@@ -161,7 +175,7 @@ module.exports = async function (context, req) {
         return acc;
       }
 
-      return acc + hrs * (isNaN(rate) ? 0 : rate);
+      return acc + hrs * (isNaN(rate) ? 0 : rate) * factor;
     }, 0);
 
     context.res = {
