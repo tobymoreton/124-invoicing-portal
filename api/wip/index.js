@@ -46,7 +46,10 @@ const SELECT_FIELDS_DOC = [
   'field_12',                       // Date Completed
   'TimeSpentMirror',                // Hours spent (Number mirror)
   'field_6',                        // Rate £/hr
-  'Num_BillableAmount_x00a3_',      // WIP value £ — only populated post-billing; compute from TimeSpentMirror × field_6 for unbilled
+  'ProRataApportionment',           // % apportionment — part of the SP "Billable amount" formula
+  'Num_BillableAmount_x00a3_',      // ⚠️ FALLBACK ONLY since S101 (2026-08-05) — stale snapshot,
+                                    //    read solely when there are hours but no usable rate.
+                                    //    See liveValue() at the foot of this file.
   'field_2',                        // Work done (Note) — free-text description
   'Billable_x003f_',                // Billable? boolean (indexed) — NOT reliable in $select on this tenant
   'Billed_x003f_',                  // Billed? boolean (indexed) — NOT reliable in $select on this tenant
@@ -112,7 +115,7 @@ module.exports = async function (context, req) {
         // build. Added because S81's "$orderby removal changed nothing" conclusion
         // could NOT be trusted: there was no way to tell the new build from the old.
         // BUMP THIS ON EVERY CHANGE TO THIS FILE.
-        'X-Api-Build': 'S81-no-orderby',
+        'X-Api-Build': 'S101-live-wipvalue',
       },
       body: JSON.stringify(items),
     };
@@ -243,11 +246,20 @@ function normalise(item) {
     DateCompleted: f.field_12                          || null,
     HoursSpent:    toNum(f.TimeSpentMirror),
     Rate:          toNum(f.field_6),
-    // WIPValue: use BillableAmount if populated (billed rows), else compute from hours × rate
-    WIPValue:      toNum(f['Num_BillableAmount_x00a3_']) ||
-                   (toNum(f.TimeSpentMirror) != null && toNum(f.field_6) != null
-                     ? Math.round(toNum(f.TimeSpentMirror) * toNum(f.field_6) * 100) / 100
-                     : null),
+    // WIPValue — 🔴 2026-08-05 (S101): NO LONGER READS Num_BillableAmount_x00a3_.
+    // That column is a SNAPSHOT of the SP calculated column "Billable amount", stamped by
+    // PA043 on create and — until it was auto-disabled 12/07/2026 (AlwaysFailingDetected,
+    // i.e. failing since ~28/06/2026) — by PA043.1 on every edit. With PA043.1 dead the
+    // snapshot is frozen: change a rate or the hours and the stored figure does not move.
+    // Preferring it meant every corrected rate was ignored and the superseded amount kept
+    // being reported. Diagnosed on case 1741297 (rate corrected 145 -> 125; stored amount
+    // stuck at 0.1 x 145 = 14.50 across 100+ rows).
+    // This function is UNBILLED-ONLY (see fetchAllWIP: $filter Billed_x003f_ eq false), so
+    // no billed row's historic invoiced amount is at stake here — always value live.
+    // Mirrors the SP formula except its Billable?=FALSE -> 0 gate, deliberately NOT applied
+    // so displayed values are unchanged for non-billable rows (Billable is returned
+    // separately below and callers filter on it themselves).
+    WIPValue:      liveValue(f),
     WorkDone:        f.field_2                           || null,
     Billable:      f['Billable_x003f_']                || false,
     Billed:        f['Billed_x003f_']                  || false,
@@ -257,4 +269,37 @@ function normalise(item) {
 function toNum(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
+}
+
+// ─── LIVE VALUE ──────────────────────────────────────────
+// 2026-08-05 (S101). The authoritative value of a timed entry is the SP CALCULATED column
+// "Billable amount" (Billable_x0020_amount):
+//   =IF(Billable?=FALSE,0,[Time Spent (hrs) ⏳]*[Rate 💹]*IF(ProRataApportionment="",1,
+//                                                            ProRataApportionment/100))
+// SharePoint recalculates it on every change, so it is never stale. We do NOT read it,
+// for two reasons: (1) Graph returns calculated columns as a locale-formatted STRING —
+// verified live 05/08/2026, it comes back as "$12.50", dollar sign and all, so it would
+// need brittle symbol-stripping; (2) its Billable?=FALSE -> 0 gate would silently change
+// what non-billable rows display, which is beyond the scope of this fix.
+// So: same arithmetic, computed here from typed inputs, WITHOUT the Billable gate.
+// ProRataApportionment is applied (it is 100 on current data, so a no-op today, but it is
+// part of the firm's definition of the figure and omitting it would be wrong the day it
+// is not 100).
+// Returns null when there is nothing to value — never 0, so a data gap stays visible.
+function liveValue(f) {
+  const hrs  = toNum(f.TimeSpentMirror != null ? f.TimeSpentMirror : f.field_3);
+  const rate = toNum(f.field_6);
+  // 🔴 NEVER value at zero where there are hours but no usable rate. MEASURED on the live
+  // list 05/08/2026 before this change shipped: 201 unbilled rows carry 51.1 hrs with
+  // field_6 = 0 but a stamped amount totalling £7,115. Valuing those live would have
+  // silently wiped that £7,115 — precisely the silent-zero fault /api/coa fixed on
+  // 2026-08-03. Keep the last stamped value instead; it is the only figure we have.
+  if (hrs != null && hrs > 0 && (rate == null || rate <= 0)) {
+    const snap = toNum(f['Num_BillableAmount_x00a3_']);
+    return (snap != null && snap > 0) ? snap : null;
+  }
+  if (hrs == null || rate == null) return null;
+  const pro  = toNum(f.ProRataApportionment);
+  const factor = (pro == null || pro <= 0) ? 1 : pro / 100;
+  return Math.round(hrs * rate * factor * 100) / 100;
 }
