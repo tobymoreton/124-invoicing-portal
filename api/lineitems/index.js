@@ -25,6 +25,8 @@ const https  = require('https');
 const { URL } = require('url');
 
 const LIST_GUID  = '496468a5-e2ed-48db-8826-58cb08844eee';
+// Invoice Library — read only, and only for the OrderDetails → InvoiceDate map (S107b).
+const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const SITE_PATH  = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 
 // Fields to retrieve
@@ -97,7 +99,9 @@ module.exports = async function (context, req) {
 
   try {
     const token     = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
-    const lineItems = await fetchAllLineItems(token, isAdmin, isFinance, callerEmail);
+    // S107b: the parent invoice's date, keyed by invoice number. See fetchInvoiceDates.
+    const invDates  = await fetchInvoiceDates(token);
+    const lineItems = await fetchAllLineItems(token, isAdmin, isFinance, callerEmail, invDates);
 
     context.res = {
       status: 200,
@@ -105,10 +109,12 @@ module.exports = async function (context, req) {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
         // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-        'X-Api-Build': 'S107-linevalue-fallback',
+        'X-Api-Build': 'S107b-linevalue-and-date-fallback',
         // Rows whose ValueMirror was blank and had to be computed. Non-zero means PA099.12
         // is not keeping up — worth watching, not an error.
         'X-Derived-Lines': String(lineItems.filter(i => i.ValueDerived).length),
+        // Rows whose own InvoiceDate was blank and was taken from the parent invoice.
+        'X-Derived-Dates': String(lineItems.filter(i => i.InvoiceDateDerived).length),
       },
       body: JSON.stringify(lineItems),
     };
@@ -156,7 +162,36 @@ function getToken(tenantId, clientId, clientSecret) {
 }
 
 // ─── FETCH ALL (handles pagination) ──────────────────────
-async function fetchAllLineItems(token, isAdmin, isFinance, callerEmail) {
+// S107b: `issueinvoice` stamps the invoice number onto a Line Item but NOT the invoice date
+// (step 9 patches InvoiceIDRef only). 1,888 of 3,864 billed line items therefore have no
+// InvoiceDate of their own — and index.html's Draftsman Billing panel opens with
+// `if (!li.InvoiceDate) return;`, so those lines are dropped before the month filter and a
+// draftsman's timed work silently disappears from the table, leaving only invoice-level VAT.
+//
+// The date is taken from the parent invoice, which is the authoritative source anyway: the
+// line item's copy is only ever a snapshot of it. Costs one extra paged read of the Invoice
+// Library per call. Deliberate — doing this in the page instead would fix one consumer and
+// leave the next one broken, which is the mistake made earlier in this same session when
+// /api/invoices was fixed and this endpoint was not.
+async function fetchInvoiceDates(token) {
+  const dates = new Map();
+  let url = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${INVOICE_LIB}/items` +
+            `?$expand=fields($select=OrderDetails,InvoiceDate)&$top=999`;
+
+  while (url) {
+    const page = await graphGet(url, token);
+    for (const item of (page.value || [])) {
+      const f   = item.fields || {};
+      const num = String(f.OrderDetails || '').trim();
+      if (num && f.InvoiceDate) dates.set(num, f.InvoiceDate);
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+
+  return dates;
+}
+
+async function fetchAllLineItems(token, isAdmin, isFinance, callerEmail, invDates) {
   // Admins + finance get all line items; non-admins filtered by CompletedByEmail server-side
   // BillableYorN filter removed from Graph query — not indexed, filter client-side instead
   const emailFilter = (isAdmin || isFinance)
@@ -174,6 +209,15 @@ async function fetchAllLineItems(token, isAdmin, isFinance, callerEmail) {
   while (url) {
     const page  = await graphGet(url, token);
     const items = (page.value || []).map(normalise).filter(i => i.Billable);
+    // Fill a blank InvoiceDate from the parent invoice. Only ever FILLS — a date the row
+    // already holds is left exactly as it is.
+    if (invDates && invDates.size) {
+      for (const i of items) {
+        if (i.InvoiceDate || !i.InvoiceIDRef) continue;
+        const d = invDates.get(String(i.InvoiceIDRef).trim());
+        if (d) { i.InvoiceDate = d; i.InvoiceDateDerived = true; }
+      }
+    }
     all = all.concat(items);
     url = page['@odata.nextLink'] || null;
   }
@@ -244,6 +288,7 @@ function normalise(item) {
     Billable:          f.BillableYorN_x0020__x2753_       || false,
     InvoiceType:       f.InvoiceType                      || null,
     InvoiceDate:       f.InvoiceDate                      || null,
+    InvoiceDateDerived: false,                                     // true if filled from parent
   };
 }
 
