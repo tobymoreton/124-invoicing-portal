@@ -227,7 +227,7 @@ module.exports = async function (context, req) {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
           'X-Invoice-Window': 'myshare-' + myShareMode,
-          'X-Api-Build': 'S84-myshare-draftingfee',
+          'X-Api-Build': 'S107-linevalue-fallback',
         },
         body: JSON.stringify({
           mode:      myShareMode,
@@ -237,6 +237,9 @@ module.exports = async function (context, req) {
           timed:     +timed.toFixed(2),
           remainder: +remainder.toFixed(2),
           total:     +(timed + remainder).toFixed(2),
+          // Line items whose ValueMirror was blank and had to be computed from hours × rate.
+          // Non-zero means PA099.12 is not keeping up — worth watching, not an error.
+          derivedLines: totals.derivedCount || 0,
           rows,
         }),
       };
@@ -275,11 +278,22 @@ module.exports = async function (context, req) {
 // ─── LINE ITEM TOTALS PER INVOICE ───────────────────
 // ValueMirror is a plain currency column mirroring the calculated Value field, which Graph
 // app-only cannot read. Rows with no InvoiceIDRef are unbilled and ignored here.
+//
+// S107: ValueMirror is written by PA099.12, not by the portal — createdraft writes the hours
+// and the rate but never the money. When that flow misses a row the mirror is blank, this
+// function scores the line at £0, and myshare then credits the whole invoice net to the
+// drafting-fee residual: the draftsman's own timed work vanishes from their earnings split
+// while the total still reconciles. Measured 2026-08-06: 62 of 3,893 line items had no
+// mirror. So compute hours × rate × pro-rata when the mirror is missing rather than trusting
+// a blank. A stored figure that IS present is left alone — on a billed line that is what was
+// actually invoiced. (Same fault class as the S101 stale-amount finding: never let a cached
+// derived value outrank its own inputs.)
 async function fetchLineItemTotals(token) {
   const base = `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${LINEITEMS_GUID}/items` +
-               `?$expand=fields($select=InvoiceIDRef,CompletedByEmail,ValueMirror)&$top=999`;
+               `?$expand=fields($select=InvoiceIDRef,CompletedByEmail,ValueMirror,field_2,field_3,ProRataApportionment)&$top=999`;
 
   const totals = new Map();
+  let derived = 0;
   let url = base;
 
   while (url) {
@@ -288,8 +302,11 @@ async function fetchLineItemTotals(token) {
       const f   = item.fields || {};
       const ref = String(f.InvoiceIDRef || '').trim();
       if (!ref) continue;
-      const who = String(f.CompletedByEmail || '').trim().toLowerCase();
-      const val = toNum(f.ValueMirror);
+      const who    = String(f.CompletedByEmail || '').trim().toLowerCase();
+      const stored = toNum(f.ValueMirror);
+      let val;
+      if (stored === null) { val = lineValueFromInputs(f); if (val) derived++; }
+      else                 { val = stored; }
       if (!totals.has(ref)) totals.set(ref, { total: 0, byPerson: {} });
       const agg = totals.get(ref);
       agg.total += val;
@@ -298,7 +315,21 @@ async function fetchLineItemTotals(token) {
     url = page['@odata.nextLink'] || null;
   }
 
+  // Carried on the Map so myshare can report how many lines had to be derived. A number
+  // that climbs is PA099.12 falling further behind, and it is otherwise invisible.
+  totals.derivedCount = derived;
   return totals;
+}
+
+// Hours × rate × pro-rata, matching the SharePoint calculated column `Billable_x0020_amount`,
+// which applies ProRataApportionment as a /100 factor. Blank or zero pro-rata means 100%
+// — a missing apportionment must not zero the line.
+function lineValueFromInputs(f) {
+  const hrs  = parseFloat(f.field_2) || 0;
+  const rate = parseFloat(f.field_3) || 0;
+  let   pro  = parseFloat(f.ProRataApportionment);
+  if (isNaN(pro) || pro <= 0) pro = 100;
+  return Math.round(hrs * rate * (pro / 100) * 100) / 100;
 }
 
 // Start of this calendar month, or the one before it. UTC throughout to match SP dates.
