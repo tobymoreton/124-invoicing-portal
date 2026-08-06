@@ -357,6 +357,15 @@
           var m=/(?:^|\n)For:\s*([A-Za-z]+)/.exec(e.preview||'');
           if(m&&ROSTER[m[1].toLowerCase()]) name=ROSTER[m[1].toLowerCase()];
         }
+        if(name){
+          // The subject usually repeats the person's own name ('Tracy off') and the API
+          // prefixes it again on write, giving 'Tracy — Tracy off'. Drop the repeat and keep
+          // the reason. If stripping would leave nothing, the whole subject WAS the name,
+          // so keep it as written rather than showing an empty chip.
+          var dup=new RegExp('^'+name+'(?:\'s|\u2019s)?\\b[\\s\\u2013\\u2014:,.\\-]*','i');
+          var trimmed=rest.replace(dup,'').trim();
+          if(trimmed) rest=trimmed.charAt(0).toUpperCase()+trimmed.slice(1);
+        }
         var when='';
         if(!e.isAllDay&&e.start){
           when=' '+String(e.start).slice(11,16)+(e.end?'\u2013'+String(e.end).slice(11,16):'');
