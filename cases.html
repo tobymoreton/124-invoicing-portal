@@ -351,6 +351,79 @@
   <button id="news-banner-dismiss" title="Dismiss for this session" style="flex-shrink:0;background:none;border:none;color:var(--navy);font-size:16px;cursor:pointer;opacity:.6;padding:2px 32px 2px 6px;">&times;</button>
 </div>
 
+<!-- ═══ Who's in today (S106) ═══════════════════════════════════════════════
+     Reads the shared calendar for TODAY only and works out who is out. The person
+     is recovered from the subject prefix ('Kelly — Annual leave'), which /api/calendar
+     writes and validates server-side against the same nine-name roster, with the body
+     'For: Name' line as a fallback. Anyone with no entry today is presumed in.
+     ⚠️ An entry created directly in Outlook rather than through the portal will not
+     carry the prefix and lands as firm-wide — by design, not a bug to chase.
+     Self-contained: identical block drops into index.html and case.html. -->
+<div id="whos-in" style="display:none;background:var(--white,#fff);border-bottom:1px solid rgba(27,42,74,.09);padding:8px 32px;font-size:12.5px;line-height:1.9;color:var(--navy,#001B44);">
+  <span style="font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--grey-mid,#6B7280);margin-right:10px;">Today</span><span id="whos-in-body"></span>
+</div>
+<script>
+(function(){
+  var ROSTER={toby:'Toby',danielle:'Danielle',lesley:'Lesley',joanna:'Joanna',
+              tracy:'Tracy',kelly:'Kelly',tom:'Tom',julie:'Julie',daniel:'Daniel'};
+  var wrap=document.getElementById('whos-in'), body=document.getElementById('whos-in-body');
+  if(!wrap||!body) return;
+  var esc=function(s){return String(s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var pad=function(n){return (n<10?'0':'')+n;};
+  var d=new Date();
+  var today=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+
+  fetch('/api/calendar?start='+today+'&end='+today,{credentials:'same-origin'})
+    .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function(data){
+      var out={}, firm=[];
+      (data.events||[]).forEach(function(e){
+        if(e.cancelled) return;
+        var subj=String(e.subject||'').trim(), name=null, rest=subj;
+        var i=subj.indexOf('\u2014');
+        if(i>-1){
+          var cand=subj.slice(0,i).trim().toLowerCase();
+          if(ROSTER[cand]){ name=ROSTER[cand]; rest=subj.slice(i+1).trim(); }
+        }
+        if(!name){
+          var m=/(?:^|\n)For:\s*([A-Za-z]+)/.exec(e.preview||'');
+          if(m&&ROSTER[m[1].toLowerCase()]) name=ROSTER[m[1].toLowerCase()];
+        }
+        var when='';
+        if(!e.isAllDay&&e.start){
+          when=' '+String(e.start).slice(11,16)+(e.end?'\u2013'+String(e.end).slice(11,16):'');
+        }
+        if(name){ (out[name]=out[name]||[]).push(rest+when); }
+        else { firm.push(rest+when); }
+      });
+
+      var away=Object.keys(out);
+      var here=Object.keys(ROSTER).map(function(k){return ROSTER[k];})
+                     .filter(function(n){return away.indexOf(n)===-1;});
+      var html='';
+      away.forEach(function(n){
+        html+='<span style="display:inline-block;background:var(--red-pale,#FEF2F2);'
+            + 'border:1px solid rgba(153,27,27,.18);color:var(--red,#991B1B);'
+            + 'border-radius:12px;padding:2px 11px;margin-right:8px;font-weight:600;">'
+            + esc(n)+' &mdash; '+esc(out[n].join('; '))+'</span>';
+      });
+      firm.forEach(function(t){
+        html+='<span style="display:inline-block;background:var(--gold-pale,#F5EDD0);'
+            + 'border:1px solid rgba(181,154,106,.35);border-radius:12px;padding:2px 11px;'
+            + 'margin-right:8px;font-weight:600;">'+esc(t)+'</span>';
+      });
+      if(here.length){
+        html+='<span style="color:var(--grey-mid,#6B7280);">'
+            + (away.length?'In: ':'All in: ')+esc(here.join(', '))+'</span>';
+      }
+      body.innerHTML=html||'<span style="color:var(--grey-mid,#6B7280);">Nothing in the calendar today.</span>';
+      wrap.style.display='block';
+    })
+    .catch(function(){ /* calendar unreachable — show nothing rather than a broken strip */ });
+})();
+</script>
+
 <div class="page-header">
   <div class="page-header-top">
     <div>
@@ -656,6 +729,11 @@
       <div class="dm-field">
         <label>Detail</label>
         <textarea id="rem-detail" placeholder="Optional notes&hellip;"></textarea>
+      </div>
+      <div style="display:flex;gap:16px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--navy);cursor:pointer;">
+          <input type="checkbox" id="rem-admin" style="width:15px;height:15px;accent-color:var(--navy);cursor:pointer;" /> Admin?
+        </label>
       </div>
     </div>
     <div class="dash-modal-footer">
@@ -1929,23 +2007,25 @@ async function saveReminder(){
   const due=document.getElementById('rem-due').value;
   const priority=document.getElementById('rem-priority').value;
   const detail=document.getElementById('rem-detail').value.trim();
+  const admin=document.getElementById('rem-admin').checked;
   const caseName=caseDisplayName((myCases.find(c=>c.fields['Ourreference_x0028_text_x0029_']===ref)||{}).fields)||ref;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
   try{
     const r=await fetch('/api/reminders',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,title:ref,event,duedate:due,priority,detail,completed:false}),
+      body:JSON.stringify({ref,title:ref,event,duedate:due,priority,detail,admin,completed:false}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
     allReminders.push({...created,_caseRef:ref,_caseName:caseName,
-      fields:{Event:event,Duedate:due?due+'T00:00:00Z':null,Priority:priority,Brief:detail,CompletedMirror:'No'}});
+      fields:{Event:event,Duedate:due?due+'T00:00:00Z':null,Priority:priority,Brief:detail,'Admin_x003f_':admin,CompletedMirror:'No'}});
     renderRemPanel();
     renderStats();
     msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-reminder'),1000);
     document.getElementById('rem-event').value='';
     document.getElementById('rem-detail').value='';
+    document.getElementById('rem-admin').checked=false;
   }catch(err){
     msg.className='dm-save-msg err';msg.textContent='Failed: '+err.message;
   }finally{btn.disabled=false;}
