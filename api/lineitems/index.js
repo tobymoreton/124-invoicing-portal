@@ -104,6 +104,11 @@ module.exports = async function (context, req) {
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
+        // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
+        'X-Api-Build': 'S107-linevalue-fallback',
+        // Rows whose ValueMirror was blank and had to be computed. Non-zero means PA099.12
+        // is not keeping up — worth watching, not an error.
+        'X-Derived-Lines': String(lineItems.filter(i => i.ValueDerived).length),
       },
       body: JSON.stringify(lineItems),
     };
@@ -211,8 +216,18 @@ function graphGet(url, token) {
 // ─── NORMALISE ───────────────────────────────────────────
 // Flattens a SP list item into a plain object.
 // Uses mirror fields (CompletedByEmail, ValueMirror) not the originals.
+//
+// S107: ValueMirror is written by PA099.12. When that flow misses a row the mirror is blank
+// and every consumer of this endpoint scores the line at £0 — index.html's Draftsman Billing
+// panel reads `li.Value||0`, so a draftsman's whole month of timed work showed as a dash with
+// only the VAT column populated. Measured 2026-08-06: 62 of 3,894 rows had no mirror.
+// So derive hours × rate × pro-rata when the mirror is missing. A stored figure that IS
+// present is never overridden — on a billed line that is what was actually invoiced.
+// `ValueDerived` says which happened, so a consumer that cares can tell them apart.
 function normalise(item) {
-  const f = item.fields || {};
+  const f       = item.fields || {};
+  const stored  = toNum(f.ValueMirror);
+  const derived = stored === null;
   return {
     _id:               String(item.id),
     WorkDone:          f.field_1                          || null,
@@ -220,7 +235,8 @@ function normalise(item) {
     Rate:              toNum(f.field_3),                           // £/hr
     ProRata:           toNum(f.ProRataApportionment),              // percentage
     CompletedByEmail:  f.CompletedByEmail                 || null, // mirror — not CompletedBy
-    Value:             toNum(f.ValueMirror),                       // mirror — not Value
+    Value:             derived ? lineValueFromInputs(f) : stored,  // mirror — not Value
+    ValueDerived:      derived,                                    // true = mirror was blank
     InvoiceIDRef:      f.InvoiceIDRef                     || null,
     CaseName:          f.CaseName                         || null,
     OurRef:            f.field_5                          || null,
@@ -229,6 +245,17 @@ function normalise(item) {
     InvoiceType:       f.InvoiceType                      || null,
     InvoiceDate:       f.InvoiceDate                      || null,
   };
+}
+
+// Hours × rate × pro-rata, matching the SharePoint calculated column `Billable_x0020_amount`,
+// which applies ProRataApportionment as a /100 factor. Blank or zero pro-rata means 100%
+// — a missing apportionment must not zero the line. Same helper as /api/invoices.
+function lineValueFromInputs(f) {
+  const hrs  = parseFloat(f.field_2) || 0;
+  const rate = parseFloat(f.field_3) || 0;
+  let   pro  = parseFloat(f.ProRataApportionment);
+  if (isNaN(pro) || pro <= 0) pro = 100;
+  return Math.round(hrs * rate * (pro / 100) * 100) / 100;
 }
 
 function toNum(v) {
