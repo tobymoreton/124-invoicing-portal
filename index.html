@@ -1213,6 +1213,24 @@ function renderDraftsman() {
       </tbody>
     </table>` : `<p style="padding:16px;color:var(--grey-mid);font-size:13px;font-style:italic;">No drafting fees for this period.</p>`;
 
+  // S107b: each invoice's own VAT rate, keyed by invoice number. VAT used to be added twice
+  // over — the whole of `inv.VAT` in the invoice loop AND a flat 20% of every timed line in
+  // the loop below — so a £437.50 invoice carrying £87.50 VAT reported £175. It went unnoticed
+  // while the timed side read £0 for everyone (see S107 parts 1-4). VAT now follows the net
+  // actually attributed to each person, at that invoice's real rate, so an LA invoice with no
+  // VAT contributes none instead of a hardcoded fifth.
+  const vatRateByInvoice = {};
+  allInvoices.forEach(inv => {
+    const net = parseFloat(inv.Net) || 0;
+    const vat = parseFloat(inv.VAT) || 0;
+    if (inv.OrderDetails) vatRateByInvoice[String(inv.OrderDetails).trim()] = net > 0 ? vat / net : 0;
+  });
+  // Falls back to 20% only when the parent invoice is not in the loaded set at all.
+  const vatRateFor = ref => {
+    const r = vatRateByInvoice[String(ref || '').trim()];
+    return (r === undefined) ? 0.2 : r;
+  };
+
   const totals = {};
   allInvoices.forEach(inv => {
     const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
@@ -1222,8 +1240,9 @@ function renderDraftsman() {
     if (!_isAdmin && !_isFinance && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
     const name = nameFromEmail(inv.DraftedByEmail);
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
-    totals[name].drafting += parseFloat(inv.DraftingFeeElement)||0;
-    totals[name].vat      += parseFloat(inv.VAT)||0;
+    const dfe = parseFloat(inv.DraftingFeeElement)||0;
+    totals[name].drafting += dfe;
+    totals[name].vat      += dfe * vatRateFor(inv.OrderDetails);
   });
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
@@ -1235,7 +1254,7 @@ function renderDraftsman() {
     if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
     const liVal = li.Value||0;
     totals[name].timed += liVal;
-    totals[name].vat   += liVal * 0.2;
+    totals[name].vat   += liVal * vatRateFor(li.InvoiceIDRef);
   });
   const totRows = Object.entries(totals)
     .map(([name,v])=>([name,{...v,net:v.drafting+v.timed,total:v.drafting+v.timed+v.vat}]))
@@ -1266,7 +1285,8 @@ function renderDraftsman() {
       casename: inv.Casename || '—',
       ourref:   inv.Ourref   || '—',
       drafting: parseFloat(inv.DraftingFeeElement) || 0,
-      vat:      parseFloat(inv.VAT) || 0,
+      // VAT on the drafting element only — the timed side carries its own below.
+      vat:      (parseFloat(inv.DraftingFeeElement) || 0) * vatRateFor(inv.OrderDetails),
     }));
 
     // Timed rows — group line items by OurRef for this draftsman
@@ -1280,7 +1300,7 @@ function renderDraftsman() {
       if (!timedByRef[ref]) timedByRef[ref] = { casename: li.CaseName || '—', timed: 0, timedVat: 0 };
       const liVal = li.Value || 0;
       timedByRef[ref].timed    += liVal;
-      timedByRef[ref].timedVat += liVal * 0.2;
+      timedByRef[ref].timedVat += liVal * vatRateFor(li.InvoiceIDRef);
     });
 
     // Merge: build a map keyed by ourref, combining drafting + timed
@@ -1315,6 +1335,7 @@ function renderDraftsman() {
         <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}<div style="font-size:10px;color:var(--grey-mid);margin-top:2px;font-family:'IBM Plex Mono',monospace;">${esc(r.ourref)}</div></td>
         <td style="${bkCell}">${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
         <td style="${bkCell}">${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
+        <td style="${bkCell}">${fc(r.drafting + r.timed)}</td>
         <td style="${bkCell}">${r.vat      > 0 ? fc(r.vat)      : '—'}</td>
         <td style="${bkCell}">${fc(r.total)}</td>
         <td></td>
@@ -1324,6 +1345,7 @@ function renderDraftsman() {
       <tr class="ds-bkd-row" style="${bkStyle}font-style:italic;color:var(--grey-mid)">
         <td style="${bkCellL}" >Timed work (no case ref)</td>
         <td style="${bkCell}">—</td>
+        <td style="${bkCell}">${fc(unlinkedTimed)}</td>
         <td style="${bkCell}">${fc(unlinkedTimed)}</td>
         <td style="${bkCell}">${fc(unlinkedTimedVat)}</td>
         <td style="${bkCell}">${fc(unlinkedTimed + unlinkedTimedVat)}</td>
