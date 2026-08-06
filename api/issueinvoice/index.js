@@ -17,6 +17,7 @@
  *   8. Read DraftWipIds CSV from Invoice Library item
  *   9. Mark each TT2 entry Billed_x003f_ = true
  *  10. Update each Line Item where field_7 in DraftWipIds: set InvoiceIDRef = number
+ *      and InvoiceDate = the issue date (S107b — see the note at that step)
  *
  * POST body (JSON):
  *   listItemId   string   — Invoice Library SP list item ID
@@ -77,19 +78,31 @@ module.exports = async function (context, req) {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
     // ── DraftedByEmail safety guard ───────────────────────────────────────────
-    // If the invoice has a drafting fee, DraftedByEmail is required for wage
-    // calculation. Block issue BEFORE consuming the invoice number.
+    // The drafter decides who gets paid, so it must be expressly set to a member of the
+    // drafting team on every invoice - not just those carrying a drafting fee. Block issue
+    // BEFORE consuming the invoice number.
+    const DRAFTERS = [
+      'joanna@tmclegal.co.uk','tracy@tmclegal.co.uk','kelly@tmclegal.co.uk',
+      'tom@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk',
+      'toby@tmclegal.co.uk',
+    ];
     context.log('Checking DraftedByEmail safety guard…');
     const guardUrl    = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
       + '/lists/' + INVOICE_LIB + '/items/' + listItemId
       + '/fields?$select=DraftedByEmail,DraftingFeeElement';
     const guardFields = await graphGet(guardUrl, token);
-    const hasDraftingFee = parseFloat(guardFields.DraftingFeeElement) > 0;
-    const draftedByEmail = (guardFields.DraftedByEmail || '').trim();
-    if (hasDraftingFee && !draftedByEmail) {
+    const draftedByEmail = (guardFields.DraftedByEmail || '').trim().toLowerCase();
+    if (!draftedByEmail) {
       context.res = {
         status: 400,
         body: 'Cannot issue — Drafted By is blank. Please set the Drafted By field on this invoice before issuing.',
+      };
+      return;
+    }
+    if (!DRAFTERS.includes(draftedByEmail)) {
+      context.res = {
+        status: 400,
+        body: 'Cannot issue — Drafted By is set to ' + draftedByEmail + ', who is not a member of the drafting team. Please set it to the person who drafted the bill.',
       };
       return;
     }
@@ -207,7 +220,13 @@ module.exports = async function (context, req) {
       context.log('TT2: billed=' + tt2Done + ', failed=' + tt2Failed);
     }
 
-    // ── 9. Update Line Items with real invoice number ─────────────────────────
+    // ── 9. Update Line Items with real invoice number + date ─────────────────
+    // S107b: the DATE is written here as well as the number. Before, only InvoiceIDRef was
+    // stamped, so a line item had no InvoiceDate of its own — and index.html's Draftsman
+    // Billing panel drops any line without one (`if (!li.InvoiceDate) return;`), which
+    // silently excluded roughly half the billed ledger from that table. /api/lineitems now
+    // fills a blank date from the parent invoice as a safety net, but the right place to set
+    // it is here, at the moment the invoice is issued and the date is known.
     if (wipIds.length > 0) {
       context.log('Updating Line Items with invoice number…');
       let liDone = 0, liFailed = 0;
@@ -223,6 +242,7 @@ module.exports = async function (context, req) {
           for (const liItem of liItems) {
             await patchListItem(token, LINE_ITEMS, liItem.id, {
               InvoiceIDRef: String(invoiceNumber),
+              InvoiceDate:  invoiceDateIso,
             });
             liDone++;
           }
