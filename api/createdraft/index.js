@@ -75,6 +75,20 @@ module.exports = async function (context, req) {
     return;
   }
 
+  // The bill drafter must be expressly chosen on the form every time. It is a wage-bearing
+  // field, so it is never inferred from the caller - Lesley raising an invoice must still say
+  // who drafted the bill.
+  const DRAFTERS = [
+    'joanna@tmclegal.co.uk','tracy@tmclegal.co.uk','kelly@tmclegal.co.uk',
+    'tom@tmclegal.co.uk','julie@tmclegal.co.uk','daniel@tmclegal.co.uk',
+    'toby@tmclegal.co.uk',
+  ];
+  const draftedByEmail = String((computed && computed.draftedByEmail) || '').trim().toLowerCase();
+  if (!draftedByEmail || !DRAFTERS.includes(draftedByEmail)) {
+    context.res = { status: 400, body: 'Drafted by must be set to a member of the drafting team before a draft can be created.' };
+    return;
+  }
+
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
@@ -144,7 +158,7 @@ module.exports = async function (context, req) {
       Theirref:             caseFields.ClientCaseReference || '',
       LAorIP:               caseFields.InterPartesorLegalAid || '',
       _ExtendedDescription: computed.timedWorkLine || '',
-      DraftedByEmail:       callerEmail,
+      DraftedByEmail:       draftedByEmail,
       VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
       DraftWipIds:          wipIdsCsv,
       // DELIBERATELY OMITTED to keep Status = "Draft":
@@ -160,6 +174,14 @@ module.exports = async function (context, req) {
     // One Line Item per checked WIP entry. InvoiceIDRef left blank — the real
     // invoice number is assigned at issue stage and written back then.
     // field_7 stores the TT2 source ID as a back-link for the issue stage.
+    //
+    // S107: ValueMirror is written HERE, not left to PA099.12. It used to be the flow's job,
+    // and when the flow missed a row the mirror stayed blank — /api/invoices?myshare= then
+    // scored that line at £0 and pushed the whole invoice net into the drafting-fee residual,
+    // so a draftsman's own timed work vanished from their earnings split while the total still
+    // reconciled. 62 of 3,893 line items were in that state on 2026-08-06. The portal already
+    // knows the hours and the rate at this point; there is no reason to ask another system to
+    // do the multiplication. The reader in /api/invoices also derives it as a safety net.
     const entriesToBill = Array.isArray(checkedWipEntries) ? checkedWipEntries : [];
     if (entriesToBill.length > 0) {
       context.log('Creating', entriesToBill.length, 'Line Item(s)…');
@@ -167,13 +189,20 @@ module.exports = async function (context, req) {
       let liFailed  = 0;
       for (const entry of entriesToBill) {
         try {
+          // The same arithmetic invoice-create.html used to build the bill: hours × rate,
+          // rounded to the penny. No pro-rata term — the form does not apply one, so a line
+          // created here is always at 100%.
+          const liHours = parseFloat(entry.HoursSpent) || 0;
+          const liRate  = parseFloat(entry.Rate)       || 0;
+          const liValue = Math.round(liHours * liRate * 100) / 100;
           const liFields = {
             Title:    entry.WorkDone   || entry.CaseName || caseFields.Title || '', // SP required field
             field_1:  entry.WorkDone   || '',       // Work Done (text)
-            field_2:  entry.HoursSpent || 0,        // Time (hours)
-            field_3:  entry.Rate       || 0,        // Rate £/hr
+            field_2:  liHours,                      // Time (hours)
+            field_3:  liRate,                       // Rate £/hr
             field_5:  entry.OurRef     || caseFields.Ourreference_x0028_text_x0029_ || '', // Our Reference
             field_7:  String(entry._id || ''),      // TT2 source ID (back-link)
+            ValueMirror: liValue,                   // £ value — see S107 note above
             CaseName:          entry.CaseName   || caseFields.Title || '',
             'caseName_x0020__x0001f455_': entry.CaseName || caseFields.Title || '',
             CompletedByEmail:  entry.Email        || '',
