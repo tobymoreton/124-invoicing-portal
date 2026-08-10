@@ -1441,6 +1441,7 @@
       <div class="card">
         <div class="card-head"><span class="card-title">Opponent Address</span><button type="button" class="info-btn" aria-label="About Opponent Address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The opponent's postal address. Click Edit to change.</span></button></div>
         <div class="card-body">
+          <div id="op-addr-warn" style="display:none;background:var(--red-pale,#FEF2F2);border:1.5px solid rgba(153,27,27,.25);color:var(--red,#991B1B);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:13px;line-height:1.55;"></div>
           <div class="detail-grid">
             <div class="field"><label>Address Line 1</label><input type="text" id="op-Addr1" disabled /></div>
             <div class="field"><label>Address Line 2</label><input type="text" id="op-Addr2" disabled /></div>
@@ -2135,11 +2136,29 @@ async function loadOpponentFirms2() {
     // Ids are kept alongside the names: Caseworkerfirm on the Opponent Caseworkers list is an SP
     // LOOKUP, so a quick-added caseworker has to be written with the firm's ITEM ID, not its name.
     const firms = (data.value || [])
-      .map(it => ({ name: (it.fields && it.fields.Title) || '', id: it.id }))
+      .map(it => ({
+        name: (it.fields && it.fields.Title) || '',
+        id:   it.id,
+        // S108: the Opponent Firms list has always carried the firm's postal address
+        // (Addressline1-4, note the lower-case 'line') and the portal has never read it.
+        // Selecting a different firm left the PREVIOUS firm's address sitting in the five
+        // Opponent Address boxes, silently — which is how a bill gets served to the wrong
+        // office. Captured here so the change handler can offer to fill them.
+        addr: [
+          ((it.fields && it.fields.Addressline1) || '').trim(),
+          ((it.fields && it.fields.Addressline2) || '').trim(),
+          ((it.fields && it.fields.Addressline3) || '').trim(),
+          ((it.fields && it.fields.Addressline4) || '').trim(),
+        ],
+      }))
       .filter(x => x.name);
     oppFirmNamesCache = firms.map(x => x.name);
     oppFirmIdByName = {};
-    firms.forEach(x => { oppFirmIdByName[x.name.trim().toLowerCase()] = x.id; });
+    oppFirmAddrByName = {};
+    firms.forEach(x => {
+      oppFirmIdByName[x.name.trim().toLowerCase()] = x.id;
+      oppFirmAddrByName[x.name.trim().toLowerCase()] = x.addr;
+    });
     [sel1, sel2].forEach(sel => {
       if (!sel) return;
       sel.innerHTML = '<option value="">— select firm —</option>';
@@ -2151,6 +2170,9 @@ async function loadOpponentFirms2() {
     });
     if (sel1) setSelectOp('op-opponentFirmMirror', prev1);
     if (sel2) setSelectOp('op-OpponentFirm2', prev2);
+    // Wired once the list (and its addresses) are in hand — see the S108 block below.
+    if (sel1 && !sel1.dataset.addrWired) { sel1.addEventListener('change', onOpponentFirmChanged); sel1.dataset.addrWired = '1'; }
+    renderOppAddrWarning();
   } catch (err) {
     console.warn('Opponent firms list failed to load:', err.message);
     [sel1, sel2].forEach(sel => { if (sel) sel.innerHTML = '<option value="">— firm list unavailable —</option>'; });
@@ -2161,6 +2183,69 @@ async function loadOpponentFirms2() {
 
 let oppFirmNamesCache = [];
 let oppFirmIdByName = {};     // lower-cased firm name -> Opponent Firms item id (for the Caseworkerfirm lookup)
+let oppFirmAddrByName = {};   // lower-cased firm name -> [line1, line2, line3, line4] from the firms list
+
+// ─── S108: opponent firm → address ─────────────────────────────────────────────
+// Nothing ever connected the firm dropdown to the five Opponent Address boxes. Change the
+// firm and the old firm's address stayed. Measured across the 123 open cases on 2026-08-06:
+// 32 had an opponent firm, 19 of those had NO address at all, and 2 held an address that
+// contradicted the firm on record (1735775 showed DAC Beachcroft's Manchester office on a
+// Newcastle matter; 1741253 showed Butterly Hall against Three Rivers House).
+//
+// Deliberately NOT a silent auto-fill. An address that changes itself under a draftsman is
+// worse than one that is merely stale, so anything already typed is only replaced with an
+// explicit yes. Empty boxes fill without asking — there is nothing to lose.
+function oppAddrLineIds() { return ['op-Addr1','op-Addr2','op-Addr3','op-Addr4','op-Addr5']; }
+
+function oppFirmAddrFor(name) {
+  const a = oppFirmAddrByName[String(name || '').trim().toLowerCase()];
+  return (a && a.some(Boolean)) ? a : null;
+}
+
+function applyOppFirmAddress(addr) {
+  const ids = oppAddrLineIds();
+  // Lines 1-4 come from the firm record; line 5 is cleared because whatever is in it
+  // belonged to the firm being replaced.
+  for (let i = 0; i < 4; i++) { const el = document.getElementById(ids[i]); if (el) el.value = addr[i] || ''; }
+  const l5 = document.getElementById(ids[4]); if (l5) l5.value = '';
+  const w = document.getElementById('op-addr-warn'); if (w) w.style.display = 'none';
+}
+
+function onOpponentFirmChanged() {
+  const sel = document.getElementById('op-opponentFirmMirror');
+  if (!sel) return;
+  const addr = oppFirmAddrFor(sel.value);
+  if (!addr) { renderOppAddrWarning(); return; }   // firm not on the list, or holds no address
+  const ids = oppAddrLineIds();
+  const existing = ids.map(id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; });
+  if (!existing.some(Boolean)) { applyOppFirmAddress(addr); return; }
+  const shown = addr.filter(Boolean).join(', ');
+  if (confirm('Replace the address on this case with ' + sel.value + "'s address?\n\n" + shown +
+              '\n\nThe current address will be overwritten.')) {
+    applyOppFirmAddress(addr);
+  } else {
+    renderOppAddrWarning();
+  }
+}
+
+// Red banner when the stored address does not match the selected firm's. It only ever warns
+// — it never rewrites data — so historic cases surface themselves without anything being
+// changed behind the draftsman's back.
+function renderOppAddrWarning() {
+  const box = document.getElementById('op-addr-warn');
+  if (!box) return;
+  const sel = document.getElementById('op-opponentFirmMirror');
+  const firm = sel ? sel.value : '';
+  const addr = oppFirmAddrFor(firm);
+  const line1 = (document.getElementById('op-Addr1') || {}).value || '';
+  const norm = s => String(s || '').trim().toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ');
+  if (!firm || !addr || !line1.trim() || norm(line1) === norm(addr[0])) { box.style.display = 'none'; return; }
+  box.innerHTML = '⚠️ This address does not match <strong>' + escHtml(firm) + '</strong> on the Opponent Firms list, ' +
+                  'which has <strong>' + escHtml(addr.filter(Boolean).join(', ')) + '</strong>. ' +
+                  'Check before serving.';
+  box.style.display = 'block';
+}
+
 let oppCaseworkersCache = []; // [{name, firmId}] - Caseworkerfirm is an SP LOOKUP; there is NO text mirror
 async function loadOpponentCaseworkers2() {
   const sel1 = document.getElementById('op-OpponentCaseworker1');
@@ -2816,6 +2901,10 @@ function renderOpponentTab() {
   document.getElementById('op-Addr3').value              = f['Opponent_x0020_Address_x0020_3']   || '';
   document.getElementById('op-Addr4').value              = f['Opponent_x0020_Address_x0020_4']   || '';
   document.getElementById('op-Addr5').value              = f['Opponent_x0020_Address_x0020_5']   || '';
+  // S108: flag a stored address that disagrees with the selected firm's. Warns only — never
+  // rewrites. The firms list may not have loaded yet on first paint, so this is called again
+  // from loadOpponentFirms2's completion path.
+  renderOppAddrWarning();
   setCheck('op-LitigantInPerson', f['Litigant_x0020_in_x0020_Person_x']);
   // No firm->caseworker filter any more (see filterCaseworkerOptions), so changing a firm no
   // longer rebuilds the caseworker list — and can no longer wipe a caseworker being typed.
