@@ -2149,6 +2149,7 @@ async function loadOpponentFirms2() {
           ((it.fields && it.fields.Addressline2) || '').trim(),
           ((it.fields && it.fields.Addressline3) || '').trim(),
           ((it.fields && it.fields.Addressline4) || '').trim(),
+          ((it.fields && it.fields.Addressline5) || '').trim(),
         ],
       }))
       .filter(x => x.name);
@@ -2183,7 +2184,7 @@ async function loadOpponentFirms2() {
 
 let oppFirmNamesCache = [];
 let oppFirmIdByName = {};     // lower-cased firm name -> Opponent Firms item id (for the Caseworkerfirm lookup)
-let oppFirmAddrByName = {};   // lower-cased firm name -> [line1, line2, line3, line4] from the firms list
+let oppFirmAddrByName = {};   // lower-cased firm name -> [line1..line5] from the firms list
 
 // ─── S108: opponent firm → address ─────────────────────────────────────────────
 // Nothing ever connected the firm dropdown to the five Opponent Address boxes. Change the
@@ -2191,6 +2192,9 @@ let oppFirmAddrByName = {};   // lower-cased firm name -> [line1, line2, line3, 
 // 32 had an opponent firm, 19 of those had NO address at all, and 2 held an address that
 // contradicted the firm on record (1735775 showed DAC Beachcroft's Manchester office on a
 // Newcastle matter; 1741253 showed Butterly Hall against Three Rivers House).
+// The firm addresses live in Addressline1..5 — note the lower-case 'line' and no spaces.
+// opponentfirms.html and /api/reflists both had these as 'Address_x0020_line_x0020_N', which
+// is the DISPLAY name escaped as if it were the internal one, and does not exist.
 //
 // Deliberately NOT a silent auto-fill. An address that changes itself under a draftsman is
 // worse than one that is merely stale, so anything already typed is only replaced with an
@@ -2204,10 +2208,10 @@ function oppFirmAddrFor(name) {
 
 function applyOppFirmAddress(addr) {
   const ids = oppAddrLineIds();
-  // Lines 1-4 come from the firm record; line 5 is cleared because whatever is in it
-  // belonged to the firm being replaced.
-  for (let i = 0; i < 4; i++) { const el = document.getElementById(ids[i]); if (el) el.value = addr[i] || ''; }
-  const l5 = document.getElementById(ids[4]); if (l5) l5.value = '';
+  // All five lines come from the firm record. 80 of the 281 firms carry a fifth line, so
+  // filling only four would leave the previous firm's last line behind — the same fault in
+  // miniature. A firm with fewer lines blanks the rest.
+  for (let i = 0; i < 5; i++) { const el = document.getElementById(ids[i]); if (el) el.value = addr[i] || ''; }
   const w = document.getElementById('op-addr-warn'); if (w) w.style.display = 'none';
 }
 

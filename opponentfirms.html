@@ -215,8 +215,13 @@ async function getMe(){
   }catch{ return null; }
 }
 
+// S108: the field names here were 'Address_x0020_line_x0020_N' — the DISPLAY name 'Address
+// line 1' escaped as though it were the internal one. The real internal names have no spaces:
+// Addressline1..5, confirmed from the live list 2026-08-06 (281 firms, every one carrying
+// Addressline1). Every Address cell on this page therefore showed a dash, the search box could
+// never match on an address, and /api/reflists was WRITING to the same non-existent fields.
 function addrLine(f){
-  return [f['Address_x0020_line_x0020_1'],f['Address_x0020_line_x0020_2'],f['Address_x0020_line_x0020_3'],f['Address_x0020_line_x0020_4']].filter(Boolean).join(', ') || '—';
+  return [f['Addressline1'],f['Addressline2'],f['Addressline3'],f['Addressline4']].filter(Boolean).join(', ') || '—';
 }
 
 async function load(){
@@ -244,7 +249,7 @@ function render(q){
   const ql = q.toLowerCase();
   const filtered = q ? allItems.filter(i => {
     const name = (i.fields['Title']||'').toLowerCase();
-    const addr = [i.fields['Address_x0020_line_x0020_1'],i.fields['Address_x0020_line_x0020_2'],i.fields['Address_x0020_line_x0020_3'],i.fields['Address_x0020_line_x0020_4'],i.fields['Address_x0020_line_x0020_5']].join(' ').toLowerCase();
+    const addr = [i.fields['Addressline1'],i.fields['Addressline2'],i.fields['Addressline3'],i.fields['Addressline4'],i.fields['Addressline5']].join(' ').toLowerCase();
     const web = (i.fields['Website']||'').toLowerCase();
     return name.includes(ql) || addr.includes(ql) || web.includes(ql);
   }) : allItems;
@@ -260,7 +265,7 @@ function render(q){
     const f = item.fields;
     const name = f['Title'] || '—';
     const addr = addrLine(f);
-    const postcode = f['Address_x0020_line_x0020_5'] || '—';
+    const postcode = f['Addressline5'] || '—';
     const website = f['Website'] || '';
 
     const tr = document.createElement('tr');
@@ -299,11 +304,11 @@ function openEdit(item){
   document.getElementById('modal-title').textContent = 'Edit Opponent Firm';
   document.getElementById('f-name').value = f['Title'] || '';
   document.getElementById('f-web').value = f['Website'] || '';
-  document.getElementById('f-a1').value = f['Address_x0020_line_x0020_1'] || '';
-  document.getElementById('f-a2').value = f['Address_x0020_line_x0020_2'] || '';
-  document.getElementById('f-a3').value = f['Address_x0020_line_x0020_3'] || '';
-  document.getElementById('f-a4').value = f['Address_x0020_line_x0020_4'] || '';
-  document.getElementById('f-a5').value = f['Address_x0020_line_x0020_5'] || '';
+  document.getElementById('f-a1').value = f['Addressline1'] || '';
+  document.getElementById('f-a2').value = f['Addressline2'] || '';
+  document.getElementById('f-a3').value = f['Addressline3'] || '';
+  document.getElementById('f-a4').value = f['Addressline4'] || '';
+  document.getElementById('f-a5').value = f['Addressline5'] || '';
   document.getElementById('save-msg').textContent = '';
   document.getElementById('modal-overlay').classList.add('open');
 }
