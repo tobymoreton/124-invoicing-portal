@@ -37,11 +37,15 @@ const ALLOWED_EMAILS = [
   'daniel@tmclegal.co.uk',
 ];
 
-// Deletion is irreversible (real Graph DELETE) — restricted to Management only,
-// deliberately narrower than the field-update allowlist above.
+// Deletion is irreversible (real Graph DELETE) and orphans anything pointing at the case.
+// Kept narrower than the field-update allowlist above. Lesley added 2026-08-10 at Toby's
+// request — she books cases in, so she is the one who creates the duplicates that need
+// removing. Admin DOCUMENT deletion (/api/attachmentswrite) is a separate gate and is NOT
+// widened by this.
 const DELETE_ALLOWED_EMAILS = [
   'toby@tmclegal.co.uk',
   'danielle@tmclegal.co.uk',
+  'lesley@tmclegal.co.uk',
 ];
 
 function getCallerEmail(req) {
