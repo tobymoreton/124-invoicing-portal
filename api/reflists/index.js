@@ -114,13 +114,21 @@ function buildFields(list, body) {
     if (body.address4 != null) f['Address4'] = body.address4;
     if (body.address5 != null) f['Address5'] = body.address5;
   } else if (list === 'opponentfirms') {
-    if (body.title    != null) f['Title']                       = body.title;
-    if (body.address1 != null) f['Address_x0020_line_x0020_1'] = body.address1;
-    if (body.address2 != null) f['Address_x0020_line_x0020_2'] = body.address2;
-    if (body.address3 != null) f['Address_x0020_line_x0020_3'] = body.address3;
-    if (body.address4 != null) f['Address_x0020_line_x0020_4'] = body.address4;
-    if (body.address5 != null) f['Address_x0020_line_x0020_5'] = body.address5;
-    if (body.website  != null) f['Website']                     = body.website;
+    // S108: these were written as 'Address_x0020_line_x0020_N' — the DISPLAY name 'Address line 1'
+    // escaped as if it were the internal one. The real internal names have no spaces:
+    // Addressline1..5, confirmed from a bare $expand=fields against the live list 2026-08-06
+    // (281 firms, all carrying Addressline1). Every address ever typed into opponentfirms.html
+    // was written to a field that does not exist, and the same wrong names on the read side
+    // are why that page shows a dash in every Address cell.
+    if (body.title    != null) f['Title']        = body.title;
+    if (body.address1 != null) f['Addressline1'] = body.address1;
+    if (body.address2 != null) f['Addressline2'] = body.address2;
+    if (body.address3 != null) f['Addressline3'] = body.address3;
+    if (body.address4 != null) f['Addressline4'] = body.address4;
+    if (body.address5 != null) f['Addressline5'] = body.address5;
+    // UNCERTAIN: no firm in the live data carries a Website value, so Graph omits the column
+    // entirely and its internal name is unconfirmed. Left as-is rather than guessed at.
+    if (body.website  != null) f['Website']      = body.website;
   } else if (list === 'opponentcws') {
     if (body.title != null) f['Title']              = body.title;
     if (body.phone != null) f['Phone_x0020_number'] = body.phone;
