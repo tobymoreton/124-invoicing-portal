@@ -2470,6 +2470,19 @@ document.getElementById('op-court-add-save').addEventListener('click', async () 
 });
 
 function renderCaseUI(firstPaint) {
+  // S109: take the drafting-fee base from the case's own record before anything is computed.
+  // Until now _settFeeOnDrawn started false on every load, so the Settlement tab valued the
+  // drafting fee on net recovery while the case itself said "Profit costs as drawn" — EXTRACTED
+  // 2026-08-10, that is the value on all 129 open cases. The case record is the authority: on
+  // IA-1741010 it gives £5,357.28, which is exactly what ProvisionalDraftingFee and
+  // Drafting_x0020_fee_x0020_line on that case already say, where the screen showed £5,665.28.
+  // Only an explicit "as assessed" turns it off, so a blank or unrecognised value keeps the
+  // established behaviour rather than silently flipping a case to a different base.
+  if (firstPaint) {
+    const basis = String((caseFields || {})['Drafting_x0020_fee_x0020_basis'] || '').toLowerCase();
+    _settFeeOnDrawn = basis.includes('drawn');
+    _settFeeBasisTouched = false;
+  }
   computeFigures();
   computeInterest();
   renderHeader();
