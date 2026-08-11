@@ -1087,6 +1087,27 @@
             </dt>
             <dd style="padding-top:6px;padding-bottom:6px;"></dd>
           </div>
+          <!-- S109: drafting fee % and basis, live on this screen. They drive the settlement
+               figures, so having to leave for the Billing Info card to change them meant
+               guessing at the effect. Both recalculate the card as you type. The % is saved to
+               the case with Save Changes; the basis is the fee BASE and is the same control as
+               the checkbox above, kept in sync both ways. -->
+          <div class="read-row">
+            <dt style="padding-top:6px;padding-bottom:6px;">Drafting Fee Basis</dt>
+            <dd style="padding-top:6px;padding-bottom:6px;">
+              <select id="inp-sett-fee-basis" style="width:100%;max-width:230px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--white);">
+                <option value="assessed">% of net recovery (as assessed)</option>
+                <option value="drawn">% of costs as drawn (incl TMC time)</option>
+              </select>
+            </dd>
+          </div>
+          <div class="read-row">
+            <dt style="padding-top:6px;padding-bottom:6px;">Drafting Fee %</dt>
+            <dd style="padding-top:6px;padding-bottom:6px;">
+              <input type="number" id="inp-sett-fee-pct" step="0.1" min="0" style="width:110px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;text-align:right;" />
+              <span style="color:var(--grey-mid);font-size:12px;margin-left:4px;">%</span>
+            </dd>
+          </div>
           <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
           <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="r-PctPC">—</dd></div>
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctBill">—</dd></div>
@@ -2080,6 +2101,11 @@ let caseFields = null;
 let computed   = {};
 let interest   = {};
 let _settFeeOnDrawn = false;
+// S109: live drafting-fee % on the Settlement tab. null means "use the saved case value";
+// a number means the user is trying one out and has not saved yet. Kept separate from
+// caseFields so an unsaved experiment never looks like stored data, and so Cancel restores
+// the saved figure by simply clearing it back to null.
+let _settFeePctOverride = null;
 
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '—';
@@ -2592,7 +2618,8 @@ function computeFigures() {
 
   const grossPC           = offerOrSettlement - counsel - disbursements - vatOnDisb - coaDeduct - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
-  const feePctIP       = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
+  const feePctIP       = (_settFeePctOverride !== null) ? _settFeePctOverride
+                                                        : (parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0);
   const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC) : netBeforeDrafting;
   const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
@@ -3842,6 +3869,19 @@ function renderSettlementTab() {
   setText('r-DailyRate', fmt(i.currentDailyRate)); setText('r-TotalInterest', fmt(i.totalInterest)); setText('r-TotalInclCOA', fmt(i.totalInclCOA));
   setText('r-NetAfterDrafting', fmt(c.netAfterDrafting)); setText('r-GrossPCRecovery', fmt(c.grossPC)); setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
   setText('r-DraftingFee', fmt(c.netDraftingFee)); setText('r-PctPC', fmtPct(c.pctPC)); setText('r-PctBill', fmtPct(c.pctBill));
+  // S109: keep the two fee controls showing the values actually being used. The % shows the
+  // unsaved override when there is one, otherwise the saved case value; the basis mirrors the
+  // Include-TMC-time checkbox, which is the same setting under a clearer name.
+  const feePctEl = document.getElementById('inp-sett-fee-pct');
+  if (feePctEl && document.activeElement !== feePctEl) {
+    const shown = (_settFeePctOverride !== null) ? _settFeePctOverride
+                                                 : (parseFloat(f['Fee_x0025__x0028_number_x0029_']) || '');
+    feePctEl.value = shown === '' ? '' : shown;
+  }
+  const basisEl = document.getElementById('inp-sett-fee-basis');
+  if (basisEl) basisEl.value = _settFeeOnDrawn ? 'drawn' : 'assessed';
+  const tmcEl = document.getElementById('inp-sett-include-tmc');
+  if (tmcEl) tmcEl.checked = _settFeeOnDrawn;
 }
 
 // Red alert strip shown at the top of Costs Claimed, Offers, Settlement and Settlement Scenarios
@@ -4005,7 +4045,9 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
 
 // Settlement
 document.getElementById('btn-sett-edit').addEventListener('click', () => tabSetEditMode('sett','tab-settlement'));
-document.getElementById('btn-sett-cancel').addEventListener('click', () => { renderSettlementTab(); tabSetReadMode('sett','tab-settlement'); });
+// S109: Cancel drops any unsaved drafting-fee % so the figures snap back to the saved value,
+// rather than leaving the card showing a fee the case does not actually carry.
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); });
 document.getElementById('btn-sett-save').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
@@ -4015,8 +4057,14 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
     'Settlementamount':'f-Settlementamount','Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
     'ClientPaidExpenses':'f-ClientPaidExpenses','OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  // S109: the drafting fee % is saved from this tab too. Only sent when the user has actually
+  // touched it, so opening Settlement and saving something unrelated never rewrites the fee.
+  if (_settFeePctOverride !== null) fields['Fee_x0025__x0028_number_x0029_'] = _settFeePctOverride;
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
+    // The saved value is now the case value, so drop the override rather than leave a stale
+    // one sitting on top of it.
+    _settFeePctOverride = null;
     try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
     tabSetReadMode('sett','tab-settlement');
   } else btn.disabled = false;
@@ -4285,6 +4333,21 @@ document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlem
 
 document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () => {
   _settFeeOnDrawn = !!(document.getElementById('inp-sett-include-tmc')?.checked);
+  computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
+});
+
+// S109: the fee basis select and the Include-TMC-time checkbox are the same setting, so
+// either one drives _settFeeOnDrawn and the other follows via renderSettlementTab.
+document.getElementById('inp-sett-fee-basis')?.addEventListener('change', () => {
+  _settFeeOnDrawn = document.getElementById('inp-sett-fee-basis').value === 'drawn';
+  computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
+});
+
+// Recalculates as you type. An empty box means "no fee", not "fall back to the saved value" —
+// clearing it should show what the recovery looks like with no drafting fee at all.
+document.getElementById('inp-sett-fee-pct')?.addEventListener('input', () => {
+  const raw = document.getElementById('inp-sett-fee-pct').value;
+  _settFeePctOverride = raw === '' ? 0 : (parseFloat(raw) || 0);
   computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
 });
 
