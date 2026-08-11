@@ -1097,7 +1097,7 @@
             <dd style="padding-top:6px;padding-bottom:6px;">
               <select id="inp-sett-fee-basis" style="width:100%;max-width:230px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--white);">
                 <option value="assessed">% of net recovery (as assessed)</option>
-                <option value="drawn">% of costs as drawn (incl TMC time)</option>
+                <option value="drawn">% of costs as drawn</option>
               </select>
             </dd>
           </div>
@@ -2101,6 +2101,13 @@ let caseFields = null;
 let computed   = {};
 let interest   = {};
 let _settFeeOnDrawn = false;
+// S109b: whether TMC's own drafting time counts towards the drawn fee base. This is a SEPARATE
+// decision from the base itself — "as drawn" and "includes our time" were originally one flag,
+// which meant there was no way to charge on costs as drawn while excluding TMC time. Defaults
+// to true because that is what the single combined flag always did. Only meaningful when the
+// basis is "as drawn"; on net recovery the base is the recovery figure and this has no effect.
+// NOT persisted — there is no field for it, and I am not inventing one without being asked.
+let _settFeeInclTmcTime = true;
 // S109: live drafting-fee % on the Settlement tab. null means "use the saved case value";
 // a number means the user is trying one out and has not saved yet. Kept separate from
 // caseFields so an unsaved experiment never looks like stored data, and so Cancel restores
@@ -2478,10 +2485,14 @@ function renderCaseUI(firstPaint) {
   // Drafting_x0020_fee_x0020_line on that case already say, where the screen showed £5,665.28.
   // Only an explicit "as assessed" turns it off, so a blank or unrecognised value keeps the
   // established behaviour rather than silently flipping a case to a different base.
-  if (firstPaint) {
+  // Runs on every load, not just the first paint. The ?ref= path calls renderCaseUI(!painted),
+  // which is FALSE whenever sessionStorage has already painted the case — gating this on
+  // firstPaint meant a cached load silently kept the default basis instead of the case's own.
+  // Skipped only while the user has an unsaved change in hand, so a background refresh cannot
+  // overwrite what they are part-way through.
+  if (!_settFeeBasisTouched) {
     const basis = String((caseFields || {})['Drafting_x0020_fee_x0020_basis'] || '').toLowerCase();
     _settFeeOnDrawn = basis.includes('drawn');
-    _settFeeBasisTouched = false;
   }
   computeFigures();
   computeInterest();
@@ -2644,7 +2655,9 @@ function computeFigures() {
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = (_settFeePctOverride !== null) ? _settFeePctOverride
                                                         : (parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0);
-  const _drawnFeeBase  = _settFeeOnDrawn ? (claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC) : netBeforeDrafting;
+  const _drawnFeeBase  = _settFeeOnDrawn
+    ? (claimedPC + otherTMCPC + (_settFeeInclTmcTime ? draftingTimeIP + nonVatDraftingIP : 0))
+    : netBeforeDrafting;
   const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
@@ -3904,8 +3917,15 @@ function renderSettlementTab() {
   }
   const basisEl = document.getElementById('inp-sett-fee-basis');
   if (basisEl) basisEl.value = _settFeeOnDrawn ? 'drawn' : 'assessed';
+  // The TMC-time checkbox only bites on the drawn base, so it is greyed out on net recovery
+  // rather than sitting there looking live and doing nothing.
   const tmcEl = document.getElementById('inp-sett-include-tmc');
-  if (tmcEl) tmcEl.checked = _settFeeOnDrawn;
+  if (tmcEl) {
+    tmcEl.checked  = _settFeeInclTmcTime;
+    tmcEl.disabled = !_settFeeOnDrawn;
+    const lbl = tmcEl.closest('label');
+    if (lbl) lbl.style.opacity = _settFeeOnDrawn ? '1' : '0.45';
+  }
 }
 
 // Red alert strip shown at the top of Costs Claimed, Offers, Settlement and Settlement Scenarios
@@ -4358,13 +4378,14 @@ async function generateSettlementPDF() {
 document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlementPDF);
 
 document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () => {
-  _settFeeOnDrawn = !!(document.getElementById('inp-sett-include-tmc')?.checked);
-  _settFeeBasisTouched = true;
+  // S109b: this now controls ONLY whether TMC's drafting time is in the drawn base. It no
+  // longer switches the basis — that is the select's job.
+  _settFeeInclTmcTime = !!(document.getElementById('inp-sett-include-tmc')?.checked);
   computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
 });
 
-// S109: the fee basis select and the Include-TMC-time checkbox are the same setting, so
-// either one drives _settFeeOnDrawn and the other follows via renderSettlementTab.
+// S109: the fee basis select drives the base. The Include-TMC-time checkbox is independent
+// and only bites when the basis is "as drawn".
 document.getElementById('inp-sett-fee-basis')?.addEventListener('change', () => {
   _settFeeOnDrawn = document.getElementById('inp-sett-fee-basis').value === 'drawn';
   _settFeeBasisTouched = true;
