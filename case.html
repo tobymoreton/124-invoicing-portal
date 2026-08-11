@@ -2106,6 +2106,17 @@ let _settFeeOnDrawn = false;
 // caseFields so an unsaved experiment never looks like stored data, and so Cancel restores
 // the saved figure by simply clearing it back to null.
 let _settFeePctOverride = null;
+// S109: set once the user changes the fee basis on the Settlement tab, so Save Changes writes
+// it only when it has actually been touched — same guard as the fee %.
+let _settFeeBasisTouched = false;
+// The two values written to Drafting_x0020_fee_x0020_basis. EXTRACTED 2026-08-10: all 129 open
+// cases hold "Profit costs as drawn", so that half is the established wording and is left
+// exactly as it is. UNCERTAIN: the "as assessed" wording has never appeared in the data, and
+// whether this column is Text or Choice in SharePoint is unconfirmed — if it is a Choice column
+// without this option the save will fail visibly with an error rather than silently, which is
+// the right way round.
+const SETT_BASIS_DRAWN    = 'Profit costs as drawn';
+const SETT_BASIS_ASSESSED = 'Profit costs as assessed';
 
 function fmt(val) {
   if (val === null || val === undefined || val === '') return '—';
@@ -4047,7 +4058,7 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
 document.getElementById('btn-sett-edit').addEventListener('click', () => tabSetEditMode('sett','tab-settlement'));
 // S109: Cancel drops any unsaved drafting-fee % so the figures snap back to the saved value,
 // rather than leaving the card showing a fee the case does not actually carry.
-document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); });
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; _settFeeBasisTouched = false; computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); });
 document.getElementById('btn-sett-save').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
@@ -4060,11 +4071,13 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   // S109: the drafting fee % is saved from this tab too. Only sent when the user has actually
   // touched it, so opening Settlement and saving something unrelated never rewrites the fee.
   if (_settFeePctOverride !== null) fields['Fee_x0025__x0028_number_x0029_'] = _settFeePctOverride;
+  // S109: and the basis, again only when touched.
+  if (_settFeeBasisTouched) fields['Drafting_x0020_fee_x0020_basis'] = _settFeeOnDrawn ? SETT_BASIS_DRAWN : SETT_BASIS_ASSESSED;
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
     // The saved value is now the case value, so drop the override rather than leave a stale
     // one sitting on top of it.
-    _settFeePctOverride = null;
+    _settFeePctOverride = null; _settFeeBasisTouched = false;
     try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
     tabSetReadMode('sett','tab-settlement');
   } else btn.disabled = false;
@@ -4333,6 +4346,7 @@ document.getElementById('btn-gen-pdf').addEventListener('click', generateSettlem
 
 document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () => {
   _settFeeOnDrawn = !!(document.getElementById('inp-sett-include-tmc')?.checked);
+  _settFeeBasisTouched = true;
   computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
 });
 
@@ -4340,6 +4354,7 @@ document.getElementById('inp-sett-include-tmc')?.addEventListener('change', () =
 // either one drives _settFeeOnDrawn and the other follows via renderSettlementTab.
 document.getElementById('inp-sett-fee-basis')?.addEventListener('change', () => {
   _settFeeOnDrawn = document.getElementById('inp-sett-fee-basis').value === 'drawn';
+  _settFeeBasisTouched = true;
   computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab();
 });
 
