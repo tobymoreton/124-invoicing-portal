@@ -64,7 +64,7 @@ const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.u
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
 // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-const BUILD          = 'S82-cal-v5-recur';
+const BUILD          = 'S108-cal-v6-localday';
 
 // Who an entry is FOR — distinct from who created it. Mirrors the portal roster
 // (case.html PERSON_EMAILS) minus David, a leaver: historic data is not an issue
@@ -488,6 +488,29 @@ function addMinutes(hhmm, mins) {
   return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
 }
 
+// A requested day is a LOCAL day. start/end arrive as YYYY-MM-DD meaning Europe/London
+// wall-clock, so they have to be converted to the true UTC instants of local midnight —
+// NOT stamped with 'Z' and handed to Graph as if they were UTC already. Under BST that
+// off-by-one ran the window on to 00:59:59 the following morning, so every all-day entry
+// for TOMORROW (which begins at 23:00Z today) fell inside it. That is why the "Who's in
+// today" strip showed tomorrow's people. (Tracy, 13/08/2026.)
+function londonOffsetMin(d) {
+  const f = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const p = {};
+  f.formatToParts(d).forEach(x => { p[x.type] = x.value; });
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+  return (asUTC - d.getTime()) / 60000;
+}
+function localToUtc(ymd, hms) {
+  // Two passes: the offset is read against a first approximation, then re-read against the
+  // corrected instant, which settles it on the two days a year the clocks move.
+  const naive = Date.parse(ymd + 'T' + hms + 'Z');
+  let inst = new Date(naive - londonOffsetMin(new Date(naive)) * 60000);
+  return new Date(naive - londonOffsetMin(inst) * 60000);
+}
+
 // Default window: the current month, padded a week each side so a month grid's
 // leading/trailing days are not silently empty.
 function monthRange(startQ, endQ) {
@@ -495,7 +518,11 @@ function monthRange(startQ, endQ) {
   const valid = s => /^\d{4}-\d{2}-\d{2}/.test(String(s || ''));
 
   if (valid(startQ) && valid(endQ)) {
-    return { start: iso(new Date(startQ + 'T00:00:00Z')), end: iso(new Date(endQ + 'T23:59:59Z')) };
+    // 00:00:01, not 00:00:00, so that YESTERDAY's all-day entry — which ends at exactly
+    // local midnight — cannot abut the window and be counted as today's. An all-day entry
+    // for the day itself starts at 00:00 and runs to the next midnight, so it still
+    // overlaps and is unaffected.
+    return { start: iso(localToUtc(startQ, '00:00:01')), end: iso(localToUtc(endQ, '23:59:59')) };
   }
   const now = new Date();
   const s   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
