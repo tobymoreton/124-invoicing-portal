@@ -1124,47 +1124,56 @@ function renderAnomalies(){
   hydrateOverdueDraftsmen();
 }
 
-// Sub-line under a big-overdue invoice: what the invoice was actually for. The
-// wording is field_1 ("Work done") on the Line Items list, already in memory as
-// allLineItems, joined on InvoiceIDRef = the invoice number. Duplicates collapsed.
-// The last-action name is left blank here and filled in by hydrateOverdueDraftsmen().
+// Sub-line under a big-overdue invoice: the case's Task, and who last touched it.
+// Both are filled in by hydrateOverdueDraftsmen() — neither is in the invoice payload.
 function overdueSubline(inv){
-  const num = String(inv.OrderDetails||'').trim();
-  const seen = [];
-  allLineItems.forEach(li=>{
-    if (String(li.InvoiceIDRef||'').trim() !== num) return;
-    const w = String(li.WorkDone||'').trim();
-    if (w && seen.indexOf(w) === -1) seen.push(w);
-  });
   const ref = String(inv.Ourref||'').trim();
-  let s = '<div style="font-size:11px;color:var(--grey-mid);margin-top:2px;line-height:1.4;">';
-  s += seen.length ? esc(seen.join(' \u00b7 ')) : '<span style="opacity:.6;">no line items</span>';
-  if (ref) s += '<span class="od-last" data-ref="'+esc(ref)+'" style="opacity:.8;"></span>';
-  s += '</div>';
-  return s;
+  return '<div class="od-meta" data-ref="'+esc(ref)+'" data-drafted="'+esc(String(inv.DraftedByEmail||''))+'"'
+       + ' style="font-size:11px;color:var(--grey-mid);margin-top:2px;line-height:1.4;min-height:14px;"></div>';
 }
 
-// Who logged the most recent case action on each flagged case. One call per case
-// (a dozen at most, admin-only panel), cached for the life of the page. /api/caseactions
-// already returns newest-first, so the top row is the last action; field_18 is the email.
+// Task comes from the Cases list in one preload call, keyed on the text reference.
+// The last action is one /api/caseactions call per flagged case (a dozen at most,
+// admin-only panel) — that endpoint returns newest-first, so the top row is the last
+// action and field_18 is the email. Where a case has no actions at all, fall back to
+// whoever drafted the bill. All cached for the life of the page.
 const _lastActionCache = {};
+let _caseTaskMap = null;
 async function hydrateOverdueDraftsmen(){
-  const spans = Array.prototype.slice.call(document.querySelectorAll('#anomaly-body .od-last'));
-  const refs  = spans.map(s=>s.dataset.ref).filter(Boolean).filter((v,ix,a)=>a.indexOf(v)===ix);
-  for (const ref of refs){
-    if (!(ref in _lastActionCache)){
-      try{
-        const r = await fetch('/api/caseactions?ref='+encodeURIComponent(ref), { headers:{ Accept:'application/json' } });
-        const j = r.ok ? await r.json() : null;
-        const top = (j && Array.isArray(j.value)) ? j.value[0] : null;
-        _lastActionCache[ref] = top ? String((top.fields||{})['field_18']||'') : '';
-      }catch(e){ _lastActionCache[ref] = ''; }
+  const rows = Array.prototype.slice.call(document.querySelectorAll('#anomaly-body .od-meta'));
+  if (!rows.length) return;
+  if (!_caseTaskMap){
+    _caseTaskMap = {};
+    try{
+      const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
+      const j = r.ok ? await r.json() : null;
+      ((j && j.value) || []).forEach(c=>{
+        const f = c.fields || {};
+        const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
+        if (k) _caseTaskMap[k] = String(f['Task']||'').trim();
+      });
+    }catch(e){}
+  }
+  for (const node of rows){
+    const ref  = node.dataset.ref || '';
+    const task = ref ? (_caseTaskMap[ref.toLowerCase()] || '') : '';
+    let who = '';
+    if (ref){
+      if (!(ref in _lastActionCache)){
+        try{
+          const r = await fetch('/api/caseactions?ref='+encodeURIComponent(ref), { headers:{ Accept:'application/json' } });
+          const j = r.ok ? await r.json() : null;
+          const top = (j && Array.isArray(j.value)) ? j.value[0] : null;
+          _lastActionCache[ref] = top ? String((top.fields||{})['field_18']||'') : '';
+        }catch(e){ _lastActionCache[ref] = ''; }
+      }
+      who = _lastActionCache[ref];
     }
-    const email = _lastActionCache[ref];
-    if (!email) continue;
-    spans.filter(s=>s.dataset.ref===ref).forEach(s=>{
-      s.textContent = '  \u2014  last action: '+nameFromEmail(email);
-    });
+    const parts = [];
+    if (task) parts.push(task);
+    if (who) parts.push('last action: '+nameFromEmail(who));
+    else if (node.dataset.drafted) parts.push('bill drafted by: '+nameFromEmail(node.dataset.drafted));
+    node.textContent = parts.join('  \u00b7  ');
   }
 }
 
