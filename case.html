@@ -574,6 +574,11 @@
     .ca-col-date{width:80px;}.ca-col-by{width:56px;}.ca-col-hrs{width:44px;}.ca-col-rate{width:62px;}.ca-col-amt{width:68px;}.ca-col-bil{width:42px;}.ca-col-bld{width:50px;}.ca-col-sched{width:52px;}.ca-col-act{width:30px;}
     .ca-row{border-bottom:1px solid var(--grey-faint);transition:background .12s;}
     .ca-row:hover{background:rgba(201,168,76,.04);}
+    /* S112 - billable rows tint green, non-billable red, at a glance */
+    .ca-bill-yes{background:rgba(22,101,52,.055);}
+    .ca-bill-yes:hover{background:rgba(22,101,52,.10);}
+    .ca-bill-no{background:rgba(153,27,27,.055);}
+    .ca-bill-no:hover{background:rgba(153,27,27,.10);}
     .ca-billed{opacity:.7;}
     .ca-cell{padding:6px 5px;vertical-align:top;font-size:12.5px;color:var(--navy);overflow:hidden;}
     .ca-cell-wd{word-break:break-word;line-height:1.45;white-space:normal;}
@@ -5115,7 +5120,7 @@ function renderCaTable() {
     const amt = caRowValue(f); // S101 — was: stored snapshot if > 0, else hrs × rate
     const billed = !!(f['Billed_x003f_']); const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
     const dateStr = fmtDate(f['field_12'] || f['field_1']); const byName = f['Completedby_x0028_text_x0029_'] || f['field_18'] || ''; const workDone = f['field_2'] || ''; const brief = f['field_9'] || '';
-    const isEditing = caEditingId === id; const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = billed ? 'ca-row ca-billed' : 'ca-row';
+    const isEditing = caEditingId === id; const tr = document.createElement('tr'); tr.dataset.id = id; tr.className = (billed ? 'ca-row ca-billed' : 'ca-row') + (billable ? ' ca-bill-yes' : ' ca-bill-no'); // S112
     if (isEditing) {
       tr.classList.add('ca-editing-row');
       const _briefOpts = ['Preparation/Perusal','Routine letter/email out','Incoming email','Routine telephone call','Timed letter/email','Timed telephone call','Teams/Zoom call','In person hearing','Remote hearing','Mediation'].map(v => '<option' + (v===brief?' selected':'') + '>' + v + '</option>').join('');
