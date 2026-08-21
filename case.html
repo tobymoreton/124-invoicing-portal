@@ -577,6 +577,15 @@
     .ca-billed{opacity:.7;}
     .ca-cell{padding:6px 5px;vertical-align:top;font-size:12.5px;color:var(--navy);overflow:hidden;}
     .ca-cell-wd{word-break:break-word;line-height:1.45;white-space:normal;}
+    /* S111 - expanded Work Done: full text + click-to-edit in place, saves on blur */
+    .ca-wd-inline{width:100%;min-height:24px;padding:4px 5px;border:1px solid transparent;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;line-height:1.45;color:var(--navy);background:transparent;resize:none;overflow:hidden;display:block;box-sizing:border-box;}
+    .ca-wd-inline:hover{border-color:rgba(27,42,74,.20);background:var(--white);}
+    .ca-wd-inline:focus{outline:none;border-color:var(--gold);background:var(--white);}
+    .ca-wd-inline.ca-wd-saving{opacity:.45;}
+    .ca-wd-inline:disabled{border-color:transparent;background:transparent;color:var(--navy);cursor:default;}
+    .ca-expand-btn{border:1px solid rgba(27,42,74,.20);background:var(--white);color:var(--navy);cursor:pointer;padding:3px 10px;border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:11px;font-weight:600;transition:all .12s;white-space:nowrap;}
+    .ca-expand-btn:hover{border-color:var(--navy);background:var(--gold-pale);}
+    .ca-expand-btn.on{background:var(--navy);color:var(--white);border-color:var(--navy);}
     .ca-mono{font-family:'IBM Plex Mono',monospace;font-weight:500;white-space:nowrap;}
     .ca-right{text-align:right;}
     .ca-center{text-align:center;}
@@ -1851,7 +1860,7 @@
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
               <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
-              <span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span>
+              <span style="display:inline-flex;align-items:center;gap:10px;"><span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span><button type="button" id="ca-expand-toggle" class="ca-expand-btn" title="Show full Work Done text and edit it in place">⤡ Expand entries</button></span>
             </div>
             <div>
               <table class="ca-table" id="ca-table">
@@ -4739,6 +4748,7 @@ async function submitAddReminder() {
 }
 
 let caActions = []; let caEditingId = null; let caLoaded = false; let caFetching = false; let caSchedule = new Set();
+let caWdExpanded = false; // S111 - Work Done column: false = 100-char truncation, true = full text + inline edit
 
 // --- Attachments tab (caseAttachments doc library via /api/attachments) ---
 let attFiles = []; let attLoaded = false; let attFetching = false; let attFilter = 'All';
@@ -5140,7 +5150,9 @@ function renderCaTable() {
       const _hasEmail = !!(f['FullEmail'] || '').trim();
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
         <td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${escHtml(brief)}">${escHtml(brief)}</td>
-        <td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>
+        ${caWdExpanded
+          ? `<td class="ca-cell ca-cell-wd"><textarea class="ca-wd-inline" data-id="${id}" rows="1"${billed ? ' disabled' : ''} title="${billed ? 'Billed \u2014 locked' : 'Edit here; saves when you click away'}">${escHtml(workDone)}</textarea></td>`
+          : `<td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>`}
         ${hrsCell}<td class="ca-cell ca-mono ca-right">${rate ? '\u00a3' + fmtN(rate, 2) : '\u2212'}</td>
         <td class="ca-cell ca-mono ca-right">${amt ? fmt(amt) : '\u2212'}</td>
         ${billCell}
@@ -5173,6 +5185,26 @@ function renderCaTable() {
   tbody.querySelectorAll('.ca-units').forEach(sel => { const a = caActions.find(x => x.id === sel.dataset.id); if (a) sel.addEventListener('change', () => setCaUnits(a, parseInt(sel.value, 10), sel)); });
   tbody.querySelectorAll('.ca-bill-inline').forEach(cb => { const a = caActions.find(x => x.id === cb.dataset.id); if (a) cb.addEventListener('change', () => setCaBillable(a, cb.checked, cb)); });
   tbody.querySelectorAll('.ca-sched-check').forEach(chk => { chk.addEventListener('change', () => { if (chk.checked) caSchedule.add(chk.dataset.id); else caSchedule.delete(chk.dataset.id); }); });
+  // S111 - inline Work Done editing while expanded. Autosize on load and as you type; PATCH
+  // workDone only, on blur, and only when the text actually changed. Billed rows render
+  // disabled so already-invoiced narrative can never be edited from here.
+  tbody.querySelectorAll('.ca-wd-inline').forEach(ta => {
+    caWdAutosize(ta);
+    if (ta.disabled) return;
+    ta.dataset.orig = ta.value;
+    ta.addEventListener('input', () => caWdAutosize(ta));
+    ta.addEventListener('blur', () => { const a = caActions.find(x => x.id === ta.dataset.id); if (a) saveCaWorkDoneInline(a, ta); });
+    ta.addEventListener('keydown', e => { if (e.key === 'Escape') { ta.value = ta.dataset.orig; caWdAutosize(ta); ta.blur(); } });
+  });
+  const _expBtn = document.getElementById('ca-expand-toggle');
+  if (_expBtn) {
+    _expBtn.classList.toggle('on', caWdExpanded);
+    _expBtn.textContent = caWdExpanded ? '\u21f2 Collapse entries' : '\u2921 Expand entries';
+    if (!_expBtn.dataset.wired) {
+      _expBtn.dataset.wired = '1';
+      _expBtn.addEventListener('click', () => { caWdExpanded = !caWdExpanded; renderCaTable(); });
+    }
+  }
   tbody.querySelectorAll('.ca-editing-row').forEach(row => {
     const _h = row.querySelector('.ca-edit-hrs'); const _r = row.querySelector('.ca-edit-rate'); const _a = row.querySelector('.ca-edit-amt');
     if (_h && _r && _a) { const _u = () => { _a.textContent = fmt((parseFloat(_h.value)||0)*(parseFloat(_r.value)||0)); }; _h.addEventListener('input', _u); _r.addEventListener('input', _u); }
@@ -5254,6 +5286,29 @@ async function setCaUnits(a, units, selEl) {
     alert('Could not update time: ' + err.message);
   }
 }
+// S111 - grow the inline Work Done box to fit its content so nothing is hidden when expanded.
+function caWdAutosize(ta) { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }
+
+// S111 - save an inline Work Done edit on blur. No-op when unchanged. On failure the box is
+// reverted to the last known-good text rather than left holding an unsaved value.
+async function saveCaWorkDoneInline(a, ta) {
+  const next = ta.value.trim();
+  const prev = (ta.dataset.orig || '');
+  if (next === prev.trim()) return;
+  if (!next) { ta.value = prev; caWdAutosize(ta); alert('Work Done cannot be empty.'); return; }
+  ta.classList.add('ca-wd-saving'); ta.disabled = true;
+  try {
+    const r = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: a.id, workDone: next }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    a.fields = a.fields || {}; a.fields['field_2'] = next;
+    ta.dataset.orig = next; ta.value = next;
+  } catch (err) {
+    ta.value = prev; alert('Could not save Work Done: ' + err.message);
+  } finally {
+    ta.classList.remove('ca-wd-saving'); ta.disabled = false; caWdAutosize(ta);
+  }
+}
+
 async function setCaBillable(a, checked, cbEl) {
   cbEl.disabled = true;
   try {
