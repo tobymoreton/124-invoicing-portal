@@ -673,9 +673,26 @@ async function loadFigures(fields) {
   const otherTMCPC           = parseFloat(fields['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const tmcPC                = tmcDraftingTime + otherTMCPC;
   const laProfitCosts        = parseFloat(fields.LegalAidOnlyProfitCosts) || 0;
-  const grossRecovered       = parseFloat(fields.GrossProfitCostsRecoveredAf) || 0;
+  // S110: "as recovered" = NET Profit Costs Recovery (before drafting fee), computed here
+  // identically to case.html's computeFigures(). The SP field GrossProfitCostsRecoveredAf
+  // holds an AFTER-drafting-fee figure, so basing the fee on it made the fee feed on its
+  // own output. That field is no longer read.
   const vatPctClaimed        = parseFloat(fields.VAT_x0020__x0025__x0020_Claimed) || 0;
-  const profitCostsRecovered = vatPctClaimed === 0 ? grossRecovered : Math.round(grossRecovered / 6 * 5 * 100) / 100;
+  const figureForSheet       = parseFloat(fields.FigureForSettlementSheet) || 0;
+  const settlementAmt        = parseFloat(fields.Settlementamount) || 0;
+  const lastOffer            = parseFloat(fields.PayingPartysLastOffer) || 0;
+  const offerOrSettlement    = figureForSheet > 0 ? figureForSheet : settlementAmt > 0 ? settlementAmt : lastOffer;
+  const counselPayable       = parseFloat(fields.Counselsfeespayable) || 0;
+  const disbClaimed          = parseFloat(fields.DisbursementsClaimed) || 0;
+  const vatOnDisbClaimed     = parseFloat(fields.VATonDisbursements) || 0;
+  const totalCOAFig          = (parseFloat(fields.Costsofassessment) || 0) + (parseFloat(fields.ClientPaidExpenses) || 0);
+  const offerExclCOA         = fields.Offerincludescostsofsssessment_x === true || fields.Offerincludescostsofsssessment_x === 'true' || fields.Offerincludescostsofsssessment_x === 1;
+  const coaDeduct            = offerExclCOA ? 0 : totalCOAFig;
+  const otherTMCInv          = parseFloat(fields.OtherTMCInvoices_ex_x0020_bill) || 0;
+  const grossRecovered       = offerOrSettlement > 0
+    ? offerOrSettlement - counselPayable - disbClaimed - vatOnDisbClaimed - coaDeduct - otherTMCInv
+    : 0;
+  const profitCostsRecovered = Math.round((vatPctClaimed === 0 ? grossRecovered : grossRecovered / (1 + vatPctClaimed)) * 100) / 100;
   const basis                = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
   const vatOnDrafting        = fields.VatOnDraftingFee_x003f_ !== false;
   const wipLineOverride      = fields.TimedWorkLineOverride || '';
