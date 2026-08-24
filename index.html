@@ -725,8 +725,9 @@ async function load() {
     writeCache(callerEmail);
     if (isAdmin) loadPOA();
     // S113: pull the case Task map, then repaint the table so Type badges gain
-    // their -Task suffix. Deliberately not awaited before first paint.
-    if (isAdmin || isFinance) ensureCaseTasks().then(() => renderTable());
+    // their -Task-Initials suffix. On a warm sessionStorage cache the maps hydrate
+    // synchronously inside the call, so repaint immediately as well.
+    if (isAdmin || isFinance){ ensureCaseTasks().then(() => renderTable()); if (_caseTaskMap) renderTable(); }
 
     // S81: the default /api/invoices response is a 12-month + outstanding window
     // (509 of 3,014 rows measured 2026-07-18) so the page paints fast. Admin and
@@ -1167,24 +1168,39 @@ let _caseAssigneeByRef = null;
 let _caseTaskPromise = null;
 function ensureCaseTasks(){
   if (_caseTaskPromise) return _caseTaskPromise;
+  // S113: instant badges on repeat loads. The live pull walks 2,000+ cases and takes
+  // seconds, so on a cold paint the -Task-Initials segments popped in late and read
+  // as broken. Hydrate the maps synchronously from a 30-min sessionStorage cache,
+  // then ALWAYS refresh live underneath (stale-while-revalidate, same pattern as the
+  // invoice cache). A failed live pull leaves the cached maps in place.
+  try{
+    const c = JSON.parse(sessionStorage.getItem('tmc_casetasks')||'null');
+    if (c && Date.now() - c.cachedAt < 30*60*1000){
+      _caseTaskMap = c.t || {}; _caseIdByRef = c.i || {}; _caseAssigneeByRef = c.a || {};
+      Object.assign(ROSTER_INITIALS, c.n || {});
+    }
+  }catch(e){}
   _caseTaskPromise = (async () => {
-    _caseTaskMap = {};
-    _caseIdByRef = {};
-    _caseAssigneeByRef = {};
     try{
       const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
       const j = r.ok ? await r.json() : null;
+      const t = {}, iM = {}, aM = {};
       ((j && j.value) || []).forEach(c=>{
         const f = c.fields || {};
         const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
         if (k){
-          _caseTaskMap[k] = String(f['Task']||'').trim();
-          _caseIdByRef[k] = c.id;
+          t[k]  = String(f['Task']||'').trim();
+          iM[k] = c.id;
           const rawA = String(f['assignedToTextValue']||'').trim();
-          _caseAssigneeByRef[k] = rawA;
+          aM[k] = rawA;
           _learnInitials(rawA);
         }
       });
+      if (Object.keys(t).length){
+        _caseTaskMap = t; _caseIdByRef = iM; _caseAssigneeByRef = aM;
+        try{ sessionStorage.setItem('tmc_casetasks',
+          JSON.stringify({ cachedAt: Date.now(), t: t, i: iM, a: aM, n: ROSTER_INITIALS })); }catch(e){}
+      }
     }catch(e){}
     return _caseTaskMap;
   })();
