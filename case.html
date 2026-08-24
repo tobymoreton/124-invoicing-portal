@@ -831,6 +831,97 @@
 })();
 </script>
 
+<!-- ═══ Find Case bar (S113) ════════════════════════════════════════════════
+     Identical block in cases.html, case.html and admin.html - change all three
+     together. Searches ALL open cases (name / reference / firm) from
+     /api/cases?preload=1, fetched lazily on first focus (the browser has usually
+     cached that URL already - max-age=300 - so this costs nothing extra).
+     Case names are COMPOSED (surname + ref) - never trust the PA-maintained
+     Title (S77 standing rule). Closed cases are not searched here. -->
+<div id="findcase-bar" style="background:var(--navy,#001B44);border-bottom:1px solid rgba(201,168,76,.35);padding:12px 32px;">
+  <div style="max-width:820px;margin:0 auto;position:relative;">
+    <svg viewBox="0 0 24 24" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;fill:none;stroke:var(--gold,#C9A84C);stroke-width:2.2;pointer-events:none;"><circle cx="10.5" cy="10.5" r="7"/><line x1="15.8" y1="15.8" x2="21" y2="21"/></svg>
+    <input type="text" id="findcase-input" placeholder="Find case &mdash; name, reference or firm&hellip;" autocomplete="off" spellcheck="false"
+      style="width:100%;box-sizing:border-box;padding:12px 18px 12px 44px;font-size:15px;font-family:inherit;font-weight:500;border:1.5px solid rgba(201,168,76,.55);border-radius:8px;background:rgba(255,255,255,.97);color:var(--navy,#001B44);outline:none;" />
+    <div id="findcase-results" role="listbox" style="display:none;position:absolute;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid rgba(27,42,74,.18);border-radius:8px;box-shadow:0 12px 32px rgba(0,27,68,.28);max-height:360px;overflow-y:auto;z-index:500;"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var input=document.getElementById('findcase-input'), box=document.getElementById('findcase-results');
+  if(!input||!box) return;
+  var cases=null, loading=false, sel=-1, shown=[];
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  // Same composition as caseDisplayName() elsewhere - duplicated so this block
+  // stays self-contained and load-order independent (S77: compose, never trust Title).
+  function fcName(f){
+    var party=((f['Andothers_x003f_']?f['MultiClaimants']:f['OurPartySurname'])||'').trim();
+    var ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
+    var composed=[party,ref].filter(Boolean).join('-');
+    return composed||f['CaseNameForOpenCases']||f['Title']||ref||'';
+  }
+  function load(){
+    if(cases||loading) return; loading=true;
+    fetch('/api/cases?preload=1',{credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function(d){ loading=false; cases=d.value||[]; if(document.activeElement===input) render(input.value.trim()); })
+      .catch(function(){ loading=false; cases=[];
+        box.innerHTML='<div style="padding:14px 16px;font-size:13px;color:#8b1f1f;">Could not load cases &mdash; try again shortly</div>';
+        box.style.display='block'; cases=null; });
+  }
+  function open(){ box.style.display='block'; }
+  function close(){ box.style.display='none'; sel=-1; }
+  function highlight(){
+    var items=box.querySelectorAll('.fc-item');
+    items.forEach(function(el,i){ el.style.background = i===sel ? 'rgba(201,168,76,.14)' : ''; });
+    if(sel>-1&&items[sel]) items[sel].scrollIntoView({block:'nearest'});
+  }
+  function go(ref){ if(ref) window.location.href='/case.html?ref='+encodeURIComponent(ref); }
+  function render(q){
+    if(cases===null){ load(); box.innerHTML='<div style="padding:14px 16px;font-size:13px;color:#6B7280;">Loading cases&hellip;</div>'; open(); return; }
+    var needle=q.toLowerCase();
+    shown=(needle?cases.filter(function(c){
+      var f=c.fields||{};
+      return fcName(f).toLowerCase().indexOf(needle)>-1
+          || String(f['Ourreference_x0028_text_x0029_']||'').toLowerCase().indexOf(needle)>-1
+          || String(f['Firm_x0028_text_x0029_']||'').toLowerCase().indexOf(needle)>-1;
+    }):cases.slice()).sort(function(a,b){
+      var na=fcName(a.fields||{}).toLowerCase(), nb=fcName(b.fields||{}).toLowerCase();
+      return na<nb?-1:na>nb?1:0;
+    }).slice(0,12);
+    sel=-1;
+    if(!shown.length){
+      box.innerHTML='<div style="padding:14px 16px;font-size:13px;color:#6B7280;">No open cases match &ldquo;'+esc(q)+'&rdquo; &mdash; closed cases are not searched here</div>';
+      open(); return;
+    }
+    box.innerHTML='';
+    shown.forEach(function(c){
+      var f=c.fields||{}, ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
+      var firm=(f['Firm_x0028_text_x0029_']||'').trim(), st=(f['StatusMirror']||f['Status']||'').trim();
+      var div=document.createElement('div');
+      div.className='fc-item'; div.setAttribute('role','option');
+      div.style.cssText='padding:10px 16px;cursor:pointer;border-bottom:1px solid rgba(27,42,74,.07);display:flex;justify-content:space-between;align-items:baseline;gap:12px;';
+      div.innerHTML='<span style="font-size:13.5px;font-weight:600;color:var(--navy,#001B44);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(fcName(f))+'</span>'
+        +'<span style="font-size:11px;color:#6B7280;font-family:\'IBM Plex Mono\',monospace;white-space:nowrap;">'+esc(firm?firm+(st?' &middot; ':''):'')+esc(st)+'</span>';
+      div.addEventListener('mousedown',function(e){ e.preventDefault(); go(ref); });
+      div.addEventListener('mousemove',function(){ sel=shown.indexOf(c); highlight(); });
+      box.appendChild(div);
+    });
+    open(); highlight();
+  }
+  input.addEventListener('focus',function(){ load(); if(input.value.trim()||cases) render(input.value.trim()); });
+  input.addEventListener('input',function(){ render(input.value.trim()); });
+  input.addEventListener('keydown',function(e){
+    if(box.style.display==='none') return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); if(shown.length){ sel=Math.min(sel+1,shown.length-1); highlight(); } }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); if(shown.length){ sel=Math.max(sel-1,0); highlight(); } }
+    else if(e.key==='Enter'){ e.preventDefault(); if(shown.length){ var c=shown[sel>-1?sel:0], f=c.fields||{}; go((f['Ourreference_x0028_text_x0029_']||'').trim()); } }
+    else if(e.key==='Escape'){ close(); input.blur(); }
+  });
+  document.addEventListener('click',function(e){ if(!e.target.closest||!e.target.closest('#findcase-bar')) close(); });
+})();
+</script>
+
 <div id="loading"><div class="state-block"><div class="spinner"></div><h3>Loading case…</h3></div></div>
 <div id="error" style="display:none"><div class="state-block"><h3 id="error-title">Case not found</h3><p id="error-msg"></p></div></div>
 
