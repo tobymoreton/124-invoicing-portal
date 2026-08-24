@@ -2621,9 +2621,11 @@ function computeFigures() {
   const disbursements  = parseFloat(f['DisbursementsClaimed'])            || 0;
   const vatOnDisb      = parseFloat(f['VATonDisbursements'])              || 0;
   // S110: the stored COA figure ALWAYS includes TMC's own VAT at flat 20% (Toby, 2026-08-24).
-  // The settlement sheet shows and deducts the NET figure - the instructing solicitors recover
-  // the VAT in their VAT return, so it is not a true deduction from the settlement.
-  const coa            = Math.round((parseFloat(f['Costsofassessment']) || 0) / 1.2 * 100) / 100;
+  // The sheet shows/deducts it re-grossed at the CASE's claimed VAT rate: net (/1.2) x (1 + case
+  // VAT %). At 20% that is the stored figure unchanged; at 0% it is the net figure - the
+  // solicitors recover that VAT in their VAT return, so it is not a true deduction.
+  const _vatPctForCOA  = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  const coa            = Math.round((parseFloat(f['Costsofassessment']) || 0) / 1.2 * (1 + _vatPctForCOA) * 100) / 100;
   const clientExpenses = parseFloat(f['ClientPaidExpenses'])               || 0;
   const totalCOA       = coa + clientExpenses;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
@@ -4200,7 +4202,8 @@ document.getElementById('btn-calc-coa').addEventListener('click', (e) => { e.sto
 document.addEventListener('click', () => coaPicker.classList.remove('open'));
 
 function _updateTotalCOADisplay() {
-  const tmcCOA = Math.round((parseFloat(document.getElementById('f-Costsofassessment')?.value) || 0) / 1.2 * 100) / 100; // S110: input holds gross, display net
+  const _coaVatPct = parseFloat(caseFields['VAT_x0020__x0025__x0020_Claimed']) || 0; // S110
+  const tmcCOA = Math.round((parseFloat(document.getElementById('f-Costsofassessment')?.value) || 0) / 1.2 * (1 + _coaVatPct) * 100) / 100; // S110: input holds gross at 20%, display at case VAT rate
   const exp    = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value)  || 0;
   setText('r-TotalCOA', fmt(tmcCOA + exp));
 }
@@ -4225,7 +4228,8 @@ document.querySelectorAll('.coa-opt').forEach(btn => {
       const coaIncVAT = Math.round(base * 1.2 * 100) / 100;
       document.getElementById('f-Costsofassessment').value = coaIncVAT || '';
       const _exp = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
-      setText('r-TotalCOA', fmt(Math.round(base * 100) / 100 + _exp)); // S110: display net
+      const _coaVatPct = parseFloat(caseFields['VAT_x0020__x0025__x0020_Claimed']) || 0; // S110
+      setText('r-TotalCOA', fmt(Math.round(base * (1 + _coaVatPct) * 100) / 100 + _exp)); // S110: display at case VAT rate
       // 2026-08-03: /api/coa no longer values a timed entry at zero just because it has
       // no rate - it reports them as unratedCount/unratedHours instead. While that is
       // above zero the COA figure is an UNDERSTATEMENT, so say so, and leave the message
