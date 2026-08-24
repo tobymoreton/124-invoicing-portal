@@ -350,7 +350,44 @@ function renderStatements() {
   table.style.display = '';
 }
 
-function printStatement(clientName) {
+// ── Case Task lookup (S113) — same helpers as index.html; change both together. ──
+// The case's CURRENT Task, live — not a snapshot of the task when the invoice issued.
+let _caseTaskMap = null;
+let _caseTaskPromise = null;
+function ensureCaseTasks(){
+  if (_caseTaskPromise) return _caseTaskPromise;
+  _caseTaskPromise = (async () => {
+    _caseTaskMap = {};
+    try{
+      const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
+      const j = r.ok ? await r.json() : null;
+      ((j && j.value) || []).forEach(c=>{
+        const f = c.fields || {};
+        const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
+        if (k) _caseTaskMap[k] = String(f['Task']||'').trim();
+      });
+    }catch(e){}
+    return _caseTaskMap;
+  })();
+  return _caseTaskPromise;
+}
+function taskForRef(ref){
+  if (!_caseTaskMap || !ref) return '';
+  return _caseTaskMap[String(ref).trim().toLowerCase()] || '';
+}
+function taskShort(t){
+  const s = String(t||'').toLowerCase();
+  if (!s) return '';
+  if (s.includes('budget'))   return 'Budget';
+  if (s.includes('schedule')) return 'Schedule';
+  if (s.includes('replies') || s.includes('reply')) return 'Replies';
+  if (s.includes('dispute'))  return 'PoDs';
+  if (s.includes('bill'))     return 'Bill';
+  const w = String(t).trim().split(/\s+/)[0];
+  return w.length > 12 ? w.slice(0,12) : w;
+}
+
+async function printStatement(clientName) {
   const today = new Date(); today.setHours(0,0,0,0);
   const invoices = allInvoices.filter(inv => {
     const s = normalizeStatus(inv, today);
@@ -359,6 +396,7 @@ function printStatement(clientName) {
       && (parseFloat(inv.AmountDue)||0) > 0;
   }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
   if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+  await ensureCaseTasks();   // S113: Task column on the statement
 
   const groups = {};
   invoices.forEach(inv => {
@@ -382,6 +420,7 @@ function printStatement(clientName) {
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Ourref||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Theirref||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;max-width:220px;">${inv.Casename||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${taskShort(taskForRef(inv.Ourref))||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:center;">${fd(inv.InvoiceDate)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${f(inv.AmountDue)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${paid>0?f(paid):'£0.00'}</td>
@@ -397,6 +436,7 @@ function printStatement(clientName) {
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUR REF</th>
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">YOUR REF</th>
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">CASE</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">TASK</th>
           <th style="padding:8px 10px;text-align:center;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE DATE</th>
           <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">AMOUNT INVOICED (£)</th>
           <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">PAYMENTS RECEIVED (£)</th>
@@ -404,7 +444,7 @@ function printStatement(clientName) {
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr style="background:#f0ede6;">
-          <td colspan="7" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
+          <td colspan="8" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
           <td style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;color:#1B2A4A;">${f(grpTotal)}</td>
         </tr></tfoot>
       </table>

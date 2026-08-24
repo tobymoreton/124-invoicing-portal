@@ -724,6 +724,9 @@ async function load() {
     renderAllData(isAdmin, isFinance);
     writeCache(callerEmail);
     if (isAdmin) loadPOA();
+    // S113: pull the case Task map, then repaint the table so Type badges gain
+    // their -Task suffix. Deliberately not awaited before first paint.
+    if (isAdmin || isFinance) ensureCaseTasks().then(() => renderTable());
 
     // S81: the default /api/invoices response is a 12-month + outstanding window
     // (509 of 3,014 rows measured 2026-07-18) so the page paints fast. Admin and
@@ -806,6 +809,9 @@ function renderTable() {
     const laip   = (inv.LAorIP||'').trim();
     const laipShort = laip === 'Legal Aid' ? 'LA' : laip === 'Inter Partes' ? 'IP' : (laip || null);
     const laipCls   = laip === 'Legal Aid' ? 'type-LA' : laip === 'Inter Partes' ? 'type-IP' : 'type-Other';
+    // S113: Type badge carries the case's CURRENT Task (live, not a snapshot at issue)
+    const invTask   = taskShort(taskForRef(inv.Ourref));
+    const typeLabel = laipShort ? (invTask ? laipShort + '-' + invTask : laipShort) : (invTask || null);
     return `<tr class="${inv._id===activeId?'active-row':''}${laip==='Legal Aid'?' la-row':''}"
         onclick="openDrawer('${esc(inv._id)}')" tabindex="0"
         onkeydown="if(event.key==='Enter')openDrawer('${esc(inv._id)}')">
@@ -817,7 +823,7 @@ function renderTable() {
       <td class="num">${fmtAmt(inv.AmountDue)}</td>
       <td class="num${out>0?' col-outstanding-nonzero':''}">${fmtAmt(inv.AmountOutstanding)}</td>
       <td><span class="status-chip ${chipClass(status)}">${esc(status.replace('-',' '))}</span></td>
-      <td>${laipShort?`<span class="type-badge ${laipCls}">${esc(laipShort)}</span>`:'—'}</td>
+      <td>${typeLabel?`<span class="type-badge ${laipCls}">${esc(typeLabel)}</span>`:'—'}</td>
       <td><button class="stmt-btn" onclick="event.stopPropagation();printStatement('${esc(inv.VendorName||'')}')">Statement</button></td>
     </tr>`;
   }).join('');
@@ -885,6 +891,7 @@ function openDrawer(id) {
       <dt>Case Name</dt><dd>${esc(inv.Casename||'—')}</dd>
       <dt>Drafted By</dt><dd>${esc(inv.DraftedByEmail||'—')}</dd>
       <dt>Invoice Type</dt><dd>${esc(inv.Invoicetype||'—')}</dd>
+      <dt>Case Task</dt><dd>${taskSelectHtml(inv.Ourref)}</dd>
       <dt>LA / IP</dt><dd>${inv.LAorIP?`<span class="type-badge ${laip==='Legal Aid'?'type-LA':laip==='Inter Partes'?'type-IP':'type-Other'}">${esc(laip==='Legal Aid'?'LA':laip==='Inter Partes'?'IP':laip)}</span>`:'—'}</dd>
       <dt>Drafting Fee</dt><dd class="mono">${fmtAmtFull(inv.DraftingFeeElement)}</dd>
       <dt>Invoice PDF</dt><dd>${inv.FileUrl?`<a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Open in SharePoint ↗</a>`:'—'}</dd>
@@ -1109,7 +1116,7 @@ function renderAnomalies(){
       + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
       + hits.map(i=>{
           const o=parseFloat(i.AmountOutstanding)||0;
-          const extra = r.key==='bigOverdue' ? overdueSubline(i) : '';
+          const extra = anomalySubline(i);
           return '<tr style="border-top:1px solid var(--grey-line,#eee);cursor:pointer;" onclick="openDrawer(\''+esc(i._id)+'\')">'
             + '<td style="padding:5px 8px 5px 0;font-variant-numeric:tabular-nums;vertical-align:top;">'+esc(i.OrderDetails||'(draft)')+'</td>'
             + '<td style="padding:5px 8px 5px 0;">'+esc(i.Casename||'')+extra+'</td>'
@@ -1124,12 +1131,21 @@ function renderAnomalies(){
   hydrateOverdueDraftsmen();
 }
 
-// Sub-line under a big-overdue invoice: the case's Task, and who last touched it.
-// Both are filled in by hydrateOverdueDraftsmen() — neither is in the invoice payload.
-function overdueSubline(inv){
+// S113: sub-line under EVERY flagged invoice (was big-overdue only): Task chip
+// (hydrated), then Client · Inv date (both straight from the invoice payload), then
+// last action (hydrated). Task and last action are filled in by
+// hydrateOverdueDraftsmen() — neither is in the invoice payload.
+function anomalySubline(inv){
   const ref = String(inv.Ourref||'').trim();
+  const bits = [];
+  if (inv.VendorName)  bits.push(esc(inv.VendorName));
+  if (inv.InvoiceDate) bits.push(esc(fmtDate(inv.InvoiceDate)));
   return '<div class="od-meta" data-ref="'+esc(ref)+'" data-drafted="'+esc(String(inv.DraftedByEmail||''))+'"'
-       + ' style="font-size:11px;color:var(--grey-mid);margin-top:2px;line-height:1.4;min-height:14px;"></div>';
+       + ' style="font-size:11px;color:var(--grey-mid);margin-top:2px;line-height:1.6;min-height:14px;">'
+       + '<span class="od-task" style="display:inline-block;background:var(--gold-pale);color:#7C5A1E;'
+       + 'border-radius:3px;padding:1px 7px;font-weight:700;font-size:10px;letter-spacing:.05em;'
+       + 'text-transform:uppercase;margin-right:7px;"></span>'
+       + '<span class="od-rest">'+bits.join('  \u00b7  ')+'</span></div>';
 }
 
 // Task comes from the Cases list in one preload call, keyed on the text reference.
@@ -1139,24 +1155,111 @@ function overdueSubline(inv){
 // whoever drafted the bill. All cached for the life of the page.
 const _lastActionCache = {};
 let _caseTaskMap = null;
-async function hydrateOverdueDraftsmen(){
-  const rows = Array.prototype.slice.call(document.querySelectorAll('#anomaly-body .od-meta'));
-  if (!rows.length) return;
-  if (!_caseTaskMap){
+let _caseIdByRef = null;
+// ── Case Task lookup (S113) ─────────────────────────────────────────────────
+// One preload call to /api/cases, keyed on the text reference. NOTE: this is the
+// case's CURRENT Task — live, not a snapshot of what the task was when the invoice
+// was issued. A case that has moved on (Budgeting → Bill) shows its present task
+// against old invoices. Deliberate: the invoice payload carries no task of its own.
+let _caseTaskPromise = null;
+function ensureCaseTasks(){
+  if (_caseTaskPromise) return _caseTaskPromise;
+  _caseTaskPromise = (async () => {
     _caseTaskMap = {};
+    _caseIdByRef = {};
     try{
       const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
       const j = r.ok ? await r.json() : null;
       ((j && j.value) || []).forEach(c=>{
         const f = c.fields || {};
         const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
-        if (k) _caseTaskMap[k] = String(f['Task']||'').trim();
+        if (k){ _caseTaskMap[k] = String(f['Task']||'').trim(); _caseIdByRef[k] = c.id; }
       });
     }catch(e){}
+    return _caseTaskMap;
+  })();
+  return _caseTaskPromise;
+}
+function taskForRef(ref){
+  if (!_caseTaskMap || !ref) return '';
+  return _caseTaskMap[String(ref).trim().toLowerCase()] || '';
+}
+// Short label for badges/columns: 'Bill of Costs' → 'Bill', 'Budgeting' → 'Budget',
+// 'Schedule of Costs' → 'Schedule'. Unrecognised tasks show their first word rather
+// than being hidden — an unfamiliar label beats a silent blank.
+function taskShort(t){
+  const s = String(t||'').toLowerCase();
+  if (!s) return '';
+  if (s.includes('budget'))   return 'Budget';
+  if (s.includes('schedule')) return 'Schedule';
+  if (s.includes('replies') || s.includes('reply')) return 'Replies';
+  if (s.includes('dispute'))  return 'PoDs';
+  if (s.includes('bill'))     return 'Bill';
+  const w = String(t).trim().split(/\s+/)[0];
+  return w.length > 12 ? w.slice(0,12) : w;
+}
+// S113: editable Task. The canonical option list mirrors case.html's Book In Task
+// dropdown — change both together. A legacy value already on the case (e.g.
+// 'Budgeting', 'Schedule of Costs') is kept as a selectable option so opening the
+// dropdown never silently discards what the case currently says.
+const TASK_OPTIONS = ['Bill of Costs','Points of Dispute','Replies','Budget','Precedent H','Other'];
+function taskSelectHtml(ref){
+  const key = String(ref||'').trim().toLowerCase();
+  const cur = taskForRef(ref);
+  const id  = _caseIdByRef ? _caseIdByRef[key] : null;
+  if (!id) return esc(cur||'—');   // task map not loaded yet, or no matching case — read-only
+  const opts = TASK_OPTIONS.slice();
+  if (cur && !opts.includes(cur)) opts.unshift(cur);
+  return '<select class="task-edit" data-ref="'+esc(String(ref))+'" data-caseid="'+esc(String(id))+'"'
+       + ' onchange="saveCaseTask(this)"'
+       + ' style="padding:5px 8px;border:1.5px solid var(--grey-light);border-radius:4px;'
+       + 'font-family:\'IBM Plex Sans\',sans-serif;font-size:12.5px;color:var(--navy);'
+       + 'background:var(--white);outline:none;max-width:220px;">'
+       + '<option value=""'+(cur?'':' selected')+'>— none —</option>'
+       + opts.map(o=>'<option'+(o===cur?' selected':'')+'>'+esc(o)+'</option>').join('')
+       + '</select><span class="task-edit-msg" style="font-size:11px;margin-left:8px;"></span>';
+}
+// Writes the corrected Task back to the CASE via /api/caseupdate — the same write
+// case.html's Book In edit makes, so no new field and no new consumer. On failure the
+// visible choice reverts; nothing is assumed saved without a 2xx.
+async function saveCaseTask(sel){
+  const ref  = sel.dataset.ref;
+  const id   = sel.dataset.caseid;
+  const val  = sel.value;
+  const prev = taskForRef(ref);
+  const msg  = sel.nextElementSibling;
+  sel.disabled = true;
+  if (msg){ msg.textContent = 'Saving\u2026'; msg.style.color = 'var(--grey-mid)'; }
+  try{
+    const r = await fetch('/api/caseupdate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: id, fields: { Task: val || null } }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _caseTaskMap[String(ref).trim().toLowerCase()] = val;
+    if (msg){ msg.textContent = 'Saved'; msg.style.color = 'var(--paid)'; }
+    renderTable();
+    renderAnomalies();
+  }catch(e){
+    if (prev !== undefined) sel.value = prev || '';
+    if (msg){ msg.textContent = 'Failed \u2014 not saved'; msg.style.color = 'var(--overdue)'; }
+  }finally{
+    sel.disabled = false;
   }
+}
+async function hydrateOverdueDraftsmen(){
+  const rows = Array.prototype.slice.call(document.querySelectorAll('#anomaly-body .od-meta'));
+  if (!rows.length) return;
+  await ensureCaseTasks();
   for (const node of rows){
     const ref  = node.dataset.ref || '';
-    const task = ref ? (_caseTaskMap[ref.toLowerCase()] || '') : '';
+    const task = taskShort(taskForRef(ref));
+    const taskEl = node.querySelector('.od-task');
+    if (taskEl){
+      if (task) taskEl.textContent = task;
+      else taskEl.style.display = 'none';
+    }
     let who = '';
     if (ref){
       if (!(ref in _lastActionCache)){
@@ -1169,11 +1272,10 @@ async function hydrateOverdueDraftsmen(){
       }
       who = _lastActionCache[ref];
     }
-    const parts = [];
-    if (task) parts.push(task);
-    if (who) parts.push('last action: '+nameFromEmail(who));
-    else if (node.dataset.drafted) parts.push('bill drafted by: '+nameFromEmail(node.dataset.drafted));
-    node.textContent = parts.join('  \u00b7  ');
+    const restEl = node.querySelector('.od-rest');
+    const add = who ? 'last action: '+nameFromEmail(who)
+              : (node.dataset.drafted ? 'bill drafted by: '+nameFromEmail(node.dataset.drafted) : '');
+    if (restEl && add) restEl.textContent = (restEl.textContent ? restEl.textContent + '  \u00b7  ' : '') + add;
   }
 }
 
@@ -1728,9 +1830,10 @@ function statementInvoices(clientName) {
   }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
 }
 
-function printStatement(clientName) {
+async function printStatement(clientName) {
   const invoices = statementInvoices(clientName);
   if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+  await ensureCaseTasks();   // S113: Task column on the statement
 
   const groups = {};
   invoices.forEach(inv => {
@@ -1754,6 +1857,7 @@ function printStatement(clientName) {
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Ourref||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Theirref||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;max-width:220px;">${inv.Casename||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${taskShort(taskForRef(inv.Ourref))||'—'}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:center;">${fd(inv.InvoiceDate)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${f(inv.AmountDue)}</td>
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${paid>0?f(paid):'£0.00'}</td>
@@ -1769,6 +1873,7 @@ function printStatement(clientName) {
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUR REF</th>
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">YOUR REF</th>
           <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">CASE</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">TASK</th>
           <th style="padding:8px 10px;text-align:center;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE DATE</th>
           <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">AMOUNT INVOICED (£)</th>
           <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">PAYMENTS RECEIVED (£)</th>
@@ -1776,7 +1881,7 @@ function printStatement(clientName) {
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr style="background:#f0ede6;">
-          <td colspan="7" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
+          <td colspan="8" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
           <td style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;color:#1B2A4A;">${f(grpTotal)}</td>
         </tr></tfoot>
       </table>
@@ -1841,12 +1946,13 @@ async function exportStatementExcel(clientName) {
   if (typeof ExcelJS === 'undefined') { alert('Excel library did not load — refresh the portal and try again.'); return; }
   const invoices = statementInvoices(clientName);
   if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+  await ensureCaseTasks();   // S113: Task column on the export
 
   const NAVY = 'FF1B2A4A', GOLD = 'FFC9A84C', BAND = 'FFF5F5F8';
   const MONEY = '\u00a3#,##0.00';
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Statement');
-  ws.columns = [{width:12},{width:12},{width:16},{width:34},{width:14},{width:16},{width:18},{width:16}];
+  ws.columns = [{width:12},{width:12},{width:16},{width:34},{width:12},{width:14},{width:16},{width:18},{width:16}];
 
   ws.addRow(['Client Statement']).getCell(1).font = { name:'Arial', size:14, bold:true, color:{argb:NAVY} };
   ws.addRow([clientName]).getCell(1).font = { name:'Arial', size:11, bold:true };
@@ -1860,7 +1966,7 @@ async function exportStatementExcel(clientName) {
     (groups[g] = groups[g] || []).push(inv);
   });
 
-  const HEAD = ['Invoice no','Our ref','Your ref','Case','Invoice date','Amount invoiced','Payments received','Outstanding'];
+  const HEAD = ['Invoice no','Our ref','Your ref','Case','Task','Invoice date','Amount invoiced','Payments received','Outstanding'];
   Object.entries(groups).forEach(([grp, invs]) => {
     ws.addRow([grp]).getCell(1).font = { name:'Arial', size:11, bold:true, color:{argb:NAVY} };
     const h = ws.addRow(HEAD);
@@ -1872,29 +1978,30 @@ async function exportStatementExcel(clientName) {
       const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n])||0), 0);
       const r = ws.addRow([
         inv.OrderDetails || '', inv.Ourref || '', inv.Theirref || '', inv.Casename || '',
+        taskShort(taskForRef(inv.Ourref)) || '',
         inv.InvoiceDate ? new Date(inv.InvoiceDate) : null,
         parseFloat(inv.AmountDue)||0, paid, parseFloat(inv.AmountOutstanding)||0
       ]);
       r.eachCell((c, col) => {
         c.font = { name:'Arial', size:10 };
         if (i % 2 === 1) c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:BAND} };
-        if (col === 5) c.numFmt = 'DD/MM/YYYY';
-        if (col >= 6)  c.numFmt = MONEY;
+        if (col === 6) c.numFmt = 'DD/MM/YYYY';
+        if (col >= 7)  c.numFmt = MONEY;
       });
     });
-    const sub = ws.addRow(['','','','','','','Sub-total', invs.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
+    const sub = ws.addRow(['','','','','','','','Sub-total', invs.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
     sub.eachCell(c => { c.font = { name:'Arial', size:10, bold:true }; });
-    sub.getCell(8).numFmt = MONEY;
+    sub.getCell(9).numFmt = MONEY;
     ws.addRow([]);
   });
 
-  const tot = ws.addRow(['','','','','','','TOTAL OUTSTANDING', invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
-  [7,8].forEach(n => {
+  const tot = ws.addRow(['','','','','','','','TOTAL OUTSTANDING', invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
+  [8,9].forEach(n => {
     const c = tot.getCell(n);
     c.font = { name:'Arial', size:11, bold:true, color:{argb:GOLD} };
     c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
   });
-  tot.getCell(8).numFmt = MONEY;
+  tot.getCell(9).numFmt = MONEY;
 
   const slug = (clientName || 'Client').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const d = new Date();
