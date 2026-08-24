@@ -810,8 +810,10 @@ function renderTable() {
     const laipShort = laip === 'Legal Aid' ? 'LA' : laip === 'Inter Partes' ? 'IP' : (laip || null);
     const laipCls   = laip === 'Legal Aid' ? 'type-LA' : laip === 'Inter Partes' ? 'type-IP' : 'type-Other';
     // S113: Type badge carries the case's CURRENT Task (live, not a snapshot at issue)
+    // and the assignee's initials — IP-Bill-TM.
     const invTask   = taskShort(taskForRef(inv.Ourref));
-    const typeLabel = laipShort ? (invTask ? laipShort + '-' + invTask : laipShort) : (invTask || null);
+    const invIni    = assigneeInitials(inv.Ourref);
+    const typeLabel = [laipShort, invTask, invIni].filter(Boolean).join('-') || null;
     return `<tr class="${inv._id===activeId?'active-row':''}${laip==='Legal Aid'?' la-row':''}"
         onclick="openDrawer('${esc(inv._id)}')" tabindex="0"
         onkeydown="if(event.key==='Enter')openDrawer('${esc(inv._id)}')">
@@ -1156,6 +1158,7 @@ function anomalySubline(inv){
 const _lastActionCache = {};
 let _caseTaskMap = null;
 let _caseIdByRef = null;
+let _caseAssigneeByRef = null;
 // ── Case Task lookup (S113) ─────────────────────────────────────────────────
 // One preload call to /api/cases, keyed on the text reference. NOTE: this is the
 // case's CURRENT Task — live, not a snapshot of what the task was when the invoice
@@ -1167,13 +1170,20 @@ function ensureCaseTasks(){
   _caseTaskPromise = (async () => {
     _caseTaskMap = {};
     _caseIdByRef = {};
+    _caseAssigneeByRef = {};
     try{
       const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
       const j = r.ok ? await r.json() : null;
       ((j && j.value) || []).forEach(c=>{
         const f = c.fields || {};
         const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
-        if (k){ _caseTaskMap[k] = String(f['Task']||'').trim(); _caseIdByRef[k] = c.id; }
+        if (k){
+          _caseTaskMap[k] = String(f['Task']||'').trim();
+          _caseIdByRef[k] = c.id;
+          const rawA = String(f['assignedToTextValue']||'').trim();
+          _caseAssigneeByRef[k] = rawA;
+          _learnInitials(rawA);
+        }
       });
     }catch(e){}
     return _caseTaskMap;
@@ -1197,6 +1207,30 @@ function taskShort(t){
   if (s.includes('bill'))     return 'Bill';
   const w = String(t).trim().split(/\s+/)[0];
   return w.length > 12 ? w.slice(0,12) : w;
+}
+// S113: assignee initials on the Type badge (IP-Bill-TM). assignedToTextValue holds
+// the same person as email / display name / first-name-only (S66 tech debt). The
+// display-name rows carry the surname, so initials are LEARNED from any case where
+// the full name appears and then apply to every form of that person — including
+// rows holding only an email or first name. Seeds cover the four names hardcoded
+// elsewhere in the portal; a person whose full name never appears anywhere falls
+// back to their first name rather than an invented code. Exact-token resolve only
+// ('daniel' is a substring of 'danielle').
+const ROSTER_INITIALS = { toby:'TM', tom:'TW', joanna:'JS', lesley:'LC' };
+function _learnInitials(raw){
+  if (!raw || raw.includes('@') || !/\s/.test(raw)) return;
+  const tok = raw.toLowerCase().split(/[\s.]+/)[0];
+  if (!tok || ROSTER_INITIALS[tok]) return;
+  const ini = raw.split(/[\s\-]+/).filter(Boolean).map(w=>w[0].toUpperCase()).join('');
+  if (ini.length >= 2 && ini.length <= 4) ROSTER_INITIALS[tok] = ini;
+}
+function assigneeInitials(ref){
+  if (!_caseAssigneeByRef) return '';
+  const raw = String(_caseAssigneeByRef[String(ref||'').trim().toLowerCase()]||'').trim().toLowerCase();
+  if (!raw) return '';
+  const token = raw.includes('@') ? raw.split('@')[0] : raw.split(/[\s.]+/)[0];
+  if (!token) return '';
+  return ROSTER_INITIALS[token] || token.charAt(0).toUpperCase()+token.slice(1);
 }
 // S113: editable Task. The canonical option list mirrors case.html's Book In Task
 // dropdown — change both together. A legacy value already on the case (e.g.
