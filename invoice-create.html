@@ -685,7 +685,9 @@ async function loadFigures(fields) {
   const counselPayable       = parseFloat(fields.Counselsfeespayable) || 0;
   const disbClaimed          = parseFloat(fields.DisbursementsClaimed) || 0;
   const vatOnDisbClaimed     = parseFloat(fields.VATonDisbursements) || 0;
-  const totalCOAFig          = (parseFloat(fields.Costsofassessment) || 0) + (parseFloat(fields.ClientPaidExpenses) || 0);
+  // S110: stored COA is ALWAYS VAT-inclusive at flat 20%; deduct the NET figure only
+  // (the solicitors recover the VAT), matching case.html's computeFigures.
+  const totalCOAFig          = Math.round((parseFloat(fields.Costsofassessment) || 0) / 1.2 * 100) / 100 + (parseFloat(fields.ClientPaidExpenses) || 0);
   const offerExclCOA         = fields.Offerincludescostsofsssessment_x === true || fields.Offerincludescostsofsssessment_x === 'true' || fields.Offerincludescostsofsssessment_x === 1;
   const coaDeduct            = offerExclCOA ? 0 : totalCOAFig;
   const otherTMCInv          = parseFloat(fields.OtherTMCInvoices_ex_x0020_bill) || 0;
