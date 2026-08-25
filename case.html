@@ -4237,6 +4237,12 @@ document.getElementById('btn-bi-save').addEventListener('click', async () => {
   fields['OurPartyFirstName'] = document.getElementById('bi-FirstName').value || null;
   const isMultiSave = document.getElementById('bi-Andothers').checked; const surnameVal = document.getElementById('bi-Surname').value || null;
   fields['OurPartySurname']  = isMultiSave ? null : surnameVal; fields['MultiClaimants'] = isMultiSave ? surnameVal : null;
+  // S109: rewrite the SP Title (Surname-FirstName-ref) so corrections made here reach
+  // everything outside the portal that still reads Title (PA emails, SP views, Infowise).
+  { const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+    const parts = isMultiSave ? [surnameVal] : [surnameVal, fields['OurPartyFirstName']];
+    const title = [...parts, ref].map(s => (s || '').trim()).filter(Boolean).join('-');
+    if (title) fields['Title'] = title; }
   fields['CaseNameForOpenCases'] = document.getElementById('bi-CaseName').value || null;
   fields['ClientCaseReference'] = document.getElementById('bi-ClientRef').value || null;
   fields['FeeEarner_x0028_fromFM_x0029_'] = document.getElementById('bi-FeeEarner').value || null;
