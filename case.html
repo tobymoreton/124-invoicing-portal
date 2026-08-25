@@ -2132,7 +2132,7 @@
         <div class="card-body">
           <div id="inv-case-msg" style="font-size:13px;color:var(--grey-mid);padding:6px 2px;">Loading&hellip;</div>
           <table class="ca-table" id="inv-case-table" style="display:none;">
-            <thead><tr><th style="width:70px;">Inv #</th><th style="width:80px;">Date</th><th style="width:80px;">Due</th><th class="ca-right" style="width:90px;">Amount</th><th class="ca-right" style="width:95px;">Outstanding</th><th style="width:80px;">Status</th><th style="width:55px;">Type</th><th style="width:45px;"></th></tr></thead>
+            <thead><tr><th style="width:70px;">Inv #</th><th style="width:80px;">Date</th><th style="width:80px;">Due</th><th class="ca-right" style="width:85px;">Net (PC)</th><th class="ca-right" style="width:75px;">VAT</th><th class="ca-right" style="width:90px;">Total</th><th class="ca-right" style="width:95px;">Outstanding</th><th style="width:80px;">Status</th><th style="width:55px;">Type</th><th style="width:45px;"></th></tr></thead>
             <tbody id="inv-case-tbody"></tbody>
           </table>
         </div>
@@ -4663,8 +4663,9 @@ function renderCaseInvoices() {
   const live = rows.filter(r => r.Cancelled !== true);
   const totDue = live.reduce((s, r) => s + (parseFloat(r.AmountDue) || 0), 0);
   const totOut = live.reduce((s, r) => s + (parseFloat(r.AmountOutstanding) || 0), 0);
+  const totNet = live.reduce((s, r) => s + (parseFloat(r.Net) || 0), 0);
   if (summary) summary.textContent = live.length + ' invoice' + (live.length === 1 ? '' : 's')
-    + ' \u00b7 ' + fmt(totDue) + ' raised \u00b7 ' + fmt(totOut) + ' outstanding'
+    + ' \u00b7 ' + fmt(totNet) + ' net \u00b7 ' + fmt(totDue) + ' inc VAT \u00b7 ' + fmt(totOut) + ' outstanding'
     + (rows.length > live.length ? ' \u00b7 ' + (rows.length - live.length) + ' cancelled' : '');
 
   rows.forEach(r => {
@@ -4677,7 +4678,9 @@ function renderCaseInvoices() {
     tr.innerHTML = '<td class="ca-cell ca-mono">' + escHtml(r.OrderDetails || '\u2014') + '</td>'
       + '<td class="ca-cell">' + escHtml(fmtDate(r.InvoiceDate)) + '</td>'
       + '<td class="ca-cell">' + escHtml(r.DueDate ? fmtDate(r.DueDate) : '\u2014') + '</td>'
-      + '<td class="ca-cell ca-mono ca-right">' + fmt(parseFloat(r.AmountDue) || 0) + '</td>'
+      + '<td class="ca-cell ca-mono ca-right">' + fmt(parseFloat(r.Net) || 0) + '</td>'
+      + '<td class="ca-cell ca-mono ca-right" style="color:var(--grey-mid);">' + fmt(parseFloat(r.VAT) || 0) + '</td>'
+      + '<td class="ca-cell ca-mono ca-right" style="font-weight:600;">' + fmt(parseFloat(r.AmountDue) || 0) + '</td>'
       + '<td class="ca-cell ca-mono ca-right">' + (out === null ? '\u2014' : fmt(out)) + '</td>'
       + '<td class="ca-cell" style="font-size:11px;">' + escHtml(cancelled ? 'Cancelled' : (status || '\u2014')) + '</td>'
       + '<td class="ca-cell" style="font-size:11px;">' + escHtml(r.LAorIP || '\u2014') + '</td>'
