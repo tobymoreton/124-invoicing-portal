@@ -5277,7 +5277,7 @@ function renderCaTable() {
         : `<td class="ca-cell ca-center"><input type="checkbox" class="ca-bill-inline" data-id="${id}" ${billable ? 'checked' : ''} title="Billable?" /></td>`;
       const _hasEmail = !!(f['FullEmail'] || '').trim();
       tr.innerHTML = `<td class="ca-cell">${escHtml(dateStr)}</td><td class="ca-cell" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;">${escHtml(byName.split(' ')[0])}</td>
-        <td class="ca-cell" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;" title="${escHtml(brief)}"><span style="font-size:13px;margin-right:4px;">${briefIcon(brief)}</span>${escHtml(brief)}</td>
+        <td class="ca-cell" style="font-size:11px;white-space:normal;line-height:1.3;max-width:110px;" title="${escHtml(brief)}"><span style="font-size:13px;margin-right:4px;">${briefIcon(brief)}</span>${escHtml(brief)}</td>
         ${caWdExpanded
           ? `<td class="ca-cell ca-cell-wd"><textarea class="ca-wd-inline" data-id="${id}" rows="1"${billed ? ' disabled' : ''} title="${billed ? 'Billed \u2014 locked' : 'Edit here; saves when you click away'}">${escHtml(workDone)}</textarea></td>`
           : `<td class="ca-cell ca-cell-wd" title="${escHtml(workDone)}">${escHtml(workDone.length > 100 ? workDone.slice(0, 100) + '\u2026' : workDone)}</td>`}
