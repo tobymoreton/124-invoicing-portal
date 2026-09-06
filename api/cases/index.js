@@ -117,11 +117,14 @@ const SELECT_FIELDS = [
   // NEW SP columns on Cases (text, text, number, number — never Yes/No). MUST be listed here or
   // case.html cannot read them back (S66 lesson). SettlementOutcome 'Settled'|'Assessed';
   // COATreatment 'Within'|'OnTop'; COAAwarded = COA awarded/agreed inc VAT excl court fee;
-  // CourtFeePaidByTMC = court fee TMC paid (ClientPaidExpenses = court fee the client paid).
+  // CourtFeePaidByTMC = court fee TMC paid (ClientPaidExpenses = court fee the client paid);
+  // CourtFeeRecovered = what the paying party paid towards the court fee (S116b).
+  // Limit_x0020_Costs_x0020_of_x0020 (already listed below) is the net COA cap, now editable on the tab.
   'SettlementOutcome',
   'COATreatment',
   'COAAwarded',
   'CourtFeePaidByTMC',
+  'CourtFeeRecovered',
   'BillDraftedByText',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
