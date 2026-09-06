@@ -125,6 +125,8 @@ const SELECT_FIELDS = [
   'COAAwarded',
   'CourtFeePaidByTMC',
   'CourtFeeRecovered',
+  // S116d: interest actually included in the settlement/assessed figure (manual; Interest tab is a guide).
+  'InterestInFigure',
   'BillDraftedByText',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
