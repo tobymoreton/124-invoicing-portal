@@ -1196,24 +1196,24 @@
             <dd><input type="number" id="f-COALimit" class="liab-input" step="0.01" min="0" disabled /></dd>
           </div>
           <div class="liab-row">
-            <dt>TMC charge for the assessment<div class="sett-hint" id="r-TMCCharge-note">—</div></dt>
-            <dd><span class="liab-static" id="r-TMCCharge">—</span></dd>
-          </div>
-          <div class="liab-row">
-            <dt>Court fee paid by the client<div class="sett-hint">The N258 / hearing fee the instructing solicitor paid up front.</div></dt>
-            <dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd>
-          </div>
-          <div class="liab-row">
-            <dt>Court fee paid by TMC<div class="sett-hint">Where TMC paid the fee and recharges it to the client.</div></dt>
+            <dt>Court fee paid by TMC<div class="sett-hint">Only where TMC paid the fee — it goes on TMC's invoice and is recharged.</div></dt>
             <dd><input type="number" id="f-CourtFeePaidByTMC" class="liab-input" step="0.01" min="0" disabled /></dd>
           </div>
           <div class="liab-row emph">
-            <dt>Total cost of assessment to the client<div class="sett-hint" id="r-COACost-note">—</div></dt>
+            <dt>TMC's invoice for the assessment<div class="sett-hint" id="r-TMCCharge-note">—</div></dt>
+            <dd><span class="liab-static" id="r-TMCCharge">—</span></dd>
+          </div>
+          <div class="liab-row">
+            <dt>Court fee the client paid direct<div class="sett-hint">The N258 / hearing fee the instructing solicitor paid themselves. Not on TMC's invoice — their own outlay, but it still comes out of the figure unless the paying party reimburses it.</div></dt>
+            <dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd>
+          </div>
+          <div class="liab-row emph">
+            <dt>Total cost of the assessment<div class="sett-hint" id="r-COACost-note">—</div></dt>
             <dd><span class="liab-static" id="r-COACost">—</span></dd>
           </div>
           <div class="liab-row sub-head"><dt>Recovered from the paying party <span class="sett-hint" id="hint-coa-recovered" style="display:inline;"></span></dt><dd></dd></div>
           <div class="liab-row coa-ontop-only">
-            <dt>Costs of assessment awarded / agreed<div class="sett-hint">Inc VAT, <strong>excluding</strong> the court fee. Blank = TMC's charge above treated as recovered in full.</div></dt>
+            <dt>Costs of assessment awarded / agreed<div class="sett-hint">Inc VAT, <strong>excluding</strong> the court fee. Blank = TMC's time charge (capped) treated as recovered in full.</div></dt>
             <dd><input type="number" id="f-COAAwarded" class="liab-input" step="0.01" min="0" disabled /></dd>
           </div>
           <div class="liab-row coa-ontop-only">
@@ -1268,7 +1268,7 @@
           <div class="read-row"><dt id="lbl-rec-figure">Figure in use</dt><dd id="r-FigureInUse">—</dd></div>
           <div class="read-row"><dt id="lbl-rec-coa">Plus: costs of assessment recovered on top</dt><dd id="r-PlusCOA">—</dd></div>
           <div class="read-row"><dt>Less: disbursements, counsel &amp; other TMC fees</dt><dd id="r-LessFixed">—</dd></div>
-          <div class="read-row"><dt id="lbl-rec-coacost">Less: TMC charge for the assessment + court fee (cost to the client)</dt><dd id="r-LessCOACost">—</dd></div>
+          <div class="read-row"><dt id="lbl-rec-coacost">Less: cost of the assessment (TMC’s invoice + any court fee the client paid direct)</dt><dd id="r-LessCOACost">—</dd></div>
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
           <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
           <div class="read-row">
@@ -4178,12 +4178,19 @@ function renderSettlementLive() {
 function renderCOACardFigures(c, onTop, unsaved) {
   const tag = unsaved ? ' (unsaved)' : '';
   const grossTime = round2(c.tmcTimeNet * 1.2);
-  setText('r-TMCCharge', fmt(c.tmcCharge));
-  setText('r-TMCCharge-note', c.coaCapped
-    ? 'Time ' + fmt(grossTime) + ' exceeds the cap — charge limited to ' + fmt(c.coaLimitNet) + ' net + VAT.' + tag
-    : (c.coaLimitNet > 0 ? 'Within the cap of ' + fmt(c.coaLimitNet) + ' net — time charged in full.' : 'No cap — time charged in full.') + tag);
+  // S116c (Toby, 06/09): a court fee the CLIENT paid is not something TMC charges them. TMC's invoice
+  // = time (capped) + only the fee TMC paid; the client's own fee is shown separately. Both still
+  // come out of the figure before profit costs — different pockets, same effect on the recovery.
+  const timeNote = c.coaCapped
+    ? 'time ' + fmt(grossTime) + ' capped to ' + fmt(c.coaLimitNet) + ' net + VAT = ' + fmt(c.tmcCharge)
+    : 'time ' + fmt(c.tmcCharge) + (c.coaLimitNet > 0 ? ' (within the ' + fmt(c.coaLimitNet) + ' net cap)' : ' (no cap)');
+  const tmcInvoice = round2(c.tmcCharge + (c.courtFeeTMC || 0));
+  setText('r-TMCCharge', fmt(tmcInvoice));
+  setText('r-TMCCharge-note', '= ' + timeNote + (c.courtFeeTMC > 0 ? ' + court fee TMC paid ' + fmt(c.courtFeeTMC) + ' (recharged)' : '') + '.' + tag);
   setText('r-COACost', fmt(c.coaCost));
-  setText('r-COACost-note', '= TMC charge ' + fmt(c.tmcCharge) + (c.courtFeeOut > 0 ? ' + court fee ' + fmt(c.courtFeeOut) : ' (no court fee)') + ' — always deducted from the figure.' + tag);
+  setText('r-COACost-note', '= TMC’s invoice ' + fmt(tmcInvoice)
+    + (c.clientExpenses > 0 ? ' + court fee the client paid direct ' + fmt(c.clientExpenses) + ' (not charged by TMC)' : '')
+    + ' — both come out of the figure before profit costs.' + tag);
   document.querySelectorAll('#tab-settlement .coa-ontop-only').forEach(el => el.classList.toggle('is-hidden', !onTop));
   setText('hint-coa-recovered', onTop ? '' : '— not applicable: inside a global figure nothing is separately recovered');
   setText('lbl-coa-total', onTop ? 'Recovered on top of the figure' : 'Costs of assessment within the figure');
@@ -4556,11 +4563,12 @@ function _updateTotalCOADisplay() {
   const coaCapped  = coaLimitNet > 0 && tmcTimeNet > coaLimitNet;
   const tmcCharge  = round2((coaCapped ? coaLimitNet : tmcTimeNet) * (1 + vatPct));
   const coaAwarded = num('f-COAAwarded'), courtFeeRecd = num('f-CourtFeeRecovered');
-  const courtFeeOut = num('f-ClientPaidExpenses') + num('f-CourtFeePaidByTMC');
+  const clientExpenses = num('f-ClientPaidExpenses'), courtFeeTMC = num('f-CourtFeePaidByTMC');
+  const courtFeeOut = clientExpenses + courtFeeTMC;
   const coaCost = round2(tmcCharge + courtFeeOut);
   const coaRecoverable = round2((coaAwarded > 0 ? coaAwarded : tmcCharge) + courtFeeRecd);
   const onTop = resolveCOATreatment(caseFields) === 'OnTop';
-  renderCOACardFigures({ tmcTimeNet, coaLimitNet, coaCapped, tmcCharge, coaAwarded, courtFeeRecd, courtFeeOut, coaCost, coaRecoverable,
+  renderCOACardFigures({ tmcTimeNet, coaLimitNet, coaCapped, tmcCharge, coaAwarded, courtFeeRecd, courtFeeOut, clientExpenses, courtFeeTMC, coaCost, coaRecoverable,
                          coaShortfall: onTop ? round2(coaCost - coaRecoverable) : 0 }, onTop, true);
 }
 ['f-Costsofassessment','f-COALimit','f-ClientPaidExpenses','f-CourtFeePaidByTMC','f-COAAwarded','f-CourtFeeRecovered']
@@ -4728,7 +4736,7 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-coa-treatment').textContent = _pdfOnTop
     ? 'Paid on top of the figure — recovered ' + fmt(c.coaRecoverable) + (c.coaAwarded > 0 ? ' (awarded / agreed' : ' (TMC charge') + (c.courtFeeRecd > 0 ? ' + court fee ' + fmt(c.courtFeeRecd) : '') + ')'
       + ' against a cost of ' + fmt(c.coaCost) + (Math.abs(c.coaShortfall) < 0.005 ? ' — fully recovered' : c.coaShortfall > 0 ? ' — shortfall ' + fmt(c.coaShortfall) + ' borne by the client' : ' — surplus ' + fmt(-c.coaShortfall))
-    : 'Included within the figure — cost of ' + fmt(c.coaCost) + ' (TMC charge ' + fmt(c.tmcCharge) + (c.courtFeeOut > 0 ? ' + court fee ' + fmt(c.courtFeeOut) : '') + ') deducted';
+    : 'Included within the figure — cost of ' + fmt(c.coaCost) + ' (TMC invoice ' + fmt(round2(c.tmcCharge + (c.courtFeeTMC || 0))) + (c.clientExpenses > 0 ? ' + court fee paid by client ' + fmt(c.clientExpenses) : '') + ') deducted';
   document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP + c.nonVatDraftingIP);
   document.getElementById('pdf-disb-net').textContent = fmt(c.disbursements); document.getElementById('pdf-counsel-net').textContent = fmt(c.counselClaimed);
   document.getElementById('pdf-totalclaimed-net').textContent = fmt(c.netTotalClaimed);
