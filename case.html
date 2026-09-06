@@ -670,9 +670,11 @@
     #pdf-output .pdf-top-right{text-align:right;}
     #pdf-output .pdf-top-right h1{font-size:18pt;font-weight:bold;color:#000;margin-bottom:3mm;}
     #pdf-output .pdf-top-right img{height:42px;display:block;margin-left:auto;}
-    #pdf-output h2{font-size:11pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1.5mm;margin:5mm 0 2.5mm;page-break-after:avoid;}
-    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:3.5mm;font-size:8.5pt;page-break-inside:avoid;}
-    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1.5mm 2.5mm;color:#000;}
+    /* S116c: tightened (was 5mm/3.5mm/1.5mm/8.5pt) so the report with its new Costs of Assessment
+       section still sits on one A4 page in the common case. */
+    #pdf-output h2{font-size:10.5pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1mm;margin:3.5mm 0 2mm;page-break-after:avoid;}
+    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:2.5mm;font-size:8pt;page-break-inside:avoid;}
+    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1mm 2.5mm;color:#000;}
     #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:38%;background:#fff;}
     #pdf-output .tbl-details td:last-child{text-align:left;}
     #pdf-output .tbl-horiz th{font-weight:bold;text-align:right;background:#fff;color:#000;}
@@ -702,7 +704,23 @@
     <tr><td>Outcome</td><td id="pdf-outcome"></td></tr>
     <tr><td id="pdf-lbl-date">Date of Settlement</td><td id="pdf-datesettled"></td></tr>
     <tr><td id="pdf-lbl-total">Total Settlement</td><td id="pdf-totalsettlement"></td></tr>
-    <tr><td>Costs of Assessment</td><td id="pdf-coa-treatment"></td></tr>
+    <tr><td>Costs of Assessment</td><td id="pdf-coa-treatment"></td></tr><!-- short: within / on top -->
+  </table>
+
+  <!-- S116c: costs of assessment on the report, same two sides as the screen. Rows that do not
+       apply (no cap, no fee, within-the-figure) are hidden by generateSettlementPDF(). -->
+  <h2>Costs of Assessment (VAT Inclusive)</h2>
+  <table class="tbl-vert">
+    <tr id="pdf-coa-r-time"><td>TMC time recorded</td><td id="pdf-coa-time"></td></tr>
+    <tr id="pdf-coa-r-cap"><td>Cap applied (net)</td><td id="pdf-coa-cap"></td></tr>
+    <tr id="pdf-coa-r-feetmc"><td>Court fee paid by TMC (recharged)</td><td id="pdf-coa-feetmc"></td></tr>
+    <tr id="pdf-coa-r-invoice"><td>TMC's invoice for the assessment</td><td id="pdf-coa-invoice"></td></tr>
+    <tr id="pdf-coa-r-feeclient"><td>Court fee paid by the client direct (not charged by TMC)</td><td id="pdf-coa-feeclient"></td></tr>
+    <tr id="pdf-coa-r-cost" class="total-row"><td>Total cost of the assessment</td><td id="pdf-coa-cost"></td></tr>
+    <tr id="pdf-coa-r-awarded"><td id="pdf-coa-lbl-awarded">Costs of assessment awarded / agreed</td><td id="pdf-coa-awarded"></td></tr>
+    <tr id="pdf-coa-r-feerec"><td>Court fee recovered from the paying party</td><td id="pdf-coa-feerec"></td></tr>
+    <tr id="pdf-coa-r-recovered" class="total-row"><td>Total recovered on top of the figure</td><td id="pdf-coa-recovered"></td></tr>
+    <tr id="pdf-coa-r-shortfall"><td id="pdf-coa-lbl-shortfall">Shortfall borne by the client</td><td id="pdf-coa-shortfall"></td></tr>
   </table>
 
   <h2>Costs Claimed</h2>
@@ -726,13 +744,18 @@
   <table class="tbl-vert">
     <tr><td>Disbursements</td><td id="pdf-pay-disb"></td></tr>
     <tr><td>Counsel's Fees</td><td id="pdf-pay-counsel"></td></tr>
-    <tr><td>Total Costs of Assessment</td><td id="pdf-pay-coa"></td></tr>
+    <tr><td id="pdf-lbl-pay-coa">Total Costs of Assessment</td><td id="pdf-pay-coa"></td></tr>
     <tr><td>Other TMC Fees (excl Drafting)</td><td id="pdf-pay-other"></td></tr>
     <tr class="total-row"><td>Total</td><td id="pdf-pay-total"></td></tr>
   </table>
 
   <h2>Recovery</h2>
   <table class="tbl-recovery">
+    <!-- S116c: show the working, as on screen -->
+    <tr><td id="pdf-lbl-rec-figure">Settlement figure</td><td id="pdf-rec-figure"></td></tr>
+    <tr id="pdf-rec-r-plus"><td>Plus: costs of assessment recovered on top</td><td id="pdf-rec-plus"></td></tr>
+    <tr><td>Less: disbursements, counsel's fees &amp; other TMC fees</td><td id="pdf-rec-lessfixed"></td></tr>
+    <tr><td>Less: cost of the assessment (TMC's invoice + court fee paid by client)</td><td id="pdf-rec-lesscoa"></td></tr>
     <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
     <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
     <tr><td>Drafting Fee</td><td id="pdf-rec-drafting"></td></tr>
@@ -4733,10 +4756,37 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-outcome').textContent   = _pdfAssessed ? 'Assessed by the court' : 'Settled by agreement';
   document.getElementById('pdf-lbl-date').textContent  = _pdfAssessed ? 'Date of Assessment' : 'Date of Settlement';
   document.getElementById('pdf-lbl-total').textContent = _pdfAssessed ? 'Costs as Assessed' : 'Total Settlement';
+  // One line here; the detail is in the Costs of Assessment section below.
   document.getElementById('pdf-coa-treatment').textContent = _pdfOnTop
-    ? 'Paid on top of the figure — recovered ' + fmt(c.coaRecoverable) + (c.coaAwarded > 0 ? ' (awarded / agreed' : ' (TMC charge') + (c.courtFeeRecd > 0 ? ' + court fee ' + fmt(c.courtFeeRecd) : '') + ')'
-      + ' against a cost of ' + fmt(c.coaCost) + (Math.abs(c.coaShortfall) < 0.005 ? ' — fully recovered' : c.coaShortfall > 0 ? ' — shortfall ' + fmt(c.coaShortfall) + ' borne by the client' : ' — surplus ' + fmt(-c.coaShortfall))
-    : 'Included within the figure — cost of ' + fmt(c.coaCost) + ' (TMC invoice ' + fmt(round2(c.tmcCharge + (c.courtFeeTMC || 0))) + (c.clientExpenses > 0 ? ' + court fee paid by client ' + fmt(c.clientExpenses) : '') + ') deducted';
+    ? 'Paid on top of the figure' + (Math.abs(c.coaShortfall) < 0.005 ? ' — fully recovered' : c.coaShortfall > 0 ? ' — shortfall ' + fmt(c.coaShortfall) : ' — surplus ' + fmt(-c.coaShortfall))
+    : 'Included within the figure — cost of ' + fmt(c.coaCost) + ' deducted';
+  // S116c: Costs of Assessment section + Recovery working rows. Rows that do not apply are hidden.
+  const _pdfShow = (id, on) => { const r = document.getElementById(id); if (r) r.style.display = on ? '' : 'none'; };
+  const _pdfTxt  = (id, v)  => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const _tmcInvoice = round2(c.tmcCharge + (c.courtFeeTMC || 0));
+  _pdfTxt('pdf-coa-time', fmt(round2(c.tmcTimeNet * 1.2)) + (c.coaCapped ? ' (before cap)' : ''));
+  _pdfShow('pdf-coa-r-cap', c.coaLimitNet > 0);
+  _pdfTxt('pdf-coa-cap', fmt(c.coaLimitNet) + ' net' + (c.coaCapped ? ' — charge limited to ' + fmt(c.tmcCharge) : ' — not reached'));
+  _pdfShow('pdf-coa-r-feetmc', c.courtFeeTMC > 0);  _pdfTxt('pdf-coa-feetmc', fmt(c.courtFeeTMC));
+  _pdfTxt('pdf-coa-invoice', fmt(_tmcInvoice));
+  _pdfShow('pdf-coa-r-feeclient', c.clientExpenses > 0); _pdfTxt('pdf-coa-feeclient', fmt(c.clientExpenses));
+  _pdfTxt('pdf-coa-cost', fmt(c.coaCost));
+  ['pdf-coa-r-awarded','pdf-coa-r-feerec','pdf-coa-r-recovered','pdf-coa-r-shortfall'].forEach(id => _pdfShow(id, _pdfOnTop));
+  if (_pdfOnTop) {
+    _pdfTxt('pdf-coa-lbl-awarded', c.coaAwarded > 0 ? 'Costs of assessment awarded / agreed (excl court fee)' : 'Costs of assessment recovered (TMC charge, no award entered)');
+    _pdfTxt('pdf-coa-awarded', fmt(c.coaAwarded > 0 ? c.coaAwarded : c.tmcCharge));
+    _pdfTxt('pdf-coa-feerec', c.courtFeeRecd > 0 ? fmt(c.courtFeeRecd) : (c.courtFeeOut > 0 ? 'Not recovered' : '—'));
+    _pdfTxt('pdf-coa-recovered', fmt(c.coaRecoverable));
+    const sf = c.coaShortfall;
+    _pdfTxt('pdf-coa-lbl-shortfall', Math.abs(sf) < 0.005 ? 'Fully recovered — neutral to the profit-costs recovery' : sf > 0 ? 'Shortfall borne by the client (reduces the profit-costs recovery)' : 'Recovered in excess of cost');
+    _pdfTxt('pdf-coa-shortfall', Math.abs(sf) < 0.005 ? '—' : fmt(Math.abs(sf)));
+  }
+  _pdfTxt('pdf-lbl-pay-coa', _pdfOnTop ? 'Costs of Assessment (recovered on top of the figure)' : 'Costs of Assessment (within the figure)');
+  _pdfTxt('pdf-lbl-rec-figure', _pdfAssessed ? 'Costs as assessed' : 'Settlement figure');
+  _pdfTxt('pdf-rec-figure', fmt(c.offerOrSettlement));
+  _pdfShow('pdf-rec-r-plus', _pdfOnTop); _pdfTxt('pdf-rec-plus', '+' + fmt(c.coaRecovered));
+  _pdfTxt('pdf-rec-lessfixed', c.lessFixed ? '−' + fmt(c.lessFixed) : '—');
+  _pdfTxt('pdf-rec-lesscoa',   c.coaCost   ? '−' + fmt(c.coaCost)   : '—');
   document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP + c.nonVatDraftingIP);
   document.getElementById('pdf-disb-net').textContent = fmt(c.disbursements); document.getElementById('pdf-counsel-net').textContent = fmt(c.counselClaimed);
   document.getElementById('pdf-totalclaimed-net').textContent = fmt(c.netTotalClaimed);
@@ -4773,7 +4823,25 @@ async function generateSettlementPDF() {
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const ratio = A4_W / canvas.width; const renderedH = canvas.height * ratio;
-    if (renderedH <= A4_H) { pdf.addImage(imgData, 'PNG', 0, 0, A4_W, renderedH); } else { pdf.addImage(imgData, 'PNG', 0, 0, A4_W, A4_H); }
+    if (renderedH <= A4_H) { pdf.addImage(imgData, 'PNG', 0, 0, A4_W, renderedH); }
+    else if (renderedH <= A4_H * 1.18) {
+      // S116c: a little over one page — shrink uniformly (≥ 85%, still legible) rather than
+      // start a second page for a few rows. Centred horizontally.
+      const s = A4_H / renderedH, w = A4_W * s;
+      pdf.addImage(imgData, 'PNG', (A4_W - w) / 2, 0, w, A4_H);
+    } else {
+      // S116c: the report gained a Costs of Assessment section, so it can run past one page.
+      // Previously the overflow case squashed the whole canvas into A4 (unreadable); now it is
+      // sliced into A4-height pages at full width.
+      const pagePx = Math.floor(A4_H / ratio);
+      for (let y = 0, pageNo = 0; y < canvas.height; y += pagePx, pageNo++) {
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width; slice.height = Math.min(pagePx, canvas.height - y);
+        slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
+        if (pageNo > 0) pdf.addPage();
+        pdf.addImage(slice.toDataURL('image/png'), 'PNG', 0, 0, A4_W, slice.height * ratio);
+      }
+    }
     const ref = (f['Ourreference_x0028_text_x0029_'] || 'Settlement').replace(/[^a-zA-Z0-9-]/g, '-');
     pdf.save('Settlement-Report-' + ref + '.pdf');
   } catch (err) { alert('PDF generation failed: ' + err.message); }
