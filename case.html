@@ -704,6 +704,7 @@
     <tr><td>Outcome</td><td id="pdf-outcome"></td></tr>
     <tr><td id="pdf-lbl-date">Date of Settlement</td><td id="pdf-datesettled"></td></tr>
     <tr><td id="pdf-lbl-total">Total Settlement</td><td id="pdf-totalsettlement"></td></tr>
+    <tr id="pdf-r-interest"><td>Interest included in the figure</td><td id="pdf-interest"></td></tr>
     <tr><td>Costs of Assessment</td><td id="pdf-coa-treatment"></td></tr><!-- short: within / on top -->
   </table>
 
@@ -753,6 +754,7 @@
   <table class="tbl-recovery">
     <!-- S116c: show the working, as on screen -->
     <tr><td id="pdf-lbl-rec-figure">Settlement figure</td><td id="pdf-rec-figure"></td></tr>
+    <tr id="pdf-rec-r-interest"><td>Less: interest included in the figure</td><td id="pdf-rec-lessinterest"></td></tr>
     <tr id="pdf-rec-r-plus"><td>Plus: costs of assessment recovered on top</td><td id="pdf-rec-plus"></td></tr>
     <tr><td>Less: disbursements, counsel's fees &amp; other TMC fees</td><td id="pdf-rec-lessfixed"></td></tr>
     <tr><td>Less: cost of the assessment (TMC's invoice + court fee paid by client)</td><td id="pdf-rec-lesscoa"></td></tr>
@@ -1069,7 +1071,7 @@
             <div class="read-row"><dt>🤵 Served Formal</dt><dd class="ov-editable" id="ov-servedfml">—</dd></div>
             <div class="read-row"><dt>📅 PODs Due</dt><dd class="ov-editable" id="ov-poddue">—</dd></div>
             <div class="read-row"><dt>🎯 PODs Received</dt><dd class="ov-editable" id="ov-podrec">—</dd></div>
-            <div class="read-row"><dt>🤝 Date Settled</dt><dd class="ov-editable" id="ov-settled">—</dd></div>
+            <div class="read-row"><dt>🤝 Date Settled / Assessed</dt><dd class="ov-editable" id="ov-settled">—</dd></div>
           </dl>
         </div>
         <div class="card">
@@ -1181,6 +1183,20 @@
               <input type="number" id="f-Settlementamount" step="0.01" min="0" disabled />
               <div class="sett-hint" id="hint-sett-amount">—</div>
             </div>
+            <!-- S116d (Toby, 06/09): the figure is ALL-IN, interest included. The interest actually
+                 agreed / awarded inside it is entered here (new Number column InterestInFigure) and
+                 backed out before the profit-costs recovery. The Interest tab's internal calc is
+                 offered as a guide only — it will not always match what was agreed. Blank = none,
+                 which is exactly what every pre-S116 case did. -->
+            <div class="field full">
+              <label>Interest included in the figure (£)</label>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="number" id="f-InterestInFigure" step="0.01" min="0" disabled style="max-width:200px;" />
+                <button class="import-btn" id="btn-import-interest" disabled>↓ Use internal calc</button>
+                <span class="sett-hint" id="hint-sett-interest-calc" style="margin:0;"></span>
+              </div>
+              <div class="sett-hint">The interest element actually agreed or awarded within the figure above. Blank = none. It is backed out before the profit-costs recovery, so it never inflates the % recoveries. The internal figure alongside is the Interest tab's own calculation — a guide, not the answer.</div>
+            </div>
           </div>
           <div class="sett-note" id="sett-figure-note" hidden></div>
         </div>
@@ -1215,8 +1231,8 @@
             </dd>
           </div>
           <div class="liab-row">
-            <dt>Cap on TMC's costs of assessment (£ net)<div class="sett-hint">Blank = no cap. Where the costs of assessment are limited (e.g. the provisional-assessment cap), enter the net cap here — TMC's charge and every % recovery below use the capped figure.</div></dt>
-            <dd><input type="number" id="f-COALimit" class="liab-input" step="0.01" min="0" disabled /></dd>
+            <dt>Cap on TMC's costs of assessment (£ net)<div class="sett-hint">Blank = no cap. Where the costs of assessment are limited, enter the net cap here — TMC's charge and every % recovery below use the capped figure. Provisional assessment: £1,500 exclusive of VAT and the court fee (CPR 47.15(5)) — the button sets it.</div></dt>
+            <dd class="coa-cell"><input type="number" id="f-COALimit" class="liab-input" step="0.01" min="0" disabled /><button class="import-btn" id="btn-pa-cap" disabled>PA cap £1,500</button></dd>
           </div>
           <div class="liab-row">
             <dt>Court fee paid by TMC<div class="sett-hint">Only where TMC paid the fee — it goes on TMC's invoice and is recharged.</div></dt>
@@ -1289,6 +1305,7 @@
           <!-- S116: show the working. The figure in use, what is backed out of it (and whether COA is),
                and the total actually receivable when COA sits on top. -->
           <div class="read-row"><dt id="lbl-rec-figure">Figure in use</dt><dd id="r-FigureInUse">—</dd></div>
+          <div class="read-row"><dt>Less: interest included in the figure</dt><dd id="r-LessInterest">—</dd></div>
           <div class="read-row"><dt id="lbl-rec-coa">Plus: costs of assessment recovered on top</dt><dd id="r-PlusCOA">—</dd></div>
           <div class="read-row"><dt>Less: disbursements, counsel &amp; other TMC fees</dt><dd id="r-LessFixed">—</dd></div>
           <div class="read-row"><dt id="lbl-rec-coacost">Less: cost of the assessment (TMC’s invoice + any court fee the client paid direct)</dt><dd id="r-LessCOACost">—</dd></div>
@@ -2835,8 +2852,31 @@ async function loadCase() {
   }
 }
 
+// S116e: while the Settlement tab is in edit mode, the figures use what is TYPED in its boxes, not
+// the saved case — so a cap, a court fee or an interest amount shows its effect on the Recovery
+// card immediately (Toby, 06/09: "Less: cost of the assessment is not reflecting the limited
+// amount" — it was reading the saved, still-blank cap). Nothing is saved by this; Cancel re-renders
+// from the case. Outside edit mode it is exactly caseFields.
+const SETT_LIVE_FIELDS = {
+  'Settlementamount':'f-Settlementamount', 'Counselsfeespayable':'f-Counselsfeespayable', 'Costsofassessment':'f-Costsofassessment',
+  'ClientPaidExpenses':'f-ClientPaidExpenses', 'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices', 'COAAwarded':'f-COAAwarded',
+  'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'CourtFeeRecovered':'f-CourtFeeRecovered', 'Limit_x0020_Costs_x0020_of_x0020':'f-COALimit',
+  'InterestInFigure':'f-InterestInFigure',
+};
+function settFieldsInUse() {
+  const editing = !!document.getElementById('tab-settlement')?.classList.contains('editing');
+  if (!editing || !caseFields) return caseFields;
+  const live = Object.assign({}, caseFields);
+  for (const [sp, id] of Object.entries(SETT_LIVE_FIELDS)) {
+    const el = document.getElementById(id); if (!el) continue;
+    live[sp] = el.value === '' ? null : parseFloat(el.value);
+  }
+  const d = document.getElementById('f-DateSettled0'); if (d) live['DateSettled0'] = d.value ? d.value + 'T00:00:00Z' : null;
+  return live;
+}
+
 function computeFigures() {
-  const f = caseFields;
+  const f = settFieldsInUse();
   const figureForSheet = parseFloat(f['FigureForSettlementSheet'])        || 0;
   const settlementAmt  = parseFloat(f['Settlementamount'])                || 0;
   const lastOffer      = parseFloat(f['PayingPartysLastOffer'])            || 0;
@@ -2928,10 +2968,14 @@ function computeFigures() {
   // (cost − recovered) eats into the recovery; a fully recovered assessment is neutral.
   const coaDeduct = coaCost;
   const lessFixed = counsel + disbursements + vatOnDisb + otherTMC;
+  // S116d: the figure is all-in; the interest actually inside it (InterestInFigure, manual — the
+  // Interest tab's calc is only a guide) is backed out first. Blank = 0 = pre-S116 behaviour.
+  const interestInFigure = parseFloat(f['InterestInFigure']) || 0;
+  const costsFigure      = offerOrSettlement - interestInFigure;
   // What actually comes in: the figure plus anything paid on top of it.
   const totalReceivable = offerOrSettlement + coaRecovered;
 
-  const grossPC           = offerOrSettlement + coaRecovered - counsel - disbursements - vatOnDisb - coaDeduct - otherTMC;
+  const grossPC           = costsFigure + coaRecovered - counsel - disbursements - vatOnDisb - coaDeduct - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
   const feePctIP       = (_settFeePctOverride !== null) ? _settFeePctOverride
                                                         : (parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0);
@@ -2941,11 +2985,13 @@ function computeFigures() {
   const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
-  const pctBill = totalBill > 0 ? offerOrSettlement / totalBill : 0;
+  // S116d: % against the bill compares costs with costs — interest inside the figure is excluded.
+  const pctBill = totalBill > 0 ? costsFigure / totalBill : 0;
 
   computed = {
     offerOrSettlement, disbIncVAT, counsel, coa, clientExpenses, totalCOA, otherTMC, totalPayable,
-    // S116 / S116b
+    // S116 / S116b / S116d
+    interestInFigure, costsFigure,
     outcome, coaTreatment, coaAwarded, courtFeeTMC, courtFeeRecd, courtFeeOut, coaDeduct, lessFixed, totalReceivable,
     tmcTimeNet, coaLimitNet, coaCapped, tmcCharge: coa, coaCost, coaRecoverable, coaRecovered, coaShortfall,
     figureSource: figureForSheet > 0 ? 'sheet' : settlementAmt > 0 ? 'settlement' : lastOffer > 0 ? 'offer' : 'none',
@@ -4196,6 +4242,22 @@ function renderSettlementLive() {
   finally { _settSkipInputs = false; }
 }
 
+// S116d: the Interest tab's own calculation as at the settlement/assessment date (today when that
+// is blank), on the interest base the tab uses (override sum, else the total bill). Guide only.
+function settInternalInterestGuide() {
+  const f = caseFields || {};
+  if (!f['DateofAuthoritytoAssess']) return { amount: null, text: 'Internal calc: no Authority to Assess date on the Interest tab.' };
+  const asAt = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
+  const base = (parseFloat(f['SumForInterestCalculationOverrid']) || 0) > 0 ? parseFloat(f['SumForInterestCalculationOverrid']) : (computed.totalBill || 0);
+  const amt  = round2(interestTotalAsAt(f, base, asAt));
+  return { amount: amt, text: 'Internal calc as at ' + fmtDate(asAt.toISOString()) + ': ' + fmt(amt) + ' (guide only)' };
+}
+document.getElementById('btn-import-interest')?.addEventListener('click', () => {
+  const g = settInternalInterestGuide();
+  if (g.amount === null) return;
+  document.getElementById('f-InterestInFigure').value = g.amount || '';
+});
+
 // S116b: the Costs of Assessment card's derived lines. `c` is either `computed` (saved case) or the
 // live object built from the input boxes by _updateTotalCOADisplay() while editing.
 function renderCOACardFigures(c, onTop, unsaved) {
@@ -4241,7 +4303,11 @@ function renderSettlementTab() {
     setNum('f-ClientPaidExpenses', f['ClientPaidExpenses']); setNum('f-OtherTMCInvoices', f['OtherTMCInvoices_ex_x0020_bill']);
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
     setNum('f-CourtFeeRecovered', f['CourtFeeRecovered']); setNum('f-COALimit', f['Limit_x0020_Costs_x0020_of_x0020']);
+    setNum('f-InterestInFigure', f['InterestInFigure']);
   }
+  // S116d: the Interest tab's own figure, as at the date of settlement/assessment (today if blank),
+  // shown beside the manual box as a guide. Uses interestTotalAsAt() — the same maths as the tab.
+  { const g = settInternalInterestGuide(); setText('hint-sett-interest-calc', g.text); }
   setText('r-Disbursements', fmt(c.disbIncVAT)); setText('r-TotalLiab', fmt(c.totalPayable));
   // ── S116: outcome, COA treatment, awarded figure, court fees, and the plain-English working ──
   const assessed = c.outcome === 'Assessed';
@@ -4249,13 +4315,15 @@ function renderSettlementTab() {
   const outEl = document.getElementById('f-SettlementOutcome'); if (outEl) outEl.value = c.outcome;
   const trtEl = document.getElementById('f-COATreatment');      if (trtEl) trtEl.value = c.coaTreatment;
   setText('hint-sett-outcome', assessed
-    ? 'The court assessed the bill. Enter the bill as assessed below; costs of assessment, the court fee and interest are dealt with separately and default to "paid on top".'
-    : 'The parties agreed a figure. Enter the all-in sum agreed; costs of assessment default to "included within the figure" and are backed out before the profit-costs recovery.');
-  setText('lbl-sett-date',   assessed ? 'Date of Assessment' : 'Date of Settlement');
+    ? 'The court assessed the bill. Enter the sum payable under the assessment below (interest included if it is in that sum); costs of assessment and the court fee are dealt with on the next card and default to "paid on top".'
+    : 'The parties agreed a figure. Enter the all-in sum agreed, interest included; costs of assessment default to "included within the figure" and are backed out before the profit-costs recovery.');
+  // S116e: outcome-specific once an Outcome has been chosen; the neutral wording until then.
+  const outcomeSet = _settOutcomeOverride !== null || !!(f['SettlementOutcome']);
+  setText('lbl-sett-date',   assessed ? 'Date of Assessment' : (outcomeSet ? 'Date of Settlement' : 'Date of Settlement or Assessment'));
   setText('lbl-sett-amount', assessed ? 'Costs as Assessed (£)' : 'Total Settlement (£)');
   setText('hint-sett-amount', assessed
-    ? 'The bill as assessed, inc VAT — excluding costs of assessment, court fee and interest.'
-    : 'The global figure agreed, inc VAT, including whatever is inside it.');
+    ? 'The bill as assessed, inc VAT, plus any interest included in the sum payable — enter that interest in the box below. Costs of assessment and the court fee go on the next card.'
+    : 'The global figure agreed, inc VAT, including interest and whatever else is inside it.');
   // Which figure the sheet is actually using — the Offers tab's "Figure for Settlement Sheet"
   // silently wins over the box above, and the last offer is used when neither is set.
   const noteEl = document.getElementById('sett-figure-note');
@@ -4273,6 +4341,7 @@ function renderSettlementTab() {
   setText('r-TotalCOA-liab-note', onTop ? '(recovered on top)' : '(within the figure)');
   setText('lbl-rec-figure', assessed ? 'Costs as assessed' : 'Settlement figure');
   setText('r-FigureInUse', fmt(c.offerOrSettlement));
+  setText('r-LessInterest', c.interestInFigure ? '−' + fmt(c.interestInFigure) : '—');
   setText('lbl-rec-coa', onTop ? 'Plus: costs of assessment recovered on top' : 'Costs of assessment — inside the figure, nothing added');
   setText('r-PlusCOA', onTop ? (c.coaRecovered ? '+' + fmt(c.coaRecovered) : '—') : '—');
   setText('r-LessFixed', c.lessFixed ? '−' + fmt(c.lessFixed) : '—');
@@ -4412,7 +4481,7 @@ function renderNotesTab() {
 }
 
 const TAB_FIELDS = {
-  'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox], #btn-import-counsel, #btn-calc-coa',
+  'tab-settlement': '#tab-settlement input:not([readonly]), #tab-settlement select, #tab-settlement textarea, #tab-settlement input[type=checkbox], #btn-import-counsel, #btn-calc-coa, #btn-import-interest, #btn-pa-cap',
   'tab-offers':     '#tab-offers input:not([readonly]), #tab-offers select, #tab-offers input[type=checkbox]',
   'tab-bookingin':  '#tab-bookingin input:not([readonly]), #tab-bookingin select, #tab-bookingin textarea, #tab-bookingin input[type=checkbox]',
   'tab-opponent':   '#tab-opponent input:not([readonly]), #tab-opponent select, #tab-opponent textarea, #tab-opponent input[type=checkbox]',
@@ -4466,7 +4535,9 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
 document.getElementById('btn-sett-edit').addEventListener('click', () => tabSetEditMode('sett','tab-settlement'));
 // S109: Cancel drops any unsaved drafting-fee % so the figures snap back to the saved value,
 // rather than leaving the card showing a fee the case does not actually carry.
-document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); tabSetReadMode('sett','tab-settlement'); });
+// S116e: leave edit mode FIRST — computeFigures() reads the typed boxes while the tab is editing,
+// and Cancel must go back to the saved case.
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; tabSetReadMode('sett','tab-settlement'); computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); });
 document.getElementById('btn-sett-save').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
@@ -4487,7 +4558,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   // and if one is missing the save fails visibly on that field rather than silently.
   if (_settOutcomeOverride !== null)      fields['SettlementOutcome'] = _settOutcomeOverride;
   if (_settCOATreatmentOverride !== null) fields['COATreatment']      = _settCOATreatmentOverride;
-  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'CourtFeeRecovered':'f-CourtFeeRecovered' })) {
+  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'CourtFeeRecovered':'f-CourtFeeRecovered', 'InterestInFigure':'f-InterestInFigure' })) {
     const v = document.getElementById(el)?.value ?? '';
     const had = caseFields[sp] !== null && caseFields[sp] !== undefined && caseFields[sp] !== '';
     if (v !== '' || had) fields[sp] = v === '' ? null : parseFloat(v);
@@ -4594,8 +4665,17 @@ function _updateTotalCOADisplay() {
   renderCOACardFigures({ tmcTimeNet, coaLimitNet, coaCapped, tmcCharge, coaAwarded, courtFeeRecd, courtFeeOut, clientExpenses, courtFeeTMC, coaCost, coaRecoverable,
                          coaShortfall: onTop ? round2(coaCost - coaRecoverable) : 0 }, onTop, true);
 }
-['f-Costsofassessment','f-COALimit','f-ClientPaidExpenses','f-CourtFeePaidByTMC','f-COAAwarded','f-CourtFeeRecovered']
-  .forEach(id => document.getElementById(id)?.addEventListener('input', _updateTotalCOADisplay));
+// S116e: every settlement box recomputes the whole tab live (Recovery card included) as you type;
+// the COA card then gets its "(unsaved)" tag from _updateTotalCOADisplay.
+[...Object.values(SETT_LIVE_FIELDS), 'f-DateSettled0'].forEach(id => document.getElementById(id)?.addEventListener('input', () => {
+  renderSettlementLive(); _updateTotalCOADisplay();
+}));
+// Provisional assessment: costs of assessment are capped at £1,500 exclusive of VAT and the court
+// fee (CPR 47.15(5)). One click sets the cap to that figure; type over it for anything else.
+document.getElementById('btn-pa-cap')?.addEventListener('click', () => {
+  const el = document.getElementById('f-COALimit'); if (!el || el.disabled) return;
+  el.value = 1500; el.dispatchEvent(new Event('input', { bubbles: true }));
+});
 
 // S116: Outcome and COA-treatment selectors. Both recompute live. Changing the Outcome also
 // flips the treatment to that outcome's default (Settled → within, Assessed → on top) so the
@@ -4754,7 +4834,7 @@ async function generateSettlementPDF() {
   // S116: outcome-aware wording on the report.
   const _pdfAssessed = c.outcome === 'Assessed', _pdfOnTop = c.coaTreatment === 'OnTop';
   document.getElementById('pdf-outcome').textContent   = _pdfAssessed ? 'Assessed by the court' : 'Settled by agreement';
-  document.getElementById('pdf-lbl-date').textContent  = _pdfAssessed ? 'Date of Assessment' : 'Date of Settlement';
+  document.getElementById('pdf-lbl-date').textContent  = _pdfAssessed ? 'Date of Assessment' : (f['SettlementOutcome'] ? 'Date of Settlement' : 'Date of Settlement or Assessment');
   document.getElementById('pdf-lbl-total').textContent = _pdfAssessed ? 'Costs as Assessed' : 'Total Settlement';
   // One line here; the detail is in the Costs of Assessment section below.
   document.getElementById('pdf-coa-treatment').textContent = _pdfOnTop
@@ -4785,6 +4865,9 @@ async function generateSettlementPDF() {
   _pdfTxt('pdf-lbl-rec-figure', _pdfAssessed ? 'Costs as assessed' : 'Settlement figure');
   _pdfTxt('pdf-rec-figure', fmt(c.offerOrSettlement));
   _pdfShow('pdf-rec-r-plus', _pdfOnTop); _pdfTxt('pdf-rec-plus', '+' + fmt(c.coaRecovered));
+  // S116d: interest inside the figure — shown only when there is some.
+  _pdfShow('pdf-r-interest', c.interestInFigure > 0);     _pdfTxt('pdf-interest', fmt(c.interestInFigure));
+  _pdfShow('pdf-rec-r-interest', c.interestInFigure > 0); _pdfTxt('pdf-rec-lessinterest', '−' + fmt(c.interestInFigure));
   _pdfTxt('pdf-rec-lessfixed', c.lessFixed ? '−' + fmt(c.lessFixed) : '—');
   _pdfTxt('pdf-rec-lesscoa',   c.coaCost   ? '−' + fmt(c.coaCost)   : '—');
   document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP + c.nonVatDraftingIP);
