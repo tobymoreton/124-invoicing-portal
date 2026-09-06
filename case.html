@@ -744,12 +744,13 @@
 
   <h2>Recovery</h2>
   <table class="tbl-recovery">
-    <!-- S116c: show the working, as on screen -->
-    <tr><td id="pdf-lbl-rec-figure">Settlement figure</td><td id="pdf-rec-figure"></td></tr>
-    <tr id="pdf-rec-r-interest"><td>Less: interest</td><td id="pdf-rec-lessinterest"></td></tr>
-    <tr id="pdf-rec-r-plus"><td>Plus: costs of assessment recovered</td><td id="pdf-rec-plus"></td></tr>
-    <tr><td>Less: disbursements, counsel's fees &amp; other TMC fees</td><td id="pdf-rec-lessfixed"></td></tr>
-    <tr><td>Less: costs of assessment paid out</td><td id="pdf-rec-lesscoa"></td></tr>
+    <!-- S116g: back to the original six rows (Toby, 06/09) — the working stays on screen only.
+         Hidden spans keep the ids generateSettlementPDF() writes to. -->
+    <tr style="display:none;"><td id="pdf-lbl-rec-figure"></td><td id="pdf-rec-figure"></td></tr>
+    <tr id="pdf-rec-r-interest" style="display:none;"><td></td><td id="pdf-rec-lessinterest"></td></tr>
+    <tr id="pdf-rec-r-plus" style="display:none;"><td></td><td id="pdf-rec-plus"></td></tr>
+    <tr style="display:none;"><td></td><td id="pdf-rec-lessfixed"></td></tr>
+    <tr style="display:none;"><td></td><td id="pdf-rec-lesscoa"></td></tr>
     <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
     <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
     <tr><td>Drafting Fee</td><td id="pdf-rec-drafting"></td></tr>
@@ -1187,7 +1188,7 @@
                 <button class="import-btn" id="btn-import-interest" disabled>↓ Use internal calc</button>
                 <span class="sett-hint" id="hint-sett-interest-calc" style="margin:0;"></span>
               </div>
-              <div class="sett-hint"><strong>Not added.</strong> This is the part of the figure above that is interest — the amount actually agreed or awarded. It is taken back out so the profit-costs recovery and the % recoveries compare costs with costs. Blank = no interest in the figure. The internal calc alongside is the Interest tab's own figure — a guide, not the answer.</div>
+              <div class="sett-hint">For the record only: how much of the figure above is interest, as agreed or awarded. It changes no figure — recovered interest counts as profit costs. The internal calc alongside is the Interest tab's own figure — a guide, not the answer.</div>
             </div>
           </div>
           <div class="sett-note" id="sett-figure-note" hidden></div>
@@ -1293,7 +1294,7 @@
           <!-- S116: show the working. The figure in use, what is backed out of it (and whether COA is),
                and the total actually receivable when COA sits on top. -->
           <div class="read-row"><dt id="lbl-rec-figure">Figure in use</dt><dd id="r-FigureInUse">—</dd></div>
-          <div class="read-row"><dt>Less: the interest element of that figure</dt><dd id="r-LessInterest">—</dd></div>
+          <span hidden id="r-LessInterest"></span>
           <div class="read-row"><dt id="lbl-rec-coa">Plus: costs of assessment recovered on top</dt><dd id="r-PlusCOA">—</dd></div>
           <div class="read-row"><dt>Less: disbursements, counsel &amp; other TMC fees</dt><dd id="r-LessFixed">—</dd></div>
           <div class="read-row"><dt id="lbl-rec-coacost">Less: cost of the assessment (TMC’s invoice + any court fee the client paid direct)</dt><dd id="r-LessCOACost">—</dd></div>
@@ -2959,10 +2960,11 @@ function computeFigures() {
   // (cost − recovered) eats into the recovery; a fully recovered assessment is neutral.
   const coaDeduct = coaCost;
   const lessFixed = counsel + disbursements + vatOnDisb + otherTMC;
-  // S116d: the figure is all-in; the interest actually inside it (InterestInFigure, manual — the
-  // Interest tab's calc is only a guide) is backed out first. Blank = 0 = pre-S116 behaviour.
+  // S116d/g: the figure is all-in, interest included. InterestInFigure is a RECORD of how much of it
+  // is interest — Toby (06/09): "interest IS essentially PC once recovered", so it is NOT backed
+  // out of anything. costsFigure kept equal to the figure for the % lines.
   const interestInFigure = parseFloat(f['InterestInFigure']) || 0;
-  const costsFigure      = offerOrSettlement - interestInFigure;
+  const costsFigure      = offerOrSettlement;
   // What actually comes in: the figure plus anything paid on top of it.
   const totalReceivable = offerOrSettlement + coaRecovered;
 
@@ -4833,10 +4835,10 @@ async function generateSettlementPDF() {
   _pdfTxt('pdf-lbl-pay-coa', 'Costs of Assessment');
   _pdfTxt('pdf-lbl-rec-figure', _pdfAssessed ? 'Costs as assessed' : 'Settlement figure');
   _pdfTxt('pdf-rec-figure', fmt(c.offerOrSettlement));
-  _pdfShow('pdf-rec-r-plus', _pdfOnTop); _pdfTxt('pdf-rec-plus', '+' + fmt(c.coaRecovered));
-  // S116d: interest inside the figure — shown only when there is some.
+  _pdfTxt('pdf-rec-plus', '+' + fmt(c.coaRecovered)); // S116g: Recovery working rows stay hidden on the PDF
+  // S116d: interest inside the figure — shown in Settlement Details only when there is some.
   _pdfShow('pdf-r-interest', c.interestInFigure > 0);     _pdfTxt('pdf-interest', fmt(c.interestInFigure));
-  _pdfShow('pdf-rec-r-interest', c.interestInFigure > 0); _pdfTxt('pdf-rec-lessinterest', '−' + fmt(c.interestInFigure));
+  _pdfTxt('pdf-rec-lessinterest', '−' + fmt(c.interestInFigure));
   _pdfTxt('pdf-rec-lessfixed', c.lessFixed ? '−' + fmt(c.lessFixed) : '—');
   _pdfTxt('pdf-rec-lesscoa',   c.coaCost   ? '−' + fmt(c.coaCost)   : '—');
   document.getElementById('pdf-pc-net').textContent = fmt(c.claimedPC); document.getElementById('pdf-tmcpc-net').textContent = fmt(c.draftingTimeIP + c.nonVatDraftingIP);
