@@ -257,6 +257,34 @@ module.exports = async function (context, req) {
       if (b.completedBy !== undefined) fields['Completedby_x0028_text_x0029_'] = b.completedBy;
       if (b.dateWorkDone !== undefined) fields['field_12'] = b.dateWorkDone;
 
+      // S117 — persist Num_BillableAmount_x00a3_ whenever rate or hours change. The stored
+      // amount is a SNAPSHOT that every reader (case.html AMT, /api/wip, /api/coa) may prefer;
+      // if we move the rate/hours but leave the snapshot frozen it silently reverts on reload
+      // (the "rates revert overnight" fault). Read the item first because a PATCH may carry
+      // only one of rate/hours, and pro-rata + billed status are needed regardless.
+      if (b.rate !== undefined || b.timeSpent !== undefined) {
+        try {
+          const cur = await graphGet(
+            `https://graph.microsoft.com/v1.0/sites/${SITE_PATH}/lists/${TT2_GUID}/items/${itemId}?$expand=fields`,
+            token,
+          );
+          const cf = (cur && cur.fields) || {};
+          // Never restate a billed row — its amount is what was actually invoiced.
+          if (cf['Billed_x003f_'] !== true) {
+            const hrs  = (b.timeSpent !== undefined ? parseFloat(b.timeSpent) : parseFloat(cf['TimeSpentMirror'] || cf['field_3'])) || 0;
+            const rate = (b.rate      !== undefined ? parseFloat(b.rate)      : parseFloat(cf['field_6']))                        || 0;
+            const pro  = parseFloat(cf['ProRataApportionment']);
+            // Only write when both are positive. Writing 0 would wipe a good snapshot on a
+            // rate-less row (the silent-zero fault) — leave that for a rate to be set first.
+            if (hrs > 0 && rate > 0) {
+              fields['Num_BillableAmount_x00a3_'] = hrs * rate * ((isNaN(pro) || pro <= 0) ? 1 : pro / 100);
+            }
+          }
+        } catch (e) {
+          context.log('S117 amount recompute skipped:', e.message); // non-fatal — still write the rate/hours the user asked for
+        }
+      }
+
       if (Object.keys(fields).length === 0) {
         context.res = { status: 400, body: 'No editable fields provided' };
         return;
