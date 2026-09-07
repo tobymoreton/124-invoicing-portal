@@ -2067,6 +2067,7 @@
               <label class="ca-rate-f"><span>Earlier rate £/hr</span>
                 <input type="number" id="ca-rate-prior" step="0.01" min="0" placeholder="none" /></label>
               <button type="button" id="ca-rate-save">Save rate</button>
+              <button type="button" id="ca-rate-reapply" title="Rewrite the rate on every unbilled entry to the applicable case rate. Billed entries are never touched.">Apply rate to entries</button>
               <span class="ca-rate-msg" id="ca-rate-msg"></span>
             </div>
             <span class="ca-rate-sub" id="ca-rate-sub"></span>
@@ -6010,6 +6011,16 @@ function renderCaseRateBar() {
   const fresh = old.cloneNode(true);
   old.parentNode.replaceChild(fresh, old);
   fresh.addEventListener('click', saveCaseRate);
+
+  // S117 — "Apply rate to entries" button. Re-clone to drop stale listeners, and disable
+  // it when the case has no rate (nothing to apply).
+  const oldR = document.getElementById('ca-rate-reapply');
+  if (oldR) {
+    const freshR = oldR.cloneNode(true);
+    oldR.parentNode.replaceChild(freshR, oldR);
+    freshR.addEventListener('click', reRateUnbilled);
+    freshR.disabled = !set;
+  }
 }
 
 async function saveCaseRate() {
@@ -6060,6 +6071,61 @@ async function saveCaseRate() {
   } catch (err) {
     msg.style.color = '#b00020'; msg.textContent = 'Save failed: ' + err.message;
   } finally { btn.disabled = false; }
+}
+
+// S117 — push the case rate onto EXISTING entries from the portal, so users with no
+// SharePoint access can re-rate. Targets billable, unbilled rows whose current rate is
+// wrong or zero, rating each from its own Date Work Done (honours the S102 two-period
+// rate). Billed rows are never touched. The PATCH also persists the £ snapshot (S117 API
+// change), so the corrected figure survives reload.
+async function reRateUnbilled() {
+  const msg = document.getElementById('ca-rate-msg');
+  const btn = document.getElementById('ca-rate-reapply');
+  if (!msg || !btn) return;
+  const targets = caActions.map(a => {
+    const f = a.fields || {};
+    const billable = f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0;
+    const billed   = !!f['Billed_x003f_'];
+    const hrs = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
+    if (!billable || billed || hrs <= 0) return null;
+    const want = parseFloat(caRateForDate(String(f['field_12'] || f['field_1'] || '').slice(0, 10)));
+    const cur  = parseFloat(f['field_6']) || 0;
+    if (isNaN(want) || want <= 0) return null;               // no case rate applies — skip
+    if (Math.abs(cur - want) <= 0.005) return null;          // already correct
+    return { a, hrs, want };
+  }).filter(Boolean);
+
+  if (!targets.length) {
+    msg.style.color = '#0a7a34';
+    msg.textContent = 'Nothing to re-rate — every unbilled entry is already on the right rate.';
+    setTimeout(() => { const m = document.getElementById('ca-rate-msg'); if (m) m.textContent = ''; }, 5000);
+    return;
+  }
+  if (!confirm('Re-rate ' + targets.length + ' unbilled entr' + (targets.length === 1 ? 'y' : 'ies')
+      + ' to the applicable case rate?\n\nAlready-billed entries are left untouched. This cannot be undone in one step.')) return;
+
+  btn.disabled = true; msg.style.color = '';
+  let done = 0, failed = 0;
+  for (const t of targets) {
+    msg.textContent = 'Re-rating ' + (done + failed + 1) + ' of ' + targets.length + '…';
+    try {
+      const r = await fetch('/api/caseactions', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: t.a.id, rate: t.want }),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const f = t.a.fields || {};
+      const pro = parseFloat(f['ProRataApportionment']);
+      f['field_6'] = t.want;
+      f['Num_BillableAmount_x00a3_'] = t.hrs * t.want * ((isNaN(pro) || pro <= 0) ? 1 : pro / 100);
+      done++;
+    } catch (e) { failed++; }
+  }
+  msg.style.color = failed ? '#b00020' : '#0a7a34';
+  msg.textContent = '\u2713 Re-rated ' + done + (failed ? ' \u2014 ' + failed + ' failed, reload and try again' : '');
+  renderCaTable();
+  btn.disabled = false;
+  setTimeout(() => { const m = document.getElementById('ca-rate-msg'); if (m) m.textContent = ''; }, 6000);
 }
 
 function initAddActionPanel() {
