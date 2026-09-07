@@ -672,9 +672,13 @@
     #pdf-output .pdf-top-right img{height:42px;display:block;margin-left:auto;}
     /* S116c: tightened (was 5mm/3.5mm/1.5mm/8.5pt) so the report with its new Costs of Assessment
        section still sits on one A4 page in the common case. */
-    #pdf-output h2{font-size:10.5pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1mm;margin:3.5mm 0 2mm;page-break-after:avoid;}
-    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:2.5mm;font-size:8pt;page-break-inside:avoid;}
-    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1mm 2.5mm;color:#000;}
+    #pdf-output h2{font-size:11pt;color:#001B44;font-weight:bold;border-bottom:1.5px solid #B59A6A;padding-bottom:1.5mm;margin:5mm 0 2.5mm;page-break-after:avoid;}
+    #pdf-output table{width:100%;border-collapse:collapse;margin-bottom:3.5mm;font-size:8.5pt;page-break-inside:avoid;}
+    #pdf-output table td,#pdf-output table th{border:1px solid #ccc;padding:1.5mm 2.5mm;color:#000;}
+    /* S116h: the tighter spacing applies only to the ASSESSED sheet, which carries the extra section. */
+    #pdf-output.pdf-assessed h2{font-size:10.5pt;padding-bottom:1mm;margin:3.5mm 0 2mm;}
+    #pdf-output.pdf-assessed table{margin-bottom:2.5mm;font-size:8pt;}
+    #pdf-output.pdf-assessed table td,#pdf-output.pdf-assessed table th{padding:1mm 2.5mm;}
     #pdf-output .tbl-details td:first-child{font-weight:bold;text-align:right;width:38%;background:#fff;}
     #pdf-output .tbl-details td:last-child{text-align:left;}
     #pdf-output .tbl-horiz th{font-weight:bold;text-align:right;background:#fff;color:#000;}
@@ -701,20 +705,18 @@
     <tr><td>Case</td><td id="pdf-case"></td></tr>
     <tr><td>Client Reference</td><td id="pdf-clientref"></td></tr>
     <tr><td>TMC Reference</td><td id="pdf-tmcref"></td></tr>
-    <tr><td>Outcome</td><td id="pdf-outcome"></td></tr>
+    <tr id="pdf-r-outcome"><td>Outcome</td><td id="pdf-outcome"></td></tr>
     <tr><td id="pdf-lbl-date">Date of Settlement</td><td id="pdf-datesettled"></td></tr>
     <tr><td id="pdf-lbl-total">Total Settlement</td><td id="pdf-totalsettlement"></td></tr>
     <tr id="pdf-r-interest"><td>Of which, interest</td><td id="pdf-interest"></td></tr>
+    <!-- S116k (Toby, 07/09): assessed cases get ONE extra line — what was awarded for the costs of
+         assessment. No separate section. -->
+    <tr id="pdf-r-coaawarded"><td>Costs of Assessment awarded</td><td id="pdf-coa-recovered"></td></tr>
   </table>
-
-  <!-- S116f: costs of assessment on the report — just what was recovered and what has to be paid out. -->
-  <h2>Costs of Assessment (VAT Inclusive)</h2>
-  <table class="tbl-vert">
-    <tr id="pdf-coa-r-recovered"><td id="pdf-coa-lbl-recovered">Recovered from the paying party</td><td id="pdf-coa-recovered"></td></tr>
-    <tr id="pdf-coa-r-invoice"><td id="pdf-coa-lbl-invoice">TMC's invoice</td><td id="pdf-coa-invoice"></td></tr>
-    <tr id="pdf-coa-r-feeclient"><td>Court fee paid by the client</td><td id="pdf-coa-feeclient"></td></tr>
-    <tr id="pdf-coa-r-cost" class="total-row"><td>Total to be paid out</td><td id="pdf-coa-cost"></td></tr>
-  </table>
+  <div id="pdf-coa-section" style="display:none;">
+    <span id="pdf-coa-lbl-recovered"></span><span id="pdf-coa-lbl-invoice"></span><span id="pdf-coa-invoice"></span>
+    <span id="pdf-coa-r-feeclient"></span><span id="pdf-coa-feeclient"></span><span id="pdf-coa-cost"></span>
+  </div>
 
   <h2>Costs Claimed</h2>
   <table class="tbl-horiz">
@@ -2359,6 +2361,13 @@ function resolveCOATreatment(f) {
   const v = (f || {})['Offerincludescostsofsssessment_x'];
   return (v === true || v === 'true' || v === 1) ? 'OnTop' : 'Within';
 }
+// S116j (Toby, 07/09): "there will almost ALWAYS be VAT on the drafting fee — this MUST default to
+// Yes". Only an explicit No is No; blank / missing (including a Yes/No value Graph has dropped) is
+// Yes. Used by the settlement maths, the scenarios, the Overview display and its edit dropdown.
+function vatOnDraftingFee(f) {
+  const v = (f || {})['VatOnDraftingFee_x003f_'];
+  return !(v === false || v === 'false' || v === 0 || v === '0' || v === 'No');
+}
 // The two values written to Drafting_x0020_fee_x0020_basis. EXTRACTED 2026-08-10: all 129 open
 // cases hold "Profit costs as drawn", so that half is the established wording and is left
 // exactly as it is. UNCERTAIN: the "as assessed" wording has never appeared in the data, and
@@ -2914,7 +2923,7 @@ function computeFigures() {
   const totalCOA       = coaTreatment === 'OnTop' ? coaRecovered : coaCost;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const vatOnDrafting  = !!(f['VatOnDraftingFee_x003f_']);
+  const vatOnDrafting  = vatOnDraftingFee(f); // S116j: blank = Yes
   const claimedPC      = parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])|| 0;
   const draftingTimeIP = parseFloat(f['DraftingTimeClaimed'])             || 0;
   const nonVatDraftingIP = parseFloat(f['NonVatableTMCDraftingTime'])    || 0;
@@ -2977,7 +2986,11 @@ function computeFigures() {
     : netBeforeDrafting;
   const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
-  const pctPC        = claimedPC > 0 ? netAfterDrafting / claimedPC : 0;
+  // S116i (Toby, 07/09): % recovery of profit costs is against the TOTAL profit costs in the bill —
+  // the solicitors' PC plus TMC's PC in the bill (drafting time, vatable and non-vatable, and other
+  // TMC PC) — i.e. the same "Total Inter Partes Profit Costs" the Costs Claimed tab shows. Was
+  // against the solicitors' PC alone on every case since the sheet was built.
+  const pctPC        = totalIPPC > 0 ? netAfterDrafting / totalIPPC : 0;
   // S116d: % against the bill compares costs with costs — interest inside the figure is excluded.
   const pctBill = totalBill > 0 ? costsFigure / totalBill : 0;
 
@@ -3991,7 +4004,8 @@ function renderOverviewTab() {
   setText('ov-ipfee', !isNaN(ipFee) ? ipFee + '%' : '—'); setText('ov-lafee', !isNaN(laFee) ? laFee + '%' : '—');
   setText('ov-minfee', !isNaN(minFee) ? minFee + '%' : '—');
   setText('ov-rate', !isNaN(rate) ? '£' + rate.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
-  setText('ov-minfeeapplied', f['MinimumFee'] ? 'Yes' : 'No'); setText('ov-vatondrafting', f['VatOnDraftingFee_x003f_'] ? 'Yes' : 'No');
+  setText('ov-minfeeapplied', f['MinimumFee'] ? 'Yes' : 'No'); setText('ov-vatondrafting', vatOnDraftingFee(f) ? 'Yes' : 'No'); // S116j: blank = Yes
+  renderVatOnDraftingBanner();
   setText('ov-provdrafting', !isNaN(provDF) && provDF > 0 ? '£' + provDF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
   setText('ov-provminfee', !isNaN(provMF) && provMF > 0 ? '£' + provMF.toLocaleString('en-GB', {minimumFractionDigits:2,maximumFractionDigits:2}) : '—');
   const cpUpd = f['CP_x0020_Last_x0020_Updated']; const cpEl = document.getElementById('ov-cpupdated');
@@ -4043,7 +4057,7 @@ function ovSetEditMode() {
     const dd = document.getElementById(elId); dd.innerHTML = '';
     const inp = document.createElement('input'); inp.type = 'number'; inp.className = 'ov-date'; inp.id = elId + '-input'; inp.step = '0.01'; inp.min = '0'; inp.value = val; dd.appendChild(inp);
   });
-  [['ov-minfeeapplied', !!(f['MinimumFee'])],['ov-vatondrafting', !!(f['VatOnDraftingFee_x003f_'])]].forEach(([elId, val]) => {
+  [['ov-minfeeapplied', !!(f['MinimumFee'])],['ov-vatondrafting', vatOnDraftingFee(f)]].forEach(([elId, val]) => { // S116j: dropdown defaults to Yes
     const dd = document.getElementById(elId); dd.innerHTML = '';
     const sel = document.createElement('select'); sel.className = 'ov-select'; sel.id = elId + '-input';
     ['Yes','No'].forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; if ((val && o === 'Yes') || (!val && o === 'No')) opt.selected = true; sel.appendChild(opt); });
@@ -4163,9 +4177,9 @@ function computeScenario(){
     : (c.claimedPC||0);
   const draftingFee = feeBasis === 'fixed' ? round2(fixedFee)
     : round2((feeBasis === 'drawn' ? drawnCosts : netBefore) * feePctIn / 100);
-  const vatOnDrafting = !!(f['VatOnDraftingFee_x003f_']);
+  const vatOnDrafting = vatOnDraftingFee(f); // S116j: blank = Yes
   const netAfter = vatOnDrafting ? netBefore - draftingFee * vatHelper : netBefore - draftingFee;
-  const pctPC   = (c.claimedPC || 0) > 0 ? netAfter / c.claimedPC : 0;
+  const pctPC   = (c.totalIPPC || 0) > 0 ? netAfter / c.totalIPPC : 0; // S116i: total PC incl TMC PC in bill
   const pctBill = (c.totalBill || 0) > 0 ? figure   / c.totalBill : 0;
   const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
   return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
@@ -4287,6 +4301,7 @@ function renderSettlementTab() {
   // S116d: the Interest tab's own figure, as at the date of settlement/assessment (today if blank),
   // shown beside the manual box as a guide. Uses interestTotalAsAt() — the same maths as the tab.
   { const g = settInternalInterestGuide(); setText('hint-sett-interest-calc', g.text); }
+  renderVatOnDraftingBanner(); // S116j
   setText('r-Disbursements', fmt(c.disbIncVAT)); setText('r-TotalLiab', fmt(c.totalPayable));
   // ── S116: outcome, COA treatment, awarded figure, court fees, and the plain-English working ──
   const assessed = c.outcome === 'Assessed';
@@ -4356,6 +4371,25 @@ function renderSettlementTab() {
 // maths (every VAT figure on the case comes out at zero), so both are flagged, with the wording
 // saying which it is. Injected rather than hard-coded into each panel so there is one source of
 // truth for the copy. Purely a warning: it changes no figure and blocks nothing.
+// S116j: red strip on the Overview and Settlement tabs whenever "VAT on Drafting Fee" is explicitly
+// No. Almost every case charges VAT on the fee; a No means the settlement sheet deducts the fee
+// NET and the invoice carries no VAT — it has to be deliberate, so it is shouted.
+function renderVatOnDraftingBanner() {
+  const show = !vatOnDraftingFee(caseFields);
+  ['tab-overview', 'tab-settlement'].forEach(id => {
+    const panel = document.getElementById(id); if (!panel) return;
+    let b = panel.querySelector('.vat-drafting-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.className = 'vat-drafting-banner';
+      b.style.cssText = 'margin:0 0 16px;padding:12px 20px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15);color:#991B1B;font-size:13.5px;line-height:1.5;';
+      panel.insertBefore(b, panel.firstChild);
+    }
+    b.innerHTML = '⚠️ <strong>VAT on Drafting Fee is set to NO on this case.</strong> The settlement sheet is deducting the drafting fee <em>net</em> and the invoice will carry no VAT. Nearly every case should be Yes — if this is not deliberate, change it under Billing Info on the Case Overview tab.';
+    b.style.display = show ? 'block' : 'none';
+  });
+}
+
 const VAT_BANNER_TABS = ['tab-costs', 'tab-offers', 'tab-settlement', 'tab-scenarios'];
 function renderVatZeroBanner() {
   const raw   = caseFields['VAT_x0020__x0025__x0020_Claimed'];
@@ -4832,12 +4866,21 @@ async function generateSettlementPDF() {
   _pdfTxt('pdf-coa-invoice', fmt(_tmcInvoice));
   _pdfShow('pdf-coa-r-feeclient', c.clientExpenses > 0); _pdfTxt('pdf-coa-feeclient', fmt(c.clientExpenses));
   _pdfTxt('pdf-coa-cost', fmt(c.coaCost));
-  _pdfTxt('pdf-lbl-pay-coa', 'Costs of Assessment');
+  // S116h (Toby, 06/09): a SETTLED case's sheet is exactly the pre-S116 sheet — no Outcome row, no
+  // interest row, no Costs of Assessment section, original labels. The extras appear only when the
+  // case is Assessed.
+  _pdfShow('pdf-r-outcome', _pdfAssessed);
+  // S116k: one line, assessed cases only — the section itself is gone.
+  _pdfShow('pdf-r-coaawarded', _pdfAssessed);
+  _pdfTxt('pdf-coa-recovered', _pdfOnTop ? fmt(c.coaRecoverable) : 'Included in the figure');
+  document.getElementById('pdf-output').classList.toggle('pdf-assessed', _pdfAssessed);
+  if (!_pdfAssessed) { document.getElementById('pdf-lbl-date').textContent = 'Date of Settlement'; document.getElementById('pdf-lbl-total').textContent = 'Total Settlement'; }
+  _pdfTxt('pdf-lbl-pay-coa', _pdfAssessed ? 'Costs of Assessment' : 'Total Costs of Assessment');
   _pdfTxt('pdf-lbl-rec-figure', _pdfAssessed ? 'Costs as assessed' : 'Settlement figure');
   _pdfTxt('pdf-rec-figure', fmt(c.offerOrSettlement));
   _pdfTxt('pdf-rec-plus', '+' + fmt(c.coaRecovered)); // S116g: Recovery working rows stay hidden on the PDF
   // S116d: interest inside the figure — shown in Settlement Details only when there is some.
-  _pdfShow('pdf-r-interest', c.interestInFigure > 0);     _pdfTxt('pdf-interest', fmt(c.interestInFigure));
+  _pdfShow('pdf-r-interest', _pdfAssessed && c.interestInFigure > 0);     _pdfTxt('pdf-interest', fmt(c.interestInFigure));
   _pdfTxt('pdf-rec-lessinterest', '−' + fmt(c.interestInFigure));
   _pdfTxt('pdf-rec-lessfixed', c.lessFixed ? '−' + fmt(c.lessFixed) : '—');
   _pdfTxt('pdf-rec-lesscoa',   c.coaCost   ? '−' + fmt(c.coaCost)   : '—');
