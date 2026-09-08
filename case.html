@@ -273,6 +273,9 @@
     .read-row dt{color:var(--grey-mid);}
     .read-row dd{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
     .read-row:has(dd.ov-editable) dt{white-space:nowrap;}
+    /* S121: VAT on Drafting Fee sits first in Billing Info and is tinted, because it was at the
+       bottom of the card where nobody read it and a wrong setting reached several invoices. */
+    .read-row.ov-row-flag dt,.read-row.ov-row-flag dd{background:#FFFBEB;font-weight:600;}
     .read-row dd.ov-editable{white-space:normal;overflow-wrap:anywhere;}
     .read-row.total dt,.read-row.total dd{
       font-weight:700;font-size:14px;
@@ -1128,13 +1131,13 @@
       <div class="card">
         <div class="card-head"><span class="card-title">💷 Billing Info</span><button type="button" class="info-btn" aria-label="About Billing Info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The drafting-fee basis and rates for this case (fee percent, LAA fee, minimum fee, hourly rate), whether a minimum fee applies and whether VAT applies to the drafting fee.</span></button></div>
         <dl class="read-grid">
+          <div class="read-row ov-row-flag"><dt>VAT on Drafting Fee</dt><dd class="ov-editable" id="ov-vatondrafting">—</dd></div>
           <div class="read-row"><dt>Fee Basis</dt><dd class="ov-editable" id="ov-feebasis">—</dd></div>
           <div class="read-row"><dt>IP Fee %</dt><dd class="ov-editable" id="ov-ipfee">—</dd></div>
           <div class="read-row"><dt>LA Fee %</dt><dd class="ov-editable" id="ov-lafee">—</dd></div>
           <div class="read-row"><dt>Min Fee %</dt><dd class="ov-editable" id="ov-minfee">—</dd></div>
           <div class="read-row"><dt>Hourly Rate (£)</dt><dd class="ov-editable" id="ov-rate">—</dd></div>
           <div class="read-row"><dt>Minimum Fee Applied</dt><dd class="ov-editable" id="ov-minfeeapplied">—</dd></div>
-          <div class="read-row"><dt>VAT on Drafting Fee</dt><dd class="ov-editable" id="ov-vatondrafting">—</dd></div>
           <div class="read-row"><dt>Provisional Drafting Fee (£)</dt><dd id="ov-provdrafting">—</dd></div>
           <div class="read-row"><dt>Provisional Min Fee (£)</dt><dd id="ov-provminfee">—</dd></div>
         </dl>
@@ -1814,6 +1817,16 @@
           <label for="fc-VatPct">VAT % Claimed</label>
           <input type="number" id="fc-VatPct" class="tbl-input vat-pct-input" step="0.5" min="0" disabled />
           <span>%</span>
+        </div>
+        <!-- S121: the same setting as Billing Info on the Overview tab, repeated here because this
+             is where VAT is actually thought about. Whichever copy is changed, both save to the
+             one SharePoint field, so they cannot disagree. -->
+        <div class="vat-pct-row" id="cc-vatondrafting-row">
+          <label for="fc-VatOnDrafting">VAT on Drafting Fee</label>
+          <select id="fc-VatOnDrafting" class="tbl-input vat-pct-input" disabled>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
         </div>
       </div>
       <div class="two-col" style="align-items:start;">
@@ -4421,7 +4434,7 @@ function renderSettlementTab() {
 // NET and the invoice carries no VAT — it has to be deliberate, so it is shouted.
 function renderVatOnDraftingBanner() {
   const show = !vatOnDraftingFee(caseFields);
-  ['tab-overview', 'tab-settlement'].forEach(id => {
+  ['tab-overview', 'tab-costs', 'tab-settlement'].forEach(id => {
     const panel = document.getElementById(id); if (!panel) return;
     let b = panel.querySelector('.vat-drafting-banner');
     if (!b) {
@@ -4491,6 +4504,7 @@ function renderCostsTab() {
   setNum('fc-Counsel-vat', vatableCounsel); setNum('fc-Counsel-nonvat', nonVatCounsel);
   setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
   const vatPctRaw = f['VAT_x0020__x0025__x0020_Claimed'];
+  const _vodSel = document.getElementById('fc-VatOnDrafting'); if (_vodSel) _vodSel.value = vatOnDraftingFee(f) ? 'Yes' : 'No'; // S121
   document.getElementById('fc-VatPct')?.classList.toggle('input-blank-warn', vatPctRaw === null || vatPctRaw === undefined || vatPctRaw === '');
   const nonVatLAPC  = parseFloat(f['NonVatableLAAPC']) || 0;
   const vatableLAPC = round2(Math.max(0, (parseFloat(f['LegalAidOnlyProfitCosts']) || 0) - nonVatLAPC));
@@ -4828,8 +4842,9 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
     'TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+  fields['VatOnDraftingFee_x003f_'] = (document.getElementById('fc-VatOnDrafting')?.value || 'Yes') === 'Yes'; // S121
   await doSave(fields, btn, msg, 'edit-msg');
-  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderVatZeroBanner(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
+  if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderVatZeroBanner(); renderVatOnDraftingBanner(); renderOverviewTab(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
   else btn.disabled = false;
 });
 
