@@ -451,6 +451,15 @@
           <div class="totals-row grand"><span class="t-label">Grand Total</span><span class="t-value" id="tot-grand">&pound;0.00</span></div>
         </div>
 
+        <!-- S120: shown only when the invoice carries a value but no VAT. Nothing can be created
+             while it is showing unless the zero rating is expressly confirmed with a reason. -->
+        <div id="zero-vat-block" style="display:none;flex-direction:column;gap:10px;margin-top:14px;padding:14px;border:2px solid var(--error);border-radius:8px;">
+          <div style="color:var(--error);font-weight:700;">This invoice has no VAT on it</div>
+          <div style="font-size:13px;line-height:1.45;">VAT is due on virtually every invoice. The usual cause is &ldquo;VAT on drafting fee?&rdquo; being set to No on the case &mdash; check the case Overview tab and correct it there first. Only confirm below if this invoice is genuinely correct without VAT.</div>
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;"><input type="checkbox" id="inp-zero-vat-ok" /><span>I confirm this invoice is correctly issued without VAT</span></label>
+          <input type="text" id="inp-zero-vat-reason" placeholder="Reason for no VAT &mdash; required, at least 10 characters" style="width:100%;" />
+        </div>
+
         <div id="figures-status" class="status-msg" style="margin-top:16px;"></div>
       </div>
     </div>
@@ -696,7 +705,11 @@ async function loadFigures(fields) {
     : 0;
   const profitCostsRecovered = Math.round((vatPctClaimed === 0 ? grossRecovered : grossRecovered / (1 + vatPctClaimed)) * 100) / 100;
   const basis                = fields.Drafting_x0020_fee_x0020_basis || 'Profit costs as drawn';
-  const vatOnDrafting        = fields.VatOnDraftingFee_x003f_ !== false;
+  // S120: read this flag exactly as case.html's vatOnDraftingFee() does. Only an explicit No is
+  // No; blank, missing, or a Yes/No value Graph has dropped is Yes. The old strict `!== false`
+  // test disagreed with the Overview tab on string values.
+  const _vatFlagRaw          = fields.VatOnDraftingFee_x003f_;
+  const vatOnDrafting        = !(_vatFlagRaw === false || _vatFlagRaw === 'false' || _vatFlagRaw === 0 || _vatFlagRaw === '0' || _vatFlagRaw === 'No');
   const wipLineOverride      = fields.TimedWorkLineOverride || '';
 
   const sel = el('inp-basis');
@@ -842,6 +855,8 @@ function initListeners() {
   el('btn-bespoke-jump').addEventListener('click', activateBespokeMode);
   el('inp-include-tmc').addEventListener('change', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
+  el('inp-zero-vat-ok').addEventListener('change', recalc);
+  el('inp-zero-vat-reason').addEventListener('input', recalc);
 
   // Minimum-fee ticks pre-fill the editable override with the floor amount
   // (IP = £375, LA = £50). The box stays editable afterwards; the
@@ -1034,9 +1049,21 @@ function recalc() {
   // this every time: she is deliberately NOT in the Drafted by list (she issues invoices, she does
   // not draft bills), so the auto-select leaves it blank for her where it fills itself in for a
   // draftsman. Say out loud what is blocking the button instead of leaving her to guess.
+  // S120: a valued invoice with no VAT is nearly always a mistake. A drafting-fee-only invoice on
+  // a case whose "VAT on drafting fee?" reads No comes out at zero VAT with nothing said, and a
+  // run of those went out to one firm before anyone spotted it. Show the confirmation panel and
+  // hold the button until the zero rating is expressly confirmed with a reason.
+  const zeroVat       = grand > 0 && vat <= 0;
+  const zeroVatOk     = !!(el('inp-zero-vat-ok') && el('inp-zero-vat-ok').checked);
+  const zeroVatReason = ((el('inp-zero-vat-reason') || {}).value || '').trim();
+  const zeroVatBlock  = el('zero-vat-block');
+  if (zeroVatBlock) zeroVatBlock.style.display = zeroVat ? 'flex' : 'none';
+  const zeroVatUnconfirmed = zeroVat && !(zeroVatOk && zeroVatReason.length >= 10);
+
   const blockReason = draftedByMissing
     ? 'Choose who drafted the bill above \u2014 it must be set on every invoice.'
-    : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.' : '');
+    : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.'
+    : (zeroVatUnconfirmed ? 'This invoice carries a value but no VAT \u2014 check \u201cVAT on drafting fee?\u201d on the case, or confirm the zero rating and give a reason above.' : ''));
   const issueBtn=el('btn-issue');
   issueBtn.disabled = !!blockReason;
   issueBtn.title    = blockReason || 'Open the rendered draft for review';
@@ -1050,6 +1077,7 @@ function recalc() {
   selectedCase.computed = {
     draftingFee, laFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
     vat, subTotal, grand, vatOnDrafting, feePct, laFeePct, limitTimed, basis,
+    zeroVat, zeroVatReason: (zeroVat && zeroVatOk) ? zeroVatReason : '',
     minimumFeeIp: minFeeIp, minimumFeeLa: minFeeLa,
     draftingFeeLine:    ipLine,
     laFeeLine:          el('fig-la-drafting-line').textContent,
@@ -1196,6 +1224,13 @@ async function openPreview() {
   if ((_bespokeExp > 0 || _bespokeExpVat > 0) && !_bespokeExpLine) {
     showMsg('issue-status', 'Please enter a Bespoke Expenses Line description before creating the draft.', 'error');
     el('inp-bespoke-expenses-line').focus();
+    return;
+  }
+
+  // S120: last gate before anything is rendered. The button is already held disabled while a
+  // valued invoice shows no VAT, but a stale tab or a direct call must not slip past.
+  if (selectedCase.computed.zeroVat && (selectedCase.computed.zeroVatReason || '').trim().length < 10) {
+    showMsg('issue-status', 'This invoice carries a value but no VAT. Check \u201cVAT on drafting fee?\u201d on the case, or confirm the zero rating and give a reason before creating the draft.', 'error');
     return;
   }
 
