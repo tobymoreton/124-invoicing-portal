@@ -1369,7 +1369,7 @@
             <div class="field"><label>Counsel's Fees Payable (%)</label><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" /></div>
             <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="none">Not included</option><option value="ontop">Paid separately</option><option value="within">Included in the figure</option></select></div>
             <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
-            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in the figure</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select></div>
+            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in the figure</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
             <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
             <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
             <div class="field" id="scn-fee-fixed-wrap"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
@@ -4124,6 +4124,7 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
 // Mirrors the live Settlement maths (computeFigures / interestTotalAsAt) but takes its inputs
 // from the scenario controls. Writes NOTHING: no API call, no caseFields mutation, no save.
 let _scnDefaultsSet = false;
+let _scnCoaLive = null; // S117: live COA override for the scenario (net -> gross -> cap -> regross + court fees). null = use the saved case figure.
 function scnEl(id){ return document.getElementById(id); }
 function scnNum(id){ const e = scnEl(id); const n = parseFloat(e && e.value); return isNaN(n) ? 0 : n; }
 function scnResetDefaults(){
@@ -4139,6 +4140,7 @@ function scnResetDefaults(){
   scnEl('scn-fee-pct').value = _feePct || '';
   scnEl('scn-fee-fixed').value = '';
   scnEl('scn-fee-tmc-time').checked = _settFeeOnDrawn;
+  _scnCoaLive = null; const _cn = scnEl('scn-coa-live-note'); if (_cn) _cn.textContent = ''; // S117: drop any live COA override on reset
 }
 function computeScenario(){
   const f = caseFields, c = computed;
@@ -4161,7 +4163,7 @@ function computeScenario(){
   // deducted whenever COA is in play; what the paying party pays on top is added back, so only the
   // shortfall bites. 'within' = cost deducted, nothing added; 'ontop' = cost deducted, recoverable
   // added; 'none' = ignore COA entirely.
-  const coaCost        = c.coaCost        || 0;
+  const coaCost        = _scnCoaLive != null ? _scnCoaLive : (c.coaCost || 0); // S117: live override wins
   const coaRecoverable = c.coaRecoverable || 0;
   const totalCOA   = coaMode === 'ontop' ? coaRecoverable : coaCost;
   const otherTMC   = c.otherTMC   || 0;
@@ -4239,6 +4241,38 @@ function renderScenarioTab(){
   const rb = document.getElementById('scn-reset');
   if (rb) rb.addEventListener('click', () => { scnResetDefaults(); renderScenarioTab(); });
 })();
+
+// S117: refresh the scenario's COA from live case-action time (mirrors the Settlement card's
+// ⚡ Calculate, unbilled mode). Scenario-local — recomputes coaCost only, writes nothing to the
+// case or SharePoint. Recoverable (COAAwarded + CourtFeeRecovered) is rate-independent, left as saved.
+document.getElementById('scn-coa-refresh')?.addEventListener('click', async () => {
+  const btn = scnEl('scn-coa-refresh'); const note = scnEl('scn-coa-live-note');
+  const ref = (caseFields['Ourreference_x0028_text_x0029_'] || '').trim();
+  if (!ref) { if (note) note.textContent = 'No case reference to calculate against.'; return; }
+  const prev = btn.textContent; btn.disabled = true; btn.textContent = '\u2026';
+  try {
+    const resp = await fetch('/api/coa?ref=' + encodeURIComponent(ref) + '&mode=unbilled');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const f = caseFields;
+    const vatPct      = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;      // S110: case VAT rate
+    const tmcTimeNet  = data.sum || 0;                                              // /api/coa returns NET time
+    const coaLimitNet = parseFloat(f['Limit_x0020_Costs_x0020_of_x0020']) || 0;
+    const capped      = coaLimitNet > 0 && tmcTimeNet > coaLimitNet;
+    const tmcCharge   = round2((capped ? coaLimitNet : tmcTimeNet) * (1 + vatPct));
+    const courtFeeOut = (parseFloat(f['ClientPaidExpenses']) || 0) + (parseFloat(f['CourtFeePaidByTMC']) || 0);
+    _scnCoaLive = round2(tmcCharge + courtFeeOut);
+    if (note) note.textContent = 'Live: ' + fmt(_scnCoaLive)
+      + (capped ? ' (time ' + fmt(round2(tmcTimeNet * (1 + vatPct))) + ' capped to ' + fmt(coaLimitNet) + ' net + VAT)' : '')
+      + (data.unratedCount > 0 ? ' \u2014 ' + data.unratedCount + ' unrated entr' + (data.unratedCount === 1 ? 'y' : 'ies') + ' excluded, so this is an understatement' : '')
+      + '. Not saved.';
+    renderScenarioTab();
+  } catch (err) {
+    if (note) note.textContent = 'Could not refresh: ' + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = prev;
+  }
+});
 
 // S116: a live re-render while the tab is in edit mode. Recomputes and repaints every derived
 // figure and label but leaves the input boxes alone, so changing the Outcome or the COA
