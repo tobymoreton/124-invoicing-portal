@@ -156,6 +156,10 @@
     .preview-note{font-size:12px;color:var(--grey-mid);}
     .btn-preview-back{font-family:inherit;font-size:13px;font-weight:500;color:var(--grey-mid);background:none;border:1.5px solid var(--grey-light);border-radius:var(--radius);padding:10px 16px;cursor:pointer;transition:border-color var(--transition),color var(--transition);}
     .btn-preview-back:hover{border-color:var(--grey-mid);color:var(--navy);}
+    /* S123. Settlement sheet shortcut — deliberately a quiet secondary button so it never
+       competes with Approve & Create Draft. */
+    .btn-sheet{font-family:inherit;font-size:13px;font-weight:600;color:var(--navy);background:none;border:1.5px solid var(--gold);border-radius:var(--radius);padding:10px 16px;cursor:pointer;transition:background var(--transition),color var(--transition);}
+    .btn-sheet:hover{background:var(--gold);color:var(--navy);}
     .btn-preview-approve{font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--white);background:var(--navy);border:none;border-radius:var(--radius);padding:11px 22px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background var(--transition);}
     .btn-preview-approve:hover:not(:disabled){background:var(--navy-mid);}
     .btn-preview-approve:disabled{opacity:.5;cursor:not-allowed;}
@@ -489,6 +493,7 @@
     </div>
     <div class="preview-foot">
       <button class="btn-preview-back" id="preview-back-btn">&larr; Back &amp; edit</button>
+      <button class="btn-sheet" id="preview-sheet-btn" title="Opens the case's Settlement tab and produces the settlement sheet">Create Settlement Sheet</button>
       <div class="preview-foot-right">
         <span class="preview-note">Creates a draft for Lesley to review and issue.</span>
         <button class="btn-preview-approve" id="preview-approve">
@@ -879,6 +884,15 @@ function initListeners() {
   el('preview-approve').addEventListener('click', approveDraft);
   el('preview-back').addEventListener('click', closePreview);
   el('preview-back-btn').addEventListener('click', closePreview);
+  // S123. Settlement sheet from the draft preview. The sheet is built on the case page —
+  // it needs the computed settlement figures — so this opens that page in a new tab with
+  // settlementsheet=1, which lands on the Settlement tab and generates the PDF. The
+  // preview stays open behind it so the draft is not lost.
+  el('preview-sheet-btn').addEventListener('click', () => {
+    const ref = (selectedCase && selectedCase.fields && selectedCase.fields.Ourreference_x0028_text_x0029_ || '').trim();
+    if (!ref) { showMsg('issue-status', 'No case reference on this invoice \u2014 open the case and use the Settlement tab.', 'error'); return; }
+    window.open('case.html?ref=' + encodeURIComponent(ref) + '&settlementsheet=1', '_blank', 'noopener');
+  });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
 }
 

@@ -2796,6 +2796,15 @@ function renderCaseUI(firstPaint) {
     const _remBtn = document.querySelector('.tab-btn[data-tab="reminders"]');
     if (_remBtn) setTimeout(() => { _remBtn.click(); }, 300);
   }
+  // S123. Deep link from the invoicing pages (draft preview, and the invoice drawer where
+  // the draft is issued): open the Settlement tab and produce the settlement sheet without
+  // a further click. The generator stays here because this is the only page carrying the
+  // computed figures and the hidden report block it renders from.
+  const _deepSheet = new URLSearchParams(window.location.search).get('settlementsheet');
+  if (_deepSheet === '1') {
+    const _setBtn = document.querySelector('.tab-btn[data-tab="settlement"]');
+    if (_setBtn) setTimeout(() => { _setBtn.click(); setTimeout(() => { generateSettlementPDF(); }, 700); }, 300);
+  }
 }
 
 async function loadCase() {
