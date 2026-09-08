@@ -897,7 +897,7 @@ function openDrawer(id) {
       <dt>Case Task</dt><dd>${taskSelectHtml(inv.Ourref)}</dd>
       <dt>LA / IP</dt><dd>${inv.LAorIP?`<span class="type-badge ${laip==='Legal Aid'?'type-LA':laip==='Inter Partes'?'type-IP':'type-Other'}">${esc(laip==='Legal Aid'?'LA':laip==='Inter Partes'?'IP':laip)}</span>`:'—'}</dd>
       <dt>Drafting Fee</dt><dd class="mono">${fmtAmtFull(inv.DraftingFeeElement)}</dd>
-      <dt>Invoice PDF</dt><dd>${inv.FileUrl?`<a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Open in SharePoint ↗</a>`:'—'}</dd>
+      <dt>Invoice PDF</dt><dd>${inv._id?`<a href="/api/invoicepdf?listItemId=${encodeURIComponent(inv._id)}" target="_blank" rel="noopener" style="color:var(--gold);font-weight:600;">Download PDF \u2193</a>`:'—'}${inv.FileUrl?` <a href="${esc(inv.FileUrl)}" target="_blank" rel="noopener" style="color:var(--muted);font-size:12px;margin-left:10px;">source ↗</a>`:''}</dd>
     </div></div>
     <div class="drawer-section"><div class="drawer-section-title">Payment${canPay?'s':' History'}</div>
       ${payHint}
