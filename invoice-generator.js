@@ -75,7 +75,7 @@ const INVOICE_CSS = [
   '.header { display:flex; justify-content:flex-end; margin-bottom:12mm; }',
   '.logo { width:52mm; height:auto; }',
   '.invoice-title { font-size:22pt; font-weight:bold; margin-bottom:7mm; }',
-  '.draft-banner { background:#FEF3C7; border:1px solid #F59E0B; border-radius:4px; padding:6px 14px; font-size:9pt; font-weight:bold; color:#92400E; letter-spacing:.06em; text-align:center; margin-bottom:6mm; }',
+  '.draft-banner { background-color:#FEF3C7; border:1px solid #F59E0B; border-radius:4px; padding:6px 14px; font-size:9pt; font-weight:bold; color:#92400E; letter-spacing:.06em; text-align:center; margin-bottom:6mm; -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
   '.meta-table { width:100%; border-collapse:collapse; margin-bottom:10mm; }',
   '.meta-table td { padding:1.2mm 0; font-size:10.5pt; vertical-align:top; }',
   '.meta-table td:first-child { width:45mm; }',
@@ -96,16 +96,22 @@ const INVOICE_CSS = [
   '.footer .firm-details { margin-top:3mm; color:#444; font-size:8.5pt; }',
   /* Schedule of Work styles */
   '.schedule-page { width:210mm; min-height:297mm; margin:0 auto; padding:18mm 20mm 20mm 20mm; display:flex; flex-direction:column; }',
-  '.schedule-header { background:linear-gradient(135deg,' + BRAND_GOLD + ' 0%,#E8D08A 40%,#F5EAB8 55%,#D4B86A 75%,' + BRAND_GOLD + ' 100%); padding:14px 20px; margin-bottom:0; }',
-  '.schedule-header h2 { color:' + BRAND_NAVY + '; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.04em; text-shadow:0 1px 2px rgba(255,255,255,0.4); }',
+  // S122. Solid fills, and background-color rather than the background shorthand.
+  // The issued PDF is rendered by Graph's Office HTML engine (/api/invoicepdf), which
+  // drops CSS gradients, text-shadow and the background shorthand — which is why the gold
+  // strip and the navy header row vanished from the download while the preview kept them.
+  // print-color-adjust keeps fills on the browser print path too.
+  '.schedule-headbar { width:100%; border-collapse:collapse; margin-bottom:0; }',
+  '.schedule-header { background-color:' + BRAND_GOLD + '; padding:14px 20px; margin-bottom:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
+  '.schedule-header h2 { color:' + BRAND_NAVY + '; font-size:16pt; font-weight:bold; margin:0; letter-spacing:.04em; }',
   '.schedule-header-sub { font-size:9pt; color:' + BRAND_NAVY + '; opacity:0.7; margin-top:2px; letter-spacing:.06em; font-style:italic; }',
   '.schedule-case { padding:14px 20px 0 20px; font-size:12pt; font-weight:bold; color:' + BRAND_NAVY + '; }',
   '.schedule-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:10pt; }',
-  '.schedule-table th { background:' + BRAND_NAVY + '; color:#fff; padding:8px 10px; text-align:left; font-weight:600; font-size:9.5pt; }',
+  '.schedule-table th { background-color:' + BRAND_NAVY + '; color:#fff; padding:8px 10px; text-align:left; font-weight:600; font-size:9.5pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
   '.schedule-table th.r { text-align:right; }',
   '.schedule-table td { border-bottom:1px solid #E5E1D6; padding:7px 10px; color:#1a1a1a; vertical-align:top; }',
   '.schedule-table td.r { text-align:right; font-family:monospace; white-space:nowrap; }',
-  '.schedule-table tr:nth-child(even) td { background:#F5F2EB; }',
+  '.schedule-table tr:nth-child(even) td { background-color:#F5F2EB; -webkit-print-color-adjust:exact; print-color-adjust:exact; }',
   '.schedule-table tr:last-child td { border-bottom:none; }',
   '.schedule-totals { border-top:2px solid ' + BRAND_NAVY + '; margin-top:0; }',
   '.schedule-totals td { padding:8px 10px; font-weight:bold; font-size:10.5pt; color:' + BRAND_NAVY + '; }',
@@ -288,19 +294,32 @@ function generateScheduleHTML(lines, caseName, ourRef) {
   const nameStr = caseName ? _esc(caseName) : '';
   const refStr  = ourRef   ? _esc(ourRef)   : '';
 
+  // S122. Fills are written inline and as bgcolor attributes as well as by class: the
+  // issued PDF is converted by Graph's Office HTML engine, which does not reliably apply
+  // background or colour from a stylesheet rule. bgcolor it does honour.
+  const thBase = 'background-color:' + BRAND_NAVY + ';color:#fff;padding:8px 10px;font-weight:bold;font-size:9.5pt;';
+  function _th(label, right, extra) {
+    return '<th bgcolor="' + BRAND_NAVY + '"' + (right ? ' class="r" align="right"' : '')
+      + ' style="' + thBase + 'text-align:' + (right ? 'right' : 'left') + ';' + (extra || '') + '">'
+      + label + '</th>';
+  }
+
   return '<div class="schedule-page">'
-    + '<div class="schedule-header"><h2>Schedule of Work</h2></div>'
+    + '<table class="schedule-headbar" width="100%" cellpadding="0" cellspacing="0" bgcolor="' + BRAND_GOLD + '">'
+    + '<tr><td class="schedule-header" bgcolor="' + BRAND_GOLD + '" style="background-color:' + BRAND_GOLD + ';padding:14px 20px">'
+    + '<h2 style="color:' + BRAND_NAVY + ';font-size:16pt;font-weight:bold;margin:0;letter-spacing:.04em">Schedule of Work</h2>'
+    + '</td></tr></table>'
     + ((nameStr || refStr) ? '<div class="schedule-case">'
         + (nameStr ? nameStr : '')
         + (nameStr && refStr ? '<div style="font-size:11pt;font-weight:normal;color:#555;margin-top:3px">' + refStr + '</div>' : refStr)
         + '</div>' : '')
     + '<table class="schedule-table">'
     + '<thead><tr>'
-    + '<th style="min-width:80px">Date</th>'
-    + '<th>Work Done</th>'
-    + '<th class="r" style="min-width:50px">Time</th>'
-    + '<th class="r" style="min-width:60px">Rate</th>'
-    + '<th class="r" style="min-width:75px">Amount</th>'
+    + _th('Date', false, 'min-width:80px')
+    + _th('Work Done', false, '')
+    + _th('Time', true, 'min-width:50px')
+    + _th('Rate', true, 'min-width:60px')
+    + _th('Amount', true, 'min-width:75px')
     + '</tr></thead>'
     + '<tbody>' + rows + '</tbody>'
     + '</table>'
