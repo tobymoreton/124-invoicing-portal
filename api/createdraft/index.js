@@ -89,6 +89,25 @@ module.exports = async function (context, req) {
     return;
   }
 
+  // S120: no invoice carrying a value may go out with zero VAT. A drafting-fee-only invoice on a
+  // case whose "VAT on drafting fee?" reads No produced VAT of nil silently, and several reached
+  // one firm before it was noticed. The portal holds its own button, but the rule is enforced here
+  // too so a stale tab or a direct POST cannot get round it. Zero VAT is only ever deliberate now:
+  // it must arrive with a typed reason, and that reason is stamped onto the invoice record.
+  const _vatAmt        = Number(computed.vat)   || 0;
+  const _grandAmt      = Number(computed.grand) || 0;
+  const _zeroVatReason = String((computed && computed.zeroVatReason) || '').trim();
+  if (_grandAmt > 0 && _vatAmt <= 0 && _zeroVatReason.length < 10) {
+    context.res = {
+      status: 400,
+      body: 'This invoice carries a value but no VAT. Check "VAT on drafting fee?" on the case. If the invoice really is correct without VAT, confirm it on the form and give a reason of at least 10 characters.',
+    };
+    return;
+  }
+  const _zeroVatNote = (_grandAmt > 0 && _vatAmt <= 0 && _zeroVatReason)
+    ? ' [NO VAT: ' + _zeroVatReason + ' \u2014 confirmed by ' + draftedByEmail + ']'
+    : '';
+
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
 
@@ -157,7 +176,9 @@ module.exports = async function (context, req) {
       Ourref:               caseFields.Ourreference_x0028_text_x0029_ || '',
       Theirref:             caseFields.ClientCaseReference || '',
       LAorIP:               caseFields.InterPartesorLegalAid || '',
-      _ExtendedDescription: computed.timedWorkLine || '',
+      _ExtendedDescription: _zeroVatNote
+        ? String(computed.timedWorkLine || '') + _zeroVatNote
+        : (computed.timedWorkLine || ''),
       DraftedByEmail:       draftedByEmail,
       VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
       DraftWipIds:          wipIdsCsv,
