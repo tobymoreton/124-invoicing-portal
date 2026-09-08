@@ -1370,6 +1370,7 @@
             <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="none">Not included</option><option value="ontop">Paid separately</option><option value="within">Included in the figure</option></select></div>
             <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
             <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in the figure</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
+            <div class="field"><label>Court Fees Paid (£)</label><input type="number" id="scn-court-fee" step="0.01" min="0" /><div class="sett-hint" style="margin-top:4px;">Assessment / hearing fee paid by TMC or the client. A cost out of the figure; only reimbursed if the paying party pays it back.</div></div>
             <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
             <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
             <div class="field" id="scn-fee-fixed-wrap"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
@@ -1389,6 +1390,7 @@
         <div class="card-body" style="padding:0 22px;">
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
+          <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
           <div class="interest-row"><span>Costs Element of Figure (net of interest &amp; COA)</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
         </div>
@@ -4124,7 +4126,7 @@ document.getElementById('btn-ov-save').addEventListener('click', async () => {
 // Mirrors the live Settlement maths (computeFigures / interestTotalAsAt) but takes its inputs
 // from the scenario controls. Writes NOTHING: no API call, no caseFields mutation, no save.
 let _scnDefaultsSet = false;
-let _scnCoaLive = null; // S117: live COA override for the scenario (net -> gross -> cap -> regross + court fees). null = use the saved case figure.
+let _scnCoaLive = null; // S117/S118: live TMC time-charge override for the scenario (net -> gross -> cap -> regross). Court fees are separate (scn-court-fee). null = use the saved case figure.
 function scnEl(id){ return document.getElementById(id); }
 function scnNum(id){ const e = scnEl(id); const n = parseFloat(e && e.value); return isNaN(n) ? 0 : n; }
 function scnResetDefaults(){
@@ -4135,6 +4137,7 @@ function scnResetDefaults(){
   scnEl('scn-interest-date').value = new Date().toISOString().substring(0,10);
   // S116: follow the Settlement tab's resolved treatment (its own selector, else the legacy Offers flag).
   scnEl('scn-coa-mode').value = (c.coaTreatment || resolveCOATreatment(f)) === 'OnTop' ? 'ontop' : 'within';
+  scnEl('scn-court-fee').value = (c.courtFeeOut || 0) ? c.courtFeeOut.toFixed(2) : ''; // S118: default from the saved case court fees
   const _feePct = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
   scnEl('scn-fee-basis').value = _feePct > 0 ? (_settFeeOnDrawn ? 'drawn' : 'assessed') : 'fixed';
   scnEl('scn-fee-pct').value = _feePct || '';
@@ -4163,7 +4166,11 @@ function computeScenario(){
   // deducted whenever COA is in play; what the paying party pays on top is added back, so only the
   // shortfall bites. 'within' = cost deducted, nothing added; 'ontop' = cost deducted, recoverable
   // added; 'none' = ignore COA entirely.
-  const coaCost        = _scnCoaLive != null ? _scnCoaLive : (c.coaCost || 0); // S117: live override wins
+  // S117/S118: TMC time charge (live override, else saved coaCost with its saved court fee stripped
+  // back out) PLUS the scenario's own Court Fees Paid box. Fee is a cost out of the figure.
+  const coaTimeCharge  = _scnCoaLive != null ? _scnCoaLive : round2((c.coaCost || 0) - (c.courtFeeOut || 0));
+  const scnCourtFee    = scnNum('scn-court-fee');
+  const coaCost        = round2(coaTimeCharge + scnCourtFee);
   const coaRecoverable = c.coaRecoverable || 0;
   const totalCOA   = coaMode === 'ontop' ? coaRecoverable : coaCost;
   const otherTMC   = c.otherTMC   || 0;
@@ -4213,6 +4220,7 @@ function renderScenarioTab(){
   setText('scn-r-TotalLiab', fmt(s.totalLiab));
   setText('scn-r-Interest', s.intMode === 'none' ? 'Not included' : !s.hasAuth ? 'No Authority to Assess date (Interest tab)' : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (paid on top)' : fmt(s.interestAmt) + ' (within the figure)');
   setText('scn-r-CostsElement', fmt(s.costsElement));
+  setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored' : fmt(s.coaDeduct) + (s.coaMode === 'ontop' ? ' (recovered on top: ' + fmt(s.totalCOA) + ')' : ' (within the figure)'));
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
@@ -4260,12 +4268,11 @@ document.getElementById('scn-coa-refresh')?.addEventListener('click', async () =
     const coaLimitNet = parseFloat(f['Limit_x0020_Costs_x0020_of_x0020']) || 0;
     const capped      = coaLimitNet > 0 && tmcTimeNet > coaLimitNet;
     const tmcCharge   = round2((capped ? coaLimitNet : tmcTimeNet) * (1 + vatPct));
-    const courtFeeOut = (parseFloat(f['ClientPaidExpenses']) || 0) + (parseFloat(f['CourtFeePaidByTMC']) || 0);
-    _scnCoaLive = round2(tmcCharge + courtFeeOut);
-    if (note) note.textContent = 'Live: ' + fmt(_scnCoaLive)
+    _scnCoaLive = tmcCharge; // S118: TIME charge only — court fees come from the scenario's own Court Fees Paid box
+    if (note) note.textContent = 'Live time charge: ' + fmt(_scnCoaLive)
       + (capped ? ' (time ' + fmt(round2(tmcTimeNet * (1 + vatPct))) + ' capped to ' + fmt(coaLimitNet) + ' net + VAT)' : '')
       + (data.unratedCount > 0 ? ' \u2014 ' + data.unratedCount + ' unrated entr' + (data.unratedCount === 1 ? 'y' : 'ies') + ' excluded, so this is an understatement' : '')
-      + '. Not saved.';
+      + '. Court fees added separately. Not saved.';
     renderScenarioTab();
   } catch (err) {
     if (note) note.textContent = 'Could not refresh: ' + err.message;
