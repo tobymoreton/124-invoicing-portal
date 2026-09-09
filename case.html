@@ -1322,7 +1322,7 @@
             <dt style="padding-top:6px;padding-bottom:6px;">Drafting Fee Basis</dt>
             <dd style="padding-top:6px;padding-bottom:6px;">
               <select id="inp-sett-fee-basis" style="width:100%;max-width:230px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--white);">
-                <option value="assessed">% of net recovery (as assessed)</option>
+                <option value="assessed">% of net recovery (as recovered)</option>
                 <option value="drawn">% of costs as drawn</option>
               </select>
             </dd>
@@ -1374,7 +1374,7 @@
             <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
             <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in the figure</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
             <div class="field"><label>Court Fees Paid (£)</label><input type="number" id="scn-court-fee" step="0.01" min="0" /><div class="sett-hint" style="margin-top:4px;">Assessment / hearing fee paid by TMC or the client. A cost out of the figure; only reimbursed if the paying party pays it back.</div></div>
-            <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as assessed (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
+            <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as recovered (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
             <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
             <div class="field" id="scn-fee-fixed-wrap"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
             <div class="field" id="scn-fee-tmc-wrap"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:4px;"><input type="checkbox" id="scn-fee-tmc-time" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC drafting time in fee base?</label></div>
@@ -1384,6 +1384,7 @@
             <label style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:6px;">Pro Rata Split</label>
             <button type="button" class="import-btn" id="scn-prorata" title="Set Counsel's Fees Payable (%) to the rate at which counsel recovers the same percentage of his claimed fees as the solicitor recovers of claimed profit costs">&#8646; Solve counsel % for a pro rata split</button>
             <div id="scn-prorata-note" class="sett-hint" style="margin-top:6px;"></div>
+            <div id="scn-prorata-breakdown" style="margin-top:10px;"></div>
           </div>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(27,42,74,.1);">
             <label style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:6px;">Drafting Fee Invoice Line</label>
@@ -4223,7 +4224,8 @@ function computeScenario(){
   const pctBill = (c.totalBill || 0) > 0 ? figure   / c.totalBill : 0;
   const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
   return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
-           costsElement, coaDeduct, totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
+           costsElement, coaDeduct, coaAddBack, coaTimeCharge, courtFee: scnCourtFee, coaRecoverable,
+           totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
            grossPC, netBefore, draftingFee, feeBasis, feePctIn, feeBaseAmount: (feeBasis === 'drawn' ? drawnCosts : netBefore), netAfter, pctPC, pctBill };
 }
 function renderScenarioTab(){
@@ -4254,7 +4256,7 @@ function renderScenarioTab(){
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
-  setText('scn-r-DraftingFee', fmt(s.draftingFee) + (s.feeBasis === 'fixed' ? ' (fixed)' : s.feeBasis === 'drawn' ? ' (' + s.feePctIn + '% as drawn' + (scnEl('scn-fee-tmc-time').checked ? ', incl TMC time)' : ')') : ' (' + s.feePctIn + '% as assessed)'));
+  setText('scn-r-DraftingFee', fmt(s.draftingFee) + (s.feeBasis === 'fixed' ? ' (fixed)' : s.feeBasis === 'drawn' ? ' (' + s.feePctIn + '% as drawn' + (scnEl('scn-fee-tmc-time').checked ? ', incl TMC time)' : ')') : ' (' + s.feePctIn + '% as recovered)'));
   setText('scn-r-NetAfter', fmt(s.netAfter));
   setText('scn-r-PctPC', fmtPct(s.pctPC));
   setText('scn-r-PctBill', fmtPct(s.pctBill));
@@ -4287,11 +4289,14 @@ function renderScenarioTab(){
 // what is left is shared. None of those depend on counsel, so with
 //   pot  = grossPC + counselEff  (VAT-inclusive, after disbs / other TMC / COA are paid in full)
 //   Ccl  = counsel claimed inc VAT     P = claimed PC (net)     v = 1 + case VAT rate
-// setting netBefore/P = paid/Ccl gives  paid = Ccl·pot / (Ccl + v·P).
+// setting netAfter/P = paid/Ccl gives  paid = Ccl(a·pot − b) / (P + Ccl·a),  where the drafting
+// fee is folded in as netAfter = a(pot − paid) − b:
+//   fee as a % of costs as assessed — the fee moves with counsel, so a = (1 − k·m)/v, b = 0
+//   fee fixed or as a % of costs as drawn — the fee is a constant, so a = 1/v, b = fee·m
+//   k = fee %/100, m = 1 + VAT when VAT is charged on the drafting fee, else 1.
 // Counsel's claimed (CounselsFeesClaimed) and payable (Counselsfeespayable) are separate fields:
 // the rate is measured against CLAIMED, the scenario's % box scales PAYABLE.
-// Comparator is the solicitor's NET PC recovery BEFORE the drafting fee — TMC's fee is TMC's
-// charge to the solicitor and counsel should not be subsidising it.
+// Comparator is the solicitor's net PC recovery AFTER the drafting fee (Toby, S124).
 function scnProRataSolve(){
   const f = caseFields, c = computed;
   const s    = computeScenario();
@@ -4301,15 +4306,72 @@ function scnProRataSolve(){
   const v    = 1 + (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0);
   if (Cpay <= 0 || Ccl <= 0 || P <= 0) return null;
   const pot  = s.grossPC + s.counselEff;        // what is left once disbs, other TMC and COA are paid in full
-  const paid = Ccl * pot / (Ccl + v * P);       // counsel's share at the common rate
-  return { r: paid / Ccl, Cpay, Ccl, P, pot, pct: 100 * paid / Cpay,
+  const m    = vatOnDraftingFee(f) ? v : 1;
+  const onAssessed = s.feeBasis === 'assessed';
+  const k    = onAssessed ? (s.feePctIn || 0) / 100 : 0;
+  const a    = onAssessed ? (1 - k * m) / v : 1 / v;
+  const b    = onAssessed ? 0 : (s.draftingFee || 0) * m;
+  if (a <= 0) return null;                      // drafting fee would swallow the whole recovery
+  const paid = Ccl * (a * pot - b) / (P + Ccl * a);
+  return { r: paid / Ccl, Cpay, Ccl, P, pot, paid, pct: 100 * paid / Cpay,
            counselPaid: round2(paid), reduction: round2(Cpay - paid) };
 }
+// S124: full distribution of a scenario figure — every destination, reconciling to the total
+// received. Built from a FRESH computeScenario() after the counsel % has been set, so the panel
+// can never drift from the figures on the rest of the tab. Display only; nothing is saved.
+function scnDistributionHTML(s){
+  const f = caseFields, c = computed;
+  const v        = 1 + (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0);
+  const vatFee   = vatOnDraftingFee(f);
+  const disbNet  = c.disbursements || 0;
+  const disbVat  = (c.disbIncVAT || 0) - disbNet;
+  const vatOnPC  = s.grossPC - s.netBefore;
+  const feeGross = vatFee ? s.draftingFee * v : s.draftingFee;
+  const feeVat   = feeGross - s.draftingFee;
+  const rows = [];
+  rows.push(['head', 'RECEIVED', null]);
+  rows.push(['row', 'Offer', s.figure]);
+  if (s.intMode === 'ontop' && s.interestAmt) rows.push(['row', 'Interest, paid separately', s.interestAmt]);
+  if (s.coaMode === 'ontop' && s.totalCOA)    rows.push(['row', 'Costs of assessment, paid separately', s.totalCOA]);
+  rows.push(['tot', 'Total received', s.totalReceived]);
+  rows.push(['head', 'DISTRIBUTED', null]);
+  if (s.interestAmt) rows.push(['row', 'Interest' + (s.intMode === 'within' ? ', carved out of the offer' : ''), s.interestAmt]);
+  if (s.coaMode !== 'none' && s.coaTimeCharge) rows.push(['row', 'Costs of assessment \u2014 TMC time charge (inc VAT)', s.coaTimeCharge]);
+  if (s.coaMode !== 'none' && s.courtFee)      rows.push(['row', 'Costs of assessment \u2014 court fee paid', s.courtFee]);
+  rows.push(['row', 'Disbursements, paid in full (net)', disbNet]);
+  rows.push(['row', 'VAT on disbursements', disbVat]);
+  rows.push(['row', 'Counsel\u2019s fees payable (inc VAT)', s.counselEff]);
+  if (s.otherTMC) rows.push(['row', 'Other TMC costs', s.otherTMC]);
+  rows.push(['row', 'VAT on profit costs', vatOnPC]);
+  rows.push(['row', 'Drafting fee (net)', s.draftingFee]);
+  if (vatFee) rows.push(['row', 'VAT on drafting fee', feeVat]);
+  rows.push(['tot', 'Solicitor\u2019s net profit costs', s.netAfter]);
+  const distributed = s.interestAmt + (s.coaMode === 'none' ? 0 : s.coaDeduct) + (c.disbIncVAT || 0)
+                    + s.counselEff + s.otherTMC + vatOnPC + feeGross + s.netAfter;
+  const drift = distributed - s.totalReceived;
+  const line = (r) => {
+    if (r[0] === 'head') return '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--grey-mid);margin:10px 0 4px;">' + r[1] + '</div>';
+    const bold = r[0] === 'tot';
+    return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;'
+      + (bold ? 'font-weight:700;border-top:1px solid rgba(27,42,74,.18);margin-top:4px;padding-top:5px;' : '')
+      + '"><span>' + r[1] + '</span><span style="font-family:\'IBM Plex Mono\',monospace;white-space:nowrap;">' + fmt(r[2]) + '</span></div>';
+  };
+  return '<div style="font-size:12px;color:var(--navy);background:var(--cream);border:1px solid rgba(27,42,74,.12);border-radius:6px;padding:12px 14px;">'
+    + '<div style="font-weight:700;margin-bottom:2px;">Based on an offer of ' + fmt(s.figure) + '</div>'
+    + rows.map(line).join('')
+    + '<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(27,42,74,.12);font-size:11px;color:'
+    + (Math.abs(drift) > 0.02 ? 'var(--red,#a33)' : 'var(--grey-mid)') + ';">'
+    + (Math.abs(drift) > 0.02
+        ? 'Does not reconcile \u2014 ' + fmt(Math.abs(drift)) + ' out. Check whether the figure covers the liabilities.'
+        : 'Reconciles to the total received.')
+    + ' Counsel is shown VAT-inclusive as payable; profit costs are shown net with their VAT on its own line.</div></div>';
+}
 document.getElementById('scn-prorata')?.addEventListener('click', () => {
-  const note = scnEl('scn-prorata-note'); if (!note) return;
+  const note = scnEl('scn-prorata-note'); const box = scnEl('scn-prorata-breakdown');
+  if (!note) return; if (box) box.innerHTML = '';
   const q = scnProRataSolve();
   if (!q) { note.textContent = 'Needs counsel\u2019s fees payable, counsel\u2019s fees claimed and claimed profit costs to be more than zero.'; return; }
-  if (q.pot <= 0) { note.textContent = 'The figure does not cover disbursements, other TMC costs and the costs of assessment \u2014 nothing is left for profit costs or counsel.'; return; }
+  if (q.paid <= 0) { note.textContent = 'Nothing is left for counsel once disbursements, other TMC costs, the costs of assessment and the drafting fee are met.'; return; }
   scnEl('scn-counsel-pct').value = Math.min(100, Math.max(0, q.pct)).toFixed(2);
   renderScenarioTab();
   const mismatch = Math.abs(q.Cpay - q.Ccl) > 0.5
@@ -4319,7 +4381,8 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
     : 'Pro rata rate ' + fmtPct(q.r) + '. Counsel takes ' + fmt(q.counselPaid) + ' against ' + fmt(q.Ccl)
       + ' claimed \u2014 a reduction of ' + fmt(q.reduction) + ' on the ' + fmt(q.Cpay)
       + ' payable. The solicitor\u2019s net profit costs recover at the same rate on ' + fmt(q.P) + ' claimed.')
-    + ' Disbursements, other TMC costs and the costs of assessment are paid in full first. Before the drafting fee; not saved.' + mismatch;
+    + ' Measured after the drafting fee. Not saved.' + mismatch;
+  if (box) box.innerHTML = scnDistributionHTML(computeScenario());
 });
 
 // S117: refresh the scenario's COA from live case-action time (mirrors the Settlement card's
