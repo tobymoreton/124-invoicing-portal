@@ -834,6 +834,11 @@ function renderWipTable() {
     tbody.appendChild(tr);
     tr.querySelector('.wip-check').addEventListener('change', recalc);
     tr.querySelector('.wip-hrs').addEventListener('input', recalc);
+    // S124: the Work Done cell had no listener, so an edit to the narrative never re-ran
+    // recalc() and scheduleLines kept the text from the last time something else changed.
+    // The schedule then went out with the original wording. Scoped selector — .wip-hrs also
+    // carries .wip-edit, so an unscoped '.wip-edit' would bind the hours cell twice.
+    tr.querySelector('.wip-work-done .wip-edit').addEventListener('input', recalc);
   });
 }
 
