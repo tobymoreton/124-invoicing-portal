@@ -1173,8 +1173,10 @@
            the box does and what it did to the number above it. */
         .kv-editable .kv-tile{display:flex;flex-direction:column;}
         .kv-ctl{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+        .kv-ctl-label{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:-2px;}
+        .kv-ctl-label:not(:first-child){margin-top:6px;}
         .kv-ctl input[type=number],.kv-ctl input[type=date],.kv-ctl select{width:100%;box-sizing:border-box;}
-        .kv-ctl .import-btn{align-self:flex-start;}
+        .kv-ctl .import-btn{align-self:stretch;white-space:normal;text-align:left;line-height:1.3;height:auto;min-height:0;overflow:visible;text-overflow:clip;}
         .kv-ctl .sett-hint:empty{display:none;}
         .kv-check{font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;}
         .kv-check input[type=checkbox]{width:13px;height:13px;accent-color:var(--navy);}
@@ -1199,8 +1201,8 @@
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The five things that drive every figure below. Change them on the cards further down, or on the Costs Claimed tab for VAT. The Settlement Scenarios tab shows the same five tiles in the same place, so you can compare the two screens at a glance.</span></button></div>
         <div class="card-body">
           <div class="kv-grid">
-            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
-            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-help">Interest runs at 8% from the Authority to Assess date, less anything already paid on account. Recovered interest counts as profit costs, so it is never deducted from the recovery.</div></div>
+            <div class="kv-tile"><div class="kv-label">Current Offer</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
+            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Is interest in the offer?</div><select id="f-InterestTreatment" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option><option value="None">Not included in offer</option></select></div><div class="kv-help">Say here whether the offer already contains interest. Included in offer — the sum is all-in and is broken down into costs and interest. Paid separately or not included — interest is still to be claimed, and the figure above is what to ask for. Interest runs at 8% from the Authority to Assess date, less anything already paid on account.</div></div>
             <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. Set it on the Costs of Assessment card below.</div></div>
             <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-help">What counsel is actually being paid out of the offer. Enter it on the Costs Payable card below, or pull it across from the bill with “From Claimed”.</div></div>
             <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
@@ -1383,7 +1385,7 @@
         <dl class="read-grid" style="margin-top:4px;">
           <!-- S116: show the working. The figure in use, what is backed out of it (and whether COA is),
                and the total actually receivable when COA sits on top. -->
-          <div class="read-row"><dt id="lbl-rec-figure">Figure in use</dt><dd id="r-FigureInUse">—</dd></div>
+          <div class="read-row"><dt id="lbl-rec-figure">Current Offer</dt><dd id="r-FigureInUse">—</dd></div>
           <span hidden id="r-LessInterest"></span>
           <div class="read-row"><dt id="lbl-rec-coa">Plus: costs of assessment recovered on top</dt><dd id="r-PlusCOA">—</dd></div>
           <div class="read-row"><dt>Less: disbursements, counsel &amp; other TMC fees</dt><dd id="r-LessFixed">—</dd></div>
@@ -1468,16 +1470,21 @@
         <div class="card-body">
           <div class="kv-grid kv-editable">
             <div class="kv-tile">
-              <div class="kv-label">Figure in use</div><div class="kv-value" id="kv-scn-figure">—</div>
+              <div class="kv-label">Current Offer</div><div class="kv-value" id="kv-scn-figure">—</div>
               <div class="kv-sub" id="kv-scn-figure-src">Scenario figure — nothing saved.</div>
-              <div class="kv-ctl"><input type="number" id="scn-figure" step="0.01" min="0" /></div>
+              <div class="kv-ctl">
+                <div class="kv-ctl-label">Offer on the table (£)</div>
+                <input type="number" id="scn-figure" step="0.01" min="0" />
+              </div>
               <div class="kv-help">The all-in sum on the table. Everything below is worked out from this one number.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Interest</div><div class="kv-value" id="kv-scn-interest">—</div>
               <div class="kv-sub" id="kv-scn-interest-sub">—</div>
               <div class="kv-ctl">
+                <div class="kv-ctl-label">Is interest in the offer?</div>
                 <select id="scn-interest-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Not included in offer</option></select>
+                <div class="kv-ctl-label">Interest as at</div>
                 <input type="date" id="scn-interest-date" />
               </div>
               <div class="kv-help">Is interest inside the offer, or still to be claimed? Set the date to the date of the offer — interest runs at 8% from the Authority to Assess, less anything already paid.</div>
@@ -1486,9 +1493,11 @@
               <div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div>
               <div class="kv-sub" id="kv-scn-coa-sub">—</div>
               <div class="kv-ctl">
+                <div class="kv-ctl-label">How are they paid?</div>
                 <select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select>
-                <input type="number" id="scn-court-fee" step="0.01" min="0" placeholder="Court fees paid (£)" />
-                <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button>
+                <div class="kv-ctl-label">Court fees paid (£)</div>
+                <input type="number" id="scn-court-fee" step="0.01" min="0" />
+                <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update TMC time from live case actions</button>
                 <div id="scn-coa-live-note" class="sett-hint"></div>
               </div>
               <div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The court fee is the N258 or hearing fee, whoever paid it.</div>
@@ -1496,16 +1505,20 @@
             <div class="kv-tile">
               <div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-scn-counsel">—</div>
               <div class="kv-sub" id="kv-scn-counsel-sub">—</div>
-              <div class="kv-ctl"><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" placeholder="% payable" /></div>
+              <div class="kv-ctl">
+                <div class="kv-ctl-label">% of counsel's fees payable</div>
+                <input type="number" id="scn-counsel-pct" step="1" min="0" value="100" />
+              </div>
               <div class="kv-help">The percentage of counsel's fees you expect to pay. 100% is the figure on the Settlement tab; drop it to model counsel taking a cut alongside the solicitor.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-scn-fee">—</div>
               <div class="kv-sub" id="kv-scn-fee-sub">—</div>
               <div class="kv-ctl">
+                <div class="kv-ctl-label">Fee basis</div>
                 <select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as recovered (net recovery)</option><option value="fixed">Fixed £ amount</option></select>
-                <span id="scn-fee-pct-wrap"><input type="number" id="scn-fee-pct" step="0.1" min="0" placeholder="Fee %" /></span>
-                <span id="scn-fee-fixed-wrap"><input type="number" id="scn-fee-fixed" step="0.01" min="0" placeholder="Fixed fee (£ net)" /></span>
+                <span id="scn-fee-pct-wrap"><span class="kv-ctl-label" style="display:block;">Fee %</span><input type="number" id="scn-fee-pct" step="0.1" min="0" /></span>
+                <span id="scn-fee-fixed-wrap"><span class="kv-ctl-label" style="display:block;">Fixed fee (£ net)</span><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></span>
                 <span id="scn-fee-tmc-wrap"><label class="kv-check"><input type="checkbox" id="scn-fee-tmc-time" /> Include TMC drafting time in fee base?</label></span>
               </div>
               <div class="kv-help">TMC's fee for drawing the bill. "As drawn" charges a percentage of the costs claimed; "as recovered" charges a percentage of what actually comes in, so the fee moves with the settlement.</div>
@@ -1519,6 +1532,7 @@
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(27,42,74,.1);">
             <label style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:6px;">Pro Rata Split</label>
+            <div class="kv-help" style="margin-top:0;padding-top:0;border-top:none;margin-bottom:8px;">Where the offer is short, everyone usually takes the same haircut. This works out the percentage of counsel's claimed fees that leaves counsel recovering the same proportion of his claim as the solicitor recovers of the profit costs — so neither is carrying the shortfall for the other. It fills in Counsel's Fees Payable above; change it back by hand if the split should not be even.</div>
             <button type="button" class="import-btn" id="scn-prorata" title="Set Counsel's Fees Payable (%) to the rate at which counsel recovers the same percentage of his claimed fees as the solicitor recovers of claimed profit costs">&#8646; Solve counsel % for a pro rata split</button>
             <div id="scn-prorata-note" class="sett-hint" style="margin-top:6px;"></div>
             <div id="scn-prorata-breakdown" style="margin-top:10px;"></div>
@@ -1537,7 +1551,8 @@
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
           <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
-          <div class="interest-row"><span>Costs Element of Figure (net of the assessment)</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Costs Element of Offer (after interest &amp; the assessment)</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
         </div>
       </div>
@@ -3057,6 +3072,15 @@ function settFieldsInUse() {
 //   opts.feeBasis       — 'drawn' | 'recovered' | 'fixed'
 //   opts.feePct / opts.feeFixed / opts.feeInclTmcTime
 //   opts.assign         — false to return the figures without touching the global `computed`
+// S125: whether the offer already contains interest. Text column InterestTreatment on Cases:
+// 'Within' | 'OnTop' | 'None'; blank = Within, which is what every pre-S125 case assumed.
+let _settInterestTreatmentOverride = null;
+function resolveInterestTreatment(f) {
+  if (_settInterestTreatmentOverride !== null) return _settInterestTreatmentOverride;
+  const stored = String((f || {})['InterestTreatment'] || '').toLowerCase();
+  return stored === 'ontop' ? 'ontop' : stored === 'none' ? 'none' : 'within';
+}
+
 function computeFigures(opts) {
   opts = opts || {};
   const f = opts.fields || settFieldsInUse();
@@ -3162,7 +3186,7 @@ function computeFigures(opts) {
   // is interest — Toby (06/09): "interest IS essentially PC once recovered", so it is NOT backed
   // out of anything. costsFigure kept equal to the figure for the % lines.
   const interestInFigure = opts.interestAmt != null ? opts.interestAmt : (parseFloat(f['InterestInFigure']) || 0);
-  const intMode          = opts.intMode || 'within';
+  const intMode          = opts.intMode || resolveInterestTreatment(f);
   const costsFigure      = offerOrSettlement;
   // What actually comes in: the figure plus anything paid on top of it. S125: interest is a RECORD
   // of what sits inside the figure and is never deducted from the recovery. The only thing intMode
@@ -4489,10 +4513,16 @@ function renderScenarioTab(){
   setText('scn-r-TotalLiab', fmt(s.totalLiab));
   setText('scn-r-Interest', !s.hasAuth ? 'No Authority to Assess date (Interest tab)'
     : !s.interestAmt ? '—'
-    : s.intMode === 'within' ? fmt(s.interestAmt) + ' (included in offer — costs element ' + fmt(s.interestCostsElement) + ')'
+    : s.intMode === 'within' ? fmt(s.interestAmt) + ' (included in offer)'
     : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (payable on top — claim this in addition)'
     : fmt(s.interestAmt) + ' (not in the offer — claim this in addition)');
-  setText('scn-r-CostsElement', fmt(s.costsElement));
+  // S125: the offer broken all the way down — what is left once the interest inside it and the cost
+  // of the assessment are both taken out. This is presentation only. The recovery deliberately runs
+  // on the ALL-IN figure, because recovered interest counts as profit costs, so the base is shown
+  // on its own line rather than left to be inferred from a number that does not match.
+  const _intInOffer = (s.intMode === 'within') ? (s.interestAmt || 0) : 0;
+  setText('scn-r-CostsElement', fmt(Math.max(0, s.figure - _intInOffer - s.coaDeduct + (s.coaRecovered || 0))));
+  setText('scn-r-RecoveryBase', fmt(s.costsElement) + (_intInOffer ? ' (all-in — interest not deducted)' : ''));
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored' : fmt(s.coaDeduct) + (s.coaMode === 'ontop' ? ' (recovered on top: ' + fmt(s.totalCOA) + ')' : ' (included in offer)'));
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
@@ -4726,10 +4756,13 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
                     : c.intMode === 'within' ? fmt(intAmt) + ' of the offer is interest.'
                     : fmt(intAmt) + ' — claim this in addition to the offer.');
   const treat = c.coaTreatment;
+  const _coaTime = c.coaTimeCharge != null ? c.coaTimeCharge : (c.coa || 0);
+  const _coaFee  = c.courtFee != null ? c.courtFee : (c.courtFeeOut || 0);
   put('coa', treat === 'None' ? 'Ignored' : treat === 'OnTop' ? 'Paid separately' : 'Included in offer');
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
-               : fmt(c.coaCost || 0) + ' out of the offer'
-                 + (treat === 'OnTop' ? ', ' + fmt(c.coaRecoverable || 0) + ' recovered back.' : '; nothing separate to add back.'));
+               : fmt(c.coaCost || 0) + ' out of the offer — TMC time ' + fmt(_coaTime)
+                 + (_coaFee ? ' plus court fee ' + fmt(_coaFee) : '')
+                 + (treat === 'OnTop' ? '; ' + fmt(c.coaRecoverable || 0) + ' recovered back.' : '; nothing separate to add back.'));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
                                     : (c.feePctIn || 0) + '% as recovered');
@@ -4763,7 +4796,7 @@ function renderSettlementTab() {
     const _b = f['DateofAuthoritytoAssess'] ? solveInterestBackwork(f, c.offerOrSettlement, _asAt) : null;
     if (_b && _b.interest) {
       setText('kv-sett-interest', fmt(_b.interest) + ' (calculated)');
-      setText('kv-sett-interest-sub', 'Not yet confirmed. The offer breaks down as ' + fmt(_b.principal)
+      setText('kv-sett-interest-sub', 'Not yet confirmed. The offer is ' + fmt(_b.principal)
         + ' costs plus this interest — use “Use internal calc” below to adopt the figure, or type the figure actually agreed.');
     } else if (!f['DateofAuthoritytoAssess']) {
       setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
@@ -4792,6 +4825,7 @@ function renderSettlementTab() {
   const onTop    = c.coaTreatment === 'OnTop';
   const outEl = document.getElementById('f-SettlementOutcome'); if (outEl) outEl.value = c.outcome;
   const trtEl = document.getElementById('f-COATreatment');      if (trtEl) trtEl.value = c.coaTreatment;
+  const intEl = document.getElementById('f-InterestTreatment'); if (intEl) intEl.value = c.intMode === 'ontop' ? 'OnTop' : c.intMode === 'none' ? 'None' : 'Within';
   setText('hint-sett-outcome', assessed
     ? 'The court assessed the bill. Enter the sum payable under the assessment below, interest included; costs of assessment are on the next card and default to "paid separately".'
     : 'The parties agreed a figure. Enter the all-in sum agreed, interest included; costs of assessment default to "included in offer".');
@@ -5035,7 +5069,7 @@ document.getElementById('btn-sett-edit').addEventListener('click', () => tabSetE
 // rather than leaving the card showing a fee the case does not actually carry.
 // S116e: leave edit mode FIRST — computeFigures() reads the typed boxes while the tab is editing,
 // and Cancel must go back to the saved case.
-document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; tabSetReadMode('sett','tab-settlement'); computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); });
+document.getElementById('btn-sett-cancel').addEventListener('click', () => { _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; _settInterestTreatmentOverride = null; tabSetReadMode('sett','tab-settlement'); computeFigures(); computeInterest(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); });
 document.getElementById('btn-sett-save').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
@@ -5058,6 +5092,8 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   // and if one is missing the save fails visibly on that field rather than silently.
   if (_settOutcomeOverride !== null)      fields['SettlementOutcome'] = _settOutcomeOverride;
   if (_settCOATreatmentOverride !== null) fields['COATreatment']      = _settCOATreatmentOverride;
+  if (_settInterestTreatmentOverride !== null) fields['InterestTreatment'] =
+    _settInterestTreatmentOverride === 'ontop' ? 'OnTop' : _settInterestTreatmentOverride === 'none' ? 'None' : 'Within';
   for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'InterestInFigure':'f-InterestInFigure' })) {
     const v = document.getElementById(el)?.value ?? '';
     const had = caseFields[sp] !== null && caseFields[sp] !== undefined && caseFields[sp] !== '';
@@ -5069,7 +5105,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   if (msg.className.includes('ok')) {
     // The saved value is now the case value, so drop the override rather than leave a stale
     // one sitting on top of it.
-    _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null;
+    _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; _settInterestTreatmentOverride = null;
     try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
     tabSetReadMode('sett','tab-settlement');
   } else btn.disabled = false;
@@ -5191,6 +5227,11 @@ document.getElementById('f-SettlementOutcome')?.addEventListener('change', () =>
   _settOutcomeOverride      = document.getElementById('f-SettlementOutcome').value === 'Assessed' ? 'Assessed' : 'Settled';
   _settCOATreatmentOverride = _settOutcomeOverride === 'Assessed' ? 'OnTop' : 'Within';
   renderSettlementLive(); _updateTotalCOADisplay(); // S116b: card lines from the boxes, not the saved case
+});
+document.getElementById('f-InterestTreatment')?.addEventListener('change', () => {
+  const v = document.getElementById('f-InterestTreatment').value;
+  _settInterestTreatmentOverride = v === 'OnTop' ? 'ontop' : v === 'None' ? 'none' : 'within';
+  computeFigures(); renderSettlementTab();
 });
 document.getElementById('f-COATreatment')?.addEventListener('change', () => {
   _settCOATreatmentOverride = document.getElementById('f-COATreatment').value === 'OnTop' ? 'OnTop' : 'Within';
