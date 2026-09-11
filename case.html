@@ -1353,19 +1353,33 @@
         🧪 <strong>Playground.</strong> Nothing on this tab is saved and nothing here changes any real case figure. Experiment freely — Reset pulls the current case figures back in.
       </div>
       <style>
-        .scn-layout{display:grid;grid-template-columns:460px minmax(0,1fr);gap:18px;align-items:start;}
-        .scn-left{position:sticky;top:12px;min-width:0;}
-        .scn-right{min-width:0;}
-        .scn-left .detail-grid{grid-template-columns:1fr;gap:12px;}
+        /* S125: the Scenarios tab is laid out as ONE column of cards in the same order as the
+           Settlement tab, so a user moving between the two sees the same things in the same
+           places. display:contents dissolves the old left/right wrappers so every card becomes a
+           direct flex item and can be ordered without moving any markup. */
+        .scn-layout{display:flex;flex-direction:column;gap:18px;align-items:stretch;}
+        .scn-left,.scn-right{display:contents;}
+        .scn-left .card{order:1;}                 /* Key Variables            */
+        .scn-right .card:nth-child(1){order:2;}   /* Settlement Details       */
+        .scn-right .card:nth-child(4){order:3;}   /* Liabilities              */
+        .scn-right .card:nth-child(2){order:4;}   /* Recovery                 */
+        .scn-right .card:nth-child(3){order:5;}   /* Costs Claimed            */
+        .scn-left .detail-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
-        #tab-scenarios .scn-left .read-row dt{white-space:nowrap;}
-        @media(max-width:1100px){.scn-layout{grid-template-columns:1fr;}.scn-left{position:static;}}
+        /* S125: teal accent so the playground is never mistaken for the live sheet. Structure is
+           identical to Settlement; only the colour differs. */
+        #tab-scenarios{--scn-accent:#2E6F7E;}
+        #tab-scenarios .card{border-left:3px solid var(--scn-accent);}
+        #tab-scenarios .card-head{background:rgba(46,111,126,.08);}
+        #tab-scenarios .card-title{color:var(--scn-accent);}
+        #tab-scenarios .read-row.pct dd{color:var(--scn-accent);}
+        @media(max-width:900px){.scn-left .detail-grid{grid-template-columns:1fr;}}
       </style>
       <div class="scn-layout">
       <div class="scn-left">
       <div class="card">
-        <div class="card-head"><span class="card-title">Scenario Inputs</span><button type="button" class="info-btn" aria-label="About Scenario Inputs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
+        <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
             <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
@@ -1450,7 +1464,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span></div>
+        <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
         <dl class="liab-grid">
           <div class="liab-row"><dt>Disbursements</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
           <div class="liab-row"><dt>Counsel's Fees</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
@@ -3109,6 +3123,62 @@ function interestTotalAsAt(f, interestOn, asAt) {
   return days1 * r1 + days2 * r2 + days3 * r3 + days4 * r4;
 }
 
+// S125: the same period maths as interestTotalAsAt(), but returning the WORKING rather than just a
+// total — every period's dates, days, payments received by then, principal, daily rate and interest.
+// Any screen that shows interest can render the breakdown from this, so there is one set of figures.
+function interestPeriodsAsAt(f, interestOn, asAt) {
+  const r = 0.08 / 365;
+  const authDate = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
+  const empty = { periods: [], total: 0, dailyRate: 0, sumDays: 0, sumDaysPaid: 0, hasAuth: !!authDate };
+  if (!authDate || !asAt) return empty;
+  const preAuth = parseFloat(f['TotalPreAuthorityPayments']) || 0;
+  const ip  = [parseFloat(f['InterimPayment1']) || 0, parseFloat(f['InterimPayment2']) || 0, parseFloat(f['InterimPayment3']) || 0];
+  const ipd = ['InterimPaymentDate1', 'InterimPaymentDate2', 'InterimPaymentDate3']
+    .map(k => f[k] ? new Date(f[k]) : null);
+  // A period ends at the next payment date, but never later than the as-at date.
+  const endOr  = d => (d && d < asAt) ? d : asAt;
+  const starts = [authDate, ipd[0], ipd[1], ipd[2]];
+  const ends   = [endOr(ipd[0]), ipd[0] ? endOr(ipd[1]) : null, ipd[1] ? endOr(ipd[2]) : null, ipd[2] ? asAt : null];
+  // Everything received by the START of each period — pre-authority money, then each payment on account.
+  const cum = [preAuth, preAuth + ip[0], preAuth + ip[0] + ip[1], preAuth + ip[0] + ip[1] + ip[2]];
+  const periods = [];
+  let total = 0, sumDays = 0, sumDaysPaid = 0;
+  for (let i = 0; i < 4; i++) {
+    if (!starts[i] || !ends[i]) continue;
+    const days = Math.max(0, daysBetween(starts[i], ends[i]));
+    if (!days) continue;
+    const principal = Math.max(0, interestOn - cum[i]); // floored: interest stops, never reverses
+    const dailyRate = principal * r;
+    const amount    = days * dailyRate;
+    periods.push({ from: starts[i], to: ends[i], days: days, paidByStart: cum[i],
+                   principal: principal, dailyRate: dailyRate, interest: amount });
+    total += amount; sumDays += days; sumDaysPaid += days * cum[i];
+  }
+  return { periods: periods, total: round2(total), hasAuth: true,
+           dailyRate: periods.length ? periods[periods.length - 1].dailyRate : 0,
+           sumDays: sumDays, sumDaysPaid: sumDaysPaid };
+}
+
+// S125: back-work an all-in offer into costs + interest. Interest is linear in the principal, so
+// with r = 8%/365, dᵢ the days in each period and Aᵢ everything received by the start of it:
+//     interest(P) = r·P·Σdᵢ − r·Σ(dᵢ·Aᵢ)      ⇒   P = (allIn + r·Σ(dᵢ·Aᵢ)) / (1 + r·Σdᵢ)
+// Closed form, no iteration. The days and the payments do not depend on P, so a probe run supplies
+// both sums. Linearity only holds while the principal stays above the payments received; if a period
+// would clamp to zero the solve overstates interest, so the answer is recomputed through
+// interestPeriodsAsAt() and `exact` reports whether it adds back to the offer.
+function solveInterestBackwork(f, allIn, asAt) {
+  const r = 0.08 / 365;
+  const probe = interestPeriodsAsAt(f, allIn, asAt);
+  if (!probe.hasAuth || !probe.sumDays) {
+    return { principal: round2(allIn), interest: 0, periods: [], dailyRate: 0, exact: probe.hasAuth, recomputed: 0 };
+  }
+  const principal = round2((allIn + r * probe.sumDaysPaid) / (1 + r * probe.sumDays));
+  const check     = interestPeriodsAsAt(f, principal, asAt);
+  return { principal: principal, interest: round2(allIn - principal), periods: check.periods,
+           dailyRate: check.dailyRate, recomputed: check.total,
+           exact: Math.abs(principal + check.total - allIn) <= 0.01 };
+}
+
 function computeInterest() {
   const f     = caseFields;
   const today = new Date(); today.setHours(0,0,0,0);
@@ -3123,8 +3193,11 @@ function computeInterest() {
   const authDate    = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   const coaManual   = parseFloat(f['CostsOfAssessmentForInterestTabO']) || 0;
   const interestOn = sumOverride > 0 ? sumOverride : (computed.totalBill || 0);
-  const p1 = interestOn - preAuth;
-  const p2 = p1 - ip1; const p3 = p2 - ip2; const p4 = p3 - ip3;
+  // S125: floor each period's principal at 0 so interest STOPS rather than going negative once
+  // payments on account overtake the sum. interestTotalAsAt() has always done this; this function
+  // did not, so the two disagreed on any case where the payments exceeded the principal.
+  const p1 = Math.max(0, interestOn - preAuth);
+  const p2 = Math.max(0, p1 - ip1); const p3 = Math.max(0, p2 - ip2); const p4 = Math.max(0, p3 - ip3);
   const r1 = p1 * 0.08 / 365;
   const r2 = ipd1 ? p2 * 0.08 / 365 : 0;
   const r3 = ipd2 ? p3 * 0.08 / 365 : 0;
