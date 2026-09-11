@@ -1630,6 +1630,7 @@
             <div class="interest-row"><span>Gross PC Recovery</span><span id="scn-r-GrossPC">—</span></div>
             <div class="interest-row"><span>Net PC Recovery</span><span id="scn-r-NetBefore">—</span></div>
             <div class="interest-row"><span>Drafting Fee</span><span id="scn-r-DraftingFee">—</span></div>
+            <div class="scn-ask" id="scn-explain"></div>
           </div>
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
@@ -1642,7 +1643,8 @@
             <div class="interest-row"><span>Counsel's Fees</span><span id="scn-r-Counsel">—</span></div>
             <div class="interest-row"><span>Total Costs of Assessment</span><span id="scn-r-COA">—</span></div>
             <div class="interest-row"><span>Other TMC Fees (excl Drafting)</span><span id="scn-r-Other">—</span></div>
-            <div class="interest-row int-row-strong"><span>Total</span><span id="scn-r-TotalLiab">—</span></div>
+            <div class="interest-row int-row-strong"><span>Total liabilities</span><span id="scn-r-TotalLiab">—</span></div>
+            <div class="interest-row int-row-strong"><span id="scn-lbl-StillOut">Still to come out of the offer</span><span id="scn-r-StillOut">—</span></div>
           </div>
           <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="scn-int-working"></div></div>
         </div>
@@ -4606,9 +4608,19 @@ function renderScenarioTab(){
   setText('scn-c-disb-vat', fmt(c.disbIncVAT)); setText('scn-c-counsel-vat', fmt(c.counselIncVAT)); setText('scn-c-total-vat', fmt(c.totalClaimed));
   setText('scn-r-Disb', fmt(s.disbIncVAT));
   setText('scn-r-Counsel', s.pct === 100 ? fmt(s.counselEff) : fmt(s.counselEff) + ' (' + s.pct + '% of ' + fmt(s.counselBase) + ')');
-  setText('scn-r-COA', s.coaMode === 'none' ? 'Ignored' : s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' (on top)' : fmt(s.totalCOA));
+  setText('scn-r-COA', s.coaMode === 'none' ? 'Ignored'
+    : s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' (on top)'
+    : fmt(s.totalCOA) + ' — already out of the offer above');
   setText('scn-r-Other', fmt(s.otherTMC));
   setText('scn-r-TotalLiab', fmt(s.totalLiab));
+  // S125: the liabilities list is a STATEMENT of what the paying party owes, not a deduction ladder
+  // — and when the assessment sits inside the offer it has already come out of the base above, so
+  // the total reads as though it were about to be deducted twice. Spell out what actually still
+  // comes off the base.
+  const _stillOut = round2((s.disbIncVAT || 0) + (s.counselEff || 0) + (s.otherTMC || 0)
+                    + (s.coaMode === 'ontop' ? 0 : 0));
+  setText('scn-lbl-StillOut', 'Still to come out of ' + fmt(s.costsElement));
+  setText('scn-r-StillOut', fmt(_stillOut) + ' — gross profit costs ' + fmt(s.grossPC));
   setText('scn-r-Interest', !s.hasAuth ? 'No Authority to Assess date (Interest tab)'
     : !s.interestAmt ? '—'
     : s.intMode === 'within' ? fmt(s.interestAmt) + ' (incl)'
@@ -4670,6 +4682,8 @@ function renderScenarioTab(){
   const _dist = document.getElementById('scn-dist');
   if (_dist) _dist.innerHTML = s.figure ? scnDistributionHTML(s)
     : '<div class="sett-hint">Enter an offer above to see how it would be distributed.</div>';
+  const _exp = document.getElementById('scn-explain');
+  if (_exp) { const t = scnExplainText(s); _exp.textContent = t; _exp.style.whiteSpace = 'pre-line'; }
 }
 // S125: plain-English offer box. Reads a sentence and SETS THE CONTROLS — it computes nothing.
 // Every figure on the tab still comes from computeFigures(), so a misread here can only put the
@@ -4843,6 +4857,53 @@ function scnProRataSolve(){
 // S124: full distribution of a scenario figure — every destination, reconciling to the total
 // received. Built from a FRESH computeScenario() after the counsel % has been set, so the panel
 // can never drift from the figures on the rest of the tab. Display only; nothing is saved.
+// S125: the two headline percentages routinely look irreconcilable — an offer at 78% of the bill
+// producing a 68% recovery on profit costs. The gap is real and explicable every time, but it is
+// spread across five separate lines on three cards, so nobody assembles it. This says it in one
+// paragraph, from the same figures, naming the items that eat the difference.
+function scnExplainText(s) {
+  const c = computed || {};
+  if (!s.figure || !(c.totalBill > 0) || !(c.totalIPPC > 0)) return '';
+  const bits = [];
+  bits.push('The offer is ' + fmtPct(s.pctBill) + ' of the bill, but the solicitor keeps '
+            + fmtPct(s.pctPC) + ' of the profit costs. The difference goes to these:');
+  // Money out of the offer that is not in the bill at all.
+  const notInBill = (s.coaMode === 'none' ? 0 : s.coaDeduct) - (s.coaRecovered || 0) + (s.otherTMC || 0);
+  if (notInBill > 0.005) {
+    bits.push('\u2022 ' + fmt(notInBill) + ' for the costs of assessment and other TMC fees, which are '
+              + 'not part of the bill — so they come out of the offer without ever having been claimed.');
+  }
+  // Disbursements are paid in full whatever the discount, so they take a larger slice of a reduced
+  // offer than they occupy in the bill.
+  const d = s.disbIncVAT || 0;
+  if (d > 0.005) {
+    const shareBill  = d / c.totalBill, shareOffer = d / s.figure;
+    bits.push('\u2022 ' + fmt(d) + ' of disbursements, paid in full whatever the discount — '
+              + fmtPct(shareBill) + ' of the bill but ' + fmtPct(shareOffer) + ' of the offer.');
+  }
+  // Counsel: did he share the reduction or not?
+  const cclClaimed = c.counselIncVAT || 0;
+  if (cclClaimed > 0.005) {
+    const cut = round2(cclClaimed - (s.counselEff || 0));
+    bits.push(cut > 0.005
+      ? '\u2022 ' + fmt(s.counselEff) + ' to counsel — ' + fmtPct((s.counselEff || 0) / cclClaimed)
+        + ' of his claim, so he is sharing the reduction.'
+      : '\u2022 ' + fmt(s.counselEff) + ' to counsel, paid in full — the whole reduction therefore '
+        + 'falls on the profit costs.');
+  }
+  const feeGross = vatOnDraftingFee(caseFields) ? round2(s.draftingFee * (1 + (parseFloat((caseFields||{})['VAT_x0020__x0025__x0020_Claimed']) || 0))) : s.draftingFee;
+  if (feeGross > 0.005) {
+    bits.push('\u2022 ' + fmt(feeGross) + ' for TMC\u2019s drafting fee, which comes off what is left.');
+  }
+  if (s.intMode === 'within' && s.interestAmt > 0.005) {
+    bits.push('\u2022 ' + fmt(s.interestAmt) + ' of the offer is interest. It is NOT taken out — recovered '
+              + 'interest counts as profit costs — so it lifts the recovery rather than reducing it.');
+  }
+  bits.push('That leaves ' + fmt(s.netAfter) + ' against ' + fmt(c.totalIPPC)
+            + ' of profit costs claimed — the solicitor\u2019s own plus TMC\u2019s in the bill.');
+  return bits.join('\n');
+}
+
 function scnDistributionHTML(s){
   const f = caseFields, c = computed;
   const v        = 1 + (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0);
@@ -4859,7 +4920,11 @@ function scnDistributionHTML(s){
   if (s.coaMode === 'ontop' && s.totalCOA)    rows.push(['row', 'Costs of assessment, paid separately', s.totalCOA]);
   rows.push(['tot', 'Total received', s.totalReceived]);
   rows.push(['head', 'DISTRIBUTED', null]);
-  if (s.interestAmt) rows.push(['row', 'Interest' + (s.intMode === 'within' ? ', carved out of the offer' : ''), s.interestAmt]);
+  // S125: interest that sits INSIDE the offer is not a separate destination — it stays in the
+  // profit costs (recovered interest counts as PC), so listing it here counted it twice and the
+  // panel reported itself as failing to reconcile by exactly the interest. Only interest paid ON
+  // TOP is money arriving separately and going somewhere.
+  if (s.intMode === 'ontop' && s.interestAmt) rows.push(['row', 'Interest, paid on top', s.interestAmt]);
   if (s.coaMode !== 'none' && s.coaTimeCharge) rows.push(['row', 'Costs of assessment \u2014 TMC time charge (inc VAT)', s.coaTimeCharge]);
   if (s.coaMode !== 'none' && s.courtFee)      rows.push(['row', 'Costs of assessment \u2014 court fee paid', s.courtFee]);
   rows.push(['row', 'Disbursements, paid in full (net)', disbNet]);
@@ -4870,7 +4935,7 @@ function scnDistributionHTML(s){
   rows.push(['row', 'Drafting fee (net)', s.draftingFee]);
   if (vatFee) rows.push(['row', 'VAT on drafting fee', feeVat]);
   rows.push(['tot', 'Solicitor\u2019s net profit costs', s.netAfter]);
-  const distributed = s.interestAmt + (s.coaMode === 'none' ? 0 : s.coaDeduct) + (c.disbIncVAT || 0)
+  const distributed = (s.intMode === 'ontop' ? s.interestAmt : 0) + (s.coaMode === 'none' ? 0 : s.coaDeduct) + (c.disbIncVAT || 0)
                     + s.counselEff + s.otherTMC + vatOnPC + feeGross + s.netAfter;
   const drift = distributed - s.totalReceived;
   // S125: state the arithmetic rather than assert it — every line above added up, against the total
