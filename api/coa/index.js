@@ -9,6 +9,9 @@
  *   ref  — Our Reference (text), required
  *   mode — 'unbilled' (Billable=true AND Billed=false)
  *          'all'      (Billable=true, regardless of billed status)
+ *   asAt — optional ISO date (YYYY-MM-DD). Counts only time recorded ON OR BEFORE that date,
+ *          so an offer can be valued against the costs of assessment as they stood when it was
+ *          made rather than as they stand today. Omit for everything to date (S125).
  *
  * Returns:
  *   {
@@ -27,6 +30,8 @@
  *   Num_BillableAmount_x00a3_ — billable value £ (confirmed internal name from /api/wip)
  *   TimeSpentMirror           — hours (fallback if BillableAmount blank)
  *   field_6                   — rate £/hr (fallback)
+ *   field_12 / field_1        — date of the action (field_12 first, field_1 fallback — the same
+ *                               preference case.html uses everywhere it renders a case action)
  *
  * Note: PreLimitedBillableAmount is the PA connector display name — internal SP name
  * unconfirmed for Graph. Using Num_BillableAmount_x00a3_ instead (confirmed working).
@@ -70,6 +75,18 @@ module.exports = async function (context, req) {
 
   const ref  = (req.query.ref  || '').trim();
   const mode = (req.query.mode || 'unbilled').toLowerCase();
+  // S125: optional as-at date. Blank = everything to date, which is the pre-S125 behaviour.
+  const asAtRaw = (req.query.asAt || '').trim();
+  let asAtMs = null;
+  if (asAtRaw) {
+    const d = new Date(asAtRaw);
+    if (isNaN(d.getTime())) {
+      context.res = { status: 400, body: 'Invalid asAt — expected a date such as 2026-09-11' };
+      return;
+    }
+    d.setHours(23, 59, 59, 999); // inclusive of the whole of the named day
+    asAtMs = d.getTime();
+  }
 
   if (!ref) {
     context.res = { status: 400, body: 'Missing required param: ref' };
@@ -124,9 +141,23 @@ module.exports = async function (context, req) {
     });
 
     // Filter 3: for unbilled mode, exclude already-billed entries
-    const entries = billableMatches.filter(item => {
+    const datedEntries = billableMatches.filter(item => {
       if (mode === 'unbilled' && item.fields?.['Billed_x003f_'] === true) return false;
       return true;
+    });
+
+    // Filter 4 (S125): as-at date. An entry with no date at all is EXCLUDED once an as-at is
+    // given — it cannot be shown to have existed by that date, and a costs figure should
+    // understate rather than overstate. Undated entries are counted and reported so the caller
+    // can say so rather than silently lose them.
+    let undatedExcluded = 0;
+    const entries = asAtMs === null ? datedEntries : datedEntries.filter(item => {
+      const f = item.fields || {};
+      const raw = f['field_12'] || f['field_1'];
+      if (!raw) { undatedExcluded++; return false; }
+      const t = new Date(raw).getTime();
+      if (isNaN(t)) { undatedExcluded++; return false; }
+      return t <= asAtMs;
     });
 
     // Sum — BILLED entries use the stored Num_BillableAmount_x00a3_ (what was invoiced);
@@ -180,12 +211,14 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Build': 'S125-coa-asat' },
       body: JSON.stringify({
         sum:   Math.round(sum * 100) / 100,
         count: entries.length,
         limit: limit,
         mode:  mode,
+        asAt:  asAtRaw || null,
+        undatedExcluded: undatedExcluded,
         // Entries that carry recorded time but could not be valued (no stored amount,
         // no rate). NOT included in `sum`. If unratedCount > 0 the COA figure is an
         // UNDERSTATEMENT and the caller must say so — see case.html COA picker.
