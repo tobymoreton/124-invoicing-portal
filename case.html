@@ -1224,9 +1224,6 @@
               </select>
               <div class="sett-hint" id="hint-sett-outcome">—</div>
             </div>
-            <div class="field full"><label>Case Name</label><input type="text" id="f-CaseNameForOpenCases" disabled /></div>
-            <div class="field"><label>Client Reference</label><input type="text" id="f-ClientCaseReference" disabled /></div>
-            <div class="field"><label>TMC Reference</label><input type="text" id="f-Ourreference" readonly /></div>
             <div class="field"><label id="lbl-sett-date">Date of Settlement</label><input type="date" id="f-DateSettled0" disabled /></div>
             <div class="field">
               <label id="lbl-sett-amount">Total Settlement (£)</label>
@@ -1245,7 +1242,7 @@
                 <button class="import-btn" id="btn-import-interest" disabled>↓ Use internal calc</button>
                 <span class="sett-hint" id="hint-sett-interest-calc" style="margin:0;"></span>
               </div>
-              <div class="sett-hint">For the record only: how much of the figure above is interest, as agreed or awarded. It changes no figure — recovered interest counts as profit costs. The internal calc alongside is the Interest tab's own figure — a guide, not the answer.</div>
+              <div class="sett-hint">Leave blank until a figure is agreed — the tile above shows what interest has accrued in the meantime. This box is the figure actually agreed or awarded, and once entered it replaces the calculation everywhere. It changes no recovery figure: recovered interest counts as profit costs.</div>
             </div>
           </div>
           <div class="sett-note" id="sett-figure-note" hidden></div>
@@ -4670,15 +4667,20 @@ function renderSettlementLive() {
   finally { _settSkipInputs = false; }
 }
 
-// S116d: the Interest tab's own calculation as at the settlement/assessment date (today when that
-// is blank), on the interest base the tab uses (override sum, else the total bill). Guide only.
+// S125: the Interest tab's own calculation, as at the settlement/assessment date (today when that
+// is blank). Now runs on the OFFER, back-worked out of the all-in sum — the same maths as the Key
+// Variables tile and the Scenarios tab, so the tab can only ever show one interest figure. It used
+// to run on the bill, which produced a second, different number beside the first.
 function settInternalInterestGuide() {
   const f = caseFields || {};
-  if (!f['DateofAuthoritytoAssess']) return { amount: null, text: 'Internal calc: no Authority to Assess date on the Interest tab.' };
+  if (!f['DateofAuthoritytoAssess']) return { amount: null, text: 'No Authority to Assess date on the Interest tab.' };
+  const figure = (computed && computed.offerOrSettlement) || 0;
+  if (!figure) return { amount: null, text: 'No settlement figure entered yet.' };
   const asAt = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
-  const base = (parseFloat(f['SumForInterestCalculationOverrid']) || 0) > 0 ? parseFloat(f['SumForInterestCalculationOverrid']) : (computed.totalBill || 0);
-  const amt  = round2(interestTotalAsAt(f, base, asAt));
-  return { amount: amt, text: 'Internal calc as at ' + fmtDate(asAt.toISOString()) + ': ' + fmt(amt) + ' (guide only)' };
+  const b = solveInterestBackwork(f, figure, asAt);
+  return { amount: b.interest,
+           text: 'Calculated as at ' + fmtDate(asAt.toISOString()) + ': ' + fmt(b.interest)
+                 + ' — click to adopt it' };
 }
 document.getElementById('btn-import-interest')?.addEventListener('click', () => {
   const g = settInternalInterestGuide();
@@ -4761,8 +4763,8 @@ function renderSettlementTab() {
     const _b = f['DateofAuthoritytoAssess'] ? solveInterestBackwork(f, c.offerOrSettlement, _asAt) : null;
     if (_b && _b.interest) {
       setText('kv-sett-interest', fmt(_b.interest) + ' (calculated)');
-      setText('kv-sett-interest-sub', 'Nothing agreed has been entered. On this calculation the offer breaks down as '
-        + fmt(_b.principal) + ' costs plus this interest.');
+      setText('kv-sett-interest-sub', 'Not yet confirmed. The offer breaks down as ' + fmt(_b.principal)
+        + ' costs plus this interest — use “Use internal calc” below to adopt the figure, or type the figure actually agreed.');
     } else if (!f['DateofAuthoritytoAssess']) {
       setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
     }
@@ -4773,8 +4775,7 @@ function renderSettlementTab() {
   setText('sv-c-pc-vat', fmt(c.pcIncVAT)); setText('sv-c-tmcpc-vat', fmt(c.tmcPCIncVAT));
   setText('sv-c-disb-vat', fmt(c.disbIncVAT)); setText('sv-c-counsel-vat', fmt(c.counselIncVAT)); setText('sv-c-total-vat', fmt(c.totalClaimed));
   if (!_settSkipInputs) {
-    setTxt('f-CaseNameForOpenCases', f['CaseNameForOpenCases']); setTxt('f-ClientCaseReference', f['ClientCaseReference']);
-    setTxt('f-Ourreference', f['Ourreference_x0028_text_x0029_']); setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
+    setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
     setNum('f-Counselsfeespayable', f['Counselsfeespayable']); setNum('f-Costsofassessment', f['Costsofassessment']);
     setNum('f-ClientPaidExpenses', f['ClientPaidExpenses']); setNum('f-OtherTMCInvoices', f['OtherTMCInvoices_ex_x0020_bill']);
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
@@ -5038,7 +5039,9 @@ document.getElementById('btn-sett-cancel').addEventListener('click', () => { _se
 document.getElementById('btn-sett-save').addEventListener('click', async () => {
   const btn = document.getElementById('btn-sett-save'); const msg = document.getElementById('msg-sett');
   btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving\u2026';
-  const fields = { CaseNameForOpenCases: document.getElementById('f-CaseNameForOpenCases').value || null, ClientCaseReference: document.getElementById('f-ClientCaseReference').value || null };
+  // S125: case name and client reference are no longer on this tab — they sit in the page header
+  // and on the Client and Case Info tab. They were read-only here and are not sent any more.
+  const fields = {};
   const dv = document.getElementById('f-DateSettled0').value; fields['DateSettled0'] = dv ? dv + 'T00:00:00Z' : null;
   for (const [sp, el] of Object.entries({
     'Settlementamount':'f-Settlementamount','Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
