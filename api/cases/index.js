@@ -92,6 +92,11 @@ const SELECT_FIELDS = [
   // Settlement & offers
   'Settlementamount',
   'PayingPartysLastOffer',
+  // S125 (2026-09-11) — Date of Last Offer was saved by the Offers tab but was NEVER in this list,
+  // so every case load read it back as undefined and the box blanked on refresh. The date was in
+  // SharePoint the whole time; the portal simply never asked for it. Same fault class as S66/S102:
+  // a column the portal writes but does not select is invisible to it.
+  'DateOfLastOffer',
   'FigureForSettlementSheet',
   'DateSettled0',
   'Offerincludescostsofsssessment_x',
@@ -127,6 +132,14 @@ const SELECT_FIELDS = [
   'CourtFeeRecovered',
   // S116d: interest actually included in the settlement/assessed figure (manual; Interest tab is a guide).
   'InterestInFigure',
+  // S125 (2026-09-11) — two NEW text columns on Cases, both created before this line was written.
+  // InterestTreatment 'Within'|'OnTop'|'None' — whether the offer already contains interest; blank
+  // = Within, which is what every pre-S125 case assumed. InterestBasis 'AllIn'|'CostsElement' —
+  // whether the recovery runs on the all-in offer or on the back-worked costs element; blank =
+  // AllIn. Listed here so the Settlement tab can read back what it saves (S66 lesson, and the
+  // exact fault that made DateOfLastOffer blank on every refresh above).
+  'InterestTreatment',
+  'InterestBasis',
   'BillDraftedByText',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
