@@ -4632,8 +4632,11 @@ function renderScenarioTab(){
     ipLine = 'Preparing Draft Bill of Costs | ' + s.feePctIn + '% of ' + fmt(s.feeBaseAmount) + ' ' + basisShort;
   }
   setText('scn-invoice-line', ipLine || '—');
-  // S125: the working behind this scenario's interest figure, on the scenario offer and date.
-  renderInterestWorking('scn-int-working', caseFields || {}, s.figure, s.hasAuth && scnEl('scn-interest-date').value ? new Date(scnEl('scn-interest-date').value) : null,
+  // S125: the working behind this scenario's interest figure. Runs on the back-worked costs element
+  // when interest sits inside the offer, so the table totals the same figure shown above it.
+  renderInterestWorking('scn-int-working', caseFields || {},
+    s.intMode === 'within' ? s.interestCostsElement : s.figure,
+    s.hasAuth && scnEl('scn-interest-date').value ? new Date(scnEl('scn-interest-date').value) : null,
     s.intMode === 'within'
       ? 'Interest inside the offer of ' + fmt(s.figure) + '. Working back, the offer is '
         + fmt(s.interestCostsElement) + ' of costs plus the interest below.'
@@ -5093,15 +5096,23 @@ function renderSettlementTab() {
       setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
     }
   }
-  // S125: the working behind the interest figure, on the offer and as at the settlement date.
+  // S125: the working behind the interest figure. When interest is INSIDE the offer the figure is
+  // the back-worked one, so the table must run on the costs element — not on the whole offer, or it
+  // shows a different (larger) number than the tile above it and neither adds back to the offer.
   {
     const _wAsAt = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
     const _agreed = parseFloat(f['InterestInFigure']) || 0;
-    renderInterestWorking('sett-int-working', f, c.offerOrSettlement || 0, _wAsAt,
-      _agreed ? 'This is what interest has accrued on the offer of ' + fmt(c.offerOrSettlement)
-                + '. The figure recorded as agreed is ' + fmt(_agreed) + ', which is what the sheet uses.'
-              : 'Interest accrued on the offer of ' + fmt(c.offerOrSettlement) + ' up to '
-                + fmtDate(_wAsAt.toISOString()) + '. Nothing has been recorded as agreed.');
+    const _within = c.intMode !== 'ontop' && c.intMode !== 'none';
+    const _bw = (_within && f['DateofAuthoritytoAssess'] && c.offerOrSettlement)
+      ? solveInterestBackwork(f, c.offerOrSettlement, _wAsAt) : null;
+    const _base = _bw ? _bw.principal : (c.offerOrSettlement || 0);
+    renderInterestWorking('sett-int-working', f, _base, _wAsAt,
+      _agreed ? 'Interest accrued as at ' + fmtDate(_wAsAt.toISOString()) + '. The figure recorded as agreed is '
+                + fmt(_agreed) + ', which is what the sheet uses.'
+      : _bw ? 'Interest inside the offer of ' + fmt(c.offerOrSettlement) + '. Working back, the offer is '
+              + fmt(_bw.principal) + ' of costs plus the interest below.'
+            : 'Interest accrued on ' + fmt(c.offerOrSettlement) + ' up to ' + fmtDate(_wAsAt.toISOString())
+              + ' — not in the offer, so this is what to claim in addition.');
   }
   // S125: Costs Claimed on this tab, same six columns the Settlement Report prints.
   setText('sv-c-pc-net', fmt(c.claimedPC)); setText('sv-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)));
@@ -5249,7 +5260,7 @@ function renderOffersTab() {
   // netted off — it accrues on the offer and is claimed in addition. The "net of interest" line
   // only means anything when interest is said to be inside it.
   const _exInt = offerExcludesInterest(f);
-  const _netInt = (!_exInt && _lo > 0 && _lod) ? _lo - interestTotalAsAt(f, _lo, _lod) : null;
+  const _netInt = (!_exInt && _lo > 0 && _lod) ? (function(){ const b = solveInterestBackwork(f, _lo, _lod); return b.principal; })() : null;
   setText('ov-offer-net-interest', _exInt ? 'n/a — the offer excludes interest' : (_netInt != null ? fmt(_netInt) : '—'));
   // Same maths as the Settlement tab's "% Recovery Against Overall Bill" and "% Recovery of
   // Profit Costs" — reads the shared computed object so the two tabs can never disagree.
@@ -5257,14 +5268,15 @@ function renderOffersTab() {
   setText('ov-offer-pct-pc', fmtPct(computed.pctPC));
   // S125: the working behind the interest inside the paying party's last offer, as at the date it
   // was made — so the offer can be judged on what it was worth then, not on today's interest.
-  renderInterestWorking('off-int-working', f, _lo, _lod,
+  const _bwOff = (!_exInt && _lo > 0 && _lod) ? solveInterestBackwork(f, _lo, _lod) : null;
+  renderInterestWorking('off-int-working', f, _bwOff ? _bwOff.principal : _lo, _lod,
     (_lo > 0 && _lod)
       ? (_exInt
           ? 'Interest accrued on the offer of ' + fmt(_lo) + ' up to ' + fmtDate(f['DateOfLastOffer'])
             + ', the date it was made. The offer excludes interest, so this is payable on top.'
           : 'Interest inside the last offer of ' + fmt(_lo) + ' as at ' + fmtDate(f['DateOfLastOffer'])
-            + ', the date it was made. Net of that interest the offer is '
-            + (_netInt != null ? fmt(_netInt) : '—') + '.')
+            + ', the date it was made. Working back, the offer is '
+            + (_bwOff ? fmt(_bwOff.principal) : '—') + ' of costs plus the interest below.')
       : 'Enter the paying party\u2019s last offer and the date it was made to see the interest on it.');
 }
 
