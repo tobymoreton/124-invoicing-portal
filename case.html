@@ -4538,7 +4538,15 @@ function renderScenarioTab(){
   const _intInOffer = (s.intMode === 'within') ? (s.interestAmt || 0) : 0;
   setText('scn-r-CostsElement', fmt(Math.max(0, s.figure - _intInOffer - s.coaDeduct + (s.coaRecovered || 0))));
   setText('scn-r-RecoveryBase', fmt(s.costsElement) + (_intInOffer ? ' (all-in — interest not deducted)' : ''));
-  setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored' : fmt(s.coaDeduct) + (s.coaMode === 'ontop' ? ' (recovered on top: ' + fmt(s.totalCOA) + ')' : ' (included in offer)'));
+  // S125: when the assessment is paid separately, the cost still comes out of the offer and only
+  // what the paying party actually pays comes back. A blank recovered figure is therefore a
+  // shortfall TMC absorbs in full — say so, rather than reporting "recovered on top: £0.00".
+  setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
+    : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (included in offer)'
+    : !(s.coaRecoverable > 0)
+      ? fmt(s.coaDeduct) + ' out of the offer — nothing recorded as recovered, so the whole amount is a shortfall'
+      : fmt(s.coaDeduct) + ' out of the offer, ' + fmt(s.coaRecoverable) + ' recovered on top'
+        + (s.coaShortfall > 0.005 ? ' — ' + fmt(s.coaShortfall) + ' shortfall' : ' — fully recovered'));
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
@@ -4790,7 +4798,11 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
                : fmt(c.coaCost || 0) + ' out of the offer — TMC time ' + fmt(_coaTime)
                  + (_coaFee ? ' plus court fee ' + fmt(_coaFee) : '')
-                 + (treat === 'OnTop' ? '; ' + fmt(c.coaRecoverable || 0) + ' recovered back.' : '; nothing separate to add back.'));
+                 + (treat !== 'OnTop' ? '; nothing separate to add back.'
+                    : !(c.coaRecoverable > 0)
+                      ? '. Nothing recorded as recovered — the whole amount is a shortfall.'
+                      : '; ' + fmt(c.coaRecoverable) + ' recovered back'
+                        + ((c.coaShortfall || 0) > 0.005 ? ', ' + fmt(c.coaShortfall) + ' shortfall.' : ', fully recovered.')));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
                                     : (c.feePctIn || 0) + '% as recovered');
