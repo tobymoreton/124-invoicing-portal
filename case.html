@@ -1200,6 +1200,9 @@
         .int-work-wrap{overflow-x:visible;}
         /* S125: the interest working, shown inside the Settlement Details card. */
         .int-inline{margin-top:14px;padding-top:12px;border-top:1px solid rgba(27,42,74,.12);padding-bottom:16px;}
+        /* S125: the recovery block sits at the TOP of the panel — the percentages are what a
+           draftsman watches while moving the variables, so they must not be below the fold. */
+        .int-inline-first{margin-top:0;padding-top:14px;border-top:none;padding-bottom:4px;}
         .int-inline-head{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
                          color:var(--grey-mid);margin-bottom:8px;}
         #tab-scenarios .int-inline{border-top-color:rgba(46,111,126,.22);}
@@ -1617,21 +1620,21 @@
       <div class="card sd-card">
         <div class="card-head"><span class="card-title">Settlement Details</span></div>
         <div class="card-body" style="padding:0 22px;">
+          <div class="int-inline int-inline-first"><div class="int-inline-head">Recovery</div>
+            <div class="interest-row int-row-strong"><span>% of Claimed Profit Costs</span><span id="scn-r-PctPC">—</span></div>
+            <div class="interest-row int-row-strong"><span>% of Overall Bill</span><span id="scn-r-PctBill">—</span></div>
+            <div class="interest-row int-row-strong"><span>Net Recovery (after Fee)</span><span id="scn-r-NetAfter">—</span></div>
+            <div class="interest-row"><span>Difference vs Current Sheet</span><span id="scn-r-Delta">—</span></div>
+            <div class="interest-row"><span>Gross PC Recovery</span><span id="scn-r-GrossPC">—</span></div>
+            <div class="interest-row"><span>Net PC Recovery</span><span id="scn-r-NetBefore">—</span></div>
+            <div class="interest-row"><span>Drafting Fee</span><span id="scn-r-DraftingFee">—</span></div>
+          </div>
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
           <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
           <div class="interest-row int-row-strong"><span>Offer on the bill</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
-          <div class="int-inline"><div class="int-inline-head">Recovery</div>
-            <div class="interest-row int-row-strong"><span>Net Recovery (after Fee)</span><span id="scn-r-NetAfter">—</span></div>
-            <div class="interest-row"><span>Gross PC Recovery</span><span id="scn-r-GrossPC">—</span></div>
-            <div class="interest-row"><span>Net PC Recovery</span><span id="scn-r-NetBefore">—</span></div>
-            <div class="interest-row"><span>Drafting Fee</span><span id="scn-r-DraftingFee">—</span></div>
-            <div class="interest-row"><span>% of Claimed Profit Costs</span><span id="scn-r-PctPC">—</span></div>
-            <div class="interest-row"><span>% of Overall Bill</span><span id="scn-r-PctBill">—</span></div>
-            <div class="interest-row"><span>Difference vs Current Sheet</span><span id="scn-r-Delta">—</span></div>
-          </div>
           <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="scn-int-working"></div></div>
         </div>
       </div>
