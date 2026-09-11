@@ -37,6 +37,18 @@ const TT2_GUID      = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const SITE_PATH     = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 
+// S127: a date-only value ('2026-09-11', '2026-09-11T00:00:00Z', '…T00:00:00.000Z') gets the
+// time-of-day from nowIso stamped onto it, so same-day rows sort by when they were logged.
+// Anything already carrying a real time is returned unchanged; anything unparseable falls
+// back to nowIso rather than throwing.
+function withTimeIfMidnight(raw, nowIso) {
+  const s = String(raw || '').trim();
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})(?:T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)?)?$/.exec(s);
+  if (dateOnly) return dateOnly[1] + nowIso.slice(10);
+  const d = new Date(s);
+  return isNaN(d) ? nowIso : d.toISOString();
+}
+
 function getCallerEmail(req) {
   try {
     const header = req.headers && req.headers['x-ms-client-principal'];
@@ -203,8 +215,13 @@ module.exports = async function (context, req) {
       }
 
       const now          = new Date().toISOString();
-      const dateEntered  = b.dateEntered  ? new Date(b.dateEntered).toISOString()  : now;
-      const dateWorkDone = b.dateWorkDone ? new Date(b.dateWorkDone).toISOString() : now;
+      // S127: every portal client sends the date picker value as date-only ('2026-09-11' or
+      // '…T00:00:00Z'), so portal-logged work was stored at midnight while Make-logged emails
+      // carry the real time — same-day prep always sorted below every email of that day.
+      // Stamp the current time-of-day onto a date-only value so the row sits where it was
+      // logged. A value that already carries a time (email pipelines) is left untouched.
+      const dateEntered  = b.dateEntered  ? withTimeIfMidnight(b.dateEntered,  now) : now;
+      const dateWorkDone = b.dateWorkDone ? withTimeIfMidnight(b.dateWorkDone, now) : now;
 
       context.log('POST caseactions: ref=', ref, 'caseItemId=', b.caseItemId);
 
