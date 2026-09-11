@@ -1209,6 +1209,9 @@
         /* S125: the headline line on the Settlement Details card — what the offer is worth against
            the bill itself, once interest and the cost of the assessment are out of it. */
         .int-row-strong span{font-weight:700;}
+        /* S125: the headline figure on the panel — what the offer is worth against the bill itself. */
+        .int-row-hero span:last-child{font-size:19px;line-height:1.2;}
+        .int-row-hero span:first-child{align-self:center;}
         #tab-scenarios .int-row-strong span:last-child{color:var(--scn-accent);}
         /* S125: plain-English offer box. Sets the controls only — every figure is still produced by
            the same solver, so nothing here can invent a number. */
@@ -1631,7 +1634,7 @@
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
           <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
-          <div class="interest-row int-row-strong"><span>Offer on the bill</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row int-row-strong int-row-hero"><span>Offer on the bill</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
           <div class="int-inline"><div class="int-inline-head">Costs payable (VAT inclusive)</div>
@@ -4617,7 +4620,18 @@ function renderScenarioTab(){
   // on its own line rather than left to be inferred from a number that does not match.
   const _intInOffer = (s.intMode === 'within') ? (s.interestAmt || 0) : 0;
   setText('scn-r-CostsElement', fmt(Math.max(0, s.figure - _intInOffer - s.coaDeduct + (s.coaRecovered || 0))));
-  setText('scn-r-RecoveryBase', fmt(s.costsElement) + (_intInOffer ? ' (all-in — interest not deducted)' : ''));
+  // S125: show the sum, not a caption about it. "(all-in — interest not deducted)" told the user what
+  // the figure was NOT; this tells them how it was arrived at, which is the question they were
+  // actually asking.
+  const _rbNote = s.coaMode === 'none'
+    ? ' (the offer — costs of assessment ignored)'
+    : s.coaMode === 'ontop'
+      ? (Math.abs((s.coaRecovered || 0) - s.coaDeduct) < 0.005
+          ? ' (the offer — the assessment is recovered in full, so it is neutral)'
+          : ' (' + fmt(s.figure) + ' less costs of assessment ' + fmt(s.coaDeduct)
+            + ', plus ' + fmt(s.coaRecovered || 0) + ' recovered)')
+      : ' (' + fmt(s.figure) + ' less costs of assessment ' + fmt(s.coaDeduct) + ')';
+  setText('scn-r-RecoveryBase', fmt(s.costsElement) + _rbNote);
   // S125: 'included in offer' when it sits inside the figure; when paid separately, what the
   // paying party actually pays towards it.
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
