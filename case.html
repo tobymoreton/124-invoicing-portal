@@ -1508,9 +1508,9 @@
            Settlement tab's style block, which uses #tab-scenarios to outrank this rule. */
         .scn-left,.scn-right{display:contents;}
         .scn-left .card{order:1;}                 /* Key Variables            */
-        .scn-right .card:nth-child(1){order:2;}   /* Settlement Details (+ Recovery + interest) */
-        .scn-right .card:nth-child(2){order:3;}   /* Costs Claimed            */
-        .scn-right .card:nth-child(3){order:4;}   /* Costs Payable            */
+        .scn-right .card:nth-child(1){order:2;}   /* Settlement Details (+ Recovery, Costs Payable, interest) */
+        .scn-right .card:nth-child(2){order:0;}   /* Costs Claimed — full width across the top */
+        .scn-right .card:nth-child(3){order:3;}   /* Where the Offer Goes — full width beneath */
         .scn-left .detail-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
@@ -1607,7 +1607,6 @@
             <button type="button" class="import-btn" id="scn-prorata" title="Set Counsel's Fees Payable (%) to the rate at which counsel recovers the same percentage of his claimed fees as the solicitor recovers of claimed profit costs">&#8646; Solve counsel % for a pro rata split</button>
             <div id="scn-prorata-ask" class="scn-ask"></div>
             <div id="scn-prorata-note" class="sett-hint" style="margin-top:6px;"></div>
-            <div id="scn-prorata-breakdown" style="margin-top:10px;"></div>
           </div>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(27,42,74,.1);">
             <label style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);display:block;margin-bottom:6px;">Drafting Fee Invoice Line</label>
@@ -1635,6 +1634,13 @@
           <div class="interest-row int-row-strong"><span>Offer on the bill</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
+          <div class="int-inline"><div class="int-inline-head">Costs payable (VAT inclusive)</div>
+            <div class="interest-row"><span>Disbursements</span><span id="scn-r-Disb">—</span></div>
+            <div class="interest-row"><span>Counsel's Fees</span><span id="scn-r-Counsel">—</span></div>
+            <div class="interest-row"><span>Total Costs of Assessment</span><span id="scn-r-COA">—</span></div>
+            <div class="interest-row"><span>Other TMC Fees (excl Drafting)</span><span id="scn-r-Other">—</span></div>
+            <div class="interest-row int-row-strong"><span>Total</span><span id="scn-r-TotalLiab">—</span></div>
+          </div>
           <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="scn-int-working"></div></div>
         </div>
       </div>
@@ -1672,14 +1678,8 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span></div>
-        <dl class="liab-grid">
-          <div class="liab-row"><dt>Disbursements</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
-          <div class="liab-row"><dt>Counsel's Fees</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
-          <div class="liab-row"><dt>Total Costs of Assessment</dt><dd><span class="liab-static" id="scn-r-COA">—</span></dd></div>
-          <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
-          <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
-        </dl>
+        <div class="card-head"><span class="card-title">Where the Offer Goes</span></div>
+        <div class="card-body"><div id="scn-dist"></div></div>
       </div>
       </div>
       </div>
@@ -4608,7 +4608,7 @@ function renderScenarioTab(){
   setText('scn-r-TotalLiab', fmt(s.totalLiab));
   setText('scn-r-Interest', !s.hasAuth ? 'No Authority to Assess date (Interest tab)'
     : !s.interestAmt ? '—'
-    : s.intMode === 'within' ? fmt(s.interestAmt) + ' (included in offer)'
+    : s.intMode === 'within' ? fmt(s.interestAmt) + ' (incl)'
     : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (payable on top — claim this in addition)'
     : fmt(s.interestAmt) + ' (not in the offer — claim this in addition)');
   // S125: the offer broken all the way down — what is left once the interest inside it and the cost
@@ -4621,7 +4621,7 @@ function renderScenarioTab(){
   // S125: 'included in offer' when it sits inside the figure; when paid separately, what the
   // paying party actually pays towards it.
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
-    : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (included in offer)'
+    : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (incl)'
     : s.coaAssumedRecovered ? fmt(s.coaDeduct) + ' (paid separately — assumed recovered in full)'
     : fmt(s.coaDeduct) + ' (paid separately, ' + fmt(s.coaRecoverable) + ' recovered)');
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
@@ -4650,6 +4650,12 @@ function renderScenarioTab(){
       ? 'Interest inside the offer of ' + fmt(s.figure) + '. Working back, the offer is '
         + fmt(s.interestCostsElement) + ' of costs plus the interest below.'
       : 'Interest accrued on ' + fmt(s.figure) + ' — not in the offer, so this is what to claim in addition.');
+  // S125: the full distribution, live on every change — it was previously buried inside the Key
+  // Variables card and only appeared after the pro rata solver was clicked, so the one panel that
+  // proves where the money actually goes was invisible unless you happened to run the solver.
+  const _dist = document.getElementById('scn-dist');
+  if (_dist) _dist.innerHTML = s.figure ? scnDistributionHTML(s)
+    : '<div class="sett-hint">Enter an offer above to see how it would be distributed.</div>';
 }
 // S125: plain-English offer box. Reads a sentence and SETS THE CONTROLS — it computes nothing.
 // Every figure on the tab still comes from computeFigures(), so a misread here can only put the
@@ -4878,8 +4884,8 @@ function scnDistributionHTML(s){
     + ' Counsel is shown VAT-inclusive as payable; profit costs are shown net with their VAT on its own line.</div></div>';
 }
 document.getElementById('scn-prorata')?.addEventListener('click', () => {
-  const note = scnEl('scn-prorata-note'); const box = scnEl('scn-prorata-breakdown');
-  if (!note) return; if (box) box.innerHTML = '';
+  const note = scnEl('scn-prorata-note');
+  if (!note) return;
   const q = scnProRataSolve();
   if (!q) { note.textContent = 'Needs counsel\u2019s fees payable, counsel\u2019s fees claimed and claimed profit costs to be more than zero.'; return; }
   if (q.paid <= 0) { note.textContent = 'Nothing is left for counsel once disbursements, other TMC costs, the costs of assessment and the drafting fee are met.'; return; }
@@ -4912,7 +4918,6 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
         + ' payable, bringing counsel\u2019s fees down to ' + fmt(a.counselEff) + '.';
     }
   }
-  if (box) box.innerHTML = scnDistributionHTML(computeScenario());
 });
 
 // S117: refresh the scenario's COA from live case-action time (mirrors the Settlement card's
