@@ -1203,6 +1203,10 @@
         .int-inline-head{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
                          color:var(--grey-mid);margin-bottom:8px;}
         #tab-scenarios .int-inline{border-top-color:rgba(46,111,126,.22);}
+        /* S125: the headline line on the Settlement Details card — what the offer is worth against
+           the bill itself, once interest and the cost of the assessment are out of it. */
+        .int-row-strong span{font-weight:700;}
+        #tab-scenarios .int-row-strong span:last-child{color:var(--scn-accent);}
         /* S125: plain-English offer box. Sets the controls only — every figure is still produced by
            the same solver, so nothing here can invent a number. */
         .scn-ask-box{margin-bottom:16px;padding:12px 14px;border-radius:8px;
@@ -1234,6 +1238,9 @@
           #tab-settlement.active{grid-template-rows:min-content min-content min-content;}
           #tab-scenarios .scn-layout{grid-template-rows:min-content;}
           #tab-settlement .quick-action-bar,#tab-settlement .edit-bar,#tab-settlement > *{grid-column:1/-1;}
+          /* The two-col wrapper is dissolved by display:contents, so its children are grid items
+             too — without this they auto-place into column 1 and sit at half width. */
+          #tab-settlement .two-col > .card{grid-column:1/-1;}
           #tab-settlement .quick-action-bar{grid-row:1;}
           #tab-settlement .edit-bar{grid-row:2;}
           #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
@@ -1520,8 +1527,9 @@
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
           <div class="scn-ask-box">
-            <label class="kv-ctl-label" for="scn-nl">Describe the offer</label>
-            <textarea id="scn-nl" rows="2" placeholder="e.g. the defendant offered £125,000 on 4/5/26 including interest but excluding costs of assessment"></textarea>
+            <label class="kv-ctl-label" for="scn-nl">What if…?</label>
+            <div class="sett-hint" style="margin:2px 0 0;">Describe an offer in your own words and the variables below are filled in for you. Change the wording and press the button again to try another — nothing here is saved, so run as many as you like.</div>
+            <textarea id="scn-nl" rows="2" placeholder="e.g. what if they offered £125,000 on 4/5/26 including interest?"></textarea>
             <div class="scn-ask-row">
               <button type="button" class="import-btn" id="scn-nl-apply">→ Fill in the variables</button>
               <div id="scn-nl-read" class="sett-hint"></div>
@@ -1613,7 +1621,7 @@
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
           <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
-          <div class="interest-row"><span>Costs Element of Offer (after interest &amp; the assessment)</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row int-row-strong"><span>Offer on the bill</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
           <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="scn-int-working"></div></div>
@@ -1702,6 +1710,10 @@
             <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
           </div>
           <div class="check-row">
+            <div class="field checkbox-field">
+              <input type="checkbox" id="f-Offerincludesinterest_x003f_" disabled />
+              <label for="f-Offerincludesinterest_x003f_">Offer excludes interest?</label>
+            </div>
             <div class="field checkbox-field">
               <input type="checkbox" id="f-Offerincludescostsofsssessment_x" disabled />
               <label for="f-Offerincludescostsofsssessment_x">Offer excludes costs of assessment?</label>
@@ -2593,6 +2605,16 @@ function resolveOutcome(f) {
   if (_settOutcomeOverride !== null) return _settOutcomeOverride;
   return String((f || {})['SettlementOutcome'] || '').toLowerCase() === 'assessed' ? 'Assessed' : 'Settled';
 }
+// S125 (Toby, 11/09): an offer is of COSTS — interest is in addition unless the offer says
+// otherwise. The Offers tick therefore DEFAULTS TO TICKED: blank, missing, or a Yes/No value Graph
+// has dropped all mean "excludes interest". Only an explicit false means interest is inside it.
+// (The column is named ...includesinterest... but is used as an EXCLUDES flag, matching the costs
+// of assessment tick beside it. Renaming the column would break the PA flows that read it.)
+function offerExcludesInterest(f) {
+  const v = (f || {})['Offerincludesinterest_x003f_'];
+  return !(v === false || v === 'false' || v === 0);
+}
+
 function resolveCOATreatment(f) {
   if (_settCOATreatmentOverride !== null) return _settCOATreatmentOverride;
   const stored = String((f || {})['COATreatment'] || '').toLowerCase();
@@ -4591,8 +4613,8 @@ function renderScenarioTab(){
   // paying party actually pays towards it.
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
     : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (included in offer)'
-    : fmt(s.coaDeduct) + ' (paid separately, '
-      + (s.coaRecoverable > 0 ? fmt(s.coaRecoverable) + ' recovered' : 'nothing recovered') + ')');
+    : s.coaRecoverable > 0 ? fmt(s.coaDeduct) + ' (paid separately, ' + fmt(s.coaRecoverable) + ' recovered)'
+    : fmt(s.coaDeduct) + ' (paid separately)');
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
@@ -4681,7 +4703,17 @@ function scnParseOffer(raw) {
   out.interest = verdict(['interest']);
   out.coa = verdict(['costs of assessment', 'coa', 'assessment costs', 'cost of assessment']);
   if (out.interest === null) out.missing.push('whether interest is in the offer');
-  if (out.coa === null) out.missing.push('how costs of assessment are treated');
+  // S125 (Toby): an offer is of COSTS. Costs of assessment are in addition UNLESS the offer is
+  // expressed to be wholly inclusive — "all in", "global", "fully inclusive". Saying "including
+  // interest" says nothing about the assessment and must not be read as covering it.
+  const GLOBAL = ['all in', 'all-in', 'all inclusive', 'all-inclusive', 'fully inclusive',
+                  'wholly inclusive', 'global figure', 'global sum', 'global offer',
+                  'inclusive of everything', 'including everything', 'full and final'];
+  out.wholeInclusive = GLOBAL.some(w => t.indexOf(w) > -1);
+  if (out.coa === null) {
+    out.coa = out.wholeInclusive ? 'in' : 'out';
+    out.coaAssumed = true;
+  }
 
   const cp = t.match(/counsel[^.]{0,30}?(\d{1,3})\s*%/);
   if (cp) out.counselPct = parseFloat(cp[1]);
@@ -4703,7 +4735,8 @@ document.getElementById('scn-nl-apply')?.addEventListener('click', () => {
   if (p.interest) { scnEl('scn-interest-mode').value = p.interest === 'in' ? 'within' : 'ontop';
                     said.push('interest ' + (p.interest === 'in' ? 'included in the offer' : 'payable on top')); }
   if (p.coa)      { scnEl('scn-coa-mode').value = p.coa === 'in' ? 'within' : 'ontop';
-                    said.push('costs of assessment ' + (p.coa === 'in' ? 'included in the offer' : 'paid separately')); }
+                    said.push('costs of assessment ' + (p.coa === 'in' ? 'included in the offer' : 'paid separately')
+                              + (p.coaAssumed ? ' (assumed — not mentioned' + (p.wholeInclusive ? ', but the offer is expressed as all-in)' : ')') : '')); }
   if (p.counselPct != null) { scnEl('scn-counsel-pct').value = p.counselPct; said.push("counsel at " + p.counselPct + '%'); }
   renderScenarioTab();
   echo.textContent = (said.length ? 'Read as: ' + said.join(' · ') + '.' : 'Nothing recognised.')
@@ -4950,8 +4983,7 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
                : fmt(c.coaCost || 0) + ' out of the offer — TMC time ' + fmt(_coaTime)
                  + (_coaFee ? ' plus court fee ' + fmt(_coaFee) : '')
-                 + (treat !== 'OnTop' ? '.'
-                    : c.coaRecoverable > 0 ? '; ' + fmt(c.coaRecoverable) + ' recovered.' : '; nothing recovered.'));
+                 + (treat === 'OnTop' && c.coaRecoverable > 0 ? '; ' + fmt(c.coaRecoverable) + ' recovered.' : '.'));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
                                     : (c.feePctIn || 0) + '% as recovered');
@@ -5193,10 +5225,17 @@ function renderOffersTab() {
   setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']); setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
   setDate('f-DateOfLastOffer', f['DateOfLastOffer']);
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
+  // S125: defaults to ticked — see offerExcludesInterest().
+  const _exIntEl = document.getElementById('f-Offerincludesinterest_x003f_');
+  if (_exIntEl) _exIntEl.checked = offerExcludesInterest(f);
   const _lo = parseFloat(f['PayingPartysLastOffer']) || 0;
   const _lod = f['DateOfLastOffer'] ? new Date(f['DateOfLastOffer']) : null;
-  const _netInt = (_lo > 0 && _lod) ? _lo - interestTotalAsAt(f, _lo, _lod) : null;
-  setText('ov-offer-net-interest', _netInt != null ? fmt(_netInt) : '—');
+  // S125: when the offer EXCLUDES interest (the default), interest is not inside the offer to be
+  // netted off — it accrues on the offer and is claimed in addition. The "net of interest" line
+  // only means anything when interest is said to be inside it.
+  const _exInt = offerExcludesInterest(f);
+  const _netInt = (!_exInt && _lo > 0 && _lod) ? _lo - interestTotalAsAt(f, _lo, _lod) : null;
+  setText('ov-offer-net-interest', _exInt ? 'n/a — the offer excludes interest' : (_netInt != null ? fmt(_netInt) : '—'));
   // Same maths as the Settlement tab's "% Recovery Against Overall Bill" and "% Recovery of
   // Profit Costs" — reads the shared computed object so the two tabs can never disagree.
   setText('ov-offer-pct-claimed', fmtPct(computed.pctBill));
@@ -5205,10 +5244,13 @@ function renderOffersTab() {
   // was made — so the offer can be judged on what it was worth then, not on today's interest.
   renderInterestWorking('off-int-working', f, _lo, _lod,
     (_lo > 0 && _lod)
-      ? 'Interest inside the last offer of ' + fmt(_lo) + ' as at ' + fmtDate(f['DateOfLastOffer'])
-        + ', the date it was made. Net of that interest the offer is '
-        + (_netInt != null ? fmt(_netInt) : '—') + '.'
-      : 'Enter the paying party\u2019s last offer and the date it was made to see the interest inside it.');
+      ? (_exInt
+          ? 'Interest accrued on the offer of ' + fmt(_lo) + ' up to ' + fmtDate(f['DateOfLastOffer'])
+            + ', the date it was made. The offer excludes interest, so this is payable on top.'
+          : 'Interest inside the last offer of ' + fmt(_lo) + ' as at ' + fmtDate(f['DateOfLastOffer'])
+            + ', the date it was made. Net of that interest the offer is '
+            + (_netInt != null ? fmt(_netInt) : '—') + '.')
+      : 'Enter the paying party\u2019s last offer and the date it was made to see the interest on it.');
 }
 
 function renderCostsTab() {
@@ -5319,6 +5361,7 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const dloV = document.getElementById('f-DateOfLastOffer').value; fields['DateOfLastOffer'] = dloV ? dloV + 'T00:00:00Z' : null;
   fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
+  fields['Offerincludesinterest_x003f_'] = document.getElementById('f-Offerincludesinterest_x003f_').checked;
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
     try { computeFigures(); computeInterest(); renderHeader(); renderOffersTab(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Offers re-render:', e); }
