@@ -1204,11 +1204,11 @@
            immediately to their right, so a change can be seen landing. Below that the report
            sections run full width in the printed order. Identical on both tabs. */
         @media(min-width:1100px){
-          #tab-settlement.active,.scn-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);column-gap:18px;row-gap:18px;align-items:start;}
+          #tab-settlement.active,#tab-scenarios .scn-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);column-gap:18px;row-gap:18px;align-items:start;}
           #tab-settlement .quick-action-bar,#tab-settlement .edit-bar,#tab-settlement > *{grid-column:1/-1;}
-          .kv-card{grid-column:1 !important;}
-          .sd-card{grid-column:2 !important;}
-          .scn-right .card:not(.sd-card),.scn-left .card:not(.kv-card){grid-column:1/-1;}
+          #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
+          #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-column:2 !important;}
+          #tab-scenarios .scn-right .card:not(.sd-card),#tab-scenarios .scn-left .card:not(.kv-card){grid-column:1/-1;}
         }
       </style>
       <div class="card kv-card">
@@ -1459,6 +1459,8 @@
            places. display:contents dissolves the old left/right wrappers so every card becomes a
            direct flex item and can be ordered without moving any markup. */
         .scn-layout{display:flex;flex-direction:column;gap:18px;align-items:stretch;}
+        /* S125: on a wide screen this becomes a two-column grid — see the media query in the
+           Settlement tab's style block, which uses #tab-scenarios to outrank this rule. */
         .scn-left,.scn-right{display:contents;}
         .scn-left .card{order:1;}                 /* Key Variables            */
         .scn-right .card:nth-child(1){order:2;}   /* Settlement Details       */
