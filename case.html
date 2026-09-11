@@ -4547,12 +4547,22 @@ function computeScenario(){
   // stands in for the saved court fee.
   const coaTimeCharge = _scnCoaLive != null ? _scnCoaLive : round2((c.coaCost || 0) - (c.courtFeeOut || 0));
   const scnCourtFee   = scnNum('scn-court-fee');
+  // S125: on a SCENARIO, "paid separately" means the paying party is expected to pay the assessment
+  // on top — that is what excluding it from the offer means. So unless the case already records a
+  // figure actually awarded, the scenario assumes it is recovered in full and the assessment is
+  // neutral. Without this the tab shows the cost coming out of the offer and nothing coming back,
+  // which models the opposite of what the words say. The saved Settlement tab is deliberately NOT
+  // changed: there a blank means nothing was recovered, because it records fact rather than intent.
+  const _savedAwarded = (parseFloat(f['COAAwarded']) || 0) + (parseFloat(f['CourtFeeRecovered']) || 0);
+  const _assumeRecovered = (coaMode === 'ontop' && _savedAwarded <= 0);
   const s = computeFigures({
     assign: false,
     fields: Object.assign({}, f, {
       'FigureForSettlementSheet': figure, 'Settlementamount': 0, 'PayingPartysLastOffer': 0,
       'Counselsfeespayable': counselEff,
       'ClientPaidExpenses': scnCourtFee, 'CourtFeePaidByTMC': 0,
+      'COAAwarded': _assumeRecovered ? round2(coaTimeCharge + scnCourtFee) : (parseFloat(f['COAAwarded']) || 0),
+      'CourtFeeRecovered': _assumeRecovered ? 0 : (parseFloat(f['CourtFeeRecovered']) || 0),
     }),
     coaCharge: coaTimeCharge,
     coaMode: coaMode,
@@ -4568,7 +4578,7 @@ function computeScenario(){
     figure: figure, pct: pct, counselBase: counselBase, counselEff: counselEff,
     intMode: intMode, coaMode: coaMode, hasAuth: hasAuth, interestAmt: interestAmt,
     coaTimeCharge: coaTimeCharge, courtFee: scnCourtFee,
-    totalLiab: s.totalPayable, feeBasis: feeBasisSel,
+    totalLiab: s.totalPayable, feeBasis: feeBasisSel, coaAssumedRecovered: _assumeRecovered,
     interestCostsElement: interestCostsElement, interestPeriods: interestPeriods,
     interestDaily: interestDaily, interestExact: interestExact,
   });
@@ -4613,8 +4623,8 @@ function renderScenarioTab(){
   // paying party actually pays towards it.
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
     : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (included in offer)'
-    : s.coaRecoverable > 0 ? fmt(s.coaDeduct) + ' (paid separately, ' + fmt(s.coaRecoverable) + ' recovered)'
-    : fmt(s.coaDeduct) + ' (paid separately)');
+    : s.coaAssumedRecovered ? fmt(s.coaDeduct) + ' (paid separately — assumed recovered in full)'
+    : fmt(s.coaDeduct) + ' (paid separately, ' + fmt(s.coaRecoverable) + ' recovered)');
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
