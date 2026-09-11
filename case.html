@@ -1203,6 +1203,16 @@
         .int-inline-head{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
                          color:var(--grey-mid);margin-bottom:8px;}
         #tab-scenarios .int-inline{border-top-color:rgba(46,111,126,.22);}
+        /* S125: plain-English offer box. Sets the controls only — every figure is still produced by
+           the same solver, so nothing here can invent a number. */
+        .scn-ask-box{margin-bottom:16px;padding:12px 14px;border-radius:8px;
+                     background:rgba(46,111,126,.06);border:1px solid rgba(46,111,126,.25);}
+        .scn-ask-box textarea{width:100%;box-sizing:border-box;margin-top:4px;font-family:inherit;
+                              font-size:13px;padding:8px 10px;border-radius:6px;
+                              border:1px solid rgba(27,42,74,.2);resize:vertical;}
+        .scn-ask-row{display:flex;gap:12px;align-items:flex-start;margin-top:8px;flex-wrap:wrap;}
+        .scn-ask-row .import-btn{flex:0 0 auto;}
+        .scn-ask-row .sett-hint{flex:1 1 200px;margin:0;}
         /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
            Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
            screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
@@ -1509,6 +1519,14 @@
       <div class="card kv-card">
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
+          <div class="scn-ask-box">
+            <label class="kv-ctl-label" for="scn-nl">Describe the offer</label>
+            <textarea id="scn-nl" rows="2" placeholder="e.g. the defendant offered £125,000 on 4/5/26 including interest but excluding costs of assessment"></textarea>
+            <div class="scn-ask-row">
+              <button type="button" class="import-btn" id="scn-nl-apply">→ Fill in the variables</button>
+              <div id="scn-nl-read" class="sett-hint"></div>
+            </div>
+          </div>
           <div class="kv-grid kv-editable">
             <div class="kv-tile">
               <div class="kv-label">Current Offer</div><div class="kv-value" id="kv-scn-figure">—</div>
@@ -4569,15 +4587,12 @@ function renderScenarioTab(){
   const _intInOffer = (s.intMode === 'within') ? (s.interestAmt || 0) : 0;
   setText('scn-r-CostsElement', fmt(Math.max(0, s.figure - _intInOffer - s.coaDeduct + (s.coaRecovered || 0))));
   setText('scn-r-RecoveryBase', fmt(s.costsElement) + (_intInOffer ? ' (all-in — interest not deducted)' : ''));
-  // S125: when the assessment is paid separately, the cost still comes out of the offer and only
-  // what the paying party actually pays comes back. A blank recovered figure is therefore a
-  // shortfall TMC absorbs in full — say so, rather than reporting "recovered on top: £0.00".
+  // S125: 'included in offer' when it sits inside the figure; when paid separately, what the
+  // paying party actually pays towards it.
   setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored'
     : s.coaMode !== 'ontop' ? fmt(s.coaDeduct) + ' (included in offer)'
-    : !(s.coaRecoverable > 0)
-      ? fmt(s.coaDeduct) + ' out of the offer — nothing recorded as recovered, so the whole amount is a shortfall'
-      : fmt(s.coaDeduct) + ' out of the offer, ' + fmt(s.coaRecoverable) + ' recovered on top'
-        + (s.coaShortfall > 0.005 ? ' — ' + fmt(s.coaShortfall) + ' shortfall' : ' — fully recovered'));
+    : fmt(s.coaDeduct) + ' (paid separately, '
+      + (s.coaRecoverable > 0 ? fmt(s.coaRecoverable) + ' recovered' : 'nothing recovered') + ')');
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
@@ -4602,6 +4617,100 @@ function renderScenarioTab(){
         + fmt(s.interestCostsElement) + ' of costs plus the interest below.'
       : 'Interest accrued on ' + fmt(s.figure) + ' — not in the offer, so this is what to claim in addition.');
 }
+// S125: plain-English offer box. Reads a sentence and SETS THE CONTROLS — it computes nothing.
+// Every figure on the tab still comes from computeFigures(), so a misread here can only put the
+// wrong inputs in visible boxes, never produce an unexplained number. What it understood is echoed
+// back in words so it can be checked, and anything it cannot find is named rather than guessed.
+const SCN_MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function scnParseOffer(raw) {
+  const t = (raw || '').toLowerCase();
+  const out = { figure: null, date: null, interest: null, coa: null, counselPct: null, missing: [] };
+
+  // — Amount. Prefer one written with a £; otherwise the largest number that looks like money.
+  let amounts = [];
+  const re = /(£\s*)?(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?/g;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    let v = parseFloat(m[2].replace(/,/g, ''));
+    if (isNaN(v)) continue;
+    if (m[3]) v *= 1000;                       // "125k"
+    const looksLikeDatePart = !m[1] && !m[3] && v < 1000 && /[\/\-.]/.test(t.substr(Math.max(0, m.index - 1), m[0].length + 2));
+    if (looksLikeDatePart) continue;
+    amounts.push({ v: v, pounds: !!m[1] || !!m[3] });
+  }
+  const pounded = amounts.filter(a => a.pounds);
+  const pool = pounded.length ? pounded : amounts.filter(a => a.v >= 1000);
+  if (pool.length) out.figure = pool.reduce((a, b) => (b.v > a.v ? b : a)).v;
+  else out.missing.push('the offer figure');
+
+  // — Date. dd/mm/yy(yy), or "4 May 2026" / "May 4 2026".
+  const two = s => (s.length === 2 ? (parseInt(s, 10) > 70 ? '19' + s : '20' + s) : s);
+  let d = null;
+  let dm = t.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2,4})/);
+  if (dm) d = new Date(+two(dm[3]), +dm[2] - 1, +dm[1]);          // UK order, day first
+  if (!d) {
+    dm = t.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?,?\s+(\d{2,4})/);
+    if (dm && SCN_MONTHS.indexOf(dm[2].slice(0, 3)) > -1) d = new Date(+two(dm[3]), SCN_MONTHS.indexOf(dm[2].slice(0, 3)), +dm[1]);
+  }
+  if (!d) {
+    dm = t.match(/([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2,4})/);
+    if (dm && SCN_MONTHS.indexOf(dm[1].slice(0, 3)) > -1) d = new Date(+two(dm[3]), SCN_MONTHS.indexOf(dm[1].slice(0, 3)), +dm[2]);
+  }
+  if (d && !isNaN(d.getTime())) out.date = d; else out.missing.push('the date of the offer');
+
+  // — In or out. For each topic, look at the words immediately before it and take the nearest
+  //   inclusion or exclusion cue. "including interest but excluding COA" therefore resolves each
+  //   half independently instead of letting one verb govern the whole sentence.
+  const IN  = ['includ', 'inclusive', 'incl ', 'with interest', 'within', 'made up of'];
+  const OUT = ['exclud', 'not includ', 'excluding', 'plus', 'on top', 'separate', 'in addition', 'plus interest', 'outside'];
+  const verdict = (terms) => {
+    let best = null;
+    terms.forEach(term => {
+      let idx = t.indexOf(term);
+      while (idx > -1) {
+        const before = t.slice(Math.max(0, idx - 60), idx);
+        let hit = null, dist = 1e9;
+        IN.forEach(w => { const p = before.lastIndexOf(w); if (p > -1 && before.length - p < dist) { dist = before.length - p; hit = 'in'; } });
+        OUT.forEach(w => { const p = before.lastIndexOf(w); if (p > -1 && before.length - p < dist) { dist = before.length - p; hit = 'out'; } });
+        if (hit && (!best || dist < best.dist)) best = { hit: hit, dist: dist };
+        idx = t.indexOf(term, idx + 1);
+      }
+    });
+    return best ? best.hit : null;
+  };
+  out.interest = verdict(['interest']);
+  out.coa = verdict(['costs of assessment', 'coa', 'assessment costs', 'cost of assessment']);
+  if (out.interest === null) out.missing.push('whether interest is in the offer');
+  if (out.coa === null) out.missing.push('how costs of assessment are treated');
+
+  const cp = t.match(/counsel[^.]{0,30}?(\d{1,3})\s*%/);
+  if (cp) out.counselPct = parseFloat(cp[1]);
+  return out;
+}
+
+document.getElementById('scn-nl-apply')?.addEventListener('click', () => {
+  const box = document.getElementById('scn-nl'); const echo = document.getElementById('scn-nl-read');
+  if (!box || !echo) return;
+  const p = scnParseOffer(box.value);
+  const said = [];
+  if (p.figure != null) { scnEl('scn-figure').value = p.figure.toFixed(2); said.push('offer ' + fmt(p.figure)); }
+  if (p.date) {
+    const iso = p.date.toISOString().substring(0, 10);
+    scnEl('scn-interest-date').value = iso;
+    const cd = scnEl('scn-coa-date'); if (cd) cd.value = iso;
+    said.push('as at ' + fmtDate(p.date.toISOString()));
+  }
+  if (p.interest) { scnEl('scn-interest-mode').value = p.interest === 'in' ? 'within' : 'ontop';
+                    said.push('interest ' + (p.interest === 'in' ? 'included in the offer' : 'payable on top')); }
+  if (p.coa)      { scnEl('scn-coa-mode').value = p.coa === 'in' ? 'within' : 'ontop';
+                    said.push('costs of assessment ' + (p.coa === 'in' ? 'included in the offer' : 'paid separately')); }
+  if (p.counselPct != null) { scnEl('scn-counsel-pct').value = p.counselPct; said.push("counsel at " + p.counselPct + '%'); }
+  renderScenarioTab();
+  echo.textContent = (said.length ? 'Read as: ' + said.join(' · ') + '.' : 'Nothing recognised.')
+    + (p.missing.length ? ' Could not find ' + p.missing.join(', ') + ' — set ' + (p.missing.length > 1 ? 'those' : 'that') + ' by hand.' : '')
+    + ' Check the boxes below before relying on the figures.';
+});
+
 (function wireScenarioTab(){
   const panel = document.getElementById('tab-scenarios');
   if (!panel) return;
@@ -4841,11 +4950,8 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
                : fmt(c.coaCost || 0) + ' out of the offer — TMC time ' + fmt(_coaTime)
                  + (_coaFee ? ' plus court fee ' + fmt(_coaFee) : '')
-                 + (treat !== 'OnTop' ? '; nothing separate to add back.'
-                    : !(c.coaRecoverable > 0)
-                      ? '. Nothing recorded as recovered — the whole amount is a shortfall.'
-                      : '; ' + fmt(c.coaRecoverable) + ' recovered back'
-                        + ((c.coaShortfall || 0) > 0.005 ? ', ' + fmt(c.coaShortfall) + ' shortfall.' : ', fully recovered.')));
+                 + (treat !== 'OnTop' ? '.'
+                    : c.coaRecoverable > 0 ? '; ' + fmt(c.coaRecoverable) + ' recovered.' : '; nothing recovered.'));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
                                     : (c.feePctIn || 0) + '% as recovered');
