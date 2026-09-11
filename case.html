@@ -1168,6 +1168,19 @@
         #tab-scenarios .kv-tile{border-color:rgba(46,111,126,.30);}
         #tab-scenarios .kv-tile .kv-value{color:var(--scn-accent);}
         #tab-scenarios .kv-divider{border-top:1px solid rgba(46,111,126,.20);margin:16px 0 14px;}
+        /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
+           Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
+           screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
+           only exist to take input (costs of assessment detail, interest detail) sit below that
+           block rather than interrupting it. Ordering is done in CSS so no markup moved. */
+        #tab-settlement.active{display:flex;flex-direction:column;gap:18px;}
+        #tab-settlement > *{order:5;}
+        #tab-settlement .two-col{display:contents;}
+        #tab-settlement .quick-action-bar{order:0;}
+        #tab-settlement .edit-bar{order:1;}
+        #tab-settlement > .card,#tab-settlement .two-col > .card{order:2;}
+        #tab-settlement .sett-working,#tab-settlement .two-col > .card.sett-working{order:4;}
+        .sett-working > .card-head::after{content:'working';font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--grey-mid);margin-left:auto;padding-left:10px;}
       </style>
       <div class="card">
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The five things that drive every figure below. Change them on the cards further down, or on the Costs Claimed tab for VAT. The Settlement Scenarios tab shows the same five tiles in the same place, so you can compare the two screens at a glance.</span></button></div>
@@ -1224,9 +1237,45 @@
           <div class="sett-note" id="sett-figure-note" hidden></div>
         </div>
       </div>
+      <!-- S125: Costs Claimed on the Settlement tab, matching the printed report's second section
+           and the Scenarios tab's own table. Read-only — the figures are entered on the Costs
+           Claimed tab; this is the same data in the place the PDF puts it. -->
+      <div class="card">
+        <div class="card-head"><span class="card-title">Costs Claimed</span><button type="button" class="info-btn" aria-label="About Costs Claimed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">What was claimed in the bill, exactly as the Settlement Report prints it. Read-only here — change these figures on the Costs Claimed tab.</span></button></div>
+        <div class="card-body">
+          <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--navy);">
+            <thead><tr>
+              <th style="text-align:left;padding:8px 10px;border-bottom:2px solid var(--navy);"></th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Profit Costs</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">TMC PC in Bill</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Disbursements</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Counsel's Fees</th>
+              <th style="text-align:right;padding:8px 10px;border-bottom:2px solid var(--navy);">Total Claimed</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td style="text-align:left;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);">Net</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="sv-c-pc-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="sv-c-tmcpc-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="sv-c-disb-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="sv-c-counsel-net">—</td>
+                <td style="text-align:right;padding:7px 10px;border-bottom:1px solid rgba(27,42,74,.12);" id="sv-c-total-net">—</td>
+              </tr>
+              <tr style="font-weight:600;">
+                <td style="text-align:left;padding:7px 10px;">VAT Inclusive</td>
+                <td style="text-align:right;padding:7px 10px;" id="sv-c-pc-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="sv-c-tmcpc-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="sv-c-disb-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="sv-c-counsel-vat">—</td>
+                <td style="text-align:right;padding:7px 10px;" id="sv-c-total-vat">—</td>
+              </tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
       <!-- S116: costs of assessment on their own card. Previously three unlabelled boxes inside
            Liabilities, with the only within/on-top switch living on the Offers tab. -->
-      <div class="card">
+      <div class="card sett-working">
         <div class="card-head"><span class="card-title">Costs of Assessment</span><button type="button" class="info-btn" aria-label="About Costs of Assessment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">What the assessment costs (TMC's invoice, capped where a cap applies, plus any court fee the client paid) and what the paying party paid towards it. The cost always comes out of the figure; anything recovered separately is added back. Costs of assessment inside the figure above have nothing separate to add back.</span></button></div>
         <dl class="liab-grid">
           <div class="liab-row">
@@ -1286,7 +1335,7 @@
       </div>
       <div class="two-col">
         <div class="card">
-          <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span><button type="button" class="info-btn" aria-label="About Liabilities"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The paying party's liabilities (VAT-inclusive). Click Edit to enter figures. 'From Claimed' pulls counsel's fees across from the Costs Claimed tab. Costs of assessment are entered on their own card above and carried in here.</span></button></div>
+          <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span><button type="button" class="info-btn" aria-label="About Costs Payable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The paying party's liabilities (VAT-inclusive). Click Edit to enter figures. 'From Claimed' pulls counsel's fees across from the Costs Claimed tab. Costs of assessment are entered on their own card above and carried in here.</span></button></div>
           <dl class="liab-grid">
             <div class="liab-row"><dt>Disbursements inc VAT</dt><dd><span class="liab-static" id="r-Disbursements">—</span></dd></div>
             <div class="liab-row">
@@ -1301,7 +1350,7 @@
             <div class="liab-row total"><dt>Total Liabilities</dt><dd><span class="liab-static" id="r-TotalLiab">—</span></dd></div>
           </dl>
         </div>
-        <div class="card">
+        <div class="card sett-working">
           <div class="card-head"><span class="card-title">Interest Summary</span><button type="button" class="info-btn" aria-label="About Interest Summary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">A read-only snapshot of interest for this case, calculated from the Interest tab's inputs. Change the figures on that tab, not here.</span></button></div>
           <div class="card-body" style="padding:0 22px;">
             <div class="interest-row"><span>Interest Calculated On</span><span id="r-InterestOn">—</span></div>
@@ -1386,9 +1435,9 @@
         .scn-left,.scn-right{display:contents;}
         .scn-left .card{order:1;}                 /* Key Variables            */
         .scn-right .card:nth-child(1){order:2;}   /* Settlement Details       */
-        .scn-right .card:nth-child(4){order:3;}   /* Liabilities              */
-        .scn-right .card:nth-child(2){order:4;}   /* Recovery                 */
-        .scn-right .card:nth-child(3){order:5;}   /* Costs Claimed            */
+        .scn-right .card:nth-child(3){order:3;}   /* Costs Claimed            */
+        .scn-right .card:nth-child(4){order:4;}   /* Costs Payable            */
+        .scn-right .card:nth-child(2){order:5;}   /* Recovery                 */
         .scn-left .detail-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
@@ -1497,7 +1546,7 @@
         </div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">Liabilities (VAT Inclusive)</span></div>
+        <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span></div>
         <dl class="liab-grid">
           <div class="liab-row"><dt>Disbursements</dt><dd><span class="liab-static" id="scn-r-Disb">—</span></dd></div>
           <div class="liab-row"><dt>Counsel's Fees</dt><dd><span class="liab-static" id="scn-r-Counsel">—</span></dd></div>
@@ -4640,6 +4689,11 @@ function renderSettlementTab() {
     : c.figureSource === 'settlement' ? 'Total Settlement, entered on this tab.'
     : c.figureSource === 'offer'      ? "Paying party's last offer, from the Offers tab."
     : 'No figure entered yet.');
+  // S125: Costs Claimed on this tab, same six columns the Settlement Report prints.
+  setText('sv-c-pc-net', fmt(c.claimedPC)); setText('sv-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)));
+  setText('sv-c-disb-net', fmt(c.disbursements)); setText('sv-c-counsel-net', fmt(c.counselClaimed)); setText('sv-c-total-net', fmt(c.netTotalClaimed));
+  setText('sv-c-pc-vat', fmt(c.pcIncVAT)); setText('sv-c-tmcpc-vat', fmt(c.tmcPCIncVAT));
+  setText('sv-c-disb-vat', fmt(c.disbIncVAT)); setText('sv-c-counsel-vat', fmt(c.counselIncVAT)); setText('sv-c-total-vat', fmt(c.totalClaimed));
   if (!_settSkipInputs) {
     setTxt('f-CaseNameForOpenCases', f['CaseNameForOpenCases']); setTxt('f-ClientCaseReference', f['ClientCaseReference']);
     setTxt('f-Ourreference', f['Ourreference_x0028_text_x0029_']); setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
