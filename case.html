@@ -1198,6 +1198,11 @@
         #tab-scenarios table.int-work th{border-bottom-color:var(--scn-accent);}
         #tab-scenarios table.int-work tr.total-row td{border-top-color:var(--scn-accent);}
         .int-work-wrap{overflow-x:visible;}
+        /* S125: the interest working, shown inside the Settlement Details card. */
+        .int-inline{margin-top:14px;padding-top:12px;border-top:1px solid rgba(27,42,74,.12);padding-bottom:16px;}
+        .int-inline-head{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+                         color:var(--grey-mid);margin-bottom:8px;}
+        #tab-scenarios .int-inline{border-top-color:rgba(46,111,126,.22);}
         /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
            Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
            screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
@@ -1224,15 +1229,10 @@
           #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
           #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-column:2 !important;}
           #tab-scenarios .scn-right .card:not(.sd-card),#tab-scenarios .scn-left .card:not(.kv-card){grid-column:1/-1;}
-          /* S125: the interest working sits directly under Settlement Details in the right-hand
-             column. Key Variables spans both rows; the first row is min-content so the spare
-             height lands under Settlement Details rather than as a gap above the interest card. */
-          #tab-scenarios .kv-card{grid-row:1/span 2;}
-          #tab-scenarios .sd-card{grid-row:1;}
-          #tab-scenarios .int-card{grid-column:2 !important;grid-row:2;}
-          #tab-settlement .kv-card{grid-row:3/span 2;}
+          /* S125: the interest working now lives INSIDE the Settlement Details card, so there is
+             no second box to place and no empty row to fill. */
+          #tab-settlement .kv-card{grid-row:3;}
           #tab-settlement .sd-card{grid-row:3;}
-          #tab-settlement .int-card{grid-column:2 !important;grid-row:4;}
         }
       </style>
       <div class="card kv-card">
@@ -1286,6 +1286,7 @@
             </div>
           </div>
           <div class="sett-note" id="sett-figure-note" hidden></div>
+          <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="sett-int-working"></div></div>
         </div>
       </div>
       <!-- S125: Costs Claimed on the Settlement tab, matching the printed report's second section
@@ -1383,10 +1384,6 @@
           <input type="hidden" id="f-CourtFeeRecovered" />
           <span hidden id="lbl-coa-total"></span><span hidden id="r-TotalCOA-note"></span><span hidden id="r-TotalCOA"></span>
         </dl>
-      </div>
-      <div class="card sett-working int-card">
-        <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
-        <div class="card-body"><div id="sett-int-working"></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -1495,7 +1492,6 @@
         .scn-right .card:nth-child(3){order:3;}   /* Costs Claimed            */
         .scn-right .card:nth-child(4){order:4;}   /* Costs Payable            */
         .scn-right .card:nth-child(2){order:5;}   /* Recovery                 */
-        .scn-right .card:nth-child(5){order:6;}   /* How Interest Is Calculated */
         .scn-left .detail-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
@@ -1602,6 +1598,7 @@
           <div class="interest-row"><span>Costs Element of Offer (after interest &amp; the assessment)</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Recovery below is calculated on</span><span id="scn-r-RecoveryBase">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
+          <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="scn-int-working"></div></div>
         </div>
       </div>
       <div class="card">
@@ -1659,10 +1656,6 @@
           <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
         </dl>
       </div>
-      <div class="card int-card">
-        <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
-        <div class="card-body"><div id="scn-int-working"></div></div>
-      </div>
       </div>
       </div>
     </div><!-- /tab-scenarios -->
@@ -1710,6 +1703,7 @@
               <strong id="ov-offer-pct-pc" style="margin-left:6px;">&mdash;</strong>
             </div>
           </div>
+          <div class="int-inline"><div class="int-inline-head">How interest is calculated</div><div id="off-int-working"></div></div>
         </div>
       </div>
     </div><!-- /tab-offers -->
@@ -5101,6 +5095,14 @@ function renderOffersTab() {
   // Profit Costs" — reads the shared computed object so the two tabs can never disagree.
   setText('ov-offer-pct-claimed', fmtPct(computed.pctBill));
   setText('ov-offer-pct-pc', fmtPct(computed.pctPC));
+  // S125: the working behind the interest inside the paying party's last offer, as at the date it
+  // was made — so the offer can be judged on what it was worth then, not on today's interest.
+  renderInterestWorking('off-int-working', f, _lo, _lod,
+    (_lo > 0 && _lod)
+      ? 'Interest inside the last offer of ' + fmt(_lo) + ' as at ' + fmtDate(f['DateOfLastOffer'])
+        + ', the date it was made. Net of that interest the offer is '
+        + (_netInt != null ? fmt(_netInt) : '—') + '.'
+      : 'Enter the paying party\u2019s last offer and the date it was made to see the interest inside it.');
 }
 
 function renderCostsTab() {
