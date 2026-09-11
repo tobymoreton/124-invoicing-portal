@@ -1258,7 +1258,7 @@
           <div class="kv-grid">
             <div class="kv-tile"><div class="kv-label">Current Offer</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
             <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Is interest in the offer?</div><select id="f-InterestTreatment" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option><option value="None">Not included in offer</option></select></div><div class="kv-help">Say here whether the offer already contains interest. Included in offer — the sum is all-in and is broken down into costs and interest. Paid separately or not included — interest is still to be claimed, and the figure above is what to ask for. Interest runs at 8% from the Authority to Assess date, less anything already paid on account.</div></div>
-            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. Set it on the Costs of Assessment card below.</div></div>
+            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">How are they paid?</div><select id="f-COATreatmentKV" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option></select></div><div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The figures behind it are on the Costs of Assessment card below.</div></div>
             <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-help">What counsel is actually being paid out of the offer. Enter it on the Costs Payable card below, or pull it across from the bill with “From Claimed”.</div></div>
             <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
             <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div><div class="kv-help">Set on the Costs Claimed tab, not here. At 0% every VAT figure on this tab is nil.</div></div>
@@ -2605,14 +2605,14 @@ function resolveOutcome(f) {
   if (_settOutcomeOverride !== null) return _settOutcomeOverride;
   return String((f || {})['SettlementOutcome'] || '').toLowerCase() === 'assessed' ? 'Assessed' : 'Settled';
 }
-// S125 (Toby, 11/09): an offer is of COSTS — interest is in addition unless the offer says
-// otherwise. The Offers tick therefore DEFAULTS TO TICKED: blank, missing, or a Yes/No value Graph
-// has dropped all mean "excludes interest". Only an explicit false means interest is inside it.
+// S125 (Toby, 11/09): the default position on an offer is that BOTH interest and the costs of
+// assessment are inside it. The tick is therefore an exception flag: blank or missing means
+// included, and only an explicit tick means interest is payable on top.
 // (The column is named ...includesinterest... but is used as an EXCLUDES flag, matching the costs
 // of assessment tick beside it. Renaming the column would break the PA flows that read it.)
 function offerExcludesInterest(f) {
   const v = (f || {})['Offerincludesinterest_x003f_'];
-  return !(v === false || v === 'false' || v === 0);
+  return (v === true || v === 'true' || v === 1);
 }
 
 function resolveCOATreatment(f) {
@@ -4702,18 +4702,31 @@ function scnParseOffer(raw) {
   };
   out.interest = verdict(['interest']);
   out.coa = verdict(['costs of assessment', 'coa', 'assessment costs', 'cost of assessment']);
-  if (out.interest === null) out.missing.push('whether interest is in the offer');
   // S125 (Toby): an offer is of COSTS. Costs of assessment are in addition UNLESS the offer is
-  // expressed to be wholly inclusive — "all in", "global", "fully inclusive". Saying "including
+  // expressed to be wholly inclusive — "all in", "global", "an inclusive amount". Saying "including
   // interest" says nothing about the assessment and must not be read as covering it.
   const GLOBAL = ['all in', 'all-in', 'all inclusive', 'all-inclusive', 'fully inclusive',
                   'wholly inclusive', 'global figure', 'global sum', 'global offer',
                   'inclusive of everything', 'including everything', 'full and final'];
   out.wholeInclusive = GLOBAL.some(w => t.indexOf(w) > -1);
+  // A bare "inclusive" is also wholly inclusive — "an inclusive amount of £100k" — UNLESS it is
+  // qualified, as in "inclusive of interest", which speaks only to interest.
+  if (!out.wholeInclusive) {
+    let ix = t.indexOf('inclusive');
+    while (ix > -1) {
+      const after = t.slice(ix + 9, ix + 9 + 40);
+      const qualified = /^\s*of\s+(interest|costs of assessment|coa|assessment)/.test(after);
+      if (!qualified) { out.wholeInclusive = true; break; }
+      ix = t.indexOf('inclusive', ix + 1);
+    }
+  }
   if (out.coa === null) {
     out.coa = out.wholeInclusive ? 'in' : 'out';
     out.coaAssumed = true;
   }
+  // An all-in offer contains interest by definition — do not report it as unstated.
+  if (out.interest === null && out.wholeInclusive) { out.interest = 'in'; out.interestAssumed = true; }
+  if (out.interest === null) out.missing.push('whether interest is in the offer');
 
   const cp = t.match(/counsel[^.]{0,30}?(\d{1,3})\s*%/);
   if (cp) out.counselPct = parseFloat(cp[1]);
@@ -4733,10 +4746,11 @@ document.getElementById('scn-nl-apply')?.addEventListener('click', () => {
     said.push('as at ' + fmtDate(p.date.toISOString()));
   }
   if (p.interest) { scnEl('scn-interest-mode').value = p.interest === 'in' ? 'within' : 'ontop';
-                    said.push('interest ' + (p.interest === 'in' ? 'included in the offer' : 'payable on top')); }
+                    said.push('interest ' + (p.interest === 'in' ? 'included in the offer' : 'payable on top')
+                              + (p.interestAssumed ? ' (the offer is expressed as inclusive)' : '')); }
   if (p.coa)      { scnEl('scn-coa-mode').value = p.coa === 'in' ? 'within' : 'ontop';
                     said.push('costs of assessment ' + (p.coa === 'in' ? 'included in the offer' : 'paid separately')
-                              + (p.coaAssumed ? ' (assumed — not mentioned' + (p.wholeInclusive ? ', but the offer is expressed as all-in)' : ')') : '')); }
+                              + (p.coaAssumed ? (p.wholeInclusive ? ' (the offer is expressed as inclusive)' : ' (assumed — not mentioned)') : '')); }
   if (p.counselPct != null) { scnEl('scn-counsel-pct').value = p.counselPct; said.push("counsel at " + p.counselPct + '%'); }
   renderScenarioTab();
   echo.textContent = (said.length ? 'Read as: ' + said.join(' · ') + '.' : 'Nothing recognised.')
@@ -5112,6 +5126,7 @@ function renderSettlementTab() {
   const onTop    = c.coaTreatment === 'OnTop';
   const outEl = document.getElementById('f-SettlementOutcome'); if (outEl) outEl.value = c.outcome;
   const trtEl = document.getElementById('f-COATreatment');      if (trtEl) trtEl.value = c.coaTreatment;
+  const trtKV = document.getElementById('f-COATreatmentKV');    if (trtKV) trtKV.value = c.coaTreatment === 'OnTop' ? 'OnTop' : 'Within';
   const intEl = document.getElementById('f-InterestTreatment'); if (intEl) intEl.value = c.intMode === 'ontop' ? 'OnTop' : c.intMode === 'none' ? 'None' : 'Within';
   setText('hint-sett-outcome', assessed
     ? 'The court assessed the bill. Enter the sum payable under the assessment below, interest included; costs of assessment are on the next card and default to "paid separately".'
@@ -5225,7 +5240,7 @@ function renderOffersTab() {
   setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']); setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
   setDate('f-DateOfLastOffer', f['DateOfLastOffer']);
   setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
-  // S125: defaults to ticked — see offerExcludesInterest().
+  // S125: blank = included in the offer, so an untouched case reads as inclusive of both.
   const _exIntEl = document.getElementById('f-Offerincludesinterest_x003f_');
   if (_exIntEl) _exIntEl.checked = offerExcludesInterest(f);
   const _lo = parseFloat(f['PayingPartysLastOffer']) || 0;
@@ -5539,8 +5554,16 @@ document.getElementById('f-InterestTreatment')?.addEventListener('change', () =>
   _settInterestTreatmentOverride = v === 'OnTop' ? 'ontop' : v === 'None' ? 'none' : 'within';
   computeFigures(); renderSettlementTab();
 });
+document.getElementById('f-COATreatmentKV')?.addEventListener('change', () => {
+  // S125: the Key Variables tile and the Costs of Assessment card drive the same value — whichever
+  // is used, both end up showing it.
+  _settCOATreatmentOverride = document.getElementById('f-COATreatmentKV').value === 'OnTop' ? 'OnTop' : 'Within';
+  const other = document.getElementById('f-COATreatment'); if (other) other.value = _settCOATreatmentOverride;
+  renderSettlementLive(); _updateTotalCOADisplay();
+});
 document.getElementById('f-COATreatment')?.addEventListener('change', () => {
   _settCOATreatmentOverride = document.getElementById('f-COATreatment').value === 'OnTop' ? 'OnTop' : 'Within';
+  const kv = document.getElementById('f-COATreatmentKV'); if (kv) kv.value = _settCOATreatmentOverride;
   renderSettlementLive(); _updateTotalCOADisplay();
 });
 
