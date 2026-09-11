@@ -1743,19 +1743,24 @@ async function loadActions(cases){
       const ref=(a.fields?.['field_16']||'').toString().trim();
       return {...a,_caseRef:ref,_caseName:nameByRef[ref]||ref};
     });
+  // S127: strict date/time order. Two kinds of timestamp live in field_12: Make-logged emails
+  // carry the real time; portal-logged work (before S127) was stored at midnight. A plain
+  // string sort put every midnight row BELOW every timed row of the same day, so prep done at
+  // 12:30 rendered under a 15:13 email. Now: (1) calendar day, newest first; (2) within a day,
+  // real timestamp when BOTH rows have one; (3) if either row is a midnight (date-only) row,
+  // SharePoint item ID — IDs are issued in logging order across every source, so a midnight
+  // prep row lands between the emails that were logged before and after it. Rows created
+  // after S127 always carry a real time (server stamps it), so this converges on pure time
+  // order. CreatedUTC is requested by /api/caseactions but absent from the rows it returns
+  // (checked live 11/09/2026), so it is not relied on.
+  const isMidnight=s=>/T00:00(?::00(?:\.0+)?)?(?:Z|[+-]00:?00)?$/.test(s);
   allActions.sort((a,b)=>{
-    const da=a.fields?.['field_12']||a.fields?.['field_1']||'';
-    const db=b.fields?.['field_12']||b.fields?.['field_1']||'';
-    const cmp=db.localeCompare(da);
-    if(cmp!==0) return cmp;
-    // Tie-break: field_12 is stored as midnight-only (T00:00:00Z), so same-day actions tie here.
-    // Prefer CreatedUTC (added 2026-07-05, stamped server-side on POST) when both rows have it;
-    // fall back to SharePoint item ID descending for rows created before this field existed
-    // (matches the fix in /api/caseactions).
-    const caU=a.fields?.['CreatedUTC'];
-    const cbU=b.fields?.['CreatedUTC'];
-    if(caU&&cbU){
-      const diff=new Date(cbU)-new Date(caU);
+    const da=String(a.fields?.['field_12']||a.fields?.['field_1']||'');
+    const db=String(b.fields?.['field_12']||b.fields?.['field_1']||'');
+    const dayCmp=db.slice(0,10).localeCompare(da.slice(0,10));
+    if(dayCmp!==0) return dayCmp;
+    if(!isMidnight(da)&&!isMidnight(db)){
+      const diff=new Date(db)-new Date(da);
       if(diff!==0) return diff;
     }
     return (parseInt(b.id,10)||0)-(parseInt(a.id,10)||0);
@@ -1998,18 +2003,23 @@ async function saveEditAction(){
   const billable=document.getElementById('edit-ca-billable').checked;
   const completedBy=document.getElementById('edit-ca-by').value;
   btn.disabled=true;msg.className='dm-save-msg';msg.textContent='Saving\u2026';
+  // S127: only send the date when the DAY actually changed, and then carry the current
+  // time-of-day. Sending date+'T00:00:00Z' on every edit was resetting the row to midnight,
+  // which drops it below every timed (email) row of that day.
+  const curDay=String(editingAction.fields?.['field_12']||'').slice(0,10);
+  const newDateIso=(date&&date!==curDay)?date+new Date().toISOString().slice(10):null;
   try{
     const r=await fetch('/api/caseactions',{
       method:'PATCH',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({itemId:editingAction.id,workDone:wd,timeSpent:hrs,rate,brief,billable,completedBy,
-        ...(date?{dateWorkDone:date+'T00:00:00Z'}:{})}),
+        ...(newDateIso?{dateWorkDone:newDateIso}:{})}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const f=editingAction.fields=editingAction.fields||{};
     f['field_2']=wd; f['field_3']=hrs; f['TimeSpentMirror']=hrs;
     f['field_6']=rate; f['field_9']=brief; f['Billable_x003f_']=billable;
     f['Completedby_x0028_text_x0029_']=completedBy;
-    if(date) f['field_12']=date+'T00:00:00Z';
+    if(newDateIso) f['field_12']=newDateIso;
     renderActionsPanel();
     msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-edit-action'),900);
@@ -2090,11 +2100,12 @@ async function saveAction(){
   try{
     const r=await fetch('/api/caseactions',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,billable,brief,dateWorkDone:date?date+'T00:00:00Z':new Date().toISOString(),email:callerEmail,completedBy:callerName}),
+      // S127: chosen day + current time-of-day (server stamps the same if sent date-only).
+      body:JSON.stringify({ref,caseName,caseItemId,workDone:wd,timeSpent:hrs,rate,billable,brief,dateWorkDone:date?date+new Date().toISOString().slice(10):new Date().toISOString(),email:callerEmail,completedBy:callerName}),
     });
     if(!r.ok) throw new Error('HTTP '+r.status);
     const created=await r.json().catch(()=>({}));
-    allActions.unshift({...created,_caseRef:ref,_caseName:caseName,fields:{...(created.fields||{}),field_2:wd,field_3:hrs,TimeSpentMirror:hrs,field_6:rate,field_9:brief,'Billable_x003f_':billable,field_12:date?date+'T00:00:00Z':new Date().toISOString(),field_16:ref}});
+    allActions.unshift({...created,_caseRef:ref,_caseName:caseName,fields:{...(created.fields||{}),field_2:wd,field_3:hrs,TimeSpentMirror:hrs,field_6:rate,field_9:brief,'Billable_x003f_':billable,field_12:(created.fields&&created.fields.field_12)||(date?date+new Date().toISOString().slice(10):new Date().toISOString()),field_16:ref}});
     renderActionsPanel();
     msg.className='dm-save-msg ok';msg.textContent='\u2713 Saved';
     setTimeout(()=>closeModal('modal-action'),1000);
