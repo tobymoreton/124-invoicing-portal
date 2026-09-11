@@ -1365,7 +1365,7 @@
       <div class="scn-layout">
       <div class="scn-left">
       <div class="card">
-        <div class="card-head"><span class="card-title">Scenario Inputs</span><button type="button" class="info-btn" aria-label="About Scenario Inputs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the scenario figure from the Authority to Assess date at 8%, netting interim payments, and can be paid separately or included in the figure; costs of assessment likewise. Nothing on this tab is saved anywhere.</span></button></div>
+        <div class="card-head"><span class="card-title">Scenario Inputs</span><button type="button" class="info-btn" aria-label="About Scenario Inputs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
           <div class="detail-grid">
             <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
@@ -1400,7 +1400,7 @@
           <div class="interest-row"><span>Scenario Settlement Figure</span><span id="scn-d-figure">—</span></div>
           <div class="interest-row"><span>Interest</span><span id="scn-r-Interest">—</span></div>
           <div class="interest-row"><span>Costs of Assessment (inc court fees)</span><span id="scn-d-COA">—</span></div>
-          <div class="interest-row"><span>Costs Element of Figure (net of interest &amp; COA)</span><span id="scn-r-CostsElement">—</span></div>
+          <div class="interest-row"><span>Costs Element of Figure (net of the assessment)</span><span id="scn-r-CostsElement">—</span></div>
           <div class="interest-row"><span>Total To Be Received</span><span id="scn-r-TotalReceived">—</span></div>
         </div>
       </div>
@@ -2907,8 +2907,22 @@ function settFieldsInUse() {
   return live;
 }
 
-function computeFigures() {
-  const f = settFieldsInUse();
+// S125: ONE calculation for both the Settlement tab and the Settlement Scenarios tab. `opts` is
+// absent for the live sheet; the Scenarios tab passes overrides so it runs this same maths on its
+// own inputs instead of a hand-copied duplicate. The duplicate had already drifted — it was
+// deducting interest from the recovery, which this sheet has not done since S116d/g.
+//   opts.fields         — field map to use instead of the saved/edited case
+//   opts.coaCharge      — TMC's charge for the assessment, already capped and regrossed
+//   opts.coaMode        — 'within' | 'ontop' | 'none', overriding resolveCOATreatment()
+//   opts.intMode        — 'none' | 'within' | 'ontop'. NEVER changes grossPC; 'ontop' only adds
+//                         interest to the total received.
+//   opts.interestAmt    — interest as at the scenario date
+//   opts.feeBasis       — 'drawn' | 'recovered' | 'fixed'
+//   opts.feePct / opts.feeFixed / opts.feeInclTmcTime
+//   opts.assign         — false to return the figures without touching the global `computed`
+function computeFigures(opts) {
+  opts = opts || {};
+  const f = opts.fields || settFieldsInUse();
   const figureForSheet = parseFloat(f['FigureForSettlementSheet'])        || 0;
   const settlementAmt  = parseFloat(f['Settlementamount'])                || 0;
   const lastOffer      = parseFloat(f['PayingPartysLastOffer'])            || 0;
@@ -2939,7 +2953,8 @@ function computeFigures() {
   const coaLimitNet    = parseFloat(f['Limit_x0020_Costs_x0020_of_x0020']) || 0;
   const coaCapped      = coaLimitNet > 0 && tmcTimeNet > coaLimitNet;
   const tmcChargeNet   = coaCapped ? coaLimitNet : tmcTimeNet;
-  const coa            = Math.round(tmcChargeNet * (1 + _vatPctForCOA) * 100) / 100; // = tmcCharge
+  const coa            = opts.coaCharge != null ? round2(opts.coaCharge)
+                                                : Math.round(tmcChargeNet * (1 + _vatPctForCOA) * 100) / 100; // = tmcCharge
   const coaAwarded     = parseFloat(f['COAAwarded'])                       || 0;
   const clientExpenses = parseFloat(f['ClientPaidExpenses'])               || 0;
   const courtFeeTMC    = parseFloat(f['CourtFeePaidByTMC'])                || 0;
@@ -2951,10 +2966,13 @@ function computeFigures() {
   // CourtFeeRecovered value (S116b–e, never deployed with data) is simply added in.
   const coaRecoverable = round2(coaAwarded + courtFeeRecd);
   const outcome        = resolveOutcome(f);
-  const coaTreatment   = resolveCOATreatment(f);
+  // S125: 'None' exists only for the Scenarios tab — model the figure with the assessment left out
+  // of it altogether. The live sheet never produces it.
+  const coaTreatment   = opts.coaMode ? (opts.coaMode === 'ontop' ? 'OnTop' : opts.coaMode === 'none' ? 'None' : 'Within')
+                                      : resolveCOATreatment(f);
   const coaRecovered   = coaTreatment === 'OnTop' ? coaRecoverable : 0;
   const coaShortfall   = coaTreatment === 'OnTop' ? round2(coaCost - coaRecoverable) : 0;
-  const totalCOA       = coaTreatment === 'OnTop' ? coaRecovered : coaCost;
+  const totalCOA       = coaTreatment === 'None' ? 0 : coaTreatment === 'OnTop' ? coaRecovered : coaCost;
   const otherTMC       = parseFloat(f['OtherTMCInvoices_ex_x0020_bill'])  || 0;
   const vatPct         = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const vatOnDrafting  = vatOnDraftingFee(f); // S116j: blank = Yes
@@ -3001,24 +3019,31 @@ function computeFigures() {
   // what the paying party pays for it on top is added back. Within a global figure nothing is
   // added back — the figure already contains it. Net effect when on top = only the SHORTFALL
   // (cost − recovered) eats into the recovery; a fully recovered assessment is neutral.
-  const coaDeduct = coaCost;
+  const coaDeduct = coaTreatment === 'None' ? 0 : coaCost;
   const lessFixed = counsel + disbursements + vatOnDisb + otherTMC;
   // S116d/g: the figure is all-in, interest included. InterestInFigure is a RECORD of how much of it
   // is interest — Toby (06/09): "interest IS essentially PC once recovered", so it is NOT backed
   // out of anything. costsFigure kept equal to the figure for the % lines.
-  const interestInFigure = parseFloat(f['InterestInFigure']) || 0;
+  const interestInFigure = opts.interestAmt != null ? opts.interestAmt : (parseFloat(f['InterestInFigure']) || 0);
+  const intMode          = opts.intMode || 'within';
   const costsFigure      = offerOrSettlement;
-  // What actually comes in: the figure plus anything paid on top of it.
-  const totalReceivable = offerOrSettlement + coaRecovered;
+  // What actually comes in: the figure plus anything paid on top of it. S125: interest is a RECORD
+  // of what sits inside the figure and is never deducted from the recovery. The only thing intMode
+  // changes is whether interest is ALSO paid on top of the figure.
+  const totalReceivable = offerOrSettlement + coaRecovered + (intMode === 'ontop' ? interestInFigure : 0);
 
   const grossPC           = costsFigure + coaRecovered - counsel - disbursements - vatOnDisb - coaDeduct - otherTMC;
   const netBeforeDrafting = vatPct === 0 ? grossPC : grossPC / vatHelper;
-  const feePctIP       = (_settFeePctOverride !== null) ? _settFeePctOverride
+  const feePctIP       = (opts.feePct != null) ? opts.feePct
+                       : (_settFeePctOverride !== null) ? _settFeePctOverride
                                                         : (parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0);
-  const _drawnFeeBase  = _settFeeOnDrawn
-    ? (claimedPC + otherTMCPC + (_settFeeInclTmcTime ? draftingTimeIP + nonVatDraftingIP : 0))
+  const _feeOnDrawn    = opts.feeBasis ? (opts.feeBasis === 'drawn') : _settFeeOnDrawn;
+  const _feeInclTmc    = (opts.feeInclTmcTime != null) ? opts.feeInclTmcTime : _settFeeInclTmcTime;
+  const _drawnFeeBase  = _feeOnDrawn
+    ? (claimedPC + otherTMCPC + (_feeInclTmc ? draftingTimeIP + nonVatDraftingIP : 0))
     : netBeforeDrafting;
-  const netDraftingFee = feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
+  const netDraftingFee = opts.feeBasis === 'fixed' ? round2(opts.feeFixed || 0)
+                       : feePctIP > 0 ? Math.round(_drawnFeeBase * feePctIP / 100 * 100) / 100 : 0;
   const netAfterDrafting = vatOnDrafting ? netBeforeDrafting - (netDraftingFee * vatHelper) : netBeforeDrafting - netDraftingFee;
   // S116i (Toby, 07/09): % recovery of profit costs is against the TOTAL profit costs in the bill —
   // the solicitors' PC plus TMC's PC in the bill (drafting time, vatable and non-vatable, and other
@@ -3028,7 +3053,7 @@ function computeFigures() {
   // S116d: % against the bill compares costs with costs — interest inside the figure is excluded.
   const pctBill = totalBill > 0 ? costsFigure / totalBill : 0;
 
-  computed = {
+  const _out = {
     offerOrSettlement, disbIncVAT, counsel, coa, clientExpenses, totalCOA, otherTMC, totalPayable,
     // S116 / S116b / S116d
     interestInFigure, costsFigure,
@@ -3042,7 +3067,14 @@ function computeFigures() {
     pctPC, pctBill, totalBill,
     otherTMCPC, laProfitCosts, tmcDraftingLA,
     totalIPPC, vatOnPC, vatOnCounsel, vatOnLAPC, totalCostsClaimed,
+    // S125: aliases so the Scenarios tab can render straight off this object.
+    intMode, feeBasis: opts.feeBasis || (_feeOnDrawn ? 'drawn' : 'recovered'), feePctIn: feePctIP,
+    feeBaseAmount: _drawnFeeBase, draftingFee: netDraftingFee, netAfter: netAfterDrafting,
+    netBefore: netBeforeDrafting, costsElement: Math.max(0, costsFigure - coaDeduct + coaRecovered),
+    totalReceived: totalReceivable, interestAmt: interestInFigure,
   };
+  if (opts.assign !== false) computed = _out;
+  return _out;
 }
 
 // S79: Total Interest recomputed as at a given date (the Date of Last Offer), so the sum backed
@@ -4176,57 +4208,57 @@ function scnResetDefaults(){
   scnEl('scn-fee-tmc-time').checked = _settFeeOnDrawn;
   _scnCoaLive = null; const _cn = scnEl('scn-coa-live-note'); if (_cn) _cn.textContent = ''; // S117: drop any live COA override on reset
 }
+// S125: the Scenarios tab no longer has its own maths. It builds an overrides object and runs
+// computeFigures() — the same function the live Settlement sheet uses — so the two tabs cannot
+// disagree again. Still writes NOTHING: assign:false keeps the global `computed` untouched.
 function computeScenario(){
-  const f = caseFields, c = computed;
+  const f = caseFields || {}, c = computed || {};
   const figure      = scnNum('scn-figure');
   const pct         = scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct');
   const counselBase = parseFloat(f['Counselsfeespayable']) || 0;
   const counselEff  = round2(counselBase * pct / 100);
-  const intMode = scnEl('scn-interest-mode').value;
-  const coaMode = scnEl('scn-coa-mode').value;
-  const asAtStr = scnEl('scn-interest-date').value;
-  const asAt    = asAtStr ? new Date(asAtStr) : null;
-  const feeBasis = scnEl('scn-fee-basis').value;
-  const feePctIn = scnNum('scn-fee-pct');
-  const fixedFee = scnNum('scn-fee-fixed');
-  const feeTmcTime = scnEl('scn-fee-tmc-time').checked;
-  const vatPct    = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
-  const vatHelper = 1 + vatPct;
-  const disbIncVAT = c.disbIncVAT || 0;
-  // S116b: mirror the live sheet — the COST of the assessment (TMC's capped charge + court fee) is
-  // deducted whenever COA is in play; what the paying party pays on top is added back, so only the
-  // shortfall bites. 'within' = cost deducted, nothing added; 'ontop' = cost deducted, recoverable
-  // added; 'none' = ignore COA entirely.
-  // S117/S118: TMC time charge (live override, else saved coaCost with its saved court fee stripped
-  // back out) PLUS the scenario's own Court Fees Paid box. Fee is a cost out of the figure.
-  const coaTimeCharge  = _scnCoaLive != null ? _scnCoaLive : round2((c.coaCost || 0) - (c.courtFeeOut || 0));
-  const scnCourtFee    = scnNum('scn-court-fee');
-  const coaCost        = round2(coaTimeCharge + scnCourtFee);
-  const coaRecoverable = c.coaRecoverable || 0;
-  const totalCOA   = coaMode === 'ontop' ? coaRecoverable : coaCost;
-  const otherTMC   = c.otherTMC   || 0;
-  const hasAuth    = !!f['DateofAuthoritytoAssess'];
-  const interestAmt = (intMode === 'none' || !hasAuth || !asAt || !figure) ? 0 : round2(interestTotalAsAt(f, figure, asAt));
-  const coaDeduct    = coaMode === 'none' ? 0 : coaCost;
-  const coaAddBack   = coaMode === 'ontop' ? coaRecoverable : 0;
-  const costsElement = Math.max(0, figure - (intMode === 'within' ? interestAmt : 0) - coaDeduct + coaAddBack);
-  const totalLiab    = disbIncVAT + counselEff + (coaMode === 'none' ? 0 : totalCOA) + otherTMC;
-  const grossPC   = costsElement - counselEff - disbIncVAT - otherTMC;
-  const netBefore = vatPct === 0 ? grossPC : grossPC / vatHelper;
-  const drawnCosts = feeTmcTime
-    ? ((c.claimedPC||0) + (c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0))
-    : (c.claimedPC||0);
-  const draftingFee = feeBasis === 'fixed' ? round2(fixedFee)
-    : round2((feeBasis === 'drawn' ? drawnCosts : netBefore) * feePctIn / 100);
-  const vatOnDrafting = vatOnDraftingFee(f); // S116j: blank = Yes
-  const netAfter = vatOnDrafting ? netBefore - draftingFee * vatHelper : netBefore - draftingFee;
-  const pctPC   = (c.totalIPPC || 0) > 0 ? netAfter / c.totalIPPC : 0; // S116i: total PC incl TMC PC in bill
-  const pctBill = (c.totalBill || 0) > 0 ? figure   / c.totalBill : 0;
-  const totalReceived = figure + (intMode === 'ontop' ? interestAmt : 0) + (coaMode === 'ontop' ? totalCOA : 0);
-  return { figure, pct, counselBase, counselEff, intMode, coaMode, hasAuth, interestAmt,
-           costsElement, coaDeduct, coaAddBack, coaTimeCharge, courtFee: scnCourtFee, coaRecoverable,
-           totalLiab, disbIncVAT, totalCOA, otherTMC, totalReceived,
-           grossPC, netBefore, draftingFee, feeBasis, feePctIn, feeBaseAmount: (feeBasis === 'drawn' ? drawnCosts : netBefore), netAfter, pctPC, pctBill };
+  const intMode     = scnEl('scn-interest-mode').value;
+  const coaMode     = scnEl('scn-coa-mode').value;
+  const asAtStr     = scnEl('scn-interest-date').value;
+  const asAt        = asAtStr ? new Date(asAtStr) : null;
+  const feeBasisSel = scnEl('scn-fee-basis').value; // 'drawn' | 'assessed' | 'fixed'
+  const hasAuth     = !!f['DateofAuthoritytoAssess'];
+  // S125: interest runs on the Interest tab's own base — the override sum, else the total bill,
+  // exactly what settInternalInterestGuide() uses. It was running on the scenario figure, so the
+  // two tabs reported different interest on the same case.
+  const _intBase = (parseFloat(f['SumForInterestCalculationOverrid']) || 0) > 0
+    ? parseFloat(f['SumForInterestCalculationOverrid'])
+    : (c.totalBill || 0);
+  const interestAmt = (intMode === 'none' || !hasAuth || !asAt || !_intBase)
+    ? 0 : round2(interestTotalAsAt(f, _intBase, asAt));
+  // TMC's charge for the assessment: the live override if Update COA was used, else the saved
+  // charge with its saved court fee stripped back out. The scenario's own Court Fees Paid box then
+  // stands in for the saved court fee.
+  const coaTimeCharge = _scnCoaLive != null ? _scnCoaLive : round2((c.coaCost || 0) - (c.courtFeeOut || 0));
+  const scnCourtFee   = scnNum('scn-court-fee');
+  const s = computeFigures({
+    assign: false,
+    fields: Object.assign({}, f, {
+      'FigureForSettlementSheet': figure, 'Settlementamount': 0, 'PayingPartysLastOffer': 0,
+      'Counselsfeespayable': counselEff,
+      'ClientPaidExpenses': scnCourtFee, 'CourtFeePaidByTMC': 0,
+    }),
+    coaCharge: coaTimeCharge,
+    coaMode: coaMode,
+    intMode: intMode,
+    interestAmt: interestAmt,
+    feeBasis: feeBasisSel === 'assessed' ? 'recovered' : feeBasisSel,
+    feePct: feeBasisSel === 'fixed' ? 0 : scnNum('scn-fee-pct'),
+    feeFixed: scnNum('scn-fee-fixed'),
+    feeInclTmcTime: scnEl('scn-fee-tmc-time').checked,
+  });
+  // Names the Scenarios renderer expects, over the top of the shared figures.
+  return Object.assign(s, {
+    figure: figure, pct: pct, counselBase: counselBase, counselEff: counselEff,
+    intMode: intMode, coaMode: coaMode, hasAuth: hasAuth, interestAmt: interestAmt,
+    coaTimeCharge: coaTimeCharge, courtFee: scnCourtFee,
+    totalLiab: s.totalPayable, feeBasis: feeBasisSel,
+  });
 }
 function renderScenarioTab(){
   if (!scnEl('scn-figure')) return;
