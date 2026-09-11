@@ -1220,7 +1220,12 @@
           #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
           #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-column:2 !important;}
           #tab-scenarios .scn-right .card:not(.sd-card),#tab-scenarios .scn-left .card:not(.kv-card){grid-column:1/-1;}
-          #tab-scenarios .scn-right .card:nth-child(5){grid-column:1/-1;}
+          /* S125: the interest working sits directly under Settlement Details in the right-hand
+             column, filling the space beside the taller Key Variables card. Explicit rows are
+             needed — with auto placement it would follow the full-width cards instead. */
+          #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-row:1/span 2;}
+          #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-row:1;}
+          #tab-scenarios .int-card,#tab-settlement .int-card{grid-column:2 !important;grid-row:2;}
         }
       </style>
       <div class="card kv-card">
@@ -1372,7 +1377,7 @@
           <span hidden id="lbl-coa-total"></span><span hidden id="r-TotalCOA-note"></span><span hidden id="r-TotalCOA"></span>
         </dl>
       </div>
-      <div class="card sett-working">
+      <div class="card sett-working int-card">
         <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
         <div class="card-body"><div id="sett-int-working"></div></div>
       </div>
@@ -1530,10 +1535,12 @@
                 <select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select>
                 <div class="kv-ctl-label">Court fees paid (£)</div>
                 <input type="number" id="scn-court-fee" step="0.01" min="0" />
-                <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update TMC time from live case actions</button>
+                <div class="kv-ctl-label">TMC time as at</div>
+                <input type="date" id="scn-coa-date" />
+                <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute the TMC time charge from case actions, counting only time recorded on or before the date above">&#8635; Update TMC time from live case actions</button>
                 <div id="scn-coa-live-note" class="sett-hint"></div>
               </div>
-              <div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The court fee is the N258 or hearing fee, whoever paid it.</div>
+              <div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The court fee is the N258 or hearing fee, whoever paid it. Set “TMC time as at” to the date of an offer to value the assessment as it stood then, rather than as it stands today — leave it blank for everything to date.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-scn-counsel">—</div>
@@ -1645,7 +1652,7 @@
           <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
         </dl>
       </div>
-      <div class="card">
+      <div class="card int-card">
         <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
         <div class="card-body"><div id="scn-int-working"></div></div>
       </div>
@@ -4730,7 +4737,11 @@ document.getElementById('scn-coa-refresh')?.addEventListener('click', async () =
   if (!ref) { if (note) note.textContent = 'No case reference to calculate against.'; return; }
   const prev = btn.textContent; btn.disabled = true; btn.textContent = '\u2026';
   try {
-    const resp = await fetch('/api/coa?ref=' + encodeURIComponent(ref) + '&mode=unbilled');
+    // S125: value the assessment as at a chosen date, so an offer can be judged against the costs
+    // of assessment as they stood when it was made. Blank = everything to date.
+    const asAt = (scnEl('scn-coa-date') && scnEl('scn-coa-date').value) || '';
+    const resp = await fetch('/api/coa?ref=' + encodeURIComponent(ref) + '&mode=unbilled'
+                             + (asAt ? '&asAt=' + encodeURIComponent(asAt) : ''));
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     const f = caseFields;
@@ -4741,8 +4752,10 @@ document.getElementById('scn-coa-refresh')?.addEventListener('click', async () =
     const tmcCharge   = round2((capped ? coaLimitNet : tmcTimeNet) * (1 + vatPct));
     _scnCoaLive = tmcCharge; // S118: TIME charge only — court fees come from the scenario's own Court Fees Paid box
     if (note) note.textContent = 'Live time charge: ' + fmt(_scnCoaLive)
+      + (data.asAt ? ' as at ' + fmtDate(data.asAt) : ' to date')
       + (capped ? ' (time ' + fmt(round2(tmcTimeNet * (1 + vatPct))) + ' capped to ' + fmt(coaLimitNet) + ' net + VAT)' : '')
       + (data.unratedCount > 0 ? ' \u2014 ' + data.unratedCount + ' unrated entr' + (data.unratedCount === 1 ? 'y' : 'ies') + ' excluded, so this is an understatement' : '')
+      + (data.undatedExcluded > 0 ? ' \u2014 ' + data.undatedExcluded + ' undated entr' + (data.undatedExcluded === 1 ? 'y' : 'ies') + ' excluded, so this is an understatement' : '')
       + '. Court fees added separately. Not saved.';
     renderScenarioTab();
   } catch (err) {
