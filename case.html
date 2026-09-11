@@ -4802,7 +4802,12 @@ function scnProRataSolve(){
   const s    = computeScenario();
   const Cpay = s.counselBase   || 0;   // Counselsfeespayable — what actually leaves the pot
   const Ccl  = c.counselIncVAT || 0;   // CounselsFeesClaimed + VAT — what counsel claimed in the bill
-  const P    = c.claimedPC     || 0;   // solicitor's claimed profit costs, net of VAT
+  // S125 (Toby, 11/09): the solicitor's side is the TOTAL profit costs in the bill — theirs PLUS
+  // TMC's drafting time and other TMC PC. "We are just another fee earner in practice; they keep any
+  // difference between our time and our fee." Measuring the haircut against their own costs alone
+  // understated the base and produced a solicitor rate that did not match the headline % recovery
+  // (63.83% against £61,741 vs 60.01% against £65,678.50 on the same figures). Same base as pctPC.
+  const P    = c.totalIPPC     || 0;   // total inter partes profit costs in the bill, net of VAT
   const v    = 1 + (parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0);
   if (Cpay <= 0 || Ccl <= 0 || P <= 0) return null;
   const pot  = s.grossPC + s.counselEff;        // what is left once disbs, other TMC and COA are paid in full
@@ -4842,19 +4847,26 @@ function scnDistributionHTML(s){
   rows.push(['row', 'VAT on disbursements', disbVat]);
   rows.push(['row', 'Counsel\u2019s fees payable (inc VAT)', s.counselEff]);
   if (s.otherTMC) rows.push(['row', 'Other TMC costs', s.otherTMC]);
-  rows.push(['row', 'VAT on profit costs', vatOnPC]);
+  rows.push(['row', 'VAT on profit costs' + (s.netBefore > 0 ? ' (on ' + fmt(s.netBefore) + ')' : ''), vatOnPC]);
   rows.push(['row', 'Drafting fee (net)', s.draftingFee]);
   if (vatFee) rows.push(['row', 'VAT on drafting fee', feeVat]);
   rows.push(['tot', 'Solicitor\u2019s net profit costs', s.netAfter]);
   const distributed = s.interestAmt + (s.coaMode === 'none' ? 0 : s.coaDeduct) + (c.disbIncVAT || 0)
                     + s.counselEff + s.otherTMC + vatOnPC + feeGross + s.netAfter;
   const drift = distributed - s.totalReceived;
+  // S125: state the arithmetic rather than assert it — every line above added up, against the total
+  // received, so the claim that it reconciles can be checked on sight instead of taken on trust.
+  rows.push(['grand', 'Total distributed', distributed]);
   const line = (r) => {
     if (r[0] === 'head') return '<div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--grey-mid);margin:10px 0 4px;">' + r[1] + '</div>';
-    const bold = r[0] === 'tot';
+    const bold = r[0] === 'tot' || r[0] === 'grand';
+    const grand = r[0] === 'grand';
     return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;'
       + (bold ? 'font-weight:700;border-top:1px solid rgba(27,42,74,.18);margin-top:4px;padding-top:5px;' : '')
-      + '"><span>' + r[1] + '</span><span style="font-family:\'IBM Plex Mono\',monospace;white-space:nowrap;">' + fmt(r[2]) + '</span></div>';
+      + (grand ? 'border-top:2px solid var(--navy);margin-top:6px;padding-top:6px;' : '')
+      + '"><span>' + r[1] + (grand && Math.abs(drift) <= 0.02 ? ' \u2014 matches the total received' : '') + '</span><span style="font-family:\'IBM Plex Mono\',monospace;white-space:nowrap;'
+      + (grand && Math.abs(drift) > 0.02 ? 'color:var(--red,#a33);' : '')
+      + '">' + fmt(r[2]) + '</span></div>';
   };
   return '<div style="font-size:12px;color:var(--navy);background:var(--cream);border:1px solid rgba(27,42,74,.12);border-radius:6px;padding:12px 14px;">'
     + '<div style="font-weight:700;margin-bottom:2px;">Based on an offer of ' + fmt(s.figure) + '</div>'
@@ -4863,7 +4875,7 @@ function scnDistributionHTML(s){
     + (Math.abs(drift) > 0.02 ? 'var(--red,#a33)' : 'var(--grey-mid)') + ';">'
     + (Math.abs(drift) > 0.02
         ? 'Does not reconcile \u2014 ' + fmt(Math.abs(drift)) + ' out. Check whether the figure covers the liabilities.'
-        : 'Reconciles to the total received.')
+        : '')
     + ' Counsel is shown VAT-inclusive as payable; profit costs are shown net with their VAT on its own line.</div></div>';
 }
 document.getElementById('scn-prorata')?.addEventListener('click', () => {
@@ -4874,13 +4886,19 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
   if (q.paid <= 0) { note.textContent = 'Nothing is left for counsel once disbursements, other TMC costs, the costs of assessment and the drafting fee are met.'; return; }
   scnEl('scn-counsel-pct').value = Math.min(100, Math.max(0, q.pct)).toFixed(2);
   renderScenarioTab();
+  // S125: re-read the scenario AFTER the % has been written back, so every figure quoted below is
+  // the one now on screen. The % is written rounded to 2dp, which moves counsel by up to about a
+  // pound against the exact solve — quoting the exact figure beside a rounded one is two numbers
+  // for one thing.
+  const a = computeScenario();
   const mismatch = Math.abs(q.Cpay - q.Ccl) > 0.5
     ? ' Note: payable ' + fmt(q.Cpay) + ' differs from claimed ' + fmt(q.Ccl) + '.' : '';
   note.textContent = (q.r >= 1
     ? 'Pro rata rate ' + fmtPct(q.r) + ' \u2014 the figure covers everything claimed, so counsel takes no reduction.'
-    : 'Pro rata rate ' + fmtPct(q.r) + '. Counsel takes ' + fmt(q.counselPaid) + ' against ' + fmt(q.Ccl)
-      + ' claimed \u2014 a reduction of ' + fmt(q.reduction) + ' on the ' + fmt(q.Cpay)
-      + ' payable. The solicitor\u2019s net profit costs recover at the same rate on ' + fmt(q.P) + ' claimed.')
+    : 'Pro rata rate ' + fmtPct(q.r) + '. Counsel takes ' + fmt(a.counselEff) + ' against ' + fmt(q.Ccl)
+      + ' claimed \u2014 a reduction of ' + fmt(round2(q.Cpay - a.counselEff)) + ' on the ' + fmt(q.Cpay)
+      + ' payable. The solicitor\u2019s net profit costs recover at the same rate on ' + fmt(q.P)
+      + ' \u2014 their own profit costs plus TMC\u2019s in the bill.')
     + ' Measured after the drafting fee. Not saved.' + mismatch;
   // S125: the same answer said as an instruction \u2014 what to actually ask chambers for.
   const ask = scnEl('scn-prorata-ask');
@@ -4888,11 +4906,11 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
     if (q.r >= 1) {
       ask.textContent = 'Nothing to ask for \u2014 on this offer counsel is paid in full.';
     } else {
-      const cutPct = q.Cpay > 0 ? (q.reduction / q.Cpay) * 100 : 0;
+      const cutPct = q.Cpay > 0 ? (round2(q.Cpay - a.counselEff) / q.Cpay) * 100 : 0;
       ask.textContent = 'To put counsel on the same footing as the solicitor on an offer of '
         + fmt(scnNum('scn-figure')) + ', ask chambers for a reduction of '
-        + cutPct.toFixed(2) + '% \u2014 ' + fmt(q.reduction) + ' off the ' + fmt(q.Cpay)
-        + ' payable, bringing counsel\u2019s fees down to ' + fmt(q.counselPaid) + '.';
+        + cutPct.toFixed(2) + '% \u2014 ' + fmt(round2(q.Cpay - a.counselEff)) + ' off the ' + fmt(q.Cpay)
+        + ' payable, bringing counsel\u2019s fees down to ' + fmt(a.counselEff) + '.';
     }
   }
   if (box) box.innerHTML = scnDistributionHTML(computeScenario());
