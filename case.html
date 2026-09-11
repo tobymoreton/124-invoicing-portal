@@ -1187,6 +1187,17 @@
         .scn-ask:empty{display:none;}
         .scn-ask{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:13px;line-height:1.5;
                  color:var(--navy);background:rgba(46,111,126,.07);border-left:3px solid var(--scn-accent);}
+        /* S125: “how interest is calculated” — every period, every payment, the daily rate it produced. */
+        table.int-work{width:100%;border-collapse:collapse;font-size:12.5px;color:var(--navy);}
+        table.int-work th{text-align:right;padding:7px 9px;border-bottom:2px solid var(--navy);font-size:10.5px;
+                          letter-spacing:.03em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
+        table.int-work th:first-child,table.int-work td:first-child{text-align:left;}
+        table.int-work td{text-align:right;padding:6px 9px;border-bottom:1px solid rgba(27,42,74,.10);white-space:nowrap;}
+        table.int-work tr.total-row td{font-weight:700;border-bottom:none;border-top:2px solid var(--navy);}
+        table.int-work tr.pay-row td{color:var(--grey-mid);font-style:italic;}
+        #tab-scenarios table.int-work th{border-bottom-color:var(--scn-accent);}
+        #tab-scenarios table.int-work tr.total-row td{border-top-color:var(--scn-accent);}
+        .int-work-wrap{overflow-x:auto;}
         /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
            Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
            screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
@@ -1209,6 +1220,7 @@
           #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
           #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-column:2 !important;}
           #tab-scenarios .scn-right .card:not(.sd-card),#tab-scenarios .scn-left .card:not(.kv-card){grid-column:1/-1;}
+          #tab-scenarios .scn-right .card:nth-child(5){grid-column:1/-1;}
         }
       </style>
       <div class="card kv-card">
@@ -1360,6 +1372,10 @@
           <span hidden id="lbl-coa-total"></span><span hidden id="r-TotalCOA-note"></span><span hidden id="r-TotalCOA"></span>
         </dl>
       </div>
+      <div class="card sett-working">
+        <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
+        <div class="card-body"><div id="sett-int-working"></div></div>
+      </div>
       <div class="two-col">
         <div class="card">
           <div class="card-head"><span class="card-title">Costs Payable (VAT Inclusive)</span><button type="button" class="info-btn" aria-label="About Costs Payable"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The paying party's liabilities (VAT-inclusive). Click Edit to enter figures. 'From Claimed' pulls counsel's fees across from the Costs Claimed tab. Costs of assessment are entered on their own card above and carried in here.</span></button></div>
@@ -1467,6 +1483,7 @@
         .scn-right .card:nth-child(3){order:3;}   /* Costs Claimed            */
         .scn-right .card:nth-child(4){order:4;}   /* Costs Payable            */
         .scn-right .card:nth-child(2){order:5;}   /* Recovery                 */
+        .scn-right .card:nth-child(5){order:6;}   /* How Interest Is Calculated */
         .scn-left .detail-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
         #tab-scenarios .liab-row,#tab-scenarios .read-row{padding-top:6px;padding-bottom:6px;}
         #tab-scenarios .interest-row{padding:6px 0;}
@@ -1627,6 +1644,10 @@
           <div class="liab-row"><dt>Other TMC Fees (excl Drafting)</dt><dd><span class="liab-static" id="scn-r-Other">—</span></dd></div>
           <div class="liab-row total"><dt>Total</dt><dd><span class="liab-static" id="scn-r-TotalLiab">—</span></dd></div>
         </dl>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">How Interest Is Calculated</span></div>
+        <div class="card-body"><div id="scn-int-working"></div></div>
       </div>
       </div>
       </div>
@@ -4566,6 +4587,12 @@ function renderScenarioTab(){
     ipLine = 'Preparing Draft Bill of Costs | ' + s.feePctIn + '% of ' + fmt(s.feeBaseAmount) + ' ' + basisShort;
   }
   setText('scn-invoice-line', ipLine || '—');
+  // S125: the working behind this scenario's interest figure, on the scenario offer and date.
+  renderInterestWorking('scn-int-working', caseFields || {}, s.figure, s.hasAuth && scnEl('scn-interest-date').value ? new Date(scnEl('scn-interest-date').value) : null,
+    s.intMode === 'within'
+      ? 'Interest inside the offer of ' + fmt(s.figure) + '. Working back, the offer is '
+        + fmt(s.interestCostsElement) + ' of costs plus the interest below.'
+      : 'Interest accrued on ' + fmt(s.figure) + ' — not in the offer, so this is what to claim in addition.');
 }
 (function wireScenarioTab(){
   const panel = document.getElementById('tab-scenarios');
@@ -4818,6 +4845,59 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
     : 'Paid in full out of the offer.');
 }
 
+// S125: “how interest is calculated” — the full working behind a single interest figure. One
+// function, used by the Settlement tab and the Scenarios tab, so the two can never explain the
+// same number differently. Every period is listed with the dates that bound it, the money received
+// by the time it started, the principal that leaves, the daily rate that principal produces and the
+// interest it earned. A period BOUNDARY is a payment, so payments are shown between the rows that
+// they separate rather than left to be inferred from a falling principal.
+function renderInterestWorking(containerId, f, principal, asAt, leadIn) {
+  const el = document.getElementById(containerId); if (!el) return;
+  if (!f || !f['DateofAuthoritytoAssess']) {
+    el.innerHTML = '<div class="sett-hint">No Authority to Assess date on the Interest tab — interest cannot be calculated until one is set.</div>';
+    return;
+  }
+  if (!principal) { el.innerHTML = '<div class="sett-hint">No figure to calculate interest on yet.</div>'; return; }
+  const r = interestPeriodsAsAt(f, principal, asAt);
+  if (!r.periods.length) { el.innerHTML = '<div class="sett-hint">No time has run yet between the Authority to Assess date and the date above.</div>'; return; }
+  const pays = [
+    { amt: parseFloat(f['TotalPreAuthorityPayments']) || 0, label: 'Paid before the Authority to Assess', date: null },
+    { amt: parseFloat(f['InterimPayment1']) || 0, date: f['InterimPaymentDate1'] || null, label: 'Payment on account' },
+    { amt: parseFloat(f['InterimPayment2']) || 0, date: f['InterimPaymentDate2'] || null, label: 'Payment on account' },
+    { amt: parseFloat(f['InterimPayment3']) || 0, date: f['InterimPaymentDate3'] || null, label: 'Payment on account' },
+  ];
+  let rows = '';
+  r.periods.forEach((p, i) => {
+    // The payment that opened this period (period 1 opens at the authority date, not a payment).
+    if (i > 0) {
+      const pay = pays[i];
+      if (pay && pay.amt) {
+        rows += '<tr class="pay-row"><td colspan="6">' + pay.label + ' of ' + fmt(pay.amt)
+              + ' on ' + fmtDate(p.from.toISOString()) + ' — principal falls to ' + fmt(p.principal)
+              + '</td><td></td></tr>';
+      }
+    }
+    rows += '<tr><td>' + (i + 1) + '</td>'
+          + '<td>' + fmtDate(p.from.toISOString()) + ' – ' + fmtDate(p.to.toISOString()) + '</td>'
+          + '<td>' + p.days + '</td>'
+          + '<td>' + (p.paidByStart ? fmt(p.paidByStart) : '—') + '</td>'
+          + '<td>' + fmt(p.principal) + '</td>'
+          + '<td>' + fmt(p.dailyRate) + '</td>'
+          + '<td>' + fmt(p.interest) + '</td></tr>';
+  });
+  const totalDays = r.periods.reduce((a, p) => a + p.days, 0);
+  el.innerHTML = (leadIn ? '<div class="sett-hint" style="margin-bottom:10px;">' + leadIn + '</div>' : '')
+    + '<div class="int-work-wrap"><table class="int-work">'
+    + '<thead><tr><th>#</th><th>Period</th><th>Days</th><th>Received by start</th>'
+    + '<th>Principal</th><th>Daily rate</th><th>Interest</th></tr></thead><tbody>'
+    + rows
+    + '<tr class="total-row"><td></td><td>Total</td><td>' + totalDays + '</td><td></td><td></td><td>'
+    + fmt(r.dailyRate) + ' now</td><td>' + fmt(r.total) + '</td></tr>'
+    + '</tbody></table></div>'
+    + '<div class="sett-hint" style="margin-top:8px;">Interest runs at 8% a year (÷365 a day). Each payment '
+    + 'received closes one period and opens the next at the lower principal, so the daily rate falls with it.</div>';
+}
+
 function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
   // S125: Key Variables tiles, naming where the figure actually came from — a box reading £0 while
@@ -4843,6 +4923,16 @@ function renderSettlementTab() {
     } else if (!f['DateofAuthoritytoAssess']) {
       setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
     }
+  }
+  // S125: the working behind the interest figure, on the offer and as at the settlement date.
+  {
+    const _wAsAt = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
+    const _agreed = parseFloat(f['InterestInFigure']) || 0;
+    renderInterestWorking('sett-int-working', f, c.offerOrSettlement || 0, _wAsAt,
+      _agreed ? 'This is what interest has accrued on the offer of ' + fmt(c.offerOrSettlement)
+                + '. The figure recorded as agreed is ' + fmt(_agreed) + ', which is what the sheet uses.'
+              : 'Interest accrued on the offer of ' + fmt(c.offerOrSettlement) + ' up to '
+                + fmtDate(_wAsAt.toISOString()) + '. Nothing has been recorded as agreed.');
   }
   // S125: Costs Claimed on this tab, same six columns the Settlement Report prints.
   setText('sv-c-pc-net', fmt(c.claimedPC)); setText('sv-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)));
