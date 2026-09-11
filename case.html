@@ -1168,6 +1168,19 @@
         #tab-scenarios .kv-tile{border-color:rgba(46,111,126,.30);}
         #tab-scenarios .kv-tile .kv-value{color:var(--scn-accent);}
         #tab-scenarios .kv-divider{border-top:1px solid rgba(46,111,126,.20);margin:16px 0 14px;}
+        /* S125: each control sits directly beneath the figure it drives, with a plain-English line
+           under it. A draftsman who has never opened this tab can read down one tile and know what
+           the box does and what it did to the number above it. */
+        .kv-editable .kv-tile{display:flex;flex-direction:column;}
+        .kv-ctl{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+        .kv-ctl input[type=number],.kv-ctl input[type=date],.kv-ctl select{width:100%;box-sizing:border-box;}
+        .kv-ctl .import-btn{align-self:flex-start;}
+        .kv-ctl .sett-hint:empty{display:none;}
+        .kv-check{font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;}
+        .kv-check input[type=checkbox]{width:13px;height:13px;accent-color:var(--navy);}
+        #tab-scenarios .kv-check input[type=checkbox]{accent-color:var(--scn-accent);}
+        .kv-help{font-size:11px;line-height:1.45;color:var(--grey-mid);margin-top:10px;padding-top:8px;border-top:1px dashed rgba(27,42,74,.14);}
+        #tab-scenarios .kv-help{border-top-color:rgba(46,111,126,.22);}
         /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
            Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
            screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
@@ -1186,11 +1199,12 @@
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The five things that drive every figure below. Change them on the cards further down, or on the Costs Claimed tab for VAT. The Settlement Scenarios tab shows the same five tiles in the same place, so you can compare the two screens at a glance.</span></button></div>
         <div class="card-body">
           <div class="kv-grid">
-            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div></div>
-            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div></div>
+            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
+            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-help">Interest runs at 8% from the Authority to Assess date, less anything already paid on account. Recovered interest counts as profit costs, so it is never deducted from the recovery.</div></div>
+            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. Set it on the Costs of Assessment card below.</div></div>
+            <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-help">What counsel is actually being paid out of the offer. Enter it on the Costs Payable card below, or pull it across from the bill with “From Claimed”.</div></div>
+            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
+            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div><div class="kv-help">Set on the Costs Claimed tab, not here. At 0% every VAT figure on this tab is nil.</div></div>
           </div>
         </div>
       </div>
@@ -1455,25 +1469,55 @@
       <div class="card">
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
-          <div class="kv-grid">
-            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-scn-figure">—</div><div class="kv-sub" id="kv-scn-figure-src">Scenario figure — nothing saved.</div></div>
-            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-scn-interest">—</div><div class="kv-sub" id="kv-scn-interest-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div><div class="kv-sub" id="kv-scn-coa-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-scn-fee">—</div><div class="kv-sub" id="kv-scn-fee-sub">—</div></div>
-            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-scn-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div></div>
-          </div>
-          <div class="kv-divider"></div>
-          <div class="detail-grid">
-            <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
-            <div class="field"><label>Counsel's Fees Payable (%)</label><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" /></div>
-            <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Not included in offer</option></select></div>
-            <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /><div class="sett-hint" style="margin-top:4px;">Set this to the date of the offer you are considering.</div></div>
-            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
-            <div class="field"><label>Court Fees Paid (£)</label><input type="number" id="scn-court-fee" step="0.01" min="0" /><div class="sett-hint" style="margin-top:4px;">Assessment / hearing fee paid by TMC or the client. A cost out of the figure; only reimbursed if the paying party pays it back.</div></div>
-            <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as recovered (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
-            <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
-            <div class="field" id="scn-fee-fixed-wrap"><label>Drafting Fee Fixed (£ net)</label><input type="number" id="scn-fee-fixed" step="0.01" min="0" /></div>
-            <div class="field" id="scn-fee-tmc-wrap"><label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;margin-top:4px;"><input type="checkbox" id="scn-fee-tmc-time" style="width:13px;height:13px;accent-color:var(--navy);" /> Include TMC drafting time in fee base?</label></div>
+          <div class="kv-grid kv-editable">
+            <div class="kv-tile">
+              <div class="kv-label">Figure in use</div><div class="kv-value" id="kv-scn-figure">—</div>
+              <div class="kv-sub" id="kv-scn-figure-src">Scenario figure — nothing saved.</div>
+              <div class="kv-ctl"><input type="number" id="scn-figure" step="0.01" min="0" /></div>
+              <div class="kv-help">The all-in sum on the table. Everything below is worked out from this one number.</div>
+            </div>
+            <div class="kv-tile">
+              <div class="kv-label">Interest</div><div class="kv-value" id="kv-scn-interest">—</div>
+              <div class="kv-sub" id="kv-scn-interest-sub">—</div>
+              <div class="kv-ctl">
+                <select id="scn-interest-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Not included in offer</option></select>
+                <input type="date" id="scn-interest-date" />
+              </div>
+              <div class="kv-help">Is interest inside the offer, or still to be claimed? Set the date to the date of the offer — interest runs at 8% from the Authority to Assess, less anything already paid.</div>
+            </div>
+            <div class="kv-tile">
+              <div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div>
+              <div class="kv-sub" id="kv-scn-coa-sub">—</div>
+              <div class="kv-ctl">
+                <select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select>
+                <input type="number" id="scn-court-fee" step="0.01" min="0" placeholder="Court fees paid (£)" />
+                <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button>
+                <div id="scn-coa-live-note" class="sett-hint"></div>
+              </div>
+              <div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The court fee is the N258 or hearing fee, whoever paid it.</div>
+            </div>
+            <div class="kv-tile">
+              <div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-scn-counsel">—</div>
+              <div class="kv-sub" id="kv-scn-counsel-sub">—</div>
+              <div class="kv-ctl"><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" placeholder="% payable" /></div>
+              <div class="kv-help">The percentage of counsel's fees you expect to pay. 100% is the figure on the Settlement tab; drop it to model counsel taking a cut alongside the solicitor.</div>
+            </div>
+            <div class="kv-tile">
+              <div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-scn-fee">—</div>
+              <div class="kv-sub" id="kv-scn-fee-sub">—</div>
+              <div class="kv-ctl">
+                <select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as recovered (net recovery)</option><option value="fixed">Fixed £ amount</option></select>
+                <span id="scn-fee-pct-wrap"><input type="number" id="scn-fee-pct" step="0.1" min="0" placeholder="Fee %" /></span>
+                <span id="scn-fee-fixed-wrap"><input type="number" id="scn-fee-fixed" step="0.01" min="0" placeholder="Fixed fee (£ net)" /></span>
+                <span id="scn-fee-tmc-wrap"><label class="kv-check"><input type="checkbox" id="scn-fee-tmc-time" /> Include TMC drafting time in fee base?</label></span>
+              </div>
+              <div class="kv-help">TMC's fee for drawing the bill. "As drawn" charges a percentage of the costs claimed; "as recovered" charges a percentage of what actually comes in, so the fee moves with the settlement.</div>
+            </div>
+            <div class="kv-tile">
+              <div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-scn-vat">—</div>
+              <div class="kv-sub">Applies to every figure on this tab.</div>
+              <div class="kv-help">Set on the Costs Claimed tab, not here. At 0% every VAT figure on this tab is nil.</div>
+            </div>
           </div>
           <div style="margin-top:14px;"><button type="button" class="import-btn" id="scn-reset">↺ Reset to current case figures</button></div>
           <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(27,42,74,.1);">
@@ -4690,6 +4734,11 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('fee-sub', fmt(c.draftingFee != null ? c.draftingFee : (c.netDraftingFee || 0))
                  + (c.feeBasis === 'fixed' ? '' : ' on ' + fmt(c.feeBaseAmount || 0)));
   put('vat', (vatPct * 100).toFixed(vatPct * 100 % 1 ? 1 : 0) + '%');
+  // S125: counsel tile — what is actually payable, and on Scenarios the % that produced it.
+  put('counsel', fmt(c.counselEff != null ? c.counselEff : (c.counsel || 0)));
+  put('counsel-sub', c.pct != null && c.pct !== 100
+    ? c.pct + '% of ' + fmt(c.counselBase || 0) + ' claimed as payable.'
+    : 'Paid in full out of the offer.');
 }
 
 function renderSettlementTab() {
@@ -4701,6 +4750,23 @@ function renderSettlementTab() {
     : c.figureSource === 'settlement' ? 'Total Settlement, entered on this tab.'
     : c.figureSource === 'offer'      ? "Paying party's last offer, from the Offers tab."
     : 'No figure entered yet.');
+  // S125: the interest tile was reading ONLY the manually typed "Of which, interest" box, so a case
+  // with a live Authority to Assess date and an offer on the table read "None recorded" — and then
+  // blamed a missing date that was actually set. Where nothing has been agreed, show what interest
+  // has actually accrued, on the same basis as the Scenarios tab (back-worked out of the offer),
+  // clearly marked as a calculation rather than an agreed figure. Changes no figure: interest is a
+  // record only and never touches the recovery.
+  if (!c.interestInFigure && c.offerOrSettlement) {
+    const _asAt = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
+    const _b = f['DateofAuthoritytoAssess'] ? solveInterestBackwork(f, c.offerOrSettlement, _asAt) : null;
+    if (_b && _b.interest) {
+      setText('kv-sett-interest', fmt(_b.interest) + ' (calculated)');
+      setText('kv-sett-interest-sub', 'Nothing agreed has been entered. On this calculation the offer breaks down as '
+        + fmt(_b.principal) + ' costs plus this interest.');
+    } else if (!f['DateofAuthoritytoAssess']) {
+      setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
+    }
+  }
   // S125: Costs Claimed on this tab, same six columns the Settlement Report prints.
   setText('sv-c-pc-net', fmt(c.claimedPC)); setText('sv-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)));
   setText('sv-c-disb-net', fmt(c.disbursements)); setText('sv-c-counsel-net', fmt(c.counselClaimed)); setText('sv-c-total-net', fmt(c.netTotalClaimed));
