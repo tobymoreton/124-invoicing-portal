@@ -1188,16 +1188,16 @@
         .scn-ask{margin-top:10px;padding:10px 12px;border-radius:6px;font-size:13px;line-height:1.5;
                  color:var(--navy);background:rgba(46,111,126,.07);border-left:3px solid var(--scn-accent);}
         /* S125: “how interest is calculated” — every period, every payment, the daily rate it produced. */
-        table.int-work{width:100%;border-collapse:collapse;font-size:12.5px;color:var(--navy);}
-        table.int-work th{text-align:right;padding:7px 9px;border-bottom:2px solid var(--navy);font-size:10.5px;
-                          letter-spacing:.03em;text-transform:uppercase;color:var(--grey-mid);white-space:nowrap;}
+        table.int-work{width:100%;border-collapse:collapse;font-size:11.5px;color:var(--navy);table-layout:fixed;}
+        table.int-work th{text-align:right;padding:6px 5px;border-bottom:2px solid var(--navy);font-size:9.5px;
+                          letter-spacing:.02em;text-transform:uppercase;color:var(--grey-mid);}
         table.int-work th:first-child,table.int-work td:first-child{text-align:left;}
-        table.int-work td{text-align:right;padding:6px 9px;border-bottom:1px solid rgba(27,42,74,.10);white-space:nowrap;}
+        table.int-work td{text-align:right;padding:5px 5px;border-bottom:1px solid rgba(27,42,74,.10);}
         table.int-work tr.total-row td{font-weight:700;border-bottom:none;border-top:2px solid var(--navy);}
-        table.int-work tr.pay-row td{color:var(--grey-mid);font-style:italic;}
+        table.int-work tr.pay-row td{color:var(--grey-mid);font-style:italic;text-align:left;font-size:11px;}
         #tab-scenarios table.int-work th{border-bottom-color:var(--scn-accent);}
         #tab-scenarios table.int-work tr.total-row td{border-top-color:var(--scn-accent);}
-        .int-work-wrap{overflow-x:auto;}
+        .int-work-wrap{overflow-x:visible;}
         /* S125: BOTH tabs now follow the printed Settlement Report's own running order —
            Settlement Details, Costs Claimed, Costs Payable, Recovery. What a draftsman sees on
            screen is what comes out of the PDF, in the same sequence, on either tab. The cards that
@@ -1216,16 +1216,23 @@
            sections run full width in the printed order. Identical on both tabs. */
         @media(min-width:1100px){
           #tab-settlement.active,#tab-scenarios .scn-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);column-gap:18px;row-gap:18px;align-items:start;}
+          #tab-settlement.active{grid-template-rows:min-content min-content min-content;}
+          #tab-scenarios .scn-layout{grid-template-rows:min-content;}
           #tab-settlement .quick-action-bar,#tab-settlement .edit-bar,#tab-settlement > *{grid-column:1/-1;}
+          #tab-settlement .quick-action-bar{grid-row:1;}
+          #tab-settlement .edit-bar{grid-row:2;}
           #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-column:1 !important;}
           #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-column:2 !important;}
           #tab-scenarios .scn-right .card:not(.sd-card),#tab-scenarios .scn-left .card:not(.kv-card){grid-column:1/-1;}
           /* S125: the interest working sits directly under Settlement Details in the right-hand
-             column, filling the space beside the taller Key Variables card. Explicit rows are
-             needed — with auto placement it would follow the full-width cards instead. */
-          #tab-scenarios .kv-card,#tab-settlement .kv-card{grid-row:1/span 2;}
-          #tab-scenarios .sd-card,#tab-settlement .sd-card{grid-row:1;}
-          #tab-scenarios .int-card,#tab-settlement .int-card{grid-column:2 !important;grid-row:2;}
+             column. Key Variables spans both rows; the first row is min-content so the spare
+             height lands under Settlement Details rather than as a gap above the interest card. */
+          #tab-scenarios .kv-card{grid-row:1/span 2;}
+          #tab-scenarios .sd-card{grid-row:1;}
+          #tab-scenarios .int-card{grid-column:2 !important;grid-row:2;}
+          #tab-settlement .kv-card{grid-row:3/span 2;}
+          #tab-settlement .sd-card{grid-row:3;}
+          #tab-settlement .int-card{grid-column:2 !important;grid-row:4;}
         }
       </style>
       <div class="card kv-card">
@@ -4880,20 +4887,21 @@ function renderInterestWorking(containerId, f, principal, asAt, leadIn) {
     { amt: parseFloat(f['InterimPayment3']) || 0, date: f['InterimPaymentDate3'] || null, label: 'Payment on account' },
   ];
   let rows = '';
+  const shortDate = d => {
+    const s = fmtDate(d.toISOString());
+    return s && s.length === 10 ? s.slice(0, 6) + s.slice(8) : s; // dd/mm/yyyy → dd/mm/yy
+  };
   r.periods.forEach((p, i) => {
     // The payment that opened this period (period 1 opens at the authority date, not a payment).
     if (i > 0) {
       const pay = pays[i];
       if (pay && pay.amt) {
-        rows += '<tr class="pay-row"><td colspan="6">' + pay.label + ' of ' + fmt(pay.amt)
-              + ' on ' + fmtDate(p.from.toISOString()) + ' — principal falls to ' + fmt(p.principal)
-              + '</td><td></td></tr>';
+        rows += '<tr class="pay-row"><td colspan="5">↓ ' + pay.label + ' ' + fmt(pay.amt)
+              + ' on ' + shortDate(p.from) + '</td></tr>';
       }
     }
-    rows += '<tr><td>' + (i + 1) + '</td>'
-          + '<td>' + fmtDate(p.from.toISOString()) + ' – ' + fmtDate(p.to.toISOString()) + '</td>'
+    rows += '<tr><td>' + shortDate(p.from) + ' – ' + shortDate(p.to) + '</td>'
           + '<td>' + p.days + '</td>'
-          + '<td>' + (p.paidByStart ? fmt(p.paidByStart) : '—') + '</td>'
           + '<td>' + fmt(p.principal) + '</td>'
           + '<td>' + fmt(p.dailyRate) + '</td>'
           + '<td>' + fmt(p.interest) + '</td></tr>';
@@ -4901,11 +4909,13 @@ function renderInterestWorking(containerId, f, principal, asAt, leadIn) {
   const totalDays = r.periods.reduce((a, p) => a + p.days, 0);
   el.innerHTML = (leadIn ? '<div class="sett-hint" style="margin-bottom:10px;">' + leadIn + '</div>' : '')
     + '<div class="int-work-wrap"><table class="int-work">'
-    + '<thead><tr><th>#</th><th>Period</th><th>Days</th><th>Received by start</th>'
-    + '<th>Principal</th><th>Daily rate</th><th>Interest</th></tr></thead><tbody>'
+    + '<colgroup><col style="width:31%"><col style="width:11%"><col style="width:22%">'
+    + '<col style="width:15%"><col style="width:21%"></colgroup>'
+    + '<thead><tr><th>Period</th><th>Days</th><th>Principal</th>'
+    + '<th>Per day</th><th>Interest</th></tr></thead><tbody>'
     + rows
-    + '<tr class="total-row"><td></td><td>Total</td><td>' + totalDays + '</td><td></td><td></td><td>'
-    + fmt(r.dailyRate) + ' now</td><td>' + fmt(r.total) + '</td></tr>'
+    + '<tr class="total-row"><td>Total</td><td>' + totalDays + '</td><td></td><td>'
+    + fmt(r.dailyRate) + '</td><td>' + fmt(r.total) + '</td></tr>'
     + '</tbody></table></div>'
     + '<div class="sett-hint" style="margin-top:8px;">Interest runs at 8% a year (÷365 a day). Each payment '
     + 'received closes one period and opens the next at the lower principal, so the daily rate falls with it.</div>';
