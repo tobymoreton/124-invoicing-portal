@@ -1276,13 +1276,13 @@
       <!-- S116: costs of assessment on their own card. Previously three unlabelled boxes inside
            Liabilities, with the only within/on-top switch living on the Offers tab. -->
       <div class="card sett-working">
-        <div class="card-head"><span class="card-title">Costs of Assessment</span><button type="button" class="info-btn" aria-label="About Costs of Assessment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">What the assessment costs (TMC's invoice, capped where a cap applies, plus any court fee the client paid) and what the paying party paid towards it. The cost always comes out of the figure; anything recovered separately is added back. Costs of assessment inside the figure above have nothing separate to add back.</span></button></div>
+        <div class="card-head"><span class="card-title">Costs of Assessment</span><button type="button" class="info-btn" aria-label="About Costs of Assessment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">What the assessment costs (TMC's invoice, capped where a cap applies, plus any court fee the client paid) and what the paying party paid towards it. The cost always comes out of the offer; anything recovered separately is added back. Costs of assessment included in offer have nothing separate to add back.</span></button></div>
         <dl class="liab-grid">
           <div class="liab-row">
-            <dt>How are they paid?<div class="sett-hint">Included in the figure above, or paid separately by the paying party.</div></dt>
+            <dt>How are they paid?<div class="sett-hint">Included in offer, or paid separately by the paying party.</div></dt>
             <dd>
               <select id="f-COATreatment" class="liab-select" disabled>
-                <option value="Within">Included in the figure above</option>
+                <option value="Within">Included in offer</option>
                 <option value="OnTop">Paid separately</option>
               </select>
             </dd>
@@ -1466,9 +1466,9 @@
           <div class="detail-grid">
             <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
             <div class="field"><label>Counsel's Fees Payable (%)</label><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" /></div>
-            <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="none">Not included</option><option value="ontop">Paid separately</option><option value="within">Included in the figure</option></select></div>
-            <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /></div>
-            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in the figure</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
+            <div class="field"><label>Interest</label><select id="scn-interest-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Not included in offer</option></select></div>
+            <div class="field"><label>Interest As At</label><input type="date" id="scn-interest-date" /><div class="sett-hint" style="margin-top:4px;">Set this to the date of the offer you are considering.</div></div>
+            <div class="field"><label>Costs of Assessment</label><select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select><button type="button" class="import-btn" id="scn-coa-refresh" style="margin-top:6px;" title="Recompute costs of assessment from current case-action time &times; rate (unbilled actions)">&#8635; Update COA from live time</button><div id="scn-coa-live-note" class="sett-hint" style="margin-top:4px;"></div></div>
             <div class="field"><label>Court Fees Paid (£)</label><input type="number" id="scn-court-fee" step="0.01" min="0" /><div class="sett-hint" style="margin-top:4px;">Assessment / hearing fee paid by TMC or the client. A cost out of the figure; only reimbursed if the paying party pays it back.</div></div>
             <div class="field"><label>Drafting Fee Basis</label><select id="scn-fee-basis"><option value="drawn">% of costs as drawn</option><option value="assessed">% of costs as recovered (net recovery)</option><option value="fixed">Fixed £ amount</option></select></div>
             <div class="field" id="scn-fee-pct-wrap"><label>Drafting Fee %</label><input type="number" id="scn-fee-pct" step="0.1" min="0" /></div>
@@ -4351,7 +4351,7 @@ function scnResetDefaults(){
   const f = caseFields, c = computed;
   scnEl('scn-figure').value = c.offerOrSettlement ? c.offerOrSettlement.toFixed(2) : '';
   scnEl('scn-counsel-pct').value = 100;
-  scnEl('scn-interest-mode').value = 'none';
+  scnEl('scn-interest-mode').value = 'within';
   scnEl('scn-interest-date').value = new Date().toISOString().substring(0,10);
   // S116: follow the Settlement tab's resolved treatment (its own selector, else the legacy Offers flag).
   scnEl('scn-coa-mode').value = (c.coaTreatment || resolveCOATreatment(f)) === 'OnTop' ? 'ontop' : 'within';
@@ -4378,14 +4378,19 @@ function computeScenario(){
   const asAt        = asAtStr ? new Date(asAtStr) : null;
   const feeBasisSel = scnEl('scn-fee-basis').value; // 'drawn' | 'assessed' | 'fixed'
   const hasAuth     = !!f['DateofAuthoritytoAssess'];
-  // S125: interest runs on the Interest tab's own base — the override sum, else the total bill,
-  // exactly what settInternalInterestGuide() uses. It was running on the scenario figure, so the
-  // two tabs reported different interest on the same case.
-  const _intBase = (parseFloat(f['SumForInterestCalculationOverrid']) || 0) > 0
-    ? parseFloat(f['SumForInterestCalculationOverrid'])
-    : (c.totalBill || 0);
-  const interestAmt = (intMode === 'none' || !hasAuth || !asAt || !_intBase)
-    ? 0 : round2(interestTotalAsAt(f, _intBase, asAt));
+  // S125: interest ALWAYS runs on the offer in front of you, and is ALWAYS shown — whether it sits
+  // inside the offer or has to be asked for on top.
+  //   Included in offer  → back-work the all-in sum into costs + interest (solveInterestBackwork).
+  //   Paid separately / not included → interest accrued on the offer figure: what to claim in
+  //   addition. Either way the draftsman sees the number and the working behind it.
+  const _back = (intMode === 'within' && hasAuth && asAt && figure)
+    ? solveInterestBackwork(f, figure, asAt) : null;
+  const _periods = (hasAuth && asAt && figure) ? interestPeriodsAsAt(f, figure, asAt) : null;
+  const interestAmt = _back ? _back.interest : (_periods ? _periods.total : 0);
+  const interestCostsElement = _back ? _back.principal : figure;
+  const interestPeriods = _back ? _back.periods : (_periods ? _periods.periods : []);
+  const interestDaily = _back ? _back.dailyRate : (_periods ? _periods.dailyRate : 0);
+  const interestExact = _back ? _back.exact : true;
   // TMC's charge for the assessment: the live override if Update COA was used, else the saved
   // charge with its saved court fee stripped back out. The scenario's own Court Fees Paid box then
   // stands in for the saved court fee.
@@ -4413,6 +4418,8 @@ function computeScenario(){
     intMode: intMode, coaMode: coaMode, hasAuth: hasAuth, interestAmt: interestAmt,
     coaTimeCharge: coaTimeCharge, courtFee: scnCourtFee,
     totalLiab: s.totalPayable, feeBasis: feeBasisSel,
+    interestCostsElement: interestCostsElement, interestPeriods: interestPeriods,
+    interestDaily: interestDaily, interestExact: interestExact,
   });
 }
 function renderScenarioTab(){
@@ -4420,7 +4427,8 @@ function renderScenarioTab(){
   if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
   const s = computeScenario();
   renderKeyVariables('kv-scn', s, caseFields || {}, 'Scenario figure \u2014 nothing here is saved.');
-  scnEl('scn-interest-date').disabled = (s.intMode === 'none');
+  // S125: the as-at date is ALWAYS editable — set it to the date of the offer being considered.
+  scnEl('scn-interest-date').disabled = false;
   scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
   scnEl('scn-fee-fixed').disabled = (s.feeBasis !== 'fixed');
   scnEl('scn-fee-tmc-time').disabled = (s.feeBasis !== 'drawn');
@@ -4438,9 +4446,13 @@ function renderScenarioTab(){
   setText('scn-r-COA', s.coaMode === 'none' ? 'Ignored' : s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' (on top)' : fmt(s.totalCOA));
   setText('scn-r-Other', fmt(s.otherTMC));
   setText('scn-r-TotalLiab', fmt(s.totalLiab));
-  setText('scn-r-Interest', s.intMode === 'none' ? 'Not included' : !s.hasAuth ? 'No Authority to Assess date (Interest tab)' : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (paid on top)' : fmt(s.interestAmt) + ' (within the figure)');
+  setText('scn-r-Interest', !s.hasAuth ? 'No Authority to Assess date (Interest tab)'
+    : !s.interestAmt ? '—'
+    : s.intMode === 'within' ? fmt(s.interestAmt) + ' (included in offer — costs element ' + fmt(s.interestCostsElement) + ')'
+    : s.intMode === 'ontop' ? fmt(s.interestAmt) + ' (payable on top — claim this in addition)'
+    : fmt(s.interestAmt) + ' (not in the offer — claim this in addition)');
   setText('scn-r-CostsElement', fmt(s.costsElement));
-  setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored' : fmt(s.coaDeduct) + (s.coaMode === 'ontop' ? ' (recovered on top: ' + fmt(s.totalCOA) + ')' : ' (within the figure)'));
+  setText('scn-d-COA', s.coaMode === 'none' ? 'Ignored' : fmt(s.coaDeduct) + (s.coaMode === 'ontop' ? ' (recovered on top: ' + fmt(s.totalCOA) + ')' : ' (included in offer)'));
   setText('scn-r-TotalReceived', fmt(s.totalReceived));
   setText('scn-r-GrossPC', fmt(s.grossPC));
   setText('scn-r-NetBefore', fmt(s.netBefore));
@@ -4649,7 +4661,7 @@ function renderCOACardFigures(c, onTop, unsaved) {
     + (c.clientExpenses > 0 ? ' + court fee the client paid direct ' + fmt(c.clientExpenses) + ' (not charged by TMC)' : '')
     + ' — both come out of the figure before profit costs.' + tag);
   document.querySelectorAll('#tab-settlement .coa-ontop-only').forEach(el => el.classList.toggle('is-hidden', !onTop));
-  setText('hint-coa-recovered', onTop ? '' : '— included in the figure above; nothing separate to add back');
+  setText('hint-coa-recovered', onTop ? '' : '— included in offer; nothing separate to add back');
 }
 
 // S125: fills the five Key Variables tiles. Called by BOTH tabs with the same figures object, so
@@ -4661,16 +4673,16 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('figure', c.offerOrSettlement ? fmt(c.offerOrSettlement) : '—');
   if (figureSrcText != null) put('figure-src', figureSrcText);
   const intAmt = c.interestAmt != null ? c.interestAmt : (c.interestInFigure || 0);
-  put('interest', c.intMode === 'none' ? 'Not included'
-                : c.intMode === 'ontop' ? 'Paid on top'
-                : intAmt ? 'Within the figure' : 'None recorded');
-  put('interest-sub', c.intMode === 'none' ? 'No interest in this calculation.'
-                    : intAmt ? fmt(intAmt) + ' — a record only; never deducted from the recovery.'
-                             : 'Nothing entered against the figure.');
+  put('interest', c.intMode === 'none' ? 'Not in the offer'
+                : c.intMode === 'ontop' ? 'Payable on top'
+                : intAmt ? 'Included in offer' : 'None recorded');
+  put('interest-sub', !intAmt ? 'Nothing calculated — check the Authority to Assess date.'
+                    : c.intMode === 'within' ? fmt(intAmt) + ' of the offer is interest.'
+                    : fmt(intAmt) + ' — claim this in addition to the offer.');
   const treat = c.coaTreatment;
-  put('coa', treat === 'None' ? 'Ignored' : treat === 'OnTop' ? 'Paid separately' : 'Within the figure');
+  put('coa', treat === 'None' ? 'Ignored' : treat === 'OnTop' ? 'Paid separately' : 'Included in offer');
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
-               : fmt(c.coaCost || 0) + ' out of the figure'
+               : fmt(c.coaCost || 0) + ' out of the offer'
                  + (treat === 'OnTop' ? ', ' + fmt(c.coaRecoverable || 0) + ' recovered back.' : '; nothing separate to add back.'));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
@@ -4715,7 +4727,7 @@ function renderSettlementTab() {
   const trtEl = document.getElementById('f-COATreatment');      if (trtEl) trtEl.value = c.coaTreatment;
   setText('hint-sett-outcome', assessed
     ? 'The court assessed the bill. Enter the sum payable under the assessment below, interest included; costs of assessment are on the next card and default to "paid separately".'
-    : 'The parties agreed a figure. Enter the all-in sum agreed, interest included; costs of assessment default to "included in the figure above".');
+    : 'The parties agreed a figure. Enter the all-in sum agreed, interest included; costs of assessment default to "included in offer".');
   // S116e: outcome-specific once an Outcome has been chosen; the neutral wording until then.
   const outcomeSet = _settOutcomeOverride !== null || !!(f['SettlementOutcome']);
   setText('lbl-sett-date',   assessed ? 'Date of Assessment' : (outcomeSet ? 'Date of Settlement' : 'Date of Settlement or Assessment'));
@@ -5268,7 +5280,7 @@ async function generateSettlementPDF() {
   const _pdfTxt  = (id, v)  => { const e = document.getElementById(id); if (e) e.textContent = v; };
   const _tmcInvoice = round2(c.tmcCharge + (c.courtFeeTMC || 0));
   _pdfTxt('pdf-coa-lbl-recovered', 'Costs of assessment recovered');
-  _pdfTxt('pdf-coa-recovered', _pdfOnTop ? fmt(c.coaRecoverable) : 'Included in the figure above');
+  _pdfTxt('pdf-coa-recovered', _pdfOnTop ? fmt(c.coaRecoverable) : 'Included in offer');
   _pdfTxt('pdf-coa-lbl-invoice', 'TMC’s invoice' + (c.coaCapped ? ' (capped at ' + fmt(c.coaLimitNet) + ' net)' : '') + (c.courtFeeTMC > 0 ? ' incl. court fee ' + fmt(c.courtFeeTMC) : ''));
   _pdfTxt('pdf-coa-invoice', fmt(_tmcInvoice));
   _pdfShow('pdf-coa-r-feeclient', c.clientExpenses > 0); _pdfTxt('pdf-coa-feeclient', fmt(c.clientExpenses));
@@ -5279,7 +5291,7 @@ async function generateSettlementPDF() {
   _pdfShow('pdf-r-outcome', _pdfAssessed);
   // S116k: one line, assessed cases only — the section itself is gone.
   _pdfShow('pdf-r-coaawarded', _pdfAssessed);
-  _pdfTxt('pdf-coa-recovered', _pdfOnTop ? fmt(c.coaRecoverable) : 'Included in the figure');
+  _pdfTxt('pdf-coa-recovered', _pdfOnTop ? fmt(c.coaRecoverable) : 'Included in offer');
   document.getElementById('pdf-output').classList.toggle('pdf-assessed', _pdfAssessed);
   if (!_pdfAssessed) { document.getElementById('pdf-lbl-date').textContent = 'Date of Settlement'; document.getElementById('pdf-lbl-total').textContent = 'Total Settlement'; }
   _pdfTxt('pdf-lbl-pay-coa', _pdfAssessed ? 'Costs of Assessment' : 'Total Costs of Assessment');
