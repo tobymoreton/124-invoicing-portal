@@ -1156,6 +1156,31 @@
         <button class="btn-edit-cancel" id="btn-sett-cancel">Cancel</button>
         <span class="edit-msg" id="msg-sett"></span>
       </div>
+      <style>
+        /* S125: Key Variables tiles. Same markup and same five tiles on the Settlement tab and the
+           Settlement Scenarios tab, so both screens open with the same summary in the same place.
+           Only the accent colour differs. */
+        .kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;}
+        .kv-tile{background:var(--cream);border:1px solid rgba(27,42,74,.12);border-radius:8px;padding:10px 12px;}
+        .kv-tile .kv-label{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;}
+        .kv-tile .kv-value{font-size:14px;font-weight:700;color:var(--navy);line-height:1.3;}
+        .kv-tile .kv-sub{font-size:11px;color:var(--grey-mid);margin-top:3px;line-height:1.35;}
+        #tab-scenarios .kv-tile{border-color:rgba(46,111,126,.30);}
+        #tab-scenarios .kv-tile .kv-value{color:var(--scn-accent);}
+        #tab-scenarios .kv-divider{border-top:1px solid rgba(46,111,126,.20);margin:16px 0 14px;}
+      </style>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The five things that drive every figure below. Change them on the cards further down, or on the Costs Claimed tab for VAT. The Settlement Scenarios tab shows the same five tiles in the same place, so you can compare the two screens at a glance.</span></button></div>
+        <div class="card-body">
+          <div class="kv-grid">
+            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div></div>
+            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div></div>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Settlement Details</span><button type="button" class="info-btn" aria-label="About Settlement Details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Start with the Outcome. Settled by agreement: the figure is the all-in sum agreed, and costs of assessment are normally inside it. Assessed by the court: the figure is the bill as assessed only, and costs of assessment, the court fee and interest are payable on top. The TMC reference is set at booking-in and is fixed here.</span></button></div>
         <div class="card-body">
@@ -1381,6 +1406,14 @@
       <div class="card">
         <div class="card-head"><span class="card-title">Key Variables</span><button type="button" class="info-btn" aria-label="About Key Variables"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Enter a potential settlement figure and adjust how it is made up. Counsel's fees payable are scaled by the % you enter (100% = the figure on the Settlement tab). Interest is calculated on the Interest tab's own base from the Authority to Assess date at 8%, netting interim payments. Like the Settlement tab, it is a record of what sits inside the figure and is never deducted from the recovery — "paid on top" only adds it to the total received. Costs of assessment come out of the figure either way; "on top" adds back what the paying party pays for them. Nothing on this tab is saved anywhere.</span></button></div>
         <div class="card-body">
+          <div class="kv-grid">
+            <div class="kv-tile"><div class="kv-label">Figure in use</div><div class="kv-value" id="kv-scn-figure">—</div><div class="kv-sub" id="kv-scn-figure-src">Scenario figure — nothing saved.</div></div>
+            <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-scn-interest">—</div><div class="kv-sub" id="kv-scn-interest-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div><div class="kv-sub" id="kv-scn-coa-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-scn-fee">—</div><div class="kv-sub" id="kv-scn-fee-sub">—</div></div>
+            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-scn-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div></div>
+          </div>
+          <div class="kv-divider"></div>
           <div class="detail-grid">
             <div class="field"><label>Potential Settlement Figure (£)</label><input type="number" id="scn-figure" step="0.01" min="0" /></div>
             <div class="field"><label>Counsel's Fees Payable (%)</label><input type="number" id="scn-counsel-pct" step="1" min="0" value="100" /></div>
@@ -4337,6 +4370,7 @@ function renderScenarioTab(){
   if (!scnEl('scn-figure')) return;
   if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
   const s = computeScenario();
+  renderKeyVariables('kv-scn', s, caseFields || {}, 'Scenario figure \u2014 nothing here is saved.');
   scnEl('scn-interest-date').disabled = (s.intMode === 'none');
   scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
   scnEl('scn-fee-fixed').disabled = (s.feeBasis !== 'fixed');
@@ -4569,8 +4603,43 @@ function renderCOACardFigures(c, onTop, unsaved) {
   setText('hint-coa-recovered', onTop ? '' : '— included in the figure above; nothing separate to add back');
 }
 
+// S125: fills the five Key Variables tiles. Called by BOTH tabs with the same figures object, so
+// the two screens describe the case in identical words — only the id prefix and the accent differ.
+//   prefix 'kv-sett' = Settlement tab (saved case)   'kv-scn' = Scenarios tab (scenario inputs)
+function renderKeyVariables(prefix, c, f, figureSrcText) {
+  const put = (id, txt) => { const el = document.getElementById(prefix + '-' + id); if (el) el.textContent = txt; };
+  const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  put('figure', c.offerOrSettlement ? fmt(c.offerOrSettlement) : '—');
+  if (figureSrcText != null) put('figure-src', figureSrcText);
+  const intAmt = c.interestAmt != null ? c.interestAmt : (c.interestInFigure || 0);
+  put('interest', c.intMode === 'none' ? 'Not included'
+                : c.intMode === 'ontop' ? 'Paid on top'
+                : intAmt ? 'Within the figure' : 'None recorded');
+  put('interest-sub', c.intMode === 'none' ? 'No interest in this calculation.'
+                    : intAmt ? fmt(intAmt) + ' — a record only; never deducted from the recovery.'
+                             : 'Nothing entered against the figure.');
+  const treat = c.coaTreatment;
+  put('coa', treat === 'None' ? 'Ignored' : treat === 'OnTop' ? 'Paid separately' : 'Within the figure');
+  put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
+               : fmt(c.coaCost || 0) + ' out of the figure'
+                 + (treat === 'OnTop' ? ', ' + fmt(c.coaRecoverable || 0) + ' recovered back.' : '; nothing separate to add back.'));
+  put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
+           : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
+                                    : (c.feePctIn || 0) + '% as recovered');
+  put('fee-sub', fmt(c.draftingFee != null ? c.draftingFee : (c.netDraftingFee || 0))
+                 + (c.feeBasis === 'fixed' ? '' : ' on ' + fmt(c.feeBaseAmount || 0)));
+  put('vat', (vatPct * 100).toFixed(vatPct * 100 % 1 ? 1 : 0) + '%');
+}
+
 function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
+  // S125: Key Variables tiles, naming where the figure actually came from — a box reading £0 while
+  // the sheet is built on an Offers-tab override was the single most confusing thing on this tab.
+  renderKeyVariables('kv-sett', c, f,
+    c.figureSource === 'sheet'      ? 'Figure for Settlement Sheet, from the Offers tab.'
+    : c.figureSource === 'settlement' ? 'Total Settlement, entered on this tab.'
+    : c.figureSource === 'offer'      ? "Paying party's last offer, from the Offers tab."
+    : 'No figure entered yet.');
   if (!_settSkipInputs) {
     setTxt('f-CaseNameForOpenCases', f['CaseNameForOpenCases']); setTxt('f-ClientCaseReference', f['ClientCaseReference']);
     setTxt('f-Ourreference', f['Ourreference_x0028_text_x0029_']); setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
