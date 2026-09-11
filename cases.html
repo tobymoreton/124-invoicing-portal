@@ -261,7 +261,8 @@
     @keyframes qaShimmer{0%{left:-75%;}35%{left:125%;}100%{left:125%;}}
     @media(prefers-reduced-motion:reduce){.btn-qa-reminder::after,.btn-qa-action::after{animation:none;}}
     /* Action buttons */
-    .dash-actions{display:flex;gap:10px;margin-bottom:16px;justify-content:flex-end;align-items:center;}
+    .dash-col{display:flex;flex-direction:column;gap:10px;min-width:0;}
+    .dash-col-btn{width:100%;justify-content:center;}
     .btn-dash-action{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);border:1.5px solid var(--navy);background:var(--white);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s ease;}
     .btn-dash-action:hover{background:var(--navy);color:var(--gold);}
     /* Modal */
@@ -607,19 +608,13 @@
       </div>
     </div>
 
-    <!-- Action buttons -->
-    <div class="dash-actions">
-      <a href="/invoice-create.html" class="btn-dash-action" style="text-decoration:none;">+ New Invoice Draft</a>
-      <button class="btn-dash-action btn-qa-reminder" id="btn-add-reminder">&#128276; Add Reminder</button>
-      <button class="btn-dash-action btn-qa-action" id="btn-add-action">&#9889; Add Action</button>
-      <button class="btn-briefing" id="btn-briefing" style="margin-left:auto;"><span class="btn-briefing-icon">&#x2615;</span> Daily Briefing</button>
-    </div>
-
     <!-- Two column panels -->
     <div class="dash-cols">
 
       <!-- Stage breakdown -->
-      <div class="panel">
+      <div class="dash-col">
+        <button class="btn-briefing dash-col-btn" id="btn-briefing"><span class="btn-briefing-icon">&#x2615;</span> Daily Briefing</button>
+        <div class="panel">
         <div class="panel-head">
           <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">By Stage</span><button type="button" class="info-btn info-left" aria-label="About By Stage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open cases grouped by stage. Click a stage to list those cases; All Cases is pinned at the top.</span></button></span>
           <span class="panel-count" id="stage-panel-count"></span>
@@ -630,10 +625,13 @@
         <div class="stage-list" id="stage-list">
           <div style="padding:24px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading&hellip;</div>
         </div>
+        </div>
       </div>
 
       <!-- Case Actions -->
-      <div class="panel">
+      <div class="dash-col">
+        <button class="btn-dash-action btn-qa-action dash-col-btn" id="btn-add-action">&#9889; Add Action</button>
+        <div class="panel">
         <div class="panel-head">
           <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Recent time and actions across your cases. Search by case name or work done, and click an entry to edit it.</span></button></span>
           <span class="panel-count" id="ca-panel-count"></span>
@@ -644,16 +642,20 @@
         <div class="ca-panel-list" id="ca-panel-list">
           <div class="ca-panel-empty">Loading actions&hellip;</div>
         </div>
+        </div>
       </div>
 
       <!-- Reminders -->
-      <div class="panel">
+      <div class="dash-col">
+        <button class="btn-dash-action btn-qa-reminder dash-col-btn" id="btn-add-reminder">&#128276; Add Reminder</button>
+        <div class="panel">
         <div class="panel-head">
           <span style="display:inline-flex;align-items:center;gap:8px;"><span class="panel-title">Open Reminders</span><button type="button" class="info-btn info-left" aria-label="About Open Reminders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your open reminders, banded by overdue, due today, this week and later. Tick Done to complete one.</span></button></span>
           <span class="panel-count" id="rem-panel-count"></span>
         </div>
         <div class="rem-list" id="rem-panel-list">
           <div class="rem-empty">Loading reminders&hellip;</div>
+        </div>
         </div>
       </div>
 
