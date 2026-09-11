@@ -1254,8 +1254,18 @@ function renderStats(){
       ? billedRefsAll
       : allInvoices.filter(inv=>!inv.Cancelled&&(parseFloat(inv.DraftingFeeElement)||0)>0).map(inv=>inv.Ourref)
   );
-  pcBreakdown=myCases
+  // S127: the tile belongs to whoever DRAFTED the bill, not whoever is assigned. Base set
+  // is every open case (allCases), so each un-invoiced bill lands on exactly one person's
+  // tile - no double count via co-assignment (1741016 was on Toby's AND Tracy's), and a
+  // bill does not vanish when its drafter is later unassigned. BillDraftedByText is
+  // authoritative; blank → primary assignee; both blank → nobody (cannot be attributed).
+  const me4pct=resolveAssignee(callerEmail);
+  pcBreakdown=allCases
     .filter(c=>!billedRefs.has(c.fields['Ourreference_x0028_text_x0029_']))
+    .filter(c=>{
+      const drafter=resolveAssignee(c.fields['BillDraftedByText'])||resolveAssignee(c.fields['assignedToTextValue']);
+      return !!me4pct&&drafter===me4pct;
+    })
     .map(c=>({
       name:caseDisplayName(c.fields)||c.fields['Ourreference_x0028_text_x0029_'],
       ref:c.fields['Ourreference_x0028_text_x0029_'],
