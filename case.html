@@ -3244,11 +3244,11 @@ function computeFigures(opts) {
   const disbIncVAT    = disbursements + vatOnDisb;
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
-  const tmcPCIncVAT   = draftingTimeIP * vatHelper + nonVatDraftingIP + otherTMCPC * ((f['OtherTMCPCVatable'] !== false) ? vatHelper : 1);
+  const tmcPCIncVAT   = draftingTimeIP * vatHelper + nonVatDraftingIP + otherTMCPC * ((f['OtherTMCPCVatable'] === 'Yes') ? vatHelper : 1);
   const counselIncVAT = counselClaimed + vatableCounsel * vatPct;
   const totalClaimed  = pcIncVAT + tmcPCIncVAT + disbIncVAT + counselIncVAT;
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
-  const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
+  const otherTMCPCVat   = f['OtherTMCPCVatable'] === 'Yes';
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   const totalIPPC    = claimedPC + draftingTimeIP + nonVatDraftingIP + otherTMCPC;
   const vatableIPPC  = (claimedPC - nonVatablePC) + draftingTimeIP + (otherTMCPCVat ? otherTMCPC : 0);
@@ -5396,7 +5396,7 @@ function renderCostsTab() {
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   const nonVatablePC    = parseFloat(f['NonVatableProfitCosts']) || 0;
   const vatablePC       = round2(Math.max(0, (parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002']) || 0) - nonVatablePC));
-  const otherTMCPCVat   = f['OtherTMCPCVatable'] !== false;
+  const otherTMCPCVat   = f['OtherTMCPCVatable'] === 'Yes';
   const otherTMCFeesVat = f['OtherTMCFeesVatable'] !== false;
   setNum('fc-PCexTMC-vat', vatablePC); setNum('fc-PCexTMC-nonvat', nonVatablePC);
   setCheck('fc-OtherTMCPC-vatable', otherTMCPCVat); setCheck('fc-OtherTMCFees-vatable', otherTMCFeesVat);
@@ -5747,7 +5747,7 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
   const _nonVatableVal = parseFloat(document.getElementById('fc-PCexTMC-nonvat')?.value) || 0;
   fields['ProfitCostsClaimed_x0028_Ex_x002'] = (_vatableVal + _nonVatableVal) || null;
   fields['NonVatableProfitCosts']  = _nonVatableVal || null;
-  fields['OtherTMCPCVatable']     = !!(document.getElementById('fc-OtherTMCPC-vatable')?.checked);
+  fields['OtherTMCPCVatable']     = (caseFields['OtherTMCPCVatable'] == null) ? null : (document.getElementById('fc-OtherTMCPC-vatable')?.checked ? 'Yes' : 'No');
   fields['OtherTMCFeesVatable']   = !!(document.getElementById('fc-OtherTMCFees-vatable')?.checked);
   const _counselVat    = parseFloat(document.getElementById('fc-Counsel-vat')?.value) || 0;
   const _counselNonVat = parseFloat(document.getElementById('fc-Counsel-nonvat')?.value) || 0;
