@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root {
       --navy:#001B44; --navy-mid:#253A60; --navy-light:#2E4A7A;
@@ -1013,6 +1014,7 @@
     <button class="tab-btn" data-tab="invoicing">Invoicing</button>
     <button class="tab-btn" data-tab="noterefine">noteRefine</button>
     <button class="tab-btn" data-tab="incamera">inCamera</button>
+    <button class="tab-btn" data-tab="billfigures">Bill Figures</button>
     <button class="tab-btn" data-tab="notes">Notes</button>
   </div>
 
@@ -2537,6 +2539,24 @@
         </div>
       </div>
     </div><!-- /tab-incamera -->
+
+    <!-- ════════ BILL FIGURES TAB (Job 2) ════════ -->
+    <div class="tab-panel" id="tab-billfigures">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Import figures from an eBill</span></div>
+        <div style="font-size:13px;color:var(--grey-mid);line-height:1.65;">
+          Drop the Precedent S <strong>.xlsx</strong> below. It is read <strong>in this browser only</strong> &mdash; nothing is uploaded and the file never leaves this machine. Every figure is arithmetic from fixed tabs; check the table, then import.
+        </div>
+        <div id="bf-drop" style="margin-top:16px;border:2px dashed var(--grey-light);border-radius:var(--radius);padding:34px 20px;text-align:center;cursor:pointer;background:var(--white);transition:var(--transition);">
+          <div style="font-size:30px;opacity:.5;margin-bottom:8px;">&#128195;</div>
+          <div style="font-size:14px;font-weight:600;color:var(--navy);">Drop the eBill here, or click to choose</div>
+          <div style="font-size:12px;color:var(--grey-mid);margin-top:5px;">.xlsx only</div>
+          <input type="file" id="bf-file" accept=".xlsx" style="display:none;" />
+        </div>
+        <div id="bf-status" style="margin-top:12px;font-size:13px;line-height:1.6;"></div>
+      </div>
+      <div id="bf-results" style="display:none;"></div>
+    </div><!-- /tab-billfigures -->
 
     <!-- ════════ NOTES TAB ════════ -->
     <div class="tab-panel" id="tab-notes">
@@ -7175,6 +7195,609 @@ async function submitAddAction() {
   } catch (err) { msg.className = 'edit-msg err'; msg.textContent = 'Failed: ' + err.message; }
   finally { if (btn) btn.disabled = false; }
 }
+
+/* ═══ BILL FIGURES IMPORT (Job 2) ═══
+   Parses a Precedent S eBill in this browser and writes the Cases figures via
+   /api/billfigures. Replaces the Claude-extraction → email → PA745 route.
+
+   Deliberate rules, all of them load-bearing:
+   · No LLM anywhere. Every figure is a sum.
+   · Tabs are identified by CONTENT. Never by sheet index, never by the "7."
+     prefix — bills vary and a prefix is evidence, not identity.
+   · Any unresolved tab, ambiguous match, missing column, non-numeric total or
+     failed cross-check ABORTS the whole import. Nothing partial is written and
+     no missing figure is ever defaulted to zero.
+   · The case ref is the one on the page. A filename carrying a different ref is
+     a hard block.
+
+   Three things about the real workbook that are not obvious and that a future
+   edit must not undo:
+   1. Tab 7 holds TWO stacked tables — "Part Summary (Legal Aid Only)" and
+      "Part Summary (Interpartes)" — each with its own header row. Summing down
+      the sheet would add legal aid to the inter partes parts.
+   2. Tab 6 carries "Grand Total" TWICE on the same row: inter partes in col A/B
+      and legal aid in col D/E. The value is anchored on the overview label.
+   3. The Disbursements ex-VAT column is misspelled "Total Disbusrments" in the
+      template, so it is resolved by elimination, not by name.
+   ═══ */
+(function () {
+  'use strict';
+
+  var MAX_COLS = 60, MAX_ROWS = 20000;
+
+  function fail(msg) { var e = new Error(msg); e.bf = true; throw e; }
+
+  function norm(v) {
+    return String(v == null ? '' : v)
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  // Tab 16 stores EVERY value as text ('440', '0.1'), so a lazy
+  // parseFloat(x) || 0 would turn a corrupt cell into a silent zero — the same
+  // construct that booked unrated time at £0 in August. Blank is allowed only on
+  // a line, where it legitimately means "no amount on this row".
+  function numLine(v, where) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') { if (!isFinite(v)) fail('Non-finite number in ' + where + '.'); return v; }
+    var s = String(v).replace(/[\u00a3,\s]/g, '');
+    if (s === '' || s === '-') return 0;
+    if (!/^-?\d*\.?\d+$/.test(s)) fail('Expected a number in ' + where + ' but found "' + String(v).slice(0, 40) + '".');
+    return parseFloat(s);
+  }
+  function numTotal(v, where) {
+    if (v == null || v === '') fail(where + ' is blank in the bill. A missing total is never treated as zero.');
+    return numLine(v, where);
+  }
+
+  function r2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+  function r1(n) { return Math.round((n + Number.EPSILON) * 10) / 10; }
+  function money(n) {
+    if (n === null || n === undefined) return '\u2014';
+    return '\u00a3' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  // Sheet → array of arrays, clamped. Tab 7 and Tab 16 declare 16,000+ columns;
+  // reading the declared range whole is millions of empty cells and hangs.
+  function aoa(ws) {
+    if (!ws || !ws['!ref']) return [];
+    var r = XLSX.utils.decode_range(ws['!ref']);
+    var lastR = Math.min(r.e.r, r.s.r + MAX_ROWS - 1);
+    var lastC = Math.min(r.e.c, r.s.c + MAX_COLS - 1);
+    var out = [];
+    for (var R = r.s.r; R <= lastR; R++) {
+      var row = [];
+      for (var C = r.s.c; C <= lastC; C++) {
+        var cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+        row.push(cell && cell.v !== undefined ? cell.v : null);
+      }
+      out.push(row);
+    }
+    return out;
+  }
+
+  // A header cell matches a token when the normalised text STARTS WITH it, and
+  // the first match in the row wins. That is why Tab 16 col H
+  // ("Profit Costs (Expand + to see indemnity...)") beats col I
+  // ("Profit Costs after Indemnity Cap").
+  function findHeader(rows, tokens, fromRow, toRow) {
+    var lo = fromRow || 0;
+    var hi = Math.min(toRow == null ? rows.length - 1 : toRow, rows.length - 1);
+    for (var i = lo; i <= hi; i++) {
+      var row = rows[i] || [], cols = {}, ok = true;
+      for (var t = 0; t < tokens.length; t++) {
+        var found = -1;
+        for (var c = 0; c < row.length; c++) {
+          if (norm(row[c]).indexOf(tokens[t]) === 0) { found = c; break; }
+        }
+        if (found < 0) { ok = false; break; }
+        cols[tokens[t]] = found;
+      }
+      if (ok) return { row: i, cols: cols };
+    }
+    return null;
+  }
+
+  var SPECS = {
+    feeEarners:  { label: 'Fee Earners',                must: ['fe ref', 'fee earner (fe)/description', 'time (hrs)', 'profit costs'] },
+    partSummary: { label: 'Part Summary',               must: ['part', 'no.', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"] },
+    billPod:     { label: 'Bill and Points of Dispute', must: ['item no.', 'part no.', 'f/e or csl ref', 'narrative', 'hrs', 'profit costs'] },
+    disb:        { label: 'Disbursements',              must: ['expense code', 'vat', 'totals'] },
+    billSummary: { label: 'Bill Summary',               must: ['inter partes bill of costs overview:'] },
+    counsel:     { label: 'Counsel',                    must: ['csl ref', 'counsel name', 'total fees'], optional: true }
+  };
+
+  function resolveSheets(wb) {
+    var sheets = wb.SheetNames.map(function (n) { return { name: n, rows: aoa(wb.Sheets[n]) }; });
+    var found = {}, notes = [];
+    Object.keys(SPECS).forEach(function (key) {
+      var spec = SPECS[key], hits = [];
+      sheets.forEach(function (s) {
+        if (!s.rows.length) return;
+        var h = findHeader(s.rows, spec.must, 0, 40);
+        if (h) hits.push({ sheet: s, header: h });
+      });
+      if (hits.length === 0) {
+        if (spec.optional) { found[key] = null; notes.push('No “' + spec.label + '” tab was identified in this workbook.'); return; }
+        fail('Could not identify the ' + spec.label + ' tab. No sheet carried all of: ' + spec.must.join(' · ')
+           + '. Sheets in this file: ' + wb.SheetNames.join(', ') + '.');
+      }
+      if (hits.length > 1) {
+        fail('Ambiguous — ' + hits.length + ' sheets match the ' + spec.label + ' signature ('
+           + hits.map(function (h) { return h.sheet.name; }).join(', ')
+           + '). Nothing has been read. Choosing between them would be a guess.');
+      }
+      found[key] = hits[0];
+    });
+    return { found: found, notes: notes };
+  }
+
+  function readFeeEarners(hit) {
+    var rows = hit.sheet.rows, h = hit.header;
+    var cRef = h.cols['fe ref'], cDesc = h.cols['fee earner (fe)/description'],
+        cHrs = h.cols['time (hrs)'], cPC = h.cols['profit costs'];
+    var list = [], totalPC = null;
+    for (var i = h.row + 1; i < rows.length; i++) {
+      var row = rows[i] || [];
+      if (norm(row[cRef]) === 'total') { totalPC = numTotal(row[cPC], 'the Fee Earners total profit costs'); break; }
+      if ((row[cRef] == null || row[cRef] === '') && (row[cDesc] == null || row[cDesc] === '')) continue;
+      list.push({
+        ref: String(row[cRef] == null ? '' : row[cRef]).trim(),
+        desc: String(row[cDesc] == null ? '' : row[cDesc]).trim(),
+        hrs: numLine(row[cHrs], 'the Fee Earners hours column'),
+        pc: numLine(row[cPC], 'the Fee Earners profit costs column')
+      });
+    }
+    if (totalPC === null) fail('The Fee Earners tab has no Total row, so its total profit costs cannot be read.');
+    return { list: list, totalPC: totalPC };
+  }
+
+  function readParts(hit) {
+    var rows = hit.sheet.rows, ipAnchor = -1, laAnchor = -1;
+    for (var i = 0; i < rows.length; i++) {
+      var a = norm((rows[i] || [])[0]);
+      if (a.indexOf('part summary (interpartes') === 0 || a.indexOf('part summary (inter partes') === 0) ipAnchor = i;
+      else if (a.indexOf('part summary (legal aid') === 0) laAnchor = i;
+    }
+    if (ipAnchor < 0) fail('The Part Summary tab carries no “Part Summary (Interpartes)” block heading, so the inter partes parts cannot be told apart from the legal aid block.');
+    var TOK = ['no.', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"];
+    function block(anchor, stopAt) {
+      var h = findHeader(rows, TOK, anchor + 1, Math.min(anchor + 6, rows.length - 1));
+      if (!h) fail('No header row was found beneath the “' + String((rows[anchor] || [])[0]).trim() + '” block on the Part Summary tab.');
+      var out = [];
+      for (var i = h.row + 1; i < rows.length && (stopAt < 0 || i < stopAt); i++) {
+        var row = rows[i] || [];
+        if (norm(row[0]) === 'total') break;
+        var no = row[h.cols['no.']];
+        if (no == null || no === '') continue;
+        out.push({
+          no: String(no).trim(),
+          vatRate: numLine(row[h.cols['vat rate']], 'a Part Summary VAT Rate cell'),
+          pc: numLine(row[h.cols['profit costs']], 'a Part Summary Profit Costs cell'),
+          counsel: numLine(row[h.cols["counsel's fees"]], "a Part Summary Counsel's fees cell"),
+          counselVat: numLine(row[h.cols["counsel's vat"]], "a Part Summary Counsel's VAT cell")
+        });
+      }
+      return out;
+    }
+    var ip = block(ipAnchor, -1);
+    var la = laAnchor >= 0 ? block(laAnchor, ipAnchor) : [];
+    if (!ip.length) fail('The inter partes block of the Part Summary tab has no part rows.');
+    var laa = null;
+    for (var k = 0; k < la.length; k++) if (norm(la[k].no) === 'laa') laa = la[k];
+    return { ip: ip, laa: laa };
+  }
+
+  function readLines(hit) {
+    var rows = hit.sheet.rows, h = hit.header;
+    var cItem = h.cols['item no.'], cPart = h.cols['part no.'], cRef = h.cols['f/e or csl ref'],
+        cNar = h.cols['narrative'], cHrs = h.cols['hrs'], cPC = h.cols['profit costs'];
+    var out = [];
+    for (var i = h.row + 1; i < rows.length; i++) {
+      var row = rows[i] || [];
+      if (row[cItem] == null || row[cItem] === '') continue;
+      out.push({
+        item: String(row[cItem]).trim(),
+        part: String(row[cPart] == null ? '' : row[cPart]).trim(),
+        ref: String(row[cRef] == null ? '' : row[cRef]).trim(),
+        narrative: String(row[cNar] == null ? '' : row[cNar]),
+        hrs: numLine(row[cHrs], 'a bill line Hrs cell'),
+        pc: numLine(row[cPC], 'a bill line Profit Costs cell')
+      });
+    }
+    if (!out.length) fail('The Bill and Points of Dispute tab has no item rows.');
+    return out;
+  }
+
+  function readDisb(hit) {
+    var rows = hit.sheet.rows, h = hit.header;
+    var cCode = h.cols['expense code'], cVat = h.cols['vat'], cTot = h.cols['totals'], hrow = rows[h.row] || [];
+    // The ex-VAT column is misspelled "Total Disbusrments" in the template, so it
+    // is resolved by elimination: the remaining populated header in the block.
+    var cEx = -1;
+    for (var c = 0; c < hrow.length; c++) {
+      if (c === cCode || c === cVat || c === cTot) continue;
+      if (norm(hrow[c]) !== '') { cEx = c; break; }
+    }
+    if (cEx < 0) fail('The Disbursements tab has no ex-VAT column alongside Expense Code, VAT and Totals.');
+    var g = -1;
+    for (var i = h.row + 1; i < rows.length; i++) {
+      if (norm((rows[i] || [])[cCode]).indexOf('grand total') === 0) { g = i; break; }
+    }
+    if (g < 0) fail('The Disbursements tab has no Grand Totals row.');
+    return {
+      exVat: numTotal(rows[g][cEx], 'the disbursements grand total (ex VAT)'),
+      vat: numTotal(rows[g][cVat], 'the disbursements grand total VAT'),
+      colHeader: String(hrow[cEx] == null ? '' : hrow[cEx]).trim()
+    };
+  }
+
+  function readTotalBill(hit) {
+    var rows = hit.sheet.rows, h = hit.header;
+    var c = h.cols['inter partes bill of costs overview:'];
+    for (var i = h.row + 1; i < rows.length; i++) {
+      if (norm((rows[i] || [])[c]).indexOf('grand total') === 0) {
+        return numTotal((rows[i] || [])[c + 1], 'the Inter Partes Grand Total on the Bill Summary tab');
+      }
+    }
+    fail('No “Grand Total” row was found beneath the Inter Partes overview on the Bill Summary tab.');
+  }
+
+  function readCounsel(hit) {
+    if (!hit) return null;
+    var rows = hit.sheet.rows, h = hit.header;
+    var cRef = h.cols['csl ref'], cName = h.cols['counsel name'], cTot = h.cols['total fees'];
+    var names = [], total = null;
+    for (var i = h.row + 1; i < rows.length; i++) {
+      var row = rows[i] || [];
+      if (norm(row[cRef]) === 'total') { total = numTotal(row[cTot], 'the Counsel tab Total Fees'); break; }
+      if (row[cName] != null && row[cName] !== '') names.push(String(row[cName]).trim());
+    }
+    if (total === null) fail('The Counsel tab has no Total row, so counsel\u2019s fees cannot be read.');
+    return { total: total, names: names };
+  }
+
+  var CL_RE = /costs lawyer|law costs draftsman|costs draftsman/;
+  function isCostsLawyerDesc(d) { return CL_RE.test(norm(d)); }
+
+  // Deterministic first pass at the bill-preparation / other split. Every line
+  // is shown with this tick and can be flipped by hand before import.
+  function looksLikeBillPrep(n) {
+    var s = norm(n);
+    if (!/\b(bill|narrative|precedent)\b/.test(s)) return false;
+    return /(prepar|draft|collat|engross|check|amend|revis|complet)/.test(s);
+  }
+
+  function parseWorkbook(wb) {
+    var res = resolveSheets(wb);
+    var f = res.found;
+    var fe = readFeeEarners(f.feeEarners);
+    var parts = readParts(f.partSummary);
+    var lines = readLines(f.billPod);
+    var disb = readDisb(f.disb);
+    var totalBill = readTotalBill(f.billSummary);
+    var counsel = readCounsel(f.counsel);
+
+    var partCounsel = r2(parts.ip.reduce(function (s, p) { return s + p.counsel; }, 0)
+                       + (parts.laa ? parts.laa.counsel : 0));
+    if (!counsel) {
+      // Absent AND zero is legitimate — no counsel on the bill. Absent while the
+      // Part Summary says otherwise means the wrong sheet was matched.
+      if (Math.abs(partCounsel) > 0.005) {
+        fail('No Counsel tab was identified, but the Part Summary claims ' + money(partCounsel)
+           + ' of counsel\u2019s fees. Rather than write a zero over a real figure, nothing has been read.');
+      }
+      counsel = { total: 0, names: [], absent: true };
+    }
+
+    return {
+      sheetNames: {
+        feeEarners: f.feeEarners.sheet.name, partSummary: f.partSummary.sheet.name,
+        billPod: f.billPod.sheet.name, disb: f.disb.sheet.name,
+        billSummary: f.billSummary.sheet.name, counsel: f.counsel ? f.counsel.sheet.name : null
+      },
+      notes: res.notes, feeEarners: fe.list, feeEarnerTotal: fe.totalPC,
+      ipParts: parts.ip, laaPart: parts.laa, lines: lines, disb: disb,
+      totalBill: totalBill, counsel: counsel, partCounsel: partCounsel
+    };
+  }
+
+  function compute(m, clRefs, overrides) {
+    var clLines = m.lines.filter(function (l) { return clRefs.has(l.ref); });
+    var prep = [], other = [];
+    clLines.forEach(function (l) {
+      var isPrep = overrides.hasOwnProperty(l.item) ? overrides[l.item] : looksLikeBillPrep(l.narrative);
+      (isPrep ? prep : other).push(l);
+    });
+    var sumPC = function (a) { return r2(a.reduce(function (s, x) { return s + x.pc; }, 0)); };
+    var sumHrs = function (a) { return r1(a.reduce(function (s, x) { return s + x.hrs; }, 0)); };
+
+    var iAmt = sumPC(prep), iiAmt = sumPC(other);
+    var iv = r2(m.feeEarnerTotal - iAmt - iiAmt);
+
+    var nonVatIP = m.ipParts.filter(function (p) { return p.vatRate === 0; });
+    var nonVatSet = {};
+    nonVatIP.forEach(function (p) { nonVatSet[p.no] = true; });
+    var tmcInPart = function (no) {
+      return r2(clLines.filter(function (l) { return l.part === String(no); })
+                       .reduce(function (s, x) { return s + x.pc; }, 0));
+    };
+
+    var viii = r2(nonVatIP.reduce(function (s, p) { return s + (p.pc - tmcInPart(p.no)); }, 0));
+    var ix = r2(nonVatIP.reduce(function (s, p) { return s + p.counsel; }, 0));
+    var x = r2(prep.filter(function (l) { return nonVatSet[l.part]; })
+                   .reduce(function (s, l) { return s + l.pc; }, 0));
+
+    // The LAA row is present in EVERY template, carrying zero on a matter with no
+    // legal aid claim. Its presence proves nothing, so a zero is written as blank
+    // rather than stamped over whatever a human typed.
+    var laaGross = null, xi = null;
+    if (m.laaPart && Math.abs(m.laaPart.pc) > 0.005) {
+      laaGross = r2(m.laaPart.pc - tmcInPart(m.laaPart.no));
+      xi = m.laaPart.vatRate === 0 ? laaGross : 0;
+    }
+
+    var xii = null, xiiNote = null;
+    if (other.length) {
+      var anyNon = false, anyVat = false;
+      other.forEach(function (l) { if (nonVatSet[l.part]) anyNon = true; else anyVat = true; });
+      if (anyNon && anyVat) { xii = 'Yes'; xiiNote = 'Other costs-lawyer time falls in BOTH vatable and non-vatable parts. Set to Yes for review \u2014 this one needs a human decision.'; }
+      else xii = anyNon ? 'No' : 'Yes';
+    }
+
+    var warn = [], checks = [];
+    var near = function (a, b) { return Math.abs(a - b) <= 0.01; };
+
+    var lineSum = r2(m.lines.reduce(function (s, l) { return s + l.pc; }, 0));
+    checks.push({ label: 'Every bill line adds to the Fee Earners total',
+                  detail: money(lineSum) + ' vs ' + money(m.feeEarnerTotal), ok: near(lineSum, m.feeEarnerTotal) });
+
+    checks.push({ label: 'Profit costs (i + ii + iv) = Fee Earners total',
+                  detail: money(r2(iAmt + iiAmt + iv)) + ' vs ' + money(m.feeEarnerTotal),
+                  ok: near(r2(iAmt + iiAmt + iv), m.feeEarnerTotal) });
+
+    var partSum = r2(m.ipParts.reduce(function (s, p) { return s + p.pc; }, 0) + (m.laaPart ? m.laaPart.pc : 0));
+    checks.push({ label: 'Part Summary profit costs = Fee Earners total',
+                  detail: money(partSum) + ' vs ' + money(m.feeEarnerTotal), ok: near(partSum, m.feeEarnerTotal) });
+
+    checks.push({ label: "Counsel tab total = Part Summary counsel's fees",
+                  detail: money(m.counsel.total) + ' vs ' + money(m.partCounsel), ok: near(m.counsel.total, m.partCounsel) });
+
+    var vatOk = viii >= 0 && ix >= 0 && x >= 0 && viii <= iv + 0.01 && ix <= m.counsel.total + 0.01 && x <= iAmt + 0.01
+              && (xi === null || (xi >= 0 && laaGross !== null && xi <= laaGross + 0.01));
+    checks.push({ label: 'Each non-vatable amount is \u2265 0 and \u2264 its gross counterpart',
+                  detail: vatOk ? 'all within range' : 'OUT OF RANGE', ok: vatOk });
+
+    nonVatIP.forEach(function (p) {
+      if (Math.abs(p.counselVat) > 0.005) {
+        warn.push('Part ' + p.no + ' is rated 0% but carries ' + money(p.counselVat) + " of counsel's VAT on the Part Summary.");
+      }
+    });
+    if (xiiNote) warn.push(xiiNote);
+    if (m.counsel.absent) warn.push('No Counsel tab in this workbook, and the Part Summary agrees there are no counsel\u2019s fees. Counsel recorded as \u00a30.00.');
+    if (!clLines.length) warn.push('No bill lines are attributed to any ticked costs lawyer, so bill preparation and other costs-lawyer time both come out at \u00a30.00.');
+    if (xii === null) warn.push('There is no other costs-lawyer time on this bill, so \u201cOther TMC PC vatable?\u201d is left BLANK rather than guessed.');
+
+    return {
+      prep: prep, other: other, clLines: clLines,
+      iAmt: iAmt, iHrs: sumHrs(prep), iiAmt: iiAmt, iiHrs: sumHrs(other), iv: iv,
+      viii: viii, ix: ix, x: x, xi: xi, xii: xii, laaGross: laaGross,
+      nonVatIP: nonVatIP, checks: checks, warn: warn,
+      allOk: checks.every(function (c) { return c.ok; })
+    };
+  }
+
+  function payloadOf(m, c) {
+    return {
+      'ProfitCostsClaimed_x0028_Ex_x002': c.iv,
+      'DraftingTimeClaimed': c.iAmt,
+      'CounselsFeesClaimed': r2(m.counsel.total),
+      'DisbursementsClaimed': r2(m.disb.exVat),
+      'VATonDisbursements': r2(m.disb.vat),
+      'Other_x0020_TMC_x0020_PC_x0020__': c.iiAmt,
+      'NonVatableProfitCosts': c.viii,
+      'NonVatableCounselFees': c.ix,
+      'NonVatableTMCDraftingTime': c.x,
+      'NonVatableLAAPC': c.xi,
+      'LegalAidOnlyProfitCosts': c.laaGross,
+      'OtherTMCPCVatable': c.xii
+    };
+  }
+
+  /* ---------- state + UI ---------- */
+
+  var S = { model: null, clRefs: null, overrides: {}, fileName: '', refFromName: null };
+  var pageRef = (new URLSearchParams(window.location.search).get('ref') || '').trim();
+
+  var elDrop = document.getElementById('bf-drop');
+  var elFile = document.getElementById('bf-file');
+  var elStatus = document.getElementById('bf-status');
+  var elResults = document.getElementById('bf-results');
+  if (!elDrop || !elFile || !elResults) return;
+
+  function status(html, kind) {
+    var colour = kind === 'err' ? '#991B1B' : kind === 'ok' ? 'var(--green)' : 'var(--grey-mid)';
+    elStatus.innerHTML = '<span style="color:' + colour + ';">' + html + '</span>';
+  }
+
+  function refBlock() {
+    if (!S.refFromName) {
+      return { blocked: false, html: '<div style="padding:10px 14px;border-radius:var(--radius-sm);background:#FEF3C7;color:#78350F;font-size:12.5px;">The filename carries no case reference, so it could not be checked against this page. The page reference <strong>' + esc(pageRef) + '</strong> is the one that will be written.</div>' };
+    }
+    if (S.refFromName !== pageRef) {
+      return { blocked: true, html: '<div style="padding:12px 14px;border-radius:var(--radius-sm);background:#FEE2E2;color:#7F1D1D;font-size:13px;font-weight:600;">BLOCKED \u2014 this file is for case ' + esc(S.refFromName) + ' but this page is case ' + esc(pageRef) + '. Nothing can be imported. Open the right case, or check the filename.</div>' };
+    }
+    return { blocked: false, html: '<div style="padding:10px 14px;border-radius:var(--radius-sm);background:var(--green-pale);color:var(--green);font-size:12.5px;">Filename reference <strong>' + esc(S.refFromName) + '</strong> matches this page.</div>' };
+  }
+
+  function render() {
+    var m = S.model;
+    if (!m) { elResults.style.display = 'none'; return; }
+    var c = compute(m, S.clRefs, S.overrides);
+    var rb = refBlock();
+    var canImport = !rb.blocked && c.allOk;
+    var h = [];
+
+    h.push('<div class="card"><div class="card-head"><span class="card-title">Fee earners \u2014 who is the costs lawyer?</span></div>');
+    h.push('<div style="font-size:12.5px;color:var(--grey-mid);margin-bottom:10px;">Matched on \u201ccosts lawyer\u201d, \u201claw costs draftsman\u201d or \u201ccosts draftsman\u201d in the description. This is the only judgement in the whole extraction \u2014 correct it here and every figure below recalculates.</div>');
+    h.push('<div style="max-height:230px;overflow:auto;border:1px solid var(--grey-light);border-radius:var(--radius-sm);">');
+    m.feeEarners.forEach(function (fe) {
+      var on = S.clRefs.has(fe.ref);
+      h.push('<label style="display:flex;gap:10px;align-items:flex-start;padding:7px 12px;border-bottom:1px solid var(--grey-faint);font-size:12.5px;cursor:pointer;' + (on ? 'background:var(--gold-pale);' : '') + '">'
+        + '<input type="checkbox" data-bf-fe="' + esc(fe.ref) + '"' + (on ? ' checked' : '') + ' style="margin-top:3px;" />'
+        + '<span><strong>' + esc(fe.ref) + '</strong> \u2014 ' + esc(fe.desc) + '<br><span style="color:var(--grey-mid);">' + fe.hrs + ' hrs \u00b7 ' + money(fe.pc) + '</span></span></label>');
+    });
+    h.push('</div></div>');
+
+    if (c.clLines.length) {
+      h.push('<div class="card"><div class="card-head"><span class="card-title">Costs-lawyer lines \u2014 bill preparation, or other?</span></div>');
+      h.push('<div style="font-size:12.5px;color:var(--grey-mid);margin-bottom:10px;">Ticked = bill preparation, item (i). Unticked = other costs-lawyer time, item (ii). The first pass is a keyword match on the narrative; flip anything it got wrong.</div>');
+      h.push('<div style="max-height:280px;overflow:auto;border:1px solid var(--grey-light);border-radius:var(--radius-sm);">');
+      c.clLines.forEach(function (l) {
+        var isPrep = c.prep.indexOf(l) >= 0;
+        h.push('<label style="display:flex;gap:10px;align-items:flex-start;padding:6px 12px;border-bottom:1px solid var(--grey-faint);font-size:12px;cursor:pointer;">'
+          + '<input type="checkbox" data-bf-line="' + esc(l.item) + '"' + (isPrep ? ' checked' : '') + ' style="margin-top:3px;" />'
+          + '<span style="flex:1;">' + esc(l.narrative.slice(0, 150)) + '</span>'
+          + '<span style="white-space:nowrap;color:var(--grey-mid);">pt ' + esc(l.part) + ' \u00b7 ' + l.hrs + 'h \u00b7 ' + money(l.pc) + '</span></label>');
+      });
+      h.push('</div></div>');
+    }
+
+    h.push('<div class="card"><div class="card-head"><span class="card-title">Verification</span></div>');
+    h.push('<table style="width:100%;border-collapse:collapse;font-size:13px;"><tbody>');
+    var row = function (n, label, amt, detail) {
+      h.push('<tr><td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);width:34px;">' + n + '</td>'
+        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);">' + label + '</td>'
+        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);text-align:right;font-weight:600;white-space:nowrap;">' + amt + '</td>'
+        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);font-size:12px;">' + (detail || '') + '</td></tr>');
+    };
+    row('i', 'Bill preparation', money(c.iAmt), c.iHrs + ' hrs \u00b7 ' + c.prep.length + ' lines');
+    row('ii', 'Other costs-lawyer time', money(c.iiAmt), c.iiHrs + ' hrs \u00b7 ' + c.other.length + ' lines');
+    row('iii', "Counsel's fees", money(m.counsel.total), esc(m.counsel.names.join(', ')));
+    row('iv', 'Profit costs (excl i &amp; ii)', money(c.iv), 'Fee Earners total ' + money(m.feeEarnerTotal) + ' less i and ii');
+    row('v', 'Disbursements (ex VAT)', money(m.disb.exVat), esc(m.disb.colHeader));
+    row('vi', 'Disbursements VAT', money(m.disb.vat), '');
+    row('vii', 'Total bill', money(m.totalBill), 'cross-check only \u2014 not stored');
+    row('viii', 'Non-vatable profit costs', money(c.viii), c.nonVatIP.length + ' non-vatable part(s)');
+    row('ix', 'Non-vatable counsel fees', money(c.ix), '');
+    row('x', 'Non-vatable TMC drafting time', money(c.x), '');
+    row('xi', 'Non-vatable LAA profit costs', money(c.xi), c.xi === null ? 'no legal aid figure on this bill' : '');
+    row('\u2014', 'LAA profit costs (gross)', money(c.laaGross), c.laaGross === null ? 'left blank, not zeroed' : 'ex TMC time in the LAA part');
+    row('xii', 'Other costs-lawyer PC vatable?', c.xii === null ? '\u2014' : c.xii, c.xii === null ? 'left blank' : '');
+    h.push('</tbody></table>');
+
+    h.push('<div style="margin-top:14px;">');
+    c.checks.forEach(function (ck) {
+      h.push('<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;font-size:12.5px;color:' + (ck.ok ? 'var(--green)' : '#991B1B') + ';">'
+        + '<span>' + (ck.ok ? '\u2713' : '\u2717') + '</span><span style="flex:1;">' + ck.label + '</span>'
+        + '<span style="color:var(--grey-mid);">' + ck.detail + '</span></div>');
+    });
+    h.push('</div>');
+    if (c.warn.length) {
+      h.push('<div style="margin-top:12px;padding:10px 14px;border-radius:var(--radius-sm);background:#FEF3C7;color:#78350F;font-size:12.5px;line-height:1.6;">'
+        + c.warn.map(function (w) { return '\u26a0 ' + esc(w); }).join('<br>') + '</div>');
+    }
+    h.push('<div style="margin-top:12px;font-size:11.5px;color:var(--grey-mid);line-height:1.6;">Read from: '
+      + esc([m.sheetNames.feeEarners, m.sheetNames.partSummary, m.sheetNames.billPod, m.sheetNames.disb, m.sheetNames.billSummary, m.sheetNames.counsel].filter(Boolean).join(' \u00b7 ')) + '</div>');
+    h.push('</div>');
+
+    h.push('<div class="card"><div class="card-head"><span class="card-title">What would be written</span></div>');
+    h.push(rb.html);
+    h.push('<pre style="margin-top:12px;background:var(--navy);color:var(--gold-pale);padding:14px;border-radius:var(--radius-sm);font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;overflow:auto;max-height:340px;">'
+      + esc(JSON.stringify({ ref: pageRef, itemId: (typeof caseItemId !== 'undefined' ? caseItemId : null), sourceFilename: S.fileName, fields: payloadOf(m, c) }, null, 2)) + '</pre>');
+    h.push('<button class="btn-pdf" id="bf-import"' + (canImport ? '' : ' disabled')
+      + ' style="margin-top:14px;width:auto;padding:12px 30px;display:inline-flex;' + (canImport ? '' : 'opacity:.45;cursor:not-allowed;') + '">Import these figures</button>');
+    h.push('<span id="bf-import-msg" class="edit-msg" style="margin-left:14px;"></span>');
+    if (!canImport && !rb.blocked) h.push('<div style="margin-top:10px;font-size:12.5px;color:#991B1B;">A cross-check has failed, so import is disabled. Nothing will be written while a figure does not reconcile.</div>');
+    h.push('</div>');
+
+    elResults.innerHTML = h.join('');
+    elResults.style.display = '';
+    var btn = document.getElementById('bf-import');
+    if (btn && canImport) btn.addEventListener('click', function () { doImport(m, c, btn); });
+  }
+
+  elResults.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-bf-fe')) {
+      var ref = t.getAttribute('data-bf-fe');
+      if (t.checked) S.clRefs.add(ref); else S.clRefs.delete(ref);
+      render();
+    } else if (t.hasAttribute && t.hasAttribute('data-bf-line')) {
+      S.overrides[t.getAttribute('data-bf-line')] = t.checked;
+      render();
+    }
+  });
+
+  async function doImport(m, c, btn) {
+    var msg = document.getElementById('bf-import-msg');
+    btn.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Importing\u2026';
+    try {
+      var body = { ref: pageRef, itemId: (typeof caseItemId !== 'undefined' ? caseItemId : null), sourceFilename: S.fileName, fields: payloadOf(m, c) };
+      var resp = await fetch('/api/billfigures', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + (await resp.text()).slice(0, 300));
+      var out = await resp.json();
+      Object.assign(caseFields, body.fields);
+      msg.className = 'edit-msg ok';
+      msg.textContent = '\u2713 Imported' + (out && out.stamp ? ' \u2014 ' + out.stamp : '');
+      if (typeof computeFigures === 'function') computeFigures();
+      if (typeof renderCostsTab === 'function') renderCostsTab();
+      if (typeof renderSettlementTab === 'function') renderSettlementTab();
+      if (typeof renderOverviewTab === 'function') renderOverviewTab();
+      if (typeof renderHeader === 'function') renderHeader();
+    } catch (err) {
+      msg.className = 'edit-msg err';
+      msg.textContent = 'Import failed: ' + err.message;
+      btn.disabled = false;
+    }
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    if (!/\.xlsx$/i.test(file.name)) { status('That is not an .xlsx file.', 'err'); return; }
+    if (typeof XLSX === 'undefined') {
+      status('The spreadsheet reader did not load, so no bill can be parsed. Nothing has been read.', 'err');
+      return;
+    }
+    S.fileName = file.name;
+    var mm = file.name.match(/^\s*(\d{6,})/);
+    S.refFromName = mm ? mm[1] : null;
+    status('Reading ' + esc(file.name) + '\u2026');
+    var fr = new FileReader();
+    fr.onerror = function () { status('The file could not be read.', 'err'); };
+    fr.onload = function (ev) {
+      try {
+        var wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: false });
+        S.model = parseWorkbook(wb);
+        S.clRefs = new Set(S.model.feeEarners.filter(function (fe) { return isCostsLawyerDesc(fe.desc); })
+                                             .map(function (fe) { return fe.ref; }));
+        S.overrides = {};
+        status('Read ' + esc(file.name) + ' \u2014 ' + S.model.lines.length + ' bill lines, ' + S.model.feeEarners.length + ' fee earners.', 'ok');
+        render();
+      } catch (err) {
+        S.model = null;
+        elResults.style.display = 'none';
+        status('<strong>Nothing has been imported.</strong><br>' + esc(err.message), 'err');
+      }
+    };
+    fr.readAsArrayBuffer(file);
+  }
+
+  elDrop.addEventListener('click', function () { elFile.click(); });
+  elFile.addEventListener('change', function (e) { handleFile(e.target.files && e.target.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    elDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); elDrop.style.borderColor = 'var(--gold)'; elDrop.style.background = 'var(--gold-pale)'; });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    elDrop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); elDrop.style.borderColor = 'var(--grey-light)'; elDrop.style.background = 'var(--white)'; });
+  });
+  elDrop.addEventListener('drop', function (e) { handleFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+})(); /* ═══ end Bill Figures import ═══ */
 </script>
 </body>
 </html>
