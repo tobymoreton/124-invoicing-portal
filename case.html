@@ -2544,16 +2544,19 @@
     <div class="tab-panel" id="tab-billfigures">
       <div class="card">
         <div class="card-head"><span class="card-title">Import figures from an eBill</span></div>
-        <div style="font-size:13px;color:var(--grey-mid);line-height:1.65;">
-          Drop the Precedent S <strong>.xlsx</strong> below. It is read <strong>in this browser only</strong> &mdash; nothing is uploaded and the file never leaves this machine. Every figure is arithmetic from fixed tabs; check the table, then import.
+        <div style="margin:12px 2px 0;max-width:780px;font-size:13px;color:var(--grey-mid);line-height:1.85;">
+          Drop the Bill <strong>.xlsx</strong> below. It is read <strong>in this browser only</strong> &mdash; nothing is uploaded, and the file never leaves this machine.
         </div>
-        <div id="bf-drop" style="margin-top:16px;border:2px dashed var(--grey-light);border-radius:var(--radius);padding:34px 20px;text-align:center;cursor:pointer;background:var(--white);transition:var(--transition);">
+        <div style="margin:8px 2px 0;max-width:780px;font-size:13px;color:var(--grey-mid);line-height:1.85;">
+          Every figure is arithmetic taken from the Bill&rsquo;s own tabs. Check the table, then import.
+        </div>
+        <div id="bf-drop" style="margin:20px 2px 0;border:2px dashed var(--grey-light);border-radius:var(--radius);padding:34px 20px;text-align:center;cursor:pointer;background:var(--white);transition:var(--transition);">
           <div style="font-size:30px;opacity:.5;margin-bottom:8px;">&#128195;</div>
           <div style="font-size:14px;font-weight:600;color:var(--navy);">Drop the eBill here, or click to choose</div>
           <div style="font-size:12px;color:var(--grey-mid);margin-top:5px;">.xlsx only</div>
           <input type="file" id="bf-file" accept=".xlsx" style="display:none;" />
         </div>
-        <div id="bf-status" style="margin-top:12px;font-size:13px;line-height:1.6;"></div>
+        <div id="bf-status" style="margin:16px 2px 6px;font-size:13px;line-height:1.75;"></div>
       </div>
       <div id="bf-results" style="display:none;"></div>
     </div><!-- /tab-billfigures -->
@@ -7650,7 +7653,7 @@ async function submitAddAction() {
       var on = S.clRefs.has(fe.ref);
       h.push('<label style="display:flex;gap:10px;align-items:flex-start;padding:7px 12px;border-bottom:1px solid var(--grey-faint);font-size:12.5px;cursor:pointer;' + (on ? 'background:var(--gold-pale);' : '') + '">'
         + '<input type="checkbox" data-bf-fe="' + esc(fe.ref) + '"' + (on ? ' checked' : '') + ' style="margin-top:3px;" />'
-        + '<span><strong>' + esc(fe.ref) + '</strong> \u2014 ' + esc(fe.desc) + '<br><span style="color:var(--grey-mid);">' + fe.hrs + ' hrs \u00b7 ' + money(fe.pc) + '</span></span></label>');
+        + '<span><strong>' + esc(fe.ref) + '</strong> \u2014 ' + esc(fe.desc) + '<br><span style="color:var(--grey-mid);">' + r2(fe.hrs) + ' hrs \u00b7 ' + money(fe.pc) + '</span></span></label>');
     });
     h.push('</div></div>');
 
@@ -7663,18 +7666,17 @@ async function submitAddAction() {
         h.push('<label style="display:flex;gap:10px;align-items:flex-start;padding:6px 12px;border-bottom:1px solid var(--grey-faint);font-size:12px;cursor:pointer;">'
           + '<input type="checkbox" data-bf-line="' + esc(l.item) + '"' + (isPrep ? ' checked' : '') + ' style="margin-top:3px;" />'
           + '<span style="flex:1;">' + esc(l.narrative.slice(0, 150)) + '</span>'
-          + '<span style="white-space:nowrap;color:var(--grey-mid);">pt ' + esc(l.part) + ' \u00b7 ' + l.hrs + 'h \u00b7 ' + money(l.pc) + '</span></label>');
+          + '<span style="white-space:nowrap;color:var(--grey-mid);">pt ' + esc(l.part) + ' \u00b7 ' + r2(l.hrs) + 'h \u00b7 ' + money(l.pc) + '</span></label>');
       });
       h.push('</div></div>');
     }
 
     h.push('<div class="card"><div class="card-head"><span class="card-title">Verification</span></div>');
     h.push('<table style="width:100%;border-collapse:collapse;font-size:13px;"><tbody>');
-    var row = function (n, label, amt, detail) {
+    var row = function (n, label, amt) {
       h.push('<tr><td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);width:34px;">' + n + '</td>'
         + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);">' + label + '</td>'
-        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);text-align:right;font-weight:600;white-space:nowrap;">' + amt + '</td>'
-        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);font-size:12px;">' + (detail || '') + '</td></tr>');
+        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);text-align:right;font-weight:600;white-space:nowrap;">' + amt + '</td></tr>');
     };
     row('i', 'Bill preparation', money(c.iAmt), c.iHrs + ' hrs \u00b7 ' + c.prep.length + ' lines');
     row('ii', 'Other costs-lawyer time', money(c.iiAmt), c.iiHrs + ' hrs \u00b7 ' + c.other.length + ' lines');
@@ -7769,7 +7771,14 @@ async function submitAddAction() {
     S.refFromName = mm ? mm[1] : null;
     status('Reading ' + esc(file.name) + '\u2026');
     var fr = new FileReader();
-    fr.onerror = function () { status('The file could not be read.', 'err'); };
+    fr.onerror = function () {
+      var e = fr.error || {};
+      status('<strong>The file could not be read \u2014 ' + esc(e.name || 'unknown error') + '.</strong>'
+           + (e.message ? '<br>' + esc(e.message) : '')
+           + '<br>Usually this is a OneDrive file that is still cloud-only (a cloud icon rather than a green tick), '
+           + 'a file still open in Excel, or one dragged straight out of Outlook or a SharePoint browser tab rather than from a folder. '
+           + 'Nothing has been read.', 'err');
+    };
     fr.onload = function (ev) {
       try {
         var wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: false });
