@@ -138,6 +138,23 @@
     .filter-toggle-btn{padding:8px 14px;border:1.5px solid var(--grey-light);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:600;color:var(--grey-mid);background:var(--white);cursor:pointer;transition:all .18s ease;white-space:nowrap;}
     .filter-toggle-btn:hover{border-color:var(--navy);color:var(--navy);}
     .filter-toggle-btn.active{background:var(--navy);color:var(--gold);border-color:var(--navy);}
+    /* Stage x Draftsman grid (S125) */
+    .sg-card{background:var(--white);border:1px solid var(--grey-light);border-radius:var(--radius-sm);margin-bottom:18px;overflow:hidden;}
+    .sg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--grey-light);}
+    .sg-title{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);}
+    .sg-hint{font-size:11.5px;color:var(--grey-mid);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px;}
+    .sg-body{overflow-x:auto;}
+    .sg-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .sg-table th{padding:8px 10px;text-align:center;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);border-bottom:1px solid var(--grey-light);white-space:nowrap;}
+    .sg-table th.sg-stage-h{text-align:left;padding-left:16px;}
+    .sg-table td{padding:4px 6px;text-align:center;border-bottom:1px solid rgba(0,0,0,.04);}
+    .sg-table td.sg-stage{text-align:left;padding-left:16px;white-space:nowrap;font-weight:600;color:var(--navy);}
+    .sg-cell{min-width:34px;padding:4px 8px;border:none;border-radius:var(--radius-sm);background:rgba(201,168,76,.14);color:var(--navy);font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s ease;}
+    .sg-cell:hover{background:var(--navy);color:var(--gold);}
+    .sg-cell-tot{background:transparent;color:var(--grey-mid);font-weight:700;}
+    .sg-cell-tot:hover{background:var(--navy);color:var(--gold);}
+    .sg-zero{color:var(--grey-light);}
+    .sg-foot td{border-top:1.5px solid var(--grey-light);border-bottom:none;}
 
     /* Status chips */
     .status-chip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;letter-spacing:.04em;white-space:nowrap;}
@@ -666,6 +683,14 @@
   <div id="state-loading" class="state-msg"><div class="spinner"></div>Loading cases&hellip;</div>
 
   <div id="cases-section" style="display:none;">
+    <!-- Stage x Draftsman grid (S125) -->
+    <div class="sg-card">
+      <div class="sg-head">
+        <div class="sg-title">Stage by Draftsman<span class="sg-hint">Click any number to filter the table below</span></div>
+        <button type="button" id="sg-toggle" class="filter-toggle-btn">Hide</button>
+      </div>
+      <div class="sg-body" id="sg-body"></div>
+    </div>
     <div class="section-head">
       <div>
         <div class="section-title">All Open Cases<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About All Open Cases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Every open case in the firm. Closed and Settled are excluded until you press Show Closed, which loads them on demand. Search by case name, our reference, client reference, firm or draftsman, and filter by stage. Booking-in notes appear under a row where they exist.</span></button></div>
@@ -694,6 +719,9 @@
           <option value="Pending detailed assessment">Pending detailed assessment</option>
           <option value="Settled">Settled</option>
           <option value="Closed">Closed</option>
+        </select>
+        <select id="draftsman-filter" class="filter-select">
+          <option value="">All draftsmen</option>
         </select>
         <button id="btn-closed-toggle" class="filter-toggle-btn">Show Closed</button>
       </div>
@@ -896,6 +924,7 @@
 let allCases = [];
 let rawCases = [];
 let stageFilter = '';
+let draftsmanFilter = '';
 let showClosed = false;
 // Closed cases are NOT in rawCases: /api/cases?preload=1 filters status='closed' server-side.
 // They are fetched once, on demand, the first time "Show Closed" is clicked (S69 - before this,
@@ -1255,7 +1284,9 @@ function renderCases(q){
   const tbody=document.getElementById('cases-tbody');
   const closedBase=closedCases||rawCases.filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
   let base=showClosed?closedBase:allCases;
+  renderStageGrid();
   if(stageFilter) base=base.filter(c=>(c.fields['StatusMirror']||'')===stageFilter);
+  if(draftsmanFilter) base=base.filter(c=>draftsmanKey(c.fields)===draftsmanFilter);
   const filtered=q?base.filter(c=>{
     const name=(c.fields['CaseNameForOpenCases']||c.fields['Title']||'').toLowerCase();
     const ref=(c.fields['Ourreference_x0028_text_x0029_']||'').toLowerCase();
@@ -1321,13 +1352,122 @@ function renderCases(q){
   });
 }
 
+// -- Stage x Draftsman grid (S125) -----------------------------------------
+// Danielle asked on 10/09/2026 "can I see what's waiting for approval?" - i.e. which cases sit
+// at a given stage, broken down by whose they are. Built entirely from the /api/cases?preload=1
+// payload this page already holds: no new endpoint, no new SharePoint column.
+//
+// The draftsman key goes through normalizeDraftsmanName(), which maps an email OR a display name
+// OR a bare first name onto the same first name - assignedToTextValue has held all three shapes
+// over time (S66 tech debt, deliberately not cleaned in SharePoint), so without this the same
+// person would appear as up to three separate columns. It is an exact-token map, never a
+// substring test, so 'Daniel' and 'Danielle' can never merge (S65/S69).
+//
+// Blank assignees and Danielle-assigned cases both fold into one Unassigned column via
+// isUnallocated(), matching how the rest of this page treats the hand-back bucket.
+const SG_KEY='p124.sgHidden';
+function sgHidden(){ try{ return localStorage.getItem(SG_KEY)==='1'; }catch(e){ return false; } }
+function draftsmanKey(f){
+  if(isUnallocated(f)) return 'Unassigned';
+  return normalizeDraftsmanName((f||{})['assignedToTextValue'])||'Unassigned';
+}
+// Keeps the Draftsman dropdown in step with whoever actually holds a case in the current set.
+// Rebuilds only when the names change, so it never clobbers a selection mid-render.
+function syncDraftsmanFilter(cols){
+  const sel=document.getElementById('draftsman-filter');
+  if(!sel) return;
+  const want=[''].concat(cols);
+  const have=Array.prototype.map.call(sel.options,o=>o.value);
+  if(have.length===want.length&&have.every((v,i)=>v===want[i])) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All draftsmen</option>'+cols.map(m=>'<option value="'+escHtml(m)+'">'+escHtml(m)+'</option>').join('');
+  sel.value=cols.indexOf(cur)>=0?cur:'';
+  if(sel.value!==cur) draftsmanFilter=sel.value;
+}
+function renderStageGrid(){
+  const wrap=document.getElementById('sg-body');
+  const btn=document.getElementById('sg-toggle');
+  if(!wrap) return;
+  const hidden=sgHidden();
+  wrap.style.display=hidden?'none':'block';
+  if(btn){ btn.textContent=hidden?'Show':'Hide'; btn.setAttribute('aria-pressed',hidden?'true':'false'); }
+
+  // Counted from the UNFILTERED set, so the grid always shows the whole picture and the
+  // numbers do not vanish as you drill into them.
+  const closedBase=closedCases||rawCases.filter(c=>{const s=(c.fields['StatusMirror']||'').toLowerCase();return s==='closed'||s==='settled';});
+  const base=showClosed?closedBase:allCases;
+
+  const counts={},stageTot={},manTot={},men={},stages=[];
+  base.forEach(c=>{
+    const st=((c.fields['StatusMirror']||'').trim())||'\u2014';
+    const dm=draftsmanKey(c.fields);
+    if(!counts[st]){ counts[st]={}; stages.push(st); }
+    counts[st][dm]=(counts[st][dm]||0)+1;
+    stageTot[st]=(stageTot[st]||0)+1;
+    manTot[dm]=(manTot[dm]||0)+1;
+    men[dm]=1;
+  });
+  const cols=Object.keys(men).sort((a,b)=>a==='Unassigned'?1:(b==='Unassigned'?-1:a.localeCompare(b)));
+  // Stage rows follow the Stage dropdown's own order so the grid and the filter agree;
+  // any stage the dropdown does not list falls to the bottom, alphabetically.
+  const order=Array.prototype.map.call(document.querySelectorAll('#status-filter option'),o=>o.value).filter(Boolean);
+  stages.sort((a,b)=>{
+    const ia=order.indexOf(a),ib=order.indexOf(b);
+    if(ia>=0&&ib>=0) return ia-ib;
+    if(ia>=0) return -1;
+    if(ib>=0) return 1;
+    return a.localeCompare(b);
+  });
+
+  syncDraftsmanFilter(cols);
+
+  if(!base.length){ wrap.innerHTML='<div style="padding:16px;font-size:12px;color:var(--grey-mid);">No cases to break down.</div>'; return; }
+
+  let h='<table class="sg-table"><thead><tr><th class="sg-stage-h">Stage</th>';
+  cols.forEach(m=>{ h+='<th>'+escHtml(m)+'</th>'; });
+  h+='<th>All</th></tr></thead><tbody>';
+  stages.forEach(st=>{
+    h+='<tr><td class="sg-stage">'+escHtml(st)+'</td>';
+    cols.forEach(m=>{
+      const n=(counts[st]||{})[m]||0;
+      h+=n
+        ? '<td><button type="button" class="sg-cell" data-stage="'+escHtml(st)+'" data-man="'+escHtml(m)+'">'+n+'</button></td>'
+        : '<td><span class="sg-zero">\u00b7</span></td>';
+    });
+    h+='<td><button type="button" class="sg-cell sg-cell-tot" data-stage="'+escHtml(st)+'" data-man="">'+stageTot[st]+'</button></td></tr>';
+  });
+  h+='<tr class="sg-foot"><td class="sg-stage">All</td>';
+  cols.forEach(m=>{ h+='<td><button type="button" class="sg-cell sg-cell-tot" data-stage="" data-man="'+escHtml(m)+'">'+(manTot[m]||0)+'</button></td>'; });
+  h+='<td><button type="button" class="sg-cell sg-cell-tot" data-stage="" data-man="">'+base.length+'</button></td></tr></tbody></table>';
+  wrap.innerHTML=h;
+}
+
 document.getElementById('search').addEventListener('input',e=>renderCases(e.target.value.trim()));
 document.getElementById('status-filter').addEventListener('change',e=>{stageFilter=e.target.value;renderCases(document.getElementById('search').value.trim());});
+document.getElementById('draftsman-filter').addEventListener('change',e=>{draftsmanFilter=e.target.value;renderCases(document.getElementById('search').value.trim());});
+document.getElementById('sg-toggle').addEventListener('click',()=>{
+  try{ localStorage.setItem(SG_KEY, sgHidden()?'0':'1'); }catch(e){}
+  renderStageGrid();
+});
+// Delegated: the grid's innerHTML is replaced on every render, so per-button listeners would die.
+document.getElementById('sg-body').addEventListener('click',e=>{
+  const b=e.target.closest('.sg-cell');
+  if(!b) return;
+  stageFilter=b.getAttribute('data-stage')||'';
+  draftsmanFilter=b.getAttribute('data-man')||'';
+  document.getElementById('status-filter').value=stageFilter;
+  document.getElementById('draftsman-filter').value=draftsmanFilter;
+  renderCases(document.getElementById('search').value.trim());
+  const card=document.querySelector('#cases-section .table-card');
+  if(card) card.scrollIntoView({behavior:'smooth',block:'start'});
+});
 document.getElementById('btn-closed-toggle').addEventListener('click',async()=>{
   const btn=document.getElementById('btn-closed-toggle');
   showClosed=!showClosed;
   stageFilter='';
+  draftsmanFilter='';
   document.getElementById('status-filter').value='';
+  document.getElementById('draftsman-filter').value='';
   btn.textContent=showClosed?'Hide Closed':'Show Closed';
   btn.classList.toggle('active',showClosed);
   // First time only: fetch the closed cases, which the default preload deliberately excludes.
@@ -1582,7 +1722,7 @@ function renderUnassignedCases(){
       '</div>'+
       (laipSelHtml)+
       (task?'<span class="task-chip uc-task-chip" title="'+escHtml(task)+'">'+escHtml(task)+'</span>':'<span class="uc-task-chip"></span>')+
-      '<span class="task-chip uc-ack-chip" style="'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
+      '<span class="task-chip uc-ack-chip" title="'+(ackSent?'Acknowledged \u2014 click to clear':'Not acknowledged \u2014 click to mark as acknowledged')+'" style="cursor:pointer;'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
       (deadlineWrapHtml)+
       '<select class="uc-assign-sel" title="Assign to draftsman">'+
         '<option value="">Assign to\u2026</option>'+
@@ -1604,6 +1744,8 @@ function renderUnassignedCases(){
     const laipSel=row.querySelector('.uc-laip-sel');
     laipSel.addEventListener('click',e=>e.stopPropagation());
     laipSel.addEventListener('change',()=>{ updateLaip(c.id,laipSel.value,laipSel); });
+    const ackChip=row.querySelector('.uc-ack-chip');
+    ackChip.addEventListener('click',e=>{ e.stopPropagation(); toggleAck(c.id,ref,ackChip); });
     const deadlineInput=row.querySelector('.uc-deadline-input');
     const deadlineDisplay=row.querySelector('.uc-deadline-display');
     const deadlineEditBtn=row.querySelector('.uc-deadline-edit-btn');
@@ -1684,6 +1826,31 @@ async function updateLaip(caseId,value,selEl){
     alert('Failed to update: '+err.message);
   }finally{
     selEl.disabled=false;
+  }
+}
+
+// ── Toggle Acknowledgment Sent inline (S129) ──────────────────────────────
+// The chip reads Cases.AcknowledgmentSent — the same field the not-acknowledged band keys on.
+// Clicking flips it (behind a confirm) and re-renders so the case moves band straight away.
+async function toggleAck(caseId,ref,chipEl){
+  const caseObj=allCases.find(c=>c.id===caseId);
+  if(!caseObj) return;
+  const a=caseObj.fields['AcknowledgmentSent'];
+  const current=(a===true||a==='Yes'||a==='true'||a===1);
+  const label=ref?('case '+ref):'this case';
+  if(!confirm(current?('Clear the acknowledgement on '+label+'?'):('Mark '+label+' as acknowledged?'))) return;
+  chipEl.style.opacity='0.5';
+  try{
+    const r=await fetch('/api/caseupdate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:caseId,fields:{AcknowledgmentSent:!current}}),
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status+' '+(await r.text()).slice(0,80));
+    caseObj.fields['AcknowledgmentSent']=!current;
+    renderUnassignedCases();
+  }catch(err){
+    chipEl.style.opacity='';
+    alert('Failed to update acknowledgement: '+err.message);
   }
 }
 
