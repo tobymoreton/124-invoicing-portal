@@ -7647,7 +7647,11 @@ async function submitAddAction() {
     var h = [];
 
     h.push('<div class="card"><div class="card-head"><span class="card-title">Fee earners \u2014 who is the costs lawyer?</span></div>');
-    h.push('<div style="font-size:12.5px;color:var(--grey-mid);margin-bottom:10px;">Matched on \u201ccosts lawyer\u201d, \u201claw costs draftsman\u201d or \u201ccosts draftsman\u201d in the description. This is the only judgement in the whole extraction \u2014 correct it here and every figure below recalculates.</div>');
+    h.push('<div style="margin:12px 2px 14px;max-width:880px;padding:13px 17px;border-left:3px solid var(--gold);background:#FAF8F2;border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:12.5px;color:var(--navy-mid);line-height:1.9;">'
+      + '<strong>What to check:</strong> that every costs lawyer or draftsman on this bill is ticked, and that nobody else is.<br>'
+      + 'Ticked people have their time pulled <em>out</em> of profit costs and reported separately as bill preparation and other TMC time. Tick someone by mistake and their fees leave the figure claimed from the paying party; miss someone and TMC\u2019s own time stays buried in it.<br>'
+      + '<span style="color:var(--grey-mid);">Pre-ticked by matching \u201ccosts lawyer\u201d, \u201claw costs draftsman\u201d or \u201ccosts draftsman\u201d in the description \u2014 the only judgement in the whole extraction. Everything below recalculates as you tick.</span>'
+      + '</div>');
     h.push('<div style="max-height:230px;overflow:auto;border:1px solid var(--grey-light);border-radius:var(--radius-sm);">');
     m.feeEarners.forEach(function (fe) {
       var on = S.clRefs.has(fe.ref);
@@ -7659,7 +7663,11 @@ async function submitAddAction() {
 
     if (c.clLines.length) {
       h.push('<div class="card"><div class="card-head"><span class="card-title">Costs-lawyer lines \u2014 bill preparation, or other?</span></div>');
-      h.push('<div style="font-size:12.5px;color:var(--grey-mid);margin-bottom:10px;">Ticked = bill preparation, item (i). Unticked = other costs-lawyer time, item (ii). The first pass is a keyword match on the narrative; flip anything it got wrong.</div>');
+      h.push('<div style="margin:12px 2px 14px;max-width:880px;padding:13px 17px;border-left:3px solid var(--gold);background:#FAF8F2;border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:12.5px;color:var(--navy-mid);line-height:1.9;">'
+        + '<strong>What to do:</strong> read each narrative and make sure it is in the right bucket.<br>'
+        + '<strong>Ticked</strong> = preparing the bill or narrative, which becomes <em>Drafting time claimed</em>. <strong>Unticked</strong> = any other costs-lawyer work \u2014 negotiation, advice, assessment \u2014 which becomes <em>Other TMC PC</em> and drives the vatable flag.<br>'
+        + '<span style="color:var(--grey-mid);">The first pass is a keyword match on the narrative, so look hardest at anything that mentions a bill but is not drafting it.</span>'
+        + '</div>');
       h.push('<div style="max-height:280px;overflow:auto;border:1px solid var(--grey-light);border-radius:var(--radius-sm);">');
       c.clLines.forEach(function (l) {
         var isPrep = c.prep.indexOf(l) >= 0;
