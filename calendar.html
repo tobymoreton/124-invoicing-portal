@@ -63,6 +63,13 @@
     .ev:hover{filter:brightness(.96);}
     .ev-time{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--grey-mid);margin-right:4px;}
     .ev-cancel{text-decoration:line-through;opacity:.6;}
+    /* The signed-in user's OWN Outlook entries — dashed, muted, read-only. Nobody else
+       sees these: they are fetched by this page with the user's own token. */
+    .ev.mine{background:#EEF1F6;color:var(--navy-mid);border-left:3px dashed var(--grey-mid);}
+    .ev.mine .ev-time{color:var(--grey-mid);}
+    .cal-btn.off{opacity:.5;text-decoration:line-through;}
+    .mine-status{font-size:11px;color:rgba(245,242,235,.55);margin-top:3px;letter-spacing:.02em;}
+    .mine-status a{color:rgba(201,168,76,.9);}
 
     /* ── States ── */
     .state{padding:30px;text-align:center;color:var(--grey-mid);font-size:13px;}
@@ -119,11 +126,13 @@
   <div>
     <div class="cal-month" id="cal-month">&nbsp;</div>
     <div class="cal-sub" id="cal-sub">Holidays &middot; court hearings &middot; office closures &middot; training</div>
+    <div class="mine-status" id="mine-status"></div>
   </div>
   <div class="cal-nav">
     <button class="cal-btn" onclick="shiftMonth(-1)">&larr;</button>
     <button class="cal-btn" onclick="goToday()">Today</button>
     <button class="cal-btn" onclick="shiftMonth(1)">&rarr;</button>
+    <button class="cal-btn" id="mine-btn" onclick="toggleMine()" title="Overlay your own Outlook calendar. Only you can see it.">My Outlook</button>
     <button class="cal-btn primary" onclick="openAdd()">+ Add entry</button>
   </div>
 </div>
@@ -228,9 +237,11 @@
   </div>
 </div>
 
+<!-- Self-hosted MSAL (@azure/msal-browser 4.30.0, UMD, global `msal`) — no CDN dependency. -->
+<script src="/vendor/msal-browser.min.js"></script>
 <script>
 /* ────────────────────────────────────────────────────────────────────────────
-   P124 — Shared Calendar (S82)
+   P124 — Shared Calendar (S82)  ·  page build: cal-page-v2-mine-overlay-20260915
 
    Source: the Outlook calendar of automation@tmclegal.co.uk, read and written by
    /api/calendar app-only. DELIBERATELY standalone — nothing here touches case
@@ -256,6 +267,165 @@ var _events = [];
 var _byId   = {};          // id → event, for the edit modal
 var _editId = null;        // null = creating, otherwise amending this event
 var _me = '';              // signed-in user's first name, lower-case, if on the roster
+var _meEmail = '';         // signed-in user's email — the loginHint for the Outlook overlay
+var _lastStart = null;     // grid start of the month currently rendered, for re-renders
+
+/* ── "My Outlook" overlay ─────────────────────────────────────────────────────
+   The signed-in user's OWN Outlook calendar, read by THIS PAGE with a delegated
+   Calendars.Read token (MSAL, auth-code + PKCE, no secret in the browser).
+
+   PRIVACY IS STRUCTURAL, NOT A FILTER. Nothing here goes near /api/calendar or the
+   automation@ mailbox. The token can only read the calendar of whoever is signed in,
+   and the events live in this tab's memory (_mine) and nowhere else. There is no
+   server code path that could show one person's entries to another.
+
+   Entra prerequisites on app reg 93e76e96-82d5-469a-8295-3cdcc0780a8b:
+     · Authentication → add platform "Single-page application" with redirect URI
+       https://<portal host>/calendar.html  (MUST be the SPA platform, not Web —
+       Web gives AADSTS9002326 "cross-origin token redemption" on the PKCE exchange)
+     · API permissions → Microsoft Graph → DELEGATED → Calendars.Read → admin consent
+       (delegated only; the S82 header's ban is on the APPLICATION permission and the
+       Exchange RBAC mailbox scope is untouched by this)
+   Until both are done the overlay fails quietly with the AADSTS reason in the status
+   line under the month name. The shared calendar is never affected by it.
+
+   Token path: cached account → acquireTokenSilent; no account yet → ssoSilent riding
+   the Entra session the portal login already created (hidden iframe; can fail under
+   third-party-cookie blocking); either failing → a "Sign in" link, popup on click,
+   after which the cache makes every later visit silent.
+
+   The redirect URI is this page, so MSAL's hidden iframe and popup both LOAD this
+   page. IN_AUTH_WINDOW detects that and the page then does nothing at all — no API
+   calls, no grid — MSAL in the parent only needs the URL hash.
+   ─────────────────────────────────────────────────────────────────────────── */
+var IN_AUTH_WINDOW = (window.self !== window.top)
+  || (!!window.opener && window.opener !== window && /[#?&](code|error|state)=/.test(window.location.href));
+var MSAL_CFG = {
+  auth: {
+    clientId:    '93e76e96-82d5-469a-8295-3cdcc0780a8b',
+    authority:   'https://login.microsoftonline.com/fc500a39-a6ad-4585-b27f-33c254dd200c',
+    redirectUri: window.location.origin + '/calendar.html',
+    navigateToLoginRequestUrl: false,
+  },
+  cache: { cacheLocation: 'localStorage' },
+};
+var GRAPH_SCOPES = ['https://graph.microsoft.com/Calendars.Read'];
+var _pca = null;           // MSAL PublicClientApplication, built on first use
+var _mine = [];            // the user's own Outlook events for the visible window — memory only
+var _mineOn = true;        // toggle state, remembered per browser
+var _mineSeq = 0;          // discards an overlay fetch that lands after the month has moved
+try { _mineOn = localStorage.getItem('p124.cal.mine') !== '0'; } catch (e) {}
+
+function mineStatus(html) {
+  var el = document.getElementById('mine-status');
+  if (el) el.innerHTML = html || '';
+}
+function syncMineBtn() {
+  var b = document.getElementById('mine-btn');
+  if (b) b.className = 'cal-btn' + (_mineOn ? '' : ' off');
+}
+function toggleMine() {
+  _mineOn = !_mineOn;
+  try { localStorage.setItem('p124.cal.mine', _mineOn ? '1' : '0'); } catch (e) {}
+  syncMineBtn();
+  if (!_mineOn) { _mine = []; _mineSeq++; mineStatus(''); if (_lastStart) render(_lastStart); return; }
+  if (_lastStart) loadMine(_lastStart, addDays(_lastStart, 41));
+}
+
+// Short, diagnosable reason for the status line: the AADSTS code is what matters.
+function authReason(e) {
+  var m = /AADSTS\d+/.exec(String(e && e.message || ''));
+  return m ? m[0] : ((e && (e.errorCode || e.message)) || 'unknown error').toString().slice(0, 80);
+}
+
+async function getGraphToken(interactive) {
+  if (!window.msal) throw new Error('MSAL library did not load (/vendor/msal-browser.min.js)');
+  if (!_pca) {
+    _pca = new msal.PublicClientApplication(MSAL_CFG);
+    await _pca.initialize();
+  }
+  var accts = _pca.getAllAccounts();
+  var acct  = null;
+  for (var i = 0; i < accts.length; i++) {
+    if (String(accts[i].username || '').toLowerCase() === _meEmail) { acct = accts[i]; break; }
+  }
+  if (!acct && accts.length && !_meEmail) acct = accts[0];
+  try {
+    if (acct) return (await _pca.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: acct })).accessToken;
+    if (_meEmail) return (await _pca.ssoSilent({ scopes: GRAPH_SCOPES, loginHint: _meEmail })).accessToken;
+    throw new Error('no signed-in account');
+  } catch (e) {
+    if (!interactive) throw e;
+    var req = { scopes: GRAPH_SCOPES };
+    if (_meEmail) req.loginHint = _meEmail;
+    return (await _pca.acquireTokenPopup(req)).accessToken;
+  }
+}
+
+async function signInMine() {
+  mineStatus('Signing in…');
+  try {
+    await getGraphToken(true);
+    if (_lastStart) loadMine(_lastStart, addDays(_lastStart, 41));
+  } catch (e) {
+    mineStatus('My Outlook: sign-in failed — ' + esc(authReason(e))
+      + ' &middot; <a href="#" onclick="signInMine();return false;">try again</a>');
+  }
+}
+
+// start/end are grid dates (YYYY-MM-DD). Padded a day each side: the query window is
+// UTC while the response (Prefer header) is London wall-clock, and a day of slack
+// costs nothing.
+async function loadMine(start, end) {
+  var seq = ++_mineSeq;
+  if (!_mineOn) return;
+  var token;
+  try {
+    token = await getGraphToken(false);
+  } catch (e) {
+    if (seq !== _mineSeq) return;
+    mineStatus('<a href="#" onclick="signInMine();return false;">Sign in to show your Outlook</a>'
+      + ' <span title="' + esc(String(e && e.message || '')) + '">(' + esc(authReason(e)) + ')</span>');
+    return;
+  }
+  try {
+    var url = 'https://graph.microsoft.com/v1.0/me/calendarView'
+            + '?startDateTime=' + encodeURIComponent(addDays(start, -1) + 'T00:00:00')
+            + '&endDateTime='   + encodeURIComponent(addDays(end,    2) + 'T00:00:00')
+            + '&$select=id,subject,start,end,isAllDay,isCancelled,showAs,location,webLink'
+            + '&$top=250&$orderby=start/dateTime';
+    var out = [], guard = 0;
+    while (url && guard++ < 10) {
+      var resp = await fetch(url, { headers: {
+        'Authorization': 'Bearer ' + token,
+        'Prefer': 'outlook.timezone="Europe/London"',   // same wall-clock convention as /api/calendar
+      }});
+      var page = await resp.json();
+      if (!resp.ok) throw new Error((page && page.error && page.error.message) || ('HTTP ' + resp.status));
+      ((page && page.value) || []).forEach(function (e) {
+        out.push({
+          id:        'mine:' + (e.id || ''),
+          mine:      true,
+          subject:   e.subject || '(no title)',
+          start:     (e.start && e.start.dateTime) || null,
+          end:       (e.end   && e.end.dateTime)   || null,
+          isAllDay:  !!e.isAllDay,
+          location:  (e.location && e.location.displayName) || null,
+          cancelled: !!e.isCancelled,
+          webLink:   e.webLink || null,
+        });
+      });
+      url = (page && page['@odata.nextLink']) || null;
+    }
+    if (seq !== _mineSeq) return;      // month moved while this was in flight
+    _mine = out;
+    mineStatus(out.length + ' from your Outlook — dashed, visible only to you');
+    if (_lastStart) render(_lastStart);
+  } catch (e) {
+    if (seq !== _mineSeq) return;
+    mineStatus('My Outlook unavailable: ' + esc(String(e && e.message || e).slice(0, 120)));
+  }
+}
 
 // Who the entry defaults to. An admin adding leave for a draftsman just changes the
 // dropdown — no permission gate, because the creator is recorded on every entry
@@ -267,8 +437,9 @@ async function whoAmI() {
     var data = await resp.json();
     var user = data && (data.clientPrincipal || (Array.isArray(data) ? (data[0] || {}).clientPrincipal : null));
     var email = user && user.userDetails ? String(user.userDetails).toLowerCase() : '';
+    _meEmail = email;
     _me = email.indexOf('@') > -1 ? email.split('@')[0] : '';
-  } catch (e) { _me = ''; }   // not fatal — the field just defaults to Firm-wide
+  } catch (e) { _me = ''; _meEmail = ''; }   // not fatal — the field just defaults to Firm-wide
 }
 
 // '2026-07-18T19:00:00.0000000' → {ymd:'2026-07-18', hh:19, mi:0}. No Date().
@@ -333,7 +504,9 @@ async function load() {
     _byId = {};
     _events.forEach(function (e) { if (e.id) _byId[e.id] = e; });
     stateEl.style.display = 'none';
+    _mine = [];                        // stale overlay from the previous month is dropped
     render(start);
+    loadMine(start, end);              // not awaited — the shared grid never waits on Outlook
   } catch (err) {
     gridEl.innerHTML = '';
     stateEl.className = 'state err';
@@ -342,9 +515,10 @@ async function load() {
 }
 
 function render(start) {
+  _lastStart = start;
   // Bucket events by day. Multi-day entries appear in every day they span.
   var byDay = {};
-  _events.forEach(function (e) {
+  _events.concat(_mineOn ? _mine : []).forEach(function (e) {
     var s = parseGraph(e.start), en = parseGraph(e.end);
     if (!s) return;
     var lastDay = en ? (e.isAllDay ? addDays(en.ymd, -1) : en.ymd) : s.ymd;
@@ -382,6 +556,13 @@ function render(start) {
       var time  = (!e.isAllDay && it.first) ? '<span class="ev-time">' + hhmm(it.s) + '</span>' : '';
       var title = esc((e.subject || '') + (e.location ? ' — ' + e.location : '')
                     + (e.preview ? '\n\n' + e.preview : ''));
+      if (e.mine) {
+        // Read-only here — it is the user's own Outlook entry, edited in Outlook.
+        html += '<a class="ev mine' + (e.cancelled ? ' ev-cancel' : '') + '"'
+             + (e.webLink ? ' href="' + esc(e.webLink) + '" target="_blank" rel="noopener"' : ' href="#" onclick="return false;"')
+             + ' title="' + title + '\n\nFrom your Outlook — visible only to you">' + time + label + '</a>';
+        return;
+      }
       html += '<a class="ev ' + (e.isAllDay ? 'allday' : 'timed') + (e.cancelled ? ' ev-cancel' : '') + '"'
            + ' href="#" onclick="openEdit(this.getAttribute(\'data-id\'));return false;"'
            + ' data-id="' + esc(e.id || '') + '"'
@@ -654,8 +835,10 @@ document.getElementById('f-date').addEventListener('change', function () {
   if (!to.value || to.value < this.value) to.value = this.value;
 });
 
-whoAmI();
-goToday();
+if (!IN_AUTH_WINDOW) {
+  syncMineBtn();
+  whoAmI().then(goToday);   // the overlay needs the email as loginHint before the first load
+}
 </script>
 </body>
 </html>
