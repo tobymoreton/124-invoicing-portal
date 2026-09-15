@@ -64,7 +64,7 @@ const CAL_MAILBOX    = process.env.CALENDAR_MAILBOX || 'automation@tmclegal.co.u
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
 const TZ             = 'Europe/London';
 // BUMP ON EVERY CHANGE TO THIS FILE (standing rule, S81).
-const BUILD          = 'S108-cal-v6-localday';
+const BUILD          = 'cal-v7-portal-only-20260915';
 
 // Who an entry is FOR — distinct from who created it. Mirrors the portal roster
 // (case.html PERSON_EMAILS) minus David, a leaver: historic data is not an issue
@@ -150,6 +150,13 @@ module.exports = async function (context, req) {
     while (url && guard++ < 10) {
       const page = await graphGet(url, token);
       ((page && page.value) || []).forEach(e => {
+        // PORTAL ENTRIES ONLY (v7). The mailbox calendar is also open in staff Outlook,
+        // so anything typed into it there — or any invite the mailbox accepts — lands
+        // in calendarView too. Every portal write stamps 'via the TMC portal by' into
+        // the body (create and amend), so that stamp is the membership test. Body is
+        // checked in full, not bodyPreview, which Graph truncates at ~255 chars.
+        const bodyText = (e.body && e.body.content) || e.bodyPreview || '';
+        if (!/via the TMC portal by /.test(bodyText)) return;
         events.push({
           id:        e.id || null,
           subject:   e.subject || '(no title)',
