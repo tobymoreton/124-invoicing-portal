@@ -7680,11 +7680,11 @@ async function submitAddAction() {
     }
 
     h.push('<div class="card"><div class="card-head"><span class="card-title">Verification</span></div>');
-    h.push('<table style="width:100%;border-collapse:collapse;font-size:13px;"><tbody>');
+    h.push('<table style="width:100%;border-collapse:collapse;font-size:13px;margin:6px 2px 0;"><tbody>');
     var row = function (n, label, amt) {
-      h.push('<tr><td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);width:34px;">' + n + '</td>'
-        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);">' + label + '</td>'
-        + '<td style="padding:6px 8px;border-bottom:1px solid var(--grey-faint);text-align:right;font-weight:600;white-space:nowrap;">' + amt + '</td></tr>');
+      h.push('<tr><td style="padding:9px 14px;border-bottom:1px solid var(--grey-faint);color:var(--grey-mid);width:40px;">' + n + '</td>'
+        + '<td style="padding:9px 14px;border-bottom:1px solid var(--grey-faint);">' + label + '</td>'
+        + '<td style="padding:9px 14px;border-bottom:1px solid var(--grey-faint);text-align:right;font-weight:600;white-space:nowrap;">' + amt + '</td></tr>');
     };
     row('i', 'Bill preparation', money(c.iAmt), c.iHrs + ' hrs \u00b7 ' + c.prep.length + ' lines');
     row('ii', 'Other costs-lawyer time', money(c.iiAmt), c.iiHrs + ' hrs \u00b7 ' + c.other.length + ' lines');
@@ -7701,25 +7701,29 @@ async function submitAddAction() {
     row('xii', 'Other costs-lawyer PC vatable?', c.xii === null ? '\u2014' : c.xii, c.xii === null ? 'left blank' : '');
     h.push('</tbody></table>');
 
-    h.push('<div style="margin-top:14px;">');
-    c.checks.forEach(function (ck) {
-      h.push('<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;font-size:12.5px;color:' + (ck.ok ? 'var(--green)' : '#991B1B') + ';">'
-        + '<span>' + (ck.ok ? '\u2713' : '\u2717') + '</span><span style="flex:1;">' + ck.label + '</span>'
-        + '<span style="color:var(--grey-mid);">' + ck.detail + '</span></div>');
+    h.push('<div style="margin:16px 2px 0;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--grey-mid);">Cross-checks</div>');
+    h.push('<div style="margin:8px 2px 0;border:1px solid var(--grey-light);border-radius:var(--radius-sm);overflow:hidden;">');
+    c.checks.forEach(function (ck, i) {
+      h.push('<div style="display:flex;gap:12px;align-items:baseline;padding:10px 16px;font-size:12.5px;line-height:1.6;'
+        + (i ? 'border-top:1px solid var(--grey-faint);' : '')
+        + (ck.ok ? '' : 'background:#FEF2F2;')
+        + 'color:' + (ck.ok ? 'var(--green)' : '#991B1B') + ';">'
+        + '<span style="width:14px;flex:none;">' + (ck.ok ? '\u2713' : '\u2717') + '</span>'
+        + '<span style="flex:1;">' + ck.label + '</span>'
+        + '<span style="color:var(--grey-mid);white-space:nowrap;">' + ck.detail + '</span></div>');
     });
     h.push('</div>');
     if (c.warn.length) {
-      h.push('<div style="margin-top:12px;padding:10px 14px;border-radius:var(--radius-sm);background:#FEF3C7;color:#78350F;font-size:12.5px;line-height:1.6;">'
-        + c.warn.map(function (w) { return '\u26a0 ' + esc(w); }).join('<br>') + '</div>');
+      h.push('<div style="margin:16px 2px 0;padding:14px 18px;border-left:3px solid #D9A441;border-radius:0 var(--radius-sm) var(--radius-sm) 0;background:#FEF3C7;color:#78350F;font-size:12.5px;line-height:1.9;">'
+        + c.warn.map(function (w) { return '<div style="display:flex;gap:10px;align-items:baseline;"><span style="flex:none;">\u26a0</span><span>' + esc(w) + '</span></div>'; }).join('')
+        + '</div>');
     }
-    h.push('<div style="margin-top:12px;font-size:11.5px;color:var(--grey-mid);line-height:1.6;">Read from: '
+    h.push('<div style="margin:18px 2px 2px;padding-top:12px;border-top:1px solid var(--grey-faint);font-size:11.5px;color:var(--grey-mid);line-height:1.75;">Read from: '
       + esc([m.sheetNames.feeEarners, m.sheetNames.partSummary, m.sheetNames.billPod, m.sheetNames.disb, m.sheetNames.billSummary, m.sheetNames.counsel].filter(Boolean).join(' \u00b7 ')) + '</div>');
     h.push('</div>');
 
-    h.push('<div class="card"><div class="card-head"><span class="card-title">What would be written</span></div>');
+    h.push('<div class="card"><div class="card-head"><span class="card-title">Import</span></div>');
     h.push(rb.html);
-    h.push('<pre style="margin-top:12px;background:var(--navy);color:var(--gold-pale);padding:14px;border-radius:var(--radius-sm);font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;overflow:auto;max-height:340px;">'
-      + esc(JSON.stringify({ ref: pageRef, itemId: (typeof caseItemId !== 'undefined' ? caseItemId : null), sourceFilename: S.fileName, fields: payloadOf(m, c) }, null, 2)) + '</pre>');
     h.push('<button class="btn-pdf" id="bf-import"' + (canImport ? '' : ' disabled')
       + ' style="margin-top:14px;width:auto;padding:12px 30px;display:inline-flex;' + (canImport ? '' : 'opacity:.45;cursor:not-allowed;') + '">Import these figures</button>');
     h.push('<span id="bf-import-msg" class="edit-msg" style="margin-left:14px;"></span>');
@@ -7775,7 +7779,10 @@ async function submitAddAction() {
       return;
     }
     S.fileName = file.name;
-    var mm = file.name.match(/^\s*(\d{6,})/);
+    // The reference can sit anywhere in the filename — "Hasan-1741252-eBill.xlsx"
+    // as readily as "1741277-Mochia-eBill.xlsx". Anchoring this to the start of
+    // the name made the guard miss the very case it exists to catch.
+    var mm = file.name.match(/(?:^|[^0-9])(\d{7})(?:[^0-9]|$)/);
     S.refFromName = mm ? mm[1] : null;
     status('Reading ' + esc(file.name) + '\u2026');
     var fr = new FileReader();
