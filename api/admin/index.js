@@ -80,20 +80,25 @@ function buildFields(list, body) {
     if (body.notes      != null) f['Notes']                           = body.notes;
     if (body.qualified  != null) f['Date_x0020_of_x0020_qualificati'] = body.qualified;
   } else if (list === 'courts') {
-    if (body.title    != null) f['Title']    = body.title;
-    if (body.address1 != null) f['Address1'] = body.address1;
-    if (body.address2 != null) f['Address2'] = body.address2;
-    if (body.address3 != null) f['Address3'] = body.address3;
-    if (body.address4 != null) f['Address4'] = body.address4;
-    if (body.address5 != null) f['Address5'] = body.address5;
+    // S130 (2026-09-16): Courts list address columns are field_1..field_5 (Excel-import names),
+    // not Address1..5 — Graph POST 400 "Field 'Address1' is not recognized". Confirmed from a
+    // bare $expand=fields against the live list (45 courts). Mirrors the fix in api/reflists.
+    if (body.title    != null) f['Title']   = body.title;
+    if (body.address1 != null) f['field_1'] = body.address1;
+    if (body.address2 != null) f['field_2'] = body.address2;
+    if (body.address3 != null) f['field_3'] = body.address3;
+    if (body.address4 != null) f['field_4'] = body.address4;
+    if (body.address5 != null) f['field_5'] = body.address5;
   } else if (list === 'opponentfirms') {
-    if (body.title    != null) f['Title']                       = body.title;
-    if (body.address1 != null) f['Address_x0020_line_x0020_1'] = body.address1;
-    if (body.address2 != null) f['Address_x0020_line_x0020_2'] = body.address2;
-    if (body.address3 != null) f['Address_x0020_line_x0020_3'] = body.address3;
-    if (body.address4 != null) f['Address_x0020_line_x0020_4'] = body.address4;
-    if (body.address5 != null) f['Address_x0020_line_x0020_5'] = body.address5;
-    if (body.website  != null) f['Website']                     = body.website;
+    // S130: brought in line with api/reflists (S108) — the real internal names are Addressline1..5,
+    // not Address_x0020_line_x0020_N. Confirmed against the live list 2026-08-06 (281 firms).
+    if (body.title    != null) f['Title']        = body.title;
+    if (body.address1 != null) f['Addressline1'] = body.address1;
+    if (body.address2 != null) f['Addressline2'] = body.address2;
+    if (body.address3 != null) f['Addressline3'] = body.address3;
+    if (body.address4 != null) f['Addressline4'] = body.address4;
+    if (body.address5 != null) f['Addressline5'] = body.address5;
+    if (body.website  != null) f['Website']      = body.website;
   } else if (list === 'opponentcws') {
     if (body.title != null) f['Title']              = body.title;
     if (body.phone != null) f['Phone_x0020_number'] = body.phone;
