@@ -267,13 +267,20 @@
     .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;}
 
     /* ── Read-only grids ─────────────────────── */
-    .read-grid{display:grid;grid-template-columns:1fr auto;}
+    .read-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;container-type:inline-size;}
     .read-row{display:contents;}
     .read-row dt,.read-row dd{padding:10px 24px;border-bottom:1px solid var(--grey-faint);font-size:13.5px;}
     .read-row:last-child dt,.read-row:last-child dd{border-bottom:none;}
     .read-row dt{color:var(--grey-mid);}
     .read-row dd{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--navy);text-align:right;white-space:nowrap;}
-    .read-row:has(dd.ov-editable) dt{white-space:nowrap;}
+    .read-row:has(dd.ov-editable) dt{white-space:normal;}
+    /* S125: narrow card in edit mode (3-col at ~1100-1300px viewport, or zoomed) — the date inputs were
+       overflowing the card and being clipped by .card{overflow:hidden}. Below 340px the row stacks label-over-input. */
+    @container (max-width:340px){
+      .tab-panel.editing .read-row:has(dd.ov-editable){display:block;grid-column:1/-1;}
+      .tab-panel.editing .read-row:has(dd.ov-editable) dt{border-bottom:none;padding-bottom:2px;}
+      .tab-panel.editing .read-row:has(dd.ov-editable) dd{padding-top:0;}
+    }
     /* S121: VAT on Drafting Fee sits first in Billing Info and is tinted, because it was at the
        bottom of the card where nobody read it and a wrong setting reached several invoices. */
     .read-row.ov-row-flag dt,.read-row.ov-row-flag dd{background:#FFFBEB;font-weight:600;}
