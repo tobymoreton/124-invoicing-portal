@@ -107,12 +107,18 @@ function buildFields(list, body) {
     // 'Experience' internal name not yet confirmed (no populated record) - omitted
     // from write until verified.
   } else if (list === 'courts') {
-    if (body.title    != null) f['Title']    = body.title;
-    if (body.address1 != null) f['Address1'] = body.address1;
-    if (body.address2 != null) f['Address2'] = body.address2;
-    if (body.address3 != null) f['Address3'] = body.address3;
-    if (body.address4 != null) f['Address4'] = body.address4;
-    if (body.address5 != null) f['Address5'] = body.address5;
+    // S130 (2026-09-16): 'Address1'..'Address5' do not exist on the Courts list — Graph POST 400
+    // "Field 'Address1' is not recognized" (Kelly, Wilsenach-1741267). The list was created by
+    // Excel import, so the address columns carry generic internal names field_1..field_5, in
+    // address-line order. Confirmed from a bare $expand=fields against the live list 2026-09-16
+    // (45 courts; e.g. County Court at Central London = Thomas More Building / Royal Courts of
+    // Justice / Strand / London / WC2A 2LL in field_1..field_5). Same bug class as S108.
+    if (body.title    != null) f['Title']   = body.title;
+    if (body.address1 != null) f['field_1'] = body.address1;
+    if (body.address2 != null) f['field_2'] = body.address2;
+    if (body.address3 != null) f['field_3'] = body.address3;
+    if (body.address4 != null) f['field_4'] = body.address4;
+    if (body.address5 != null) f['field_5'] = body.address5;
   } else if (list === 'opponentfirms') {
     // S108: these were written as 'Address_x0020_line_x0020_N' — the DISPLAY name 'Address line 1'
     // escaped as if it were the internal one. The real internal names have no spaces:
