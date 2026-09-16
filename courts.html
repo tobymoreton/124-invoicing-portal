@@ -223,8 +223,11 @@ async function load(){
   }
 }
 
+// S130 (2026-09-16): the Courts list's address columns are field_1..field_5 (Excel-import
+// internal names), not Address1..5 — the old names matched nothing, which is why every Address
+// and Postcode cell showed a dash. Confirmed from a bare $expand=fields against the live list.
 function addressLine(f){
-  return [f['Address1'],f['Address2'],f['Address3'],f['Address4']].filter(Boolean).join(', ') || '—';
+  return [f['field_1'],f['field_2'],f['field_3'],f['field_4']].filter(Boolean).join(', ') || '—';
 }
 
 function render(q){
@@ -232,7 +235,7 @@ function render(q){
   const ql = q.toLowerCase();
   const filtered = q ? allItems.filter(i => {
     const name = (i.fields['Title']||'').toLowerCase();
-    const addr = [i.fields['Address1'],i.fields['Address2'],i.fields['Address3'],i.fields['Address4'],i.fields['Address5']].join(' ').toLowerCase();
+    const addr = [i.fields['field_1'],i.fields['field_2'],i.fields['field_3'],i.fields['field_4'],i.fields['field_5']].join(' ').toLowerCase();
     return name.includes(ql) || addr.includes(ql);
   }) : allItems;
 
@@ -247,7 +250,7 @@ function render(q){
     const f = item.fields;
     const name = f['Title'] || '—';
     const addr = addressLine(f);
-    const postcode = f['Address5'] || '—';
+    const postcode = (f['field_5'] || '').trim() || '—';
 
     const tr = document.createElement('tr');
     tr.innerHTML =
@@ -283,11 +286,11 @@ function openEdit(item){
   const f = item.fields;
   document.getElementById('modal-title').textContent = 'Edit Court';
   document.getElementById('f-name').value = f['Title'] || '';
-  document.getElementById('f-a1').value = f['Address1'] || '';
-  document.getElementById('f-a2').value = f['Address2'] || '';
-  document.getElementById('f-a3').value = f['Address3'] || '';
-  document.getElementById('f-a4').value = f['Address4'] || '';
-  document.getElementById('f-a5').value = f['Address5'] || '';
+  document.getElementById('f-a1').value = f['field_1'] || '';
+  document.getElementById('f-a2').value = f['field_2'] || '';
+  document.getElementById('f-a3').value = f['field_3'] || '';
+  document.getElementById('f-a4').value = f['field_4'] || '';
+  document.getElementById('f-a5').value = (f['field_5'] || '').trim();
   document.getElementById('save-msg').textContent = '';
   document.getElementById('modal-overlay').classList.add('open');
 }
