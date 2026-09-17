@@ -5363,14 +5363,55 @@ function renderVatOnDraftingBanner() {
 }
 
 const VAT_BANNER_TABS = ['tab-costs', 'tab-offers', 'tab-settlement', 'tab-scenarios'];
+// S131 (2026-09-16, Tracy): the strip carries a tick box - "0% VAT is correct on this case". Ticking
+// writes the confirmer + time to the NEW text column VatZeroConfirmed ("Tracy|2026-09-16T12:05:00Z";
+// blank = unconfirmed) and, where VAT % Claimed was never entered, writes an explicit 0 so the case
+// stops reading as "not entered". A confirmed case shows a calm green strip naming who confirmed and
+// when, with an Undo. Saving a non-zero VAT % on Costs Claimed clears the confirmation (see save).
+// Blank/0 cases without a confirmation stay red exactly as before - nothing is auto-confirmed, and
+// an explicit 0 on its own is NOT a confirmation (the FileMaker migrations hold a 0 nobody chose).
+const VAT_ZERO_RED   = 'margin:0 0 16px;padding:12px 20px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15);color:#991B1B;font-size:13.5px;line-height:1.5;';
+const VAT_ZERO_GREEN = 'margin:0 0 16px;padding:10px 20px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:var(--radius-sm);color:#166534;font-size:13px;line-height:1.5;';
+function vatZeroConfirmation() {
+  const v = String(caseFields['VatZeroConfirmed'] || '').trim();
+  if (!v) return null;
+  const i = v.indexOf('|');
+  return { by: i === -1 ? v : v.slice(0, i), at: i === -1 ? '' : v.slice(i + 1) };
+}
+let _vatZeroSaving = false;
+async function vatZeroSetConfirmed(on) {
+  if (_vatZeroSaving) return; _vatZeroSaving = true;
+  const fields = {};
+  if (on) {
+    fields['VatZeroConfirmed'] = (switcherCallerName || switcherCallerEmail || 'unknown') + '|' + new Date().toISOString();
+    const raw = caseFields['VAT_x0020__x0025__x0020_Claimed'];
+    if (raw === null || raw === undefined || raw === '') fields['VAT_x0020__x0025__x0020_Claimed'] = 0;
+  } else {
+    fields['VatZeroConfirmed'] = null;
+  }
+  try {
+    const resp = await fetch('/api/caseupdate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: caseItemId, fields }) });
+    if (!resp.ok) throw new Error((await resp.text()) || 'HTTP ' + resp.status);
+    Object.assign(caseFields, fields);
+    if ('VAT_x0020__x0025__x0020_Claimed' in fields) { computeFigures(); computeInterest(); renderCostsTab(); renderSettlementTab(); renderOffersTab(); }
+  } catch (err) {
+    alert('Could not save the VAT confirmation: ' + err.message);
+  }
+  _vatZeroSaving = false;
+  renderVatZeroBanner();
+}
 function renderVatZeroBanner() {
   const raw   = caseFields['VAT_x0020__x0025__x0020_Claimed'];
   const blank = raw === null || raw === undefined || raw === '';
   const zero  = (parseFloat(raw) || 0) === 0;
   const show  = blank || zero;
-  const msg   = blank
-    ? '⚠️ <strong>VAT % Claimed has not been entered</strong> — it is being treated as 0%, so every VAT figure on this case is nil. Check this is intentional and set it on the Costs Claimed tab.'
-    : '⚠️ <strong>VAT is set at 0%</strong> — every VAT figure on this case is therefore nil. Check this is intentional; change it on the Costs Claimed tab.';
+  const conf  = vatZeroConfirmation();
+  const chk   = '<label style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-weight:600;"><input type="checkbox" class="vat-zero-confirm" style="width:16px;height:16px;accent-color:#DC2626;cursor:pointer;"> Tick to confirm 0% VAT is correct on this case</label>';
+  const msg   = conf
+    ? '✓ <strong>0% VAT confirmed</strong> by ' + escHtml(conf.by) + (conf.at ? ' on ' + fmtDate(conf.at) : '') + '. <button type="button" class="vat-zero-undo" style="background:none;border:none;padding:0;margin-left:6px;color:#166534;text-decoration:underline;cursor:pointer;font:inherit;">Undo</button>'
+    : (blank
+        ? '⚠️ <strong>VAT % Claimed has not been entered</strong> — it is being treated as 0%, so every VAT figure on this case is nil. Check this is intentional and set it on the Costs Claimed tab.'
+        : '⚠️ <strong>VAT is set at 0%</strong> — every VAT figure on this case is therefore nil. Check this is intentional; change it on the Costs Claimed tab.') + '<br>' + chk;
   VAT_BANNER_TABS.forEach(id => {
     const panel = document.getElementById(id);
     if (!panel) return;
@@ -5378,11 +5419,13 @@ function renderVatZeroBanner() {
     if (!b) {
       b = document.createElement('div');
       b.className = 'vat-zero-banner';
-      b.style.cssText = 'margin:0 0 16px;padding:12px 20px;background:#FEF2F2;border:2px solid #DC2626;border-radius:var(--radius-sm);box-shadow:0 0 0 3px rgba(220,38,38,.15);color:#991B1B;font-size:13.5px;line-height:1.5;';
       panel.insertBefore(b, panel.firstChild);
     }
+    b.style.cssText = conf ? VAT_ZERO_GREEN : VAT_ZERO_RED;
     b.innerHTML = msg;
     b.style.display = show ? 'block' : 'none';
+    const c = b.querySelector('.vat-zero-confirm'); if (c) c.addEventListener('change', () => { if (c.checked) { c.disabled = true; vatZeroSetConfirmed(true); } });
+    const u = b.querySelector('.vat-zero-undo');    if (u) u.addEventListener('click', () => vatZeroSetConfirmed(false));
   });
 }
 
@@ -5793,6 +5836,8 @@ document.getElementById('btn-costs-save').addEventListener('click', async () => 
     'TMC_x0020_drafting_x0020_time_x0':'fc-TMCDraftingLA',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const vp = document.getElementById('fc-VatPct').value; fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+  // S131: a non-zero VAT % supersedes any 0%-confirmation - clear it so the tick cannot outlive the value it vouched for.
+  if (vp !== '' && (parseFloat(vp) || 0) !== 0 && caseFields['VatZeroConfirmed']) fields['VatZeroConfirmed'] = null;
   fields['VatOnDraftingFee_x003f_'] = (document.getElementById('fc-VatOnDrafting')?.value || 'Yes') === 'Yes'; // S121
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderVatZeroBanner(); renderVatOnDraftingBanner(); renderOverviewTab(); renderInterestTab(); updateBillDraftedBanner(); tabSetReadMode('costs','tab-costs'); }
@@ -6377,7 +6422,7 @@ function renderOvDocs() {
   attFiles.forEach(f => { const t = ((f.docType || '').trim()) || 'Uncategorised'; (groups[t] = groups[t] || []).push(f); });
   el.innerHTML = Object.keys(groups).sort().map(t =>
     `<div style="margin-bottom:12px;"><div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;">${escHtml(t)}</div>`
-    + groups[t].map(f => `<div style="padding:2px 0;"><a href="${escHtml(attOpenUrl(f))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a><span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(f.size)}${f.modified ? ' \u00b7 ' + fmtDate(f.modified) : ''}</span></div>`).join('')
+    + groups[t].map(f => `<div style="padding:2px 0;">${attNameLink(f)}<span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(f.size)}${f.modified ? ' \u00b7 ' + fmtDate(f.modified) : ''}</span></div>`).join('')
     + '</div>').join('');
 }
 
@@ -6396,6 +6441,77 @@ function attOpenUrl(f) {
     }
   }
   return u;
+}
+// S131 (2026-09-16): Outlook .msg files have no SharePoint viewer - their webUrl just downloads into a
+// blank tab, which Lesley reported as "unable to open instructions" (the .html acknowledgments
+// render fine). A .msg now opens in an in-portal preview fed by /api/msgpreview (headers, plain body,
+// and the files attached INSIDE the email, each downloadable). Every other type keeps its webUrl.
+function attIsMsg(f) { return /\.msg$/i.test(f.name || ''); }
+function attNameLink(f) {
+  const label = escHtml(f.name || '(untitled)');
+  if (attIsMsg(f) && f.id) return `<a href="#" data-msg-preview="${escHtml(f.id)}" title="Open this email in the portal" style="color:var(--gold);text-decoration:none;">\u{1F4E7} ${label}</a>`;
+  return `<a href="${escHtml(attOpenUrl(f))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${label}</a>`;
+}
+document.addEventListener('click', e => {
+  const a = e.target && e.target.closest ? e.target.closest('[data-msg-preview]') : null;
+  if (!a) return;
+  e.preventDefault();
+  const id = a.dataset.msgPreview;
+  openMsgPreview(attFiles.find(x => x.id === id) || { id, name: a.textContent.replace(/^\u{1F4E7}\s*/u, ''), webUrl: '' });
+});
+function msgPreviewEl() {
+  let ov = document.getElementById('msg-preview-overlay');
+  if (ov) return ov;
+  ov = document.createElement('div'); ov.id = 'msg-preview-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:none;align-items:center;justify-content:center;padding:24px;';
+  ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="msg-preview-subject" style="background:#fff;border-radius:var(--radius-sm);max-width:860px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;">'
+    + '<div style="display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid #eee;"><div style="flex:1;min-width:0;"><div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);">\u{1F4E7} Outlook email</div><div id="msg-preview-subject" style="font-size:16px;font-weight:600;word-break:break-word;"></div></div><button type="button" id="msg-preview-close" aria-label="Close" style="background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--grey-mid);">×</button></div>'
+    + '<div id="msg-preview-meta" style="padding:12px 20px;border-bottom:1px solid #eee;font-size:13px;line-height:1.6;color:#333;"></div>'
+    + '<div id="msg-preview-body" style="padding:16px 20px;overflow:auto;flex:1;min-height:80px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;"></div>'
+    + '<div id="msg-preview-atts" style="padding:12px 20px;border-top:1px solid #eee;font-size:13px;"></div>'
+    + '<div style="display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:12px 20px;border-top:1px solid #eee;background:#fafafa;"><a id="msg-preview-dl" href="#" style="font-size:13px;color:var(--gold);text-decoration:none;">⬇ Download .msg (opens in Outlook)</a><button type="button" id="msg-preview-ok" class="btn-save" style="padding:8px 18px;">Close</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  const close = () => { ov.style.display = 'none'; };
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  ov.querySelector('#msg-preview-close').addEventListener('click', close);
+  ov.querySelector('#msg-preview-ok').addEventListener('click', close);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ov.style.display !== 'none') close(); });
+  return ov;
+}
+function msgPerson(p) { return escHtml(p.name || p.email || '?') + (p.email && p.name ? ' &lt;' + escHtml(p.email) + '&gt;' : ''); }
+async function openMsgPreview(f) {
+  const ov = msgPreviewEl();
+  ov.querySelector('#msg-preview-subject').textContent = f.name || '';
+  ov.querySelector('#msg-preview-meta').innerHTML = '';
+  ov.querySelector('#msg-preview-body').textContent = 'Loading email…';
+  ov.querySelector('#msg-preview-atts').innerHTML = '';
+  const dl = ov.querySelector('#msg-preview-dl');
+  dl.href = f.webUrl || '#'; dl.style.display = f.webUrl ? '' : 'none'; dl.setAttribute('download', f.name || '');
+  ov.style.display = 'flex';
+  try {
+    const r = await fetch('/api/msgpreview?id=' + encodeURIComponent(f.id));
+    if (!r.ok) throw new Error((await r.text()) || 'HTTP ' + r.status);
+    const m = await r.json();
+    ov.querySelector('#msg-preview-subject').textContent = m.subject || f.name || '(no subject)';
+    const row = (k, v) => v ? `<div><span style="display:inline-block;min-width:52px;color:var(--grey-mid);">${k}</span>${v}</div>` : '';
+    const when = m.date ? new Date(m.date) : null;
+    ov.querySelector('#msg-preview-meta').innerHTML =
+        row('From', (m.from && (m.from.name || m.from.email)) ? msgPerson(m.from) : '')
+      + row('To',   (m.to || []).map(msgPerson).join('; '))
+      + row('Cc',   (m.cc || []).map(msgPerson).join('; '))
+      + row('Date', when ? escHtml(isNaN(when) ? String(m.date) : when.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })) : '');
+    ov.querySelector('#msg-preview-body').textContent = m.body || (m.bodyMissing ? 'This email has no plain-text body (rich text only) — download the .msg to read it in Outlook.' : '(empty message)');
+    const atts = m.attachments || [];
+    ov.querySelector('#msg-preview-atts').innerHTML = atts.length
+      ? '<div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--grey-mid);margin-bottom:4px;">Attached to this email (' + atts.length + ')</div>'
+        + atts.map(a => a.embeddedMessage
+            ? `<div style="padding:2px 0;color:var(--grey-mid);">\u{1F4CE} ${escHtml(a.name)} <span style="font-size:12px;">(embedded email — open the .msg in Outlook)</span></div>`
+            : `<div style="padding:2px 0;"><a href="/api/msgpreview?id=${encodeURIComponent(f.id)}&att=${a.i}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">\u{1F4CE} ${escHtml(a.name)}</a><span style="color:var(--grey-mid);font-size:12px;margin-left:8px;">${attFmtSize(a.size)}</span></div>`).join('')
+      : '<span style="color:var(--grey-mid);">No files attached to this email.</span>';
+  } catch (err) {
+    ov.querySelector('#msg-preview-body').textContent = 'Could not open this email in the portal: ' + err.message + '\n\nUse "Download .msg" below to open it in Outlook.';
+  }
 }
 function attFmtSize(bytes) {
   const n = Number(bytes) || 0;
@@ -6430,7 +6546,7 @@ function renderAttTable() {
   const rows = attFiles.filter(f => attFilter === 'All' || (f.docType || '').trim() === attFilter);
   rows.forEach(f => {
     const tr = document.createElement('tr'); tr.className = 'ca-row';
-    tr.innerHTML = `<td class="ca-cell"><a href="${escHtml(attOpenUrl(f))}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;">${escHtml(f.name || '(untitled)')}</a></td>`
+    tr.innerHTML = `<td class="ca-cell">${attNameLink(f)}</td>`
       + `<td class="ca-cell">${escHtml(f.docType || '')}</td>`
       + `<td class="ca-cell ca-right">${attFmtSize(f.size)}</td>`
       + `<td class="ca-cell">${f.modified ? fmtDate(f.modified) : ''}</td>`
