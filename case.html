@@ -4897,11 +4897,17 @@ function scnExplainText(s) {
   const bits = [];
   bits.push('The offer is ' + fmtPct(s.pctBill) + ' of the bill, but the solicitor keeps '
             + fmtPct(s.pctPC) + ' of the profit costs. The difference goes to these:');
-  // Money out of the offer that is not in the bill at all.
-  const notInBill = (s.coaMode === 'none' ? 0 : s.coaDeduct) - (s.coaRecovered || 0) + (s.otherTMC || 0);
-  if (notInBill > 0.005) {
-    bits.push('\u2022 ' + fmt(notInBill) + ' for the costs of assessment and other TMC fees, which are '
-              + 'not part of the bill — so they come out of the offer without ever having been claimed.');
+  // Money out of the offer that is not in the bill at all. Itemised.
+  const coaOut = (s.coaMode === 'none' ? 0 : round2(s.coaDeduct - (s.coaRecovered || 0)));
+  const othTMC = s.otherTMC || 0;
+  if (coaOut > 0.005 || othTMC > 0.005) {
+    const parts = [];
+    if (coaOut > 0.005)  parts.push(fmt(coaOut) + ' for the costs of assessment');
+    if (othTMC > 0.005)  parts.push(fmt(othTMC) + ' of other TMC fees');
+    bits.push('\u2022 ' + parts.join(' and ') + ' \u2014 not part of the bill, so '
+              + (parts.length > 1 ? 'they come' : 'it comes')
+              + ' out of the offer without ever having been claimed'
+              + (parts.length > 1 ? ' (' + fmt(round2(coaOut + othTMC)) + ' in total)' : '') + '.');
   }
   // Disbursements are paid in full whatever the discount, so they take a larger slice of a reduced
   // offer than they occupy in the bill.
