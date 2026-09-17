@@ -140,6 +140,9 @@ const SELECT_FIELDS = [
   // exact fault that made DateOfLastOffer blank on every refresh above).
   'InterestTreatment',
   'InterestBasis',
+  // S131 (2026-09-16) - NEW text column on Cases: who confirmed 0% VAT is right and when
+  // ("Tracy|2026-09-16T12:05:00Z"; blank = unconfirmed). Drives the red/green VAT strip in case.html.
+  'VatZeroConfirmed',
   'BillDraftedByText',
   'Other_x0020_TMC_x0020_PC_x0020__',
   'TMC_x0020_drafting_x0020_time_x0',
