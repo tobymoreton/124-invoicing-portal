@@ -6,5 +6,7 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@kenjiuno/msgreader": "^1.28.0"
+  }
 }
