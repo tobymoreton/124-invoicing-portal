@@ -1583,6 +1583,8 @@
               <div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div>
               <div class="kv-sub" id="kv-scn-coa-sub">—</div>
               <div class="kv-ctl">
+                <div class="kv-ctl-label">Of which, for costs of assessment (£)</div>
+                <input type="number" id="scn-coa-in-figure" step="0.01" min="0" placeholder="Only if the offer says so" />
                 <div class="kv-ctl-label">How are they paid?</div>
                 <select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select>
                 <div class="kv-ctl-label">Court fees paid (£)</div>
@@ -4563,6 +4565,7 @@ function scnResetDefaults(){
   // S116: follow the Settlement tab's resolved treatment (its own selector, else the legacy Offers flag).
   scnEl('scn-coa-mode').value = (c.coaTreatment || resolveCOATreatment(f)) === 'OnTop' ? 'ontop' : 'within';
   scnEl('scn-court-fee').value = (c.courtFeeOut || 0) ? c.courtFeeOut.toFixed(2) : ''; // S118: default from the saved case court fees
+  { const _ci = scnEl('scn-coa-in-figure'); if (_ci) _ci.value = ''; } // S132
   const _feePct = parseFloat(f['Fee_x0025__x0028_number_x0029_']) || 0;
   scnEl('scn-fee-basis').value = _feePct > 0 ? (_settFeeOnDrawn ? 'drawn' : 'assessed') : 'fixed';
   scnEl('scn-fee-pct').value = _feePct || '';
@@ -4575,12 +4578,18 @@ function scnResetDefaults(){
 // disagree again. Still writes NOTHING: assign:false keeps the global `computed` untouched.
 function computeScenario(){
   const f = caseFields || {}, c = computed || {};
-  const figure      = scnNum('scn-figure');
+  // S132: "£194,000 of which £9,000 for costs of assessment" — the same split as the Settlement tab.
+  // The part expressly for the assessment comes out of the figure measured against the bill, and IS
+  // what is recovered for the assessment, which is therefore necessarily paid separately.
+  const figureGross = scnNum('scn-figure');
+  const scnCoaIn    = Math.max(0, scnNum('scn-coa-in-figure'));
+  const _scnSplit   = scnCoaIn > 0 && figureGross > scnCoaIn;
+  const figure      = _scnSplit ? round2(figureGross - scnCoaIn) : figureGross;
   const pct         = scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct');
   const counselBase = parseFloat(f['Counselsfeespayable']) || 0;
   const counselEff  = round2(counselBase * pct / 100);
   const intMode     = scnEl('scn-interest-mode').value;
-  const coaMode     = scnEl('scn-coa-mode').value;
+  const coaMode     = _scnSplit ? 'ontop' : scnEl('scn-coa-mode').value;
   const asAtStr     = scnEl('scn-interest-date').value;
   const asAt        = asAtStr ? new Date(asAtStr) : null;
   const feeBasisSel = scnEl('scn-fee-basis').value; // 'drawn' | 'assessed' | 'fixed'
@@ -4610,15 +4619,16 @@ function computeScenario(){
   // which models the opposite of what the words say. The saved Settlement tab is deliberately NOT
   // changed: there a blank means nothing was recovered, because it records fact rather than intent.
   const _savedAwarded = (parseFloat(f['COAAwarded']) || 0) + (parseFloat(f['CourtFeeRecovered']) || 0);
-  const _assumeRecovered = (coaMode === 'ontop' && _savedAwarded <= 0);
+  const _assumeRecovered = (!_scnSplit && coaMode === 'ontop' && _savedAwarded <= 0);
   const s = computeFigures({
     assign: false,
     fields: Object.assign({}, f, {
       'FigureForSettlementSheet': figure, 'Settlementamount': 0, 'PayingPartysLastOffer': 0,
       'Counselsfeespayable': counselEff,
       'ClientPaidExpenses': scnCourtFee, 'CourtFeePaidByTMC': 0,
-      'COAAwarded': _assumeRecovered ? round2(coaTimeCharge + scnCourtFee) : (parseFloat(f['COAAwarded']) || 0),
-      'CourtFeeRecovered': _assumeRecovered ? 0 : (parseFloat(f['CourtFeeRecovered']) || 0),
+      'COAAwarded': _scnSplit ? scnCoaIn : _assumeRecovered ? round2(coaTimeCharge + scnCourtFee) : (parseFloat(f['COAAwarded']) || 0),
+      'CourtFeeRecovered': (_scnSplit || _assumeRecovered) ? 0 : (parseFloat(f['CourtFeeRecovered']) || 0),
+      'COAInFigure': 0, // the split is done here; stop the saved case's own split applying twice
     }),
     coaCharge: coaTimeCharge,
     coaMode: coaMode,
@@ -4635,6 +4645,7 @@ function computeScenario(){
     intMode: intMode, coaMode: coaMode, hasAuth: hasAuth, interestAmt: interestAmt,
     coaTimeCharge: coaTimeCharge, courtFee: scnCourtFee,
     totalLiab: s.totalPayable, feeBasis: feeBasisSel, coaAssumedRecovered: _assumeRecovered,
+    figureGross: figureGross, coaInFigure: _scnSplit ? scnCoaIn : 0,
     interestCostsElement: interestCostsElement, interestPeriods: interestPeriods,
     interestDaily: interestDaily, interestExact: interestExact,
   });
@@ -4643,7 +4654,9 @@ function renderScenarioTab(){
   if (!scnEl('scn-figure')) return;
   if (!_scnDefaultsSet && computed && computed.totalBill !== undefined) { _scnDefaultsSet = true; scnResetDefaults(); }
   const s = computeScenario();
-  renderKeyVariables('kv-scn', s, caseFields || {}, 'Scenario figure \u2014 nothing here is saved.');
+  renderKeyVariables('kv-scn', s, caseFields || {}, s.coaInFigure > 0
+    ? fmt(s.figureGross) + ' offered, less ' + fmt(s.coaInFigure) + ' for the costs of assessment. Nothing here is saved.'
+    : 'Scenario figure \u2014 nothing here is saved.');
   // S125: the as-at date is ALWAYS editable — set it to the date of the offer being considered.
   scnEl('scn-interest-date').disabled = false;
   scnEl('scn-fee-pct').disabled = (s.feeBasis === 'fixed');
@@ -4653,7 +4666,9 @@ function renderScenarioTab(){
   scnEl('scn-fee-fixed-wrap').style.display = (s.feeBasis === 'fixed') ? '' : 'none';
   scnEl('scn-fee-tmc-wrap').style.display = (s.feeBasis === 'drawn') ? '' : 'none';
   const f = caseFields, c = computed;
-  setText('scn-d-figure', s.figure ? fmt(s.figure) : '—');
+  setText('scn-d-figure', !s.figureGross ? '—'
+    : s.coaInFigure > 0 ? fmt(s.figureGross) + ' (of which ' + fmt(s.coaInFigure) + ' costs of assessment)'
+    : fmt(s.figure));
   setText('scn-c-pc-net', fmt(c.claimedPC)); setText('scn-c-tmcpc-net', fmt((c.draftingTimeIP||0) + (c.nonVatDraftingIP||0) + (c.otherTMCPC||0)));
   setText('scn-c-disb-net', fmt(c.disbursements)); setText('scn-c-counsel-net', fmt(c.counselClaimed)); setText('scn-c-total-net', fmt(c.netTotalClaimed));
   setText('scn-c-pc-vat', fmt(c.pcIncVAT)); setText('scn-c-tmcpc-vat', fmt(c.tmcPCIncVAT));
@@ -4826,6 +4841,14 @@ function scnParseOffer(raw) {
   if (out.interest === null && out.wholeInclusive) { out.interest = 'in'; out.interestAssumed = true; }
   if (out.interest === null) out.missing.push('whether interest is in the offer');
 
+  // S132: the part of the offer expressly for the assessment — "of which £9,000 for costs of
+  // assessment", "£9k towards the COA". Stated, so it is not an assumption.
+  const ci = t.match(/of which\s*(?:£\s*)?(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?[^.£]{0,40}?(?:costs? of assessment|coa\b|assessment costs)/)
+          || t.match(/(?:£\s*)?(\d[\d,]*(?:\.\d{1,2})?)\s*(k\b)?\s*(?:is\s+|was\s+)?(?:for|towards|in respect of)\s+(?:the\s+)?(?:costs? of assessment|coa\b|assessment costs)/);
+  if (ci) {
+    let v = parseFloat(ci[1].replace(/,/g, '')); if (ci[2]) v *= 1000;
+    if (v > 0 && out.figure && v < out.figure) { out.coaInFigure = v; out.coa = 'out'; out.coaAssumed = false; }
+  }
   const cp = t.match(/counsel[^.]{0,30}?(\d{1,3})\s*%/);
   if (cp) out.counselPct = parseFloat(cp[1]);
   return out;
@@ -4837,6 +4860,9 @@ document.getElementById('scn-nl-apply')?.addEventListener('click', () => {
   const p = scnParseOffer(box.value);
   const said = [];
   if (p.figure != null) { scnEl('scn-figure').value = p.figure.toFixed(2); said.push('offer ' + fmt(p.figure)); }
+  { const _ci = scnEl('scn-coa-in-figure');
+    if (_ci) _ci.value = p.coaInFigure ? p.coaInFigure.toFixed(2) : '';
+    if (p.coaInFigure) said.push('of which ' + fmt(p.coaInFigure) + ' for the costs of assessment'); }
   if (p.date) {
     const iso = p.date.toISOString().substring(0, 10);
     scnEl('scn-interest-date').value = iso;
