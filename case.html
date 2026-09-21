@@ -1302,6 +1302,15 @@
               <input type="number" id="f-Settlementamount" step="0.01" min="0" disabled />
               <div class="sett-hint" id="hint-sett-amount">—</div>
             </div>
+            <!-- S132 (Toby, 21/09): settlements are expressed as "£194,000, of which £9,000 for the costs
+                 of assessment". Enter them exactly that way. The sheet splits the figure: the costs
+                 element (£185,000) is what is measured against the bill, and the £9,000 is treated as the
+                 costs of assessment recovered, paid separately. New Number column COAInFigure. -->
+            <div class="field">
+              <label>Of which, costs of assessment (£)</label>
+              <input type="number" id="f-COAInFigure" step="0.01" min="0" disabled />
+              <div class="sett-hint" id="hint-sett-coa-in-figure">Only if part of the figure above was expressly for the costs of assessment. Leave blank if they were not mentioned.</div>
+            </div>
             <!-- S116d (Toby, 06/09): the figure is ALL-IN, interest included. The interest actually
                  agreed / awarded inside it is entered here (new Number column InterestInFigure) and
                  backed out before the profit-costs recovery. The Interest tab's internal calc is
@@ -3165,7 +3174,7 @@ const SETT_LIVE_FIELDS = {
   'Settlementamount':'f-Settlementamount', 'Counselsfeespayable':'f-Counselsfeespayable', 'Costsofassessment':'f-Costsofassessment',
   'ClientPaidExpenses':'f-ClientPaidExpenses', 'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices', 'COAAwarded':'f-COAAwarded',
   'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'CourtFeeRecovered':'f-CourtFeeRecovered', 'Limit_x0020_Costs_x0020_of_x0020':'f-COALimit',
-  'InterestInFigure':'f-InterestInFigure',
+  'InterestInFigure':'f-InterestInFigure', 'COAInFigure':'f-COAInFigure',
 };
 function settFieldsInUse() {
   const editing = !!document.getElementById('tab-settlement')?.classList.contains('editing');
@@ -3245,12 +3254,21 @@ function computeFigures(opts) {
   // S116f: ONE recovered figure (COAAwarded now = everything recovered for the assessment, court fee
   // included). Blank = nothing recovered — no hidden "TMC charge in full" default any more. A legacy
   // CourtFeeRecovered value (S116b–e, never deployed with data) is simply added in.
-  const coaRecoverable = round2(coaAwarded + courtFeeRecd);
+  // S132: COAInFigure — the part of the Total Settlement EXPRESSLY paid for the costs of assessment
+  // ("£194,000 of which £9,000 for costs of assessment"). When present, it IS what was recovered for
+  // the assessment, the assessment is necessarily paid separately of the costs, and it comes OUT of
+  // the figure measured against the bill — otherwise % of bill is overstated (82.41% vs 78.59% on
+  // Morton). Applies only to a figure entered on this tab: an Offers-tab override or the last offer
+  // is a different number and the split would not belong to it. A new column, NOT COAAwarded, so no
+  // existing case changes meaning.
+  const coaInFigure    = parseFloat(f['COAInFigure']) || 0;
+  const _coaSplit      = coaInFigure > 0 && figureForSheet <= 0 && settlementAmt > coaInFigure;
+  const coaRecoverable = round2((_coaSplit ? coaInFigure : coaAwarded) + courtFeeRecd);
   const outcome        = resolveOutcome(f);
   // S125: 'None' exists only for the Scenarios tab — model the figure with the assessment left out
   // of it altogether. The live sheet never produces it.
   const coaTreatment   = opts.coaMode ? (opts.coaMode === 'ontop' ? 'OnTop' : opts.coaMode === 'none' ? 'None' : 'Within')
-                                      : resolveCOATreatment(f);
+                                      : _coaSplit ? 'OnTop' : resolveCOATreatment(f);
   const coaRecovered   = coaTreatment === 'OnTop' ? coaRecoverable : 0;
   const coaShortfall   = coaTreatment === 'OnTop' ? round2(coaCost - coaRecoverable) : 0;
   const totalCOA       = coaTreatment === 'None' ? 0 : coaTreatment === 'OnTop' ? coaRecovered : coaCost;
@@ -3270,7 +3288,9 @@ function computeFigures(opts) {
   const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
-  const offerOrSettlement = figureForSheet > 0 ? figureForSheet : settlementAmt > 0 ? settlementAmt : lastOffer;
+  const offerOrSettlement = figureForSheet > 0 ? figureForSheet
+                          : settlementAmt > 0 ? (_coaSplit ? round2(settlementAmt - coaInFigure) : settlementAmt)
+                          : lastOffer;
   const disbIncVAT    = disbursements + vatOnDisb;
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
@@ -3353,6 +3373,8 @@ function computeFigures(opts) {
     feeBaseAmount: _drawnFeeBase, draftingFee: netDraftingFee, netAfter: netAfterDrafting,
     netBefore: netBeforeDrafting, costsElement: Math.max(0, costsFigure - coaDeduct + coaRecovered),
     totalReceived: totalReceivable, interestAmt: interestInFigure,
+    // S132: the figure as agreed, before the costs-of-assessment element is split out of it.
+    coaInFigure: _coaSplit ? coaInFigure : 0, settlementGross: _coaSplit ? settlementAmt : offerOrSettlement,
   };
   if (opts.assign !== false) computed = _out;
   return _out;
@@ -5273,6 +5295,7 @@ function renderSettlementTab() {
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
     setNum('f-CourtFeeRecovered', f['CourtFeeRecovered']); setNum('f-COALimit', f['Limit_x0020_Costs_x0020_of_x0020']);
     setNum('f-InterestInFigure', f['InterestInFigure']);
+    setNum('f-COAInFigure', f['COAInFigure']);
   }
   // S116d: the Interest tab's own figure, as at the date of settlement/assessment (today if blank),
   // shown beside the manual box as a guide. Uses interestTotalAsAt() — the same maths as the tab.
@@ -5288,14 +5311,17 @@ function renderSettlementTab() {
   const intEl = document.getElementById('f-InterestTreatment'); if (intEl) intEl.value = c.intMode === 'ontop' ? 'OnTop' : c.intMode === 'none' ? 'None' : 'Within';
   setText('hint-sett-outcome', assessed
     ? 'The court assessed the bill. Enter the sum payable under the assessment below, interest included; costs of assessment are on the next card and default to "paid separately".'
-    : 'The parties agreed a figure. Enter the all-in sum agreed, interest included; costs of assessment default to "included in offer".');
+    : 'The parties agreed a figure. Enter it exactly as agreed. If part of it was expressly for the costs of assessment, say how much in the box beside it — the sheet takes that out before measuring the offer against the bill.');
   // S116e: outcome-specific once an Outcome has been chosen; the neutral wording until then.
   const outcomeSet = _settOutcomeOverride !== null || !!(f['SettlementOutcome']);
   setText('lbl-sett-date',   assessed ? 'Date of Assessment' : (outcomeSet ? 'Date of Settlement' : 'Date of Settlement or Assessment'));
   setText('lbl-sett-amount', assessed ? 'Costs as Assessed (£)' : 'Total Settlement (£)');
   setText('hint-sett-amount', assessed
     ? 'The total sum payable under the assessment, inc VAT and including any interest in it. Costs of assessment and the court fee go on the next card.'
-    : 'The global figure agreed, inc VAT and including any interest in it.');
+    : (c.coaInFigure > 0
+        ? 'The global figure agreed. ' + fmt(c.coaInFigure) + ' of it is for the costs of assessment, so '
+          + fmt(c.offerOrSettlement) + ' is measured against the bill.'
+        : 'The global figure agreed, inc VAT and including any interest in it.'));
   // Which figure the sheet is actually using — the Offers tab's "Figure for Settlement Sheet"
   // silently wins over the box above, and the last offer is used when neither is set.
   const noteEl = document.getElementById('sett-figure-note');
@@ -5617,7 +5643,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   if (_settCOATreatmentOverride !== null) fields['COATreatment']      = _settCOATreatmentOverride;
   if (_settInterestTreatmentOverride !== null) fields['InterestTreatment'] =
     _settInterestTreatmentOverride === 'ontop' ? 'OnTop' : _settInterestTreatmentOverride === 'none' ? 'None' : 'Within';
-  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'InterestInFigure':'f-InterestInFigure' })) {
+  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'InterestInFigure':'f-InterestInFigure', 'COAInFigure':'f-COAInFigure' })) {
     const v = document.getElementById(el)?.value ?? '';
     const had = caseFields[sp] !== null && caseFields[sp] !== undefined && caseFields[sp] !== '';
     if (v !== '' || had) fields[sp] = v === '' ? null : parseFloat(v);
@@ -5912,7 +5938,12 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-clientref').textContent = f['ClientCaseReference'] || '—';
   document.getElementById('pdf-tmcref').textContent = f['Ourreference_x0028_text_x0029_'] || '—';
   document.getElementById('pdf-datesettled').textContent = fmtDate(f['DateSettled0']);
-  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0 ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+  // S132: print the figure as agreed, and name the costs-of-assessment element within it.
+  { const _g = c.coaInFigure > 0 ? c.settlementGross : c.offerOrSettlement;
+    const _n = v => v.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('pdf-totalsettlement').textContent = _g > 0
+      ? _n(_g) + (c.coaInFigure > 0 ? ' (of which ' + _n(c.coaInFigure) + ' costs of assessment)' : '')
+      : '—'; }
   // S116: outcome-aware wording on the report.
   const _pdfAssessed = c.outcome === 'Assessed', _pdfOnTop = c.coaTreatment === 'OnTop';
   document.getElementById('pdf-outcome').textContent   = _pdfAssessed ? 'Assessed by the court' : 'Settled by agreement';
