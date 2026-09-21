@@ -1218,6 +1218,11 @@
         /* S125: the headline line on the Settlement Details card — what the offer is worth against
            the bill itself, once interest and the cost of the assessment are out of it. */
         .int-row-strong span{font-weight:700;}
+        /* S133 */
+        .sett-total-recvd{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:6px;background:rgba(27,42,74,.05);border:1px solid rgba(27,42,74,.12);font-size:13px;}
+        .sett-total-recvd strong{font-family:'IBM Plex Mono',monospace;}
+        .cf-paidby{font-size:12px;color:var(--grey-mid);display:inline-flex;gap:10px;align-items:center;margin-left:6px;}
+        .cf-paidby label{display:inline-flex;gap:4px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;}
         /* S125: the headline figure on the panel — what the offer is worth against the bill itself. */
         .int-row-hero span:last-child{font-size:19px;line-height:1.2;}
         .int-row-hero span:first-child{align-self:center;}
@@ -1273,7 +1278,7 @@
           <div class="kv-grid">
             <div class="kv-tile"><div class="kv-label">Current Offer</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
             <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Is interest in the offer?</div><select id="f-InterestTreatment" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option><option value="None">Not included in offer</option></select></div><div class="kv-help">Say here whether the offer already contains interest. Included in offer — the sum is all-in and is broken down into costs and interest. Paid separately or not included — interest is still to be claimed, and the figure above is what to ask for. Interest runs at 8% from the Authority to Assess date, less anything already paid on account.</div></div>
-            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">How are they paid?</div><select id="f-COATreatmentKV" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option></select></div><div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The figures behind it are on the Costs of Assessment card below.</div></div>
+            <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-help">What the assessment cost — TMC's time plus the court fee, whoever paid it. What the paying party paid for it is entered beside the bill figure in Settlement Details; any gap comes off the profit costs.</div></div>
             <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-help">What counsel is actually being paid out of the offer. Enter it on the Costs Payable card below, or pull it across from the bill with “From Claimed”.</div></div>
             <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
             <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div><div class="kv-help">Set on the Costs Claimed tab, not here. At 0% every VAT figure on this tab is nil.</div></div>
@@ -1297,19 +1302,27 @@
               <div class="sett-hint" id="hint-sett-outcome">—</div>
             </div>
             <div class="field"><label id="lbl-sett-date">Date of Settlement</label><input type="date" id="f-DateSettled0" disabled /></div>
+            <!-- S133 (Toby, 21/09): money in is entered by what it is FOR, not by how the deal was worded.
+                 "£194,000 of which £9,000 for costs of assessment" and "£185,000 plus £9,000 costs of
+                 assessment" are the same deal and are entered the same way: 185,000 for the bill and 9,000
+                 for the assessment. The assessment box IS COAAwarded, moved here from the Costs of
+                 Assessment card. Whether anything is in it decides whether the assessment was paid for
+                 separately — there is no longer a dropdown to disagree with it. -->
             <div class="field">
-              <label id="lbl-sett-amount">Total Settlement (£)</label>
+              <label id="lbl-sett-amount">For the bill (£)</label>
               <input type="number" id="f-Settlementamount" step="0.01" min="0" disabled />
               <div class="sett-hint" id="hint-sett-amount">—</div>
             </div>
-            <!-- S132 (Toby, 21/09): settlements are expressed as "£194,000, of which £9,000 for the costs
-                 of assessment". Enter them exactly that way. The sheet splits the figure: the costs
-                 element (£185,000) is what is measured against the bill, and the £9,000 is treated as the
-                 costs of assessment recovered, paid separately. New Number column COAInFigure. -->
             <div class="field">
-              <label>Of which, costs of assessment (£)</label>
-              <input type="number" id="f-COAInFigure" step="0.01" min="0" disabled />
-              <div class="sett-hint" id="hint-sett-coa-in-figure">Only if part of the figure above was expressly for the costs of assessment. Leave blank if they were not mentioned.</div>
+              <label>For the costs of assessment (£)</label>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input type="number" id="f-COAAwarded" step="0.01" min="0" disabled style="max-width:200px;" />
+                <button class="import-btn" id="btn-coa-rec-tmc" disabled>↓ Its full cost</button>
+              </div>
+              <div class="sett-hint">Everything the paying party paid for the assessment — <strong>including the court fee, if they reimbursed it</strong>. Leave blank if none of the money was for the assessment; its whole cost then comes out of the bill money.</div>
+            </div>
+            <div class="field full">
+              <div class="sett-total-recvd"><span>Total received</span><strong id="r-TotalReceivedSett">—</strong></div>
             </div>
             <!-- S116d (Toby, 06/09): the figure is ALL-IN, interest included. The interest actually
                  agreed / awarded inside it is entered here (new Number column InterestInFigure) and
@@ -1371,16 +1384,7 @@
       <div class="card sett-working">
         <div class="card-head"><span class="card-title">Costs of Assessment</span><button type="button" class="info-btn" aria-label="About Costs of Assessment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">What the assessment costs (TMC's invoice, capped where a cap applies, plus any court fee the client paid) and what the paying party paid towards it. The cost always comes out of the offer; anything recovered separately is added back. Costs of assessment included in offer have nothing separate to add back.</span></button></div>
         <dl class="liab-grid">
-          <div class="liab-row">
-            <dt>How are they paid?<div class="sett-hint">Included in offer, or paid separately by the paying party.</div></dt>
-            <dd>
-              <select id="f-COATreatment" class="liab-select" disabled>
-                <option value="Within">Included in offer</option>
-                <option value="OnTop">Paid separately</option>
-              </select>
-            </dd>
-          </div>
-          <div class="liab-row sub-head"><dt>Cost to the client</dt><dd></dd></div>
+          <div class="liab-row sub-head"><dt>What the assessment cost</dt><dd></dd></div>
           <div class="liab-row">
             <dt>TMC costs of assessment — time recorded<div class="sett-hint">Inc VAT at 20%. Calculate totals TMC's case actions (unbilled only, or all billable).</div></dt>
             <dd class="coa-cell">
@@ -1399,28 +1403,35 @@
             <dt>Cap on TMC's costs of assessment (£ net)<div class="sett-hint">Blank = no cap. Where the costs of assessment are limited, enter the net cap here — TMC's charge and every % recovery below use the capped figure. Provisional assessment: £1,500 exclusive of VAT and the court fee (CPR 47.15(5)) — the button sets it.</div></dt>
             <dd class="coa-cell"><input type="number" id="f-COALimit" class="liab-input" step="0.01" min="0" disabled /><button class="import-btn" id="btn-pa-cap" disabled>PA cap £1,500</button></dd>
           </div>
+          <!-- S133: the court fee is ONE amount with who paid it. Stored as before in CourtFeePaidByTMC
+               (goes on TMC's invoice) or ClientPaidExpenses (the client's own outlay), which stay as
+               hidden inputs so every reader and the save are unchanged. Either way it is part of what
+               the assessment cost. -->
           <div class="liab-row">
-            <dt>Court fee paid by TMC<div class="sett-hint">Only where TMC paid the fee — it goes on TMC's invoice and is recharged.</div></dt>
-            <dd><input type="number" id="f-CourtFeePaidByTMC" class="liab-input" step="0.01" min="0" disabled /></dd>
+            <dt>Court fee (N258 / hearing fee)<div class="sett-hint">Part of what the assessment cost, whoever paid it. If TMC paid it, it goes on TMC's invoice and is recharged.</div><div class="sett-hint sett-hint-gold" id="cf-warn" hidden></div></dt>
+            <dd class="coa-cell">
+              <input type="number" id="f-CourtFeeAmt" class="liab-input" step="0.01" min="0" disabled />
+              <span class="cf-paidby">Paid by <label><input type="radio" name="cfPaidBy" id="cf-by-client" value="client" disabled /> the client</label> <label><input type="radio" name="cfPaidBy" id="cf-by-tmc" value="tmc" disabled /> TMC</label></span>
+              <input type="hidden" id="f-CourtFeePaidByTMC" />
+              <input type="hidden" id="f-ClientPaidExpenses" />
+            </dd>
           </div>
           <div class="liab-row emph">
             <dt>TMC's invoice for the assessment<div class="sett-hint" id="r-TMCCharge-note">—</div></dt>
             <dd><span class="liab-static" id="r-TMCCharge">—</span></dd>
           </div>
-          <div class="liab-row">
-            <dt>Court fee the client paid direct<div class="sett-hint">The N258 / hearing fee the instructing solicitor paid themselves. Not on TMC's invoice — their own outlay, but it still comes out of the figure unless the paying party reimburses it.</div></dt>
-            <dd><input type="number" id="f-ClientPaidExpenses" class="liab-input" step="0.01" min="0" disabled /></dd>
-          </div>
           <div class="liab-row emph">
             <dt>Total cost of the assessment<div class="sett-hint" id="r-COACost-note">—</div></dt>
             <dd><span class="liab-static" id="r-COACost">—</span></dd>
           </div>
-          <div class="liab-row sub-head"><dt>Recovered from the paying party <span class="sett-hint" id="hint-coa-recovered" style="display:inline;"></span></dt><dd></dd></div>
-          <!-- S116f (Toby, 06/09): one box for everything recovered for the assessment, court fee included.
-               Blank = nothing recovered. Stored in COAAwarded; a legacy CourtFeeRecovered value is added in. -->
-          <div class="liab-row coa-ontop-only total">
-            <dt>Costs of assessment recovered<div class="sett-hint sett-hint-gold">Everything the paying party paid towards the assessment, inc VAT and any court fee. Blank = nothing recovered.</div></dt>
-            <dd class="coa-cell"><input type="number" id="f-COAAwarded" class="liab-input" step="0.01" min="0" disabled /><button class="import-btn" id="btn-coa-rec-tmc" disabled>↓ TMC's invoice</button></dd>
+          <div class="liab-row sub-head"><dt>Paid for by the paying party</dt><dd></dd></div>
+          <div class="liab-row">
+            <dt>For the costs of assessment<div class="sett-hint">Entered beside the bill figure in Settlement Details.</div></dt>
+            <dd><span class="liab-static" id="r-COARecvShow">—</span></dd>
+          </div>
+          <div class="liab-row emph">
+            <dt><span id="lbl-COAShortfall">Shortfall on the assessment</span><div class="sett-hint" id="r-COAShortfall-note">—</div></dt>
+            <dd><span class="liab-static" id="r-COAShortfall">—</span></dd>
           </div>
           <input type="hidden" id="f-CourtFeeRecovered" />
           <span hidden id="lbl-coa-total"></span><span hidden id="r-TotalCOA-note"></span><span hidden id="r-TotalCOA"></span>
@@ -1563,10 +1574,13 @@
               <div class="kv-label">Current Offer</div><div class="kv-value" id="kv-scn-figure">—</div>
               <div class="kv-sub" id="kv-scn-figure-src">Scenario figure — nothing saved.</div>
               <div class="kv-ctl">
-                <div class="kv-ctl-label">Offer on the table (£)</div>
+                <div class="kv-ctl-label">For the bill (£)</div>
                 <input type="number" id="scn-figure" step="0.01" min="0" />
+                <div class="kv-ctl-label">For the costs of assessment (£)</div>
+                <input type="number" id="scn-coa-in-figure" step="0.01" min="0" />
+                <div class="sett-hint" id="scn-total-recvd"></div>
               </div>
-              <div class="kv-help">The all-in sum on the table. Everything below is worked out from this one number.</div>
+              <div class="kv-help">Split the offer by what the money is for. <strong>For the bill</strong> — paid against the bill, including any interest in it. <strong>For the costs of assessment</strong> — anything paid for the assessment, <strong>including a reimbursed court fee</strong>. Leave it blank if none was, and the assessment's cost comes out of the bill money.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Interest</div><div class="kv-value" id="kv-scn-interest">—</div>
@@ -1583,18 +1597,14 @@
               <div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-scn-coa">—</div>
               <div class="kv-sub" id="kv-scn-coa-sub">—</div>
               <div class="kv-ctl">
-                <div class="kv-ctl-label">Of which, for costs of assessment (£)</div>
-                <input type="number" id="scn-coa-in-figure" step="0.01" min="0" placeholder="Only if the offer says so" />
-                <div class="kv-ctl-label">How are they paid?</div>
-                <select id="scn-coa-mode"><option value="within">Included in offer</option><option value="ontop">Paid separately</option><option value="none">Ignore</option></select>
-                <div class="kv-ctl-label">Court fees paid (£)</div>
+                <div class="kv-ctl-label">Court fee, whoever paid it (£)</div>
                 <input type="number" id="scn-court-fee" step="0.01" min="0" />
                 <div class="kv-ctl-label">TMC time as at</div>
                 <input type="date" id="scn-coa-date" />
                 <button type="button" class="import-btn" id="scn-coa-refresh" title="Recompute the TMC time charge from case actions, counting only time recorded on or before the date above">&#8635; Update TMC time from live case actions</button>
                 <div id="scn-coa-live-note" class="sett-hint"></div>
               </div>
-              <div class="kv-help">What the assessment itself costs. It always comes out of the offer; when paid separately, what the paying party pays for it is added back. The court fee is the N258 or hearing fee, whoever paid it. Set “TMC time as at” to the date of an offer to value the assessment as it stood then, rather than as it stands today — leave it blank for everything to date.</div>
+              <div class="kv-help">What the assessment cost — TMC's time plus the N258 or hearing fee, whoever paid it. What the paying party pays for it goes in the Current Offer tile. Set “TMC time as at” to the date of an offer to value the assessment as it stood then — leave it blank for everything to date.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-scn-counsel">—</div>
@@ -3176,7 +3186,7 @@ const SETT_LIVE_FIELDS = {
   'Settlementamount':'f-Settlementamount', 'Counselsfeespayable':'f-Counselsfeespayable', 'Costsofassessment':'f-Costsofassessment',
   'ClientPaidExpenses':'f-ClientPaidExpenses', 'OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices', 'COAAwarded':'f-COAAwarded',
   'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'CourtFeeRecovered':'f-CourtFeeRecovered', 'Limit_x0020_Costs_x0020_of_x0020':'f-COALimit',
-  'InterestInFigure':'f-InterestInFigure', 'COAInFigure':'f-COAInFigure',
+  'InterestInFigure':'f-InterestInFigure',
 };
 function settFieldsInUse() {
   const editing = !!document.getElementById('tab-settlement')?.classList.contains('editing');
@@ -3256,21 +3266,14 @@ function computeFigures(opts) {
   // S116f: ONE recovered figure (COAAwarded now = everything recovered for the assessment, court fee
   // included). Blank = nothing recovered — no hidden "TMC charge in full" default any more. A legacy
   // CourtFeeRecovered value (S116b–e, never deployed with data) is simply added in.
-  // S132: COAInFigure — the part of the Total Settlement EXPRESSLY paid for the costs of assessment
-  // ("£194,000 of which £9,000 for costs of assessment"). When present, it IS what was recovered for
-  // the assessment, the assessment is necessarily paid separately of the costs, and it comes OUT of
-  // the figure measured against the bill — otherwise % of bill is overstated (82.41% vs 78.59% on
-  // Morton). Applies only to a figure entered on this tab: an Offers-tab override or the last offer
-  // is a different number and the split would not belong to it. A new column, NOT COAAwarded, so no
-  // existing case changes meaning.
-  const coaInFigure    = parseFloat(f['COAInFigure']) || 0;
-  const _coaSplit      = coaInFigure > 0 && figureForSheet <= 0 && settlementAmt > coaInFigure;
-  const coaRecoverable = round2((_coaSplit ? coaInFigure : coaAwarded) + courtFeeRecd);
+  // S133: COAAwarded is entered as "For the costs of assessment", beside the bill figure. Blank =
+  // none of the money was for the assessment.
+  const coaRecoverable = round2(coaAwarded + courtFeeRecd);
   const outcome        = resolveOutcome(f);
   // S125: 'None' exists only for the Scenarios tab — model the figure with the assessment left out
   // of it altogether. The live sheet never produces it.
   const coaTreatment   = opts.coaMode ? (opts.coaMode === 'ontop' ? 'OnTop' : opts.coaMode === 'none' ? 'None' : 'Within')
-                                      : _coaSplit ? 'OnTop' : resolveCOATreatment(f);
+                                      : (coaRecoverable > 0 ? 'OnTop' : 'Within'); // S133: derived from the money — no dropdown, no hidden flag
   const coaRecovered   = coaTreatment === 'OnTop' ? coaRecoverable : 0;
   const coaShortfall   = coaTreatment === 'OnTop' ? round2(coaCost - coaRecoverable) : 0;
   const totalCOA       = coaTreatment === 'None' ? 0 : coaTreatment === 'OnTop' ? coaRecovered : coaCost;
@@ -3290,9 +3293,7 @@ function computeFigures(opts) {
   const tmcDraftingLA  = parseFloat(f['TMC_x0020_drafting_x0020_time_x0'])|| 0;
   const vatHelper      = 1 + vatPct;
 
-  const offerOrSettlement = figureForSheet > 0 ? figureForSheet
-                          : settlementAmt > 0 ? (_coaSplit ? round2(settlementAmt - coaInFigure) : settlementAmt)
-                          : lastOffer;
+  const offerOrSettlement = figureForSheet > 0 ? figureForSheet : settlementAmt > 0 ? settlementAmt : lastOffer;
   const disbIncVAT    = disbursements + vatOnDisb;
   const totalPayable  = disbIncVAT + counsel + totalCOA + otherTMC;
   const pcIncVAT      = claimedPC      * vatHelper;
@@ -3375,8 +3376,6 @@ function computeFigures(opts) {
     feeBaseAmount: _drawnFeeBase, draftingFee: netDraftingFee, netAfter: netAfterDrafting,
     netBefore: netBeforeDrafting, costsElement: Math.max(0, costsFigure - coaDeduct + coaRecovered),
     totalReceived: totalReceivable, interestAmt: interestInFigure,
-    // S132: the figure as agreed, before the costs-of-assessment element is split out of it.
-    coaInFigure: _coaSplit ? coaInFigure : 0, settlementGross: _coaSplit ? settlementAmt : offerOrSettlement,
   };
   if (opts.assign !== false) computed = _out;
   return _out;
@@ -5169,8 +5168,19 @@ function renderCOACardFigures(c, onTop, unsaved) {
   setText('r-COACost-note', '= TMC’s invoice ' + fmt(tmcInvoice)
     + (c.clientExpenses > 0 ? ' + court fee the client paid direct ' + fmt(c.clientExpenses) + ' (not charged by TMC)' : '')
     + ' — both come out of the figure before profit costs.' + tag);
-  document.querySelectorAll('#tab-settlement .coa-ontop-only').forEach(el => el.classList.toggle('is-hidden', !onTop));
-  setText('hint-coa-recovered', onTop ? '' : '— included in offer; nothing separate to add back');
+  // S133: what the paying party paid for the assessment, set against what it cost.
+  const _rec = round2(c.coaRecoverable || 0), _gap = round2((c.coaCost || 0) - _rec);
+  setText('r-COARecvShow', _rec > 0 ? fmt(_rec) : 'Nothing');
+  if (_rec <= 0) {
+    setText('lbl-COAShortfall', 'Met from the bill money'); setText('r-COAShortfall', fmt(c.coaCost));
+    setText('r-COAShortfall-note', 'Nothing was paid for the assessment, so its whole cost comes out of the bill money before profit costs.' + tag);
+  } else if (_gap > 0.005) {
+    setText('lbl-COAShortfall', 'Shortfall on the assessment'); setText('r-COAShortfall', fmt(_gap));
+    setText('r-COAShortfall-note', 'Cost ' + fmt(c.coaCost) + ' less ' + fmt(_rec) + ' paid for it — the shortfall comes off the profit costs.' + tag);
+  } else {
+    setText('lbl-COAShortfall', 'Paid for in full'); setText('r-COAShortfall', _gap < -0.005 ? '+' + fmt(-_gap) : fmt(0));
+    setText('r-COAShortfall-note', _gap < -0.005 ? 'More was paid than the assessment cost — the excess adds to the profit costs.' + tag : 'The assessment is covered exactly.' + tag);
+  }
 }
 
 // S125: fills the five Key Variables tiles. Called by BOTH tabs with the same figures object, so
@@ -5191,11 +5201,13 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   const treat = c.coaTreatment;
   const _coaTime = c.coaTimeCharge != null ? c.coaTimeCharge : (c.coa || 0);
   const _coaFee  = c.courtFee != null ? c.courtFee : (c.courtFeeOut || 0);
-  put('coa', treat === 'None' ? 'Ignored' : treat === 'OnTop' ? 'Paid separately' : 'Included in offer');
+  const _kvRec = round2(c.coaRecoverable || 0), _kvGap = round2((c.coaCost || 0) - _kvRec);
+  put('coa', treat === 'None' ? 'Ignored' : fmt(c.coaCost || 0) + ' cost');
   put('coa-sub', treat === 'None' ? 'Left out of this calculation entirely.'
-               : fmt(c.coaCost || 0) + ' out of the offer — TMC time ' + fmt(_coaTime)
-                 + (_coaFee ? ' plus court fee ' + fmt(_coaFee) : '')
-                 + (treat === 'OnTop' && c.coaRecoverable > 0 ? '; ' + fmt(c.coaRecoverable) + ' recovered.' : '.'));
+               : 'TMC time ' + fmt(_coaTime) + (_coaFee ? ' + court fee ' + fmt(_coaFee) : '') + '. '
+                 + (_kvRec > 0
+                     ? fmt(_kvRec) + ' paid for it' + (_kvGap > 0.005 ? ' — shortfall ' + fmt(_kvGap) + '.' : ' — covered.')
+                     : 'Nothing paid for it — comes out of the bill money.'));
   put('fee', c.feeBasis === 'fixed' ? 'Fixed amount'
            : c.feeBasis === 'drawn' ? (c.feePctIn || 0) + '% as drawn'
                                     : (c.feePctIn || 0) + '% as recovered');
@@ -5321,7 +5333,7 @@ function renderSettlementTab() {
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
     setNum('f-CourtFeeRecovered', f['CourtFeeRecovered']); setNum('f-COALimit', f['Limit_x0020_Costs_x0020_of_x0020']);
     setNum('f-InterestInFigure', f['InterestInFigure']);
-    setNum('f-COAInFigure', f['COAInFigure']);
+    _cfFromHidden(); // S133
   }
   // S116d: the Interest tab's own figure, as at the date of settlement/assessment (today if blank),
   // shown beside the manual box as a guide. Uses interestTotalAsAt() — the same maths as the tab.
@@ -5337,17 +5349,17 @@ function renderSettlementTab() {
   const intEl = document.getElementById('f-InterestTreatment'); if (intEl) intEl.value = c.intMode === 'ontop' ? 'OnTop' : c.intMode === 'none' ? 'None' : 'Within';
   setText('hint-sett-outcome', assessed
     ? 'The court assessed the bill. Enter the sum payable under the assessment below, interest included; costs of assessment are on the next card and default to "paid separately".'
-    : 'The parties agreed a figure. Enter it exactly as agreed. If part of it was expressly for the costs of assessment, say how much in the box beside it — the sheet takes that out before measuring the offer against the bill.');
+    : 'The parties agreed a figure. Split it by what it is for: the bill, and the costs of assessment. £194,000 “of which £9,000 for costs of assessment” and £185,000 “plus £9,000 costs of assessment” are the same deal — enter both as 185,000 and 9,000.');
   // S116e: outcome-specific once an Outcome has been chosen; the neutral wording until then.
   const outcomeSet = _settOutcomeOverride !== null || !!(f['SettlementOutcome']);
   setText('lbl-sett-date',   assessed ? 'Date of Assessment' : (outcomeSet ? 'Date of Settlement' : 'Date of Settlement or Assessment'));
-  setText('lbl-sett-amount', assessed ? 'Costs as Assessed (£)' : 'Total Settlement (£)');
+  setText('lbl-sett-amount', assessed ? 'Costs as Assessed (£)' : 'For the bill (£)');
   setText('hint-sett-amount', assessed
     ? 'The total sum payable under the assessment, inc VAT and including any interest in it. Costs of assessment and the court fee go on the next card.'
-    : (c.coaInFigure > 0
-        ? 'The global figure agreed. ' + fmt(c.coaInFigure) + ' of it is for the costs of assessment, so '
-          + fmt(c.offerOrSettlement) + ' is measured against the bill.'
-        : 'The global figure agreed, inc VAT and including any interest in it.'));
+    : 'What is paid against the bill, inc VAT and including any interest in it. Not the costs of assessment — they go in the box below.');
+  // S133: the two amounts added up, so what was received is never left to mental arithmetic.
+  setText('r-TotalReceivedSett', fmt(c.totalReceived)
+    + ((c.coaRecovered || 0) > 0 ? '  (' + fmt(c.offerOrSettlement) + ' for the bill + ' + fmt(c.coaRecovered) + ' for the assessment)' : ''));
   // Which figure the sheet is actually using — the Offers tab's "Figure for Settlement Sheet"
   // silently wins over the box above, and the last offer is used when neither is set.
   const noteEl = document.getElementById('sett-figure-note');
@@ -5669,7 +5681,7 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   if (_settCOATreatmentOverride !== null) fields['COATreatment']      = _settCOATreatmentOverride;
   if (_settInterestTreatmentOverride !== null) fields['InterestTreatment'] =
     _settInterestTreatmentOverride === 'ontop' ? 'OnTop' : _settInterestTreatmentOverride === 'none' ? 'None' : 'Within';
-  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'InterestInFigure':'f-InterestInFigure', 'COAInFigure':'f-COAInFigure' })) {
+  for (const [sp, el] of Object.entries({ 'COAAwarded':'f-COAAwarded', 'CourtFeePaidByTMC':'f-CourtFeePaidByTMC', 'InterestInFigure':'f-InterestInFigure' })) {
     const v = document.getElementById(el)?.value ?? '';
     const had = caseFields[sp] !== null && caseFields[sp] !== undefined && caseFields[sp] !== '';
     if (v !== '' || had) fields[sp] = v === '' ? null : parseFloat(v);
@@ -5772,10 +5784,39 @@ function _updateTotalCOADisplay() {
   const courtFeeOut = clientExpenses + courtFeeTMC;
   const coaCost = round2(tmcCharge + courtFeeOut);
   const coaRecoverable = round2(coaAwarded + courtFeeRecd); // S116f: one recovered figure, blank = nil
-  const onTop = resolveCOATreatment(caseFields) === 'OnTop';
+  const onTop = coaRecoverable > 0; // S133: derived from the money entered, as in computeFigures
   renderCOACardFigures({ tmcTimeNet, coaLimitNet, coaCapped, tmcCharge, coaAwarded, courtFeeRecd, courtFeeOut, clientExpenses, courtFeeTMC, coaCost, coaRecoverable,
                          coaShortfall: onTop ? round2(coaCost - coaRecoverable) : 0 }, onTop, true);
 }
+// S133: the court fee is ONE amount with who paid it, stored in the same two columns as before.
+function _cfFromHidden() {
+  const tmc = parseFloat(document.getElementById('f-CourtFeePaidByTMC')?.value) || 0;
+  const cli = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
+  const amt = document.getElementById('f-CourtFeeAmt'), warn = document.getElementById('cf-warn');
+  const rT = document.getElementById('cf-by-tmc'), rC = document.getElementById('cf-by-client');
+  if (!amt || !rT || !rC) return;
+  if (tmc > 0 && cli > 0) {             // legacy: recorded against both — say so, change nothing
+    amt.value = round2(tmc + cli); rT.checked = false; rC.checked = false;
+    if (warn) { warn.hidden = false; warn.textContent = 'Recorded as paid partly by TMC (' + fmt(tmc) + ') and partly by the client (' + fmt(cli) + '). Choose who paid it to correct this.'; }
+    return;
+  }
+  if (warn) warn.hidden = true;
+  amt.value = tmc > 0 ? tmc : (cli > 0 ? cli : '');
+  rT.checked = tmc > 0; rC.checked = !(tmc > 0);
+}
+function _cfToHidden() {
+  const a = parseFloat(document.getElementById('f-CourtFeeAmt')?.value);
+  const byTMC = !!document.getElementById('cf-by-tmc')?.checked;
+  const hT = document.getElementById('f-CourtFeePaidByTMC'), hC = document.getElementById('f-ClientPaidExpenses');
+  if (!hT || !hC) return;
+  const v = isNaN(a) ? '' : String(a);
+  hT.value = byTMC ? v : ''; hC.value = byTMC ? '' : v;
+  const warn = document.getElementById('cf-warn'); if (warn) warn.hidden = true;
+  renderSettlementLive(); _updateTotalCOADisplay();
+}
+document.getElementById('f-CourtFeeAmt')?.addEventListener('input', _cfToHidden);
+document.getElementById('cf-by-tmc')?.addEventListener('change', _cfToHidden);
+document.getElementById('cf-by-client')?.addEventListener('change', _cfToHidden);
 // S116e: every settlement box recomputes the whole tab live (Recovery card included) as you type;
 // the COA card then gets its "(unsaved)" tag from _updateTotalCOADisplay.
 [...Object.values(SETT_LIVE_FIELDS), 'f-DateSettled0'].forEach(id => document.getElementById(id)?.addEventListener('input', () => {
@@ -5791,7 +5832,7 @@ document.getElementById('btn-pa-cap')?.addEventListener('click', () => {
 // the recovered box. Add the client's court fee yourself if that was recovered too.
 document.getElementById('btn-coa-rec-tmc')?.addEventListener('click', () => {
   const el = document.getElementById('f-COAAwarded'); if (!el || el.disabled) return;
-  el.value = round2((computed.tmcCharge || 0) + (computed.courtFeeTMC || 0)) || '';
+  el.value = round2(computed.coaCost || 0) || ''; // S133: the whole cost, court fee included
   el.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
@@ -5964,12 +6005,7 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-clientref').textContent = f['ClientCaseReference'] || '—';
   document.getElementById('pdf-tmcref').textContent = f['Ourreference_x0028_text_x0029_'] || '—';
   document.getElementById('pdf-datesettled').textContent = fmtDate(f['DateSettled0']);
-  // S132: print the figure as agreed, and name the costs-of-assessment element within it.
-  { const _g = c.coaInFigure > 0 ? c.settlementGross : c.offerOrSettlement;
-    const _n = v => v.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
-    document.getElementById('pdf-totalsettlement').textContent = _g > 0
-      ? _n(_g) + (c.coaInFigure > 0 ? ' (of which ' + _n(c.coaInFigure) + ' costs of assessment)' : '')
-      : '—'; }
+  document.getElementById('pdf-totalsettlement').textContent = c.offerOrSettlement > 0 ? c.offerOrSettlement.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
   // S116: outcome-aware wording on the report.
   const _pdfAssessed = c.outcome === 'Assessed', _pdfOnTop = c.coaTreatment === 'OnTop';
   document.getElementById('pdf-outcome').textContent   = _pdfAssessed ? 'Assessed by the court' : 'Settled by agreement';
