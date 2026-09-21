@@ -140,6 +140,10 @@ const SELECT_FIELDS = [
   // exact fault that made DateOfLastOffer blank on every refresh above).
   'InterestTreatment',
   'InterestBasis',
+  // S132 (2026-09-21) — NEW Number column: the part of the Total Settlement expressly paid for the
+  // costs of assessment ("£194,000 of which £9,000 for costs of assessment"). Listed so the
+  // Settlement tab can read back what it saves. Column must exist BEFORE this file deploys.
+  'COAInFigure',
   // S131 (2026-09-16) - NEW text column on Cases: who confirmed 0% VAT is right and when
   // ("Tracy|2026-09-16T12:05:00Z"; blank = unconfirmed). Drives the red/green VAT strip in case.html.
   'VatZeroConfirmed',
