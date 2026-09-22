@@ -265,6 +265,8 @@
     .field.checkbox-field label::before{display:none;}
     .field.checkbox-field input[type="checkbox"]{width:17px;height:17px;accent-color:var(--navy);cursor:pointer;flex-shrink:0;}
     .check-row{display:flex;gap:28px;flex-wrap:wrap;margin-top:18px;}
+    .yn-select.yn-no,.yn-select.yn-no:disabled{color:#b3261e;font-weight:600;-webkit-text-fill-color:#b3261e;opacity:1;}
+    .yn-select.yn-yes,.yn-select.yn-yes:disabled{color:#1e7b34;font-weight:600;-webkit-text-fill-color:#1e7b34;opacity:1;}
 
     /* ── Read-only grids ─────────────────────── */
     .read-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;container-type:inline-size;}
@@ -373,6 +375,10 @@
     .costs-entry-table tbody td{padding:9px 8px;border-bottom:1px solid var(--grey-faint);vertical-align:middle;}
     .costs-entry-table tbody tr:last-child td{border-bottom:none;}
     .costs-entry-table tbody tr.other-row td{border-top:2px solid var(--grey-light);}
+    /* S134c: Other TMC Fees row red while nil, with a prompt to check for prior invoices */
+    .prior-inv-note{display:none;font-size:12px;font-weight:600;color:#b3261e;margin-top:4px;white-space:normal;max-width:460px;}
+    .costs-entry-table tbody tr.nil-warn td{background:#fbe3e1;}
+    .costs-entry-table tbody tr.nil-warn .prior-inv-note{display:block;}
     .row-label{font-size:12.5px;color:var(--grey-mid);font-weight:500;white-space:nowrap;padding-left:12px!important;padding-right:12px!important;min-width:170px;}
     .tbl-input{
       width:100%;min-width:160px;padding:8px 10px;
@@ -1744,14 +1750,10 @@
             <div class="field"><label>Likely Top End (£)</label><input type="number" id="f-LikelyTopEnd" step="0.01" min="0" disabled /></div>
           </div>
           <div class="check-row">
-            <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludesinterest_x003f_" disabled />
-              <label for="f-Offerincludesinterest_x003f_">Offer excludes interest?</label>
-            </div>
-            <div class="field checkbox-field">
-              <input type="checkbox" id="f-Offerincludescostsofsssessment_x" disabled />
-              <label for="f-Offerincludescostsofsssessment_x">Offer excludes costs of assessment?</label>
-            </div>
+            <div class="field"><label for="f-Offerincludesinterest_x003f_">Offer excludes interest?</label>
+              <select id="f-Offerincludesinterest_x003f_" class="yn-select yn-no" disabled><option value="No">No</option><option value="Yes">Yes</option></select></div>
+            <div class="field"><label for="f-Offerincludescostsofsssessment_x">Offer excludes costs of assessment?</label>
+              <select id="f-Offerincludescostsofsssessment_x" class="yn-select yn-no" disabled><option value="No">No</option><option value="Yes">Yes</option></select></div>
           </div>
           <div style="margin-top:10px;padding:8px 12px;background:var(--cream,#f6f1e7);border:1px solid var(--gold-soft,#e6d9b8);border-radius:8px;font-size:13px;color:var(--navy);">
             <span style="color:var(--grey-mid);">Offer net of interest (info only - not on settlement sheet):</span>
@@ -2073,8 +2075,8 @@
               <td class="tbl-computed" id="cv-vatOtherTMC-row">—</td>
               <td class="tbl-computed" id="cv-otherTMCInc">—</td>
             </tr>
-            <tr class="other-row">
-              <td class="row-label">Other TMC Fees (ie invoices previously rendered) — excl bill<label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+            <tr class="other-row" id="row-OtherTMCFees">
+              <td class="row-label">Other TMC Fees (ie invoices previously rendered) — excl bill<div class="prior-inv-note">Please do check to ensure that there are no prior invoices on this case for work done prior to bill preparation</div><label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
               <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
               <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
@@ -3222,13 +3224,24 @@ function resolveInterestTreatment(f) {
   return stored === 'ontop' ? 'ontop' : stored === 'none' ? 'none' : 'within';
 }
 
+// S134 (Toby, 22/09): counsel's fees payable defaults to counsel's fees CLAIMED (inc VAT) when
+// nothing has been entered. Blank and 0 both count as "not entered" — FileMaker migrations hold
+// zeros nobody chose (S131). To model counsel taking nothing, use 0% on the Scenarios tab.
+function counselClaimedIncVat(f) {
+  const cl = parseFloat((f || {})['CounselsFeesClaimed']) || 0;
+  const nv = parseFloat((f || {})['NonVatableCounselFees']) || 0;
+  const v  = parseFloat((f || {})['VAT_x0020__x0025__x0020_Claimed']) || 0;
+  return round2(cl + Math.max(0, cl - nv) * v); // VAT field is a fraction (0.2), as computeFigures
+}
+function counselPayableIsDefault(f) { return !((parseFloat((f || {})['Counselsfeespayable']) || 0) > 0) && counselClaimedIncVat(f) > 0; }
+function counselPayable(f) { return counselPayableIsDefault(f) ? counselClaimedIncVat(f) : (parseFloat((f || {})['Counselsfeespayable']) || 0); }
 function computeFigures(opts) {
   opts = opts || {};
   const f = opts.fields || settFieldsInUse();
   const figureForSheet = parseFloat(f['FigureForSettlementSheet'])        || 0;
   const settlementAmt  = parseFloat(f['Settlementamount'])                || 0;
   const lastOffer      = parseFloat(f['PayingPartysLastOffer'])            || 0;
-  const counsel        = parseFloat(f['Counselsfeespayable'])             || 0;
+  const counsel        = opts.fields ? (parseFloat(f['Counselsfeespayable']) || 0) : counselPayable(f); // S134: scenario passes its own figure
   const disbursements  = parseFloat(f['DisbursementsClaimed'])            || 0;
   const vatOnDisb      = parseFloat(f['VATonDisbursements'])              || 0;
   // S110: the stored COA figure ALWAYS includes TMC's own VAT at flat 20% (Toby, 2026-08-24).
@@ -4583,7 +4596,7 @@ function computeScenario(){
   const _scnSplit   = scnCoaIn > 0;
   const figure      = figureGross;
   const pct         = scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct');
-  const counselBase = parseFloat(f['Counselsfeespayable']) || 0;
+  const counselBase = counselPayable(f); // S134
   const counselEff  = round2(counselBase * pct / 100);
   const intMode     = scnEl('scn-interest-mode').value;
   const coaMode     = _scnSplit ? 'ontop' : 'within';
@@ -5231,7 +5244,7 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('counsel', fmt(c.counselEff != null ? c.counselEff : (c.counsel || 0)));
   put('counsel-sub', c.pct != null && c.pct !== 100
     ? c.pct + '% of ' + fmt(c.counselBase || 0) + ' claimed as payable.'
-    : 'Paid in full out of the offer.');
+    : (counselPayableIsDefault(f) ? 'Nothing entered as payable, so counsel\u2019s fees claimed (inc VAT) are used. Paid in full out of the offer.' : 'Paid in full out of the offer.'));
 }
 
 // S125: “how interest is calculated” — the full working behind a single interest figure. One
@@ -5341,7 +5354,7 @@ function renderSettlementTab() {
   setText('sv-c-disb-vat', fmt(c.disbIncVAT)); setText('sv-c-counsel-vat', fmt(c.counselIncVAT)); setText('sv-c-total-vat', fmt(c.totalClaimed));
   if (!_settSkipInputs) {
     setDate('f-DateSettled0', f['DateSettled0']); setNum('f-Settlementamount', f['Settlementamount']);
-    setNum('f-Counselsfeespayable', f['Counselsfeespayable']); setNum('f-Costsofassessment', f['Costsofassessment']);
+    setNum('f-Counselsfeespayable', counselPayable(f)); setNum('f-Costsofassessment', f['Costsofassessment']); // S134b: box shows claimed (inc VAT) until overridden
     setNum('f-ClientPaidExpenses', f['ClientPaidExpenses']); setNum('f-OtherTMCInvoices', f['OtherTMCInvoices_ex_x0020_bill']);
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
     setNum('f-CourtFeeRecovered', f['CourtFeeRecovered']); setNum('f-COALimit', f['Limit_x0020_Costs_x0020_of_x0020']);
@@ -5517,10 +5530,11 @@ function renderOffersTab() {
   setNum('f-ProfitCostsatAdvisedRates', f['ProfitCostsatAdvisedRates']); setNum('f-BottomLine', f['BottomLine']); setNum('f-LikelyTopEnd', f['LikelyTopEnd']);
   setNum('f-PayingPartysLastOffer', f['PayingPartysLastOffer']); setNum('f-FigureForSettlementSheet', f['FigureForSettlementSheet']);
   setDate('f-DateOfLastOffer', f['DateOfLastOffer']);
-  setCheck('f-Offerincludescostsofsssessment_x', f['Offerincludescostsofsssessment_x']);
+  // S134: Yes/No dropdowns, blank = No (red), Yes = green.
+  const _vCoa = f['Offerincludescostsofsssessment_x'];
+  setYN('f-Offerincludescostsofsssessment_x', _vCoa === true || _vCoa === 'true' || _vCoa === 1);
   // S125: blank = included in the offer, so an untouched case reads as inclusive of both.
-  const _exIntEl = document.getElementById('f-Offerincludesinterest_x003f_');
-  if (_exIntEl) _exIntEl.checked = offerExcludesInterest(f);
+  setYN('f-Offerincludesinterest_x003f_', offerExcludesInterest(f));
   const _lo = parseFloat(f['PayingPartysLastOffer']) || 0;
   const _lod = f['DateOfLastOffer'] ? new Date(f['DateOfLastOffer']) : null;
   // S125: when the offer EXCLUDES interest (the default), interest is not inside the offer to be
@@ -5561,7 +5575,7 @@ function renderCostsTab() {
   const nonVatCounsel  = parseFloat(f['NonVatableCounselFees']) || 0;
   const vatableCounsel = round2(Math.max(0, (parseFloat(f['CounselsFeesClaimed']) || 0) - nonVatCounsel));
   setNum('fc-Counsel-vat', vatableCounsel); setNum('fc-Counsel-nonvat', nonVatCounsel);
-  setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']);
+  setNum('fc-VatPct', vatPct * 100); setNum('fc-OtherTMCFees', f['OtherTMCInvoices_ex_x0020_bill']); markOtherTMCFeesNil(); // S134c
   const vatPctRaw = f['VAT_x0020__x0025__x0020_Claimed'];
   const _vodSel = document.getElementById('fc-VatOnDrafting'); if (_vodSel) _vodSel.value = vatOnDraftingFee(f) ? 'Yes' : 'No'; // S121
   document.getElementById('fc-VatPct')?.classList.toggle('input-blank-warn', vatPctRaw === null || vatPctRaw === undefined || vatPctRaw === '');
@@ -5654,8 +5668,8 @@ document.getElementById('btn-offers-save').addEventListener('click', async () =>
     'PayingPartysLastOffer':'f-PayingPartysLastOffer','FigureForSettlementSheet':'f-FigureForSettlementSheet',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
   const dloV = document.getElementById('f-DateOfLastOffer').value; fields['DateOfLastOffer'] = dloV ? dloV + 'T00:00:00Z' : null;
-  fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').checked;
-  fields['Offerincludesinterest_x003f_'] = document.getElementById('f-Offerincludesinterest_x003f_').checked;
+  fields['Offerincludescostsofsssessment_x'] = document.getElementById('f-Offerincludescostsofsssessment_x').value === 'Yes'; // S134
+  fields['Offerincludesinterest_x003f_'] = document.getElementById('f-Offerincludesinterest_x003f_').value === 'Yes';
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
     try { computeFigures(); computeInterest(); renderHeader(); renderOffersTab(); renderSettlementTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Offers re-render:', e); }
@@ -5681,6 +5695,10 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
     'Settlementamount':'f-Settlementamount','Counselsfeespayable':'f-Counselsfeespayable','Costsofassessment':'f-Costsofassessment',
     'ClientPaidExpenses':'f-ClientPaidExpenses','OtherTMCInvoices_ex_x0020_bill':'f-OtherTMCInvoices',
   })) { const v = document.getElementById(el).value; fields[sp] = v === '' ? null : parseFloat(v); }
+  // S134b: an untouched default is not an override — keep the stored value, so payable keeps
+  // following claimed if the bill changes later.
+  if (counselPayableIsDefault(caseFields) && fields['Counselsfeespayable'] === counselClaimedIncVat(caseFields))
+    fields['Counselsfeespayable'] = caseFields['Counselsfeespayable'] ?? null;
   // S109: the drafting fee % is saved from this tab too. Only sent when the user has actually
   // touched it, so opening Settlement and saving something unrelated never rewrites the fee.
   if (_settFeePctOverride !== null) fields['Fee_x0025__x0028_number_x0029_'] = _settFeePctOverride;
@@ -5774,7 +5792,7 @@ document.getElementById('btn-op-save').addEventListener('click', async () => {
 
 document.getElementById('btn-import-counsel').addEventListener('click', () => {
   const f = caseFields; const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
-  const _nvCounsel = parseFloat(f['NonVatableCounselsFees']) || 0;
+  const _nvCounsel = parseFloat(f['NonVatableCounselFees']) || 0; // S134: was NonVatableCounselsFees (no such field)
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   document.getElementById('f-Counselsfeespayable').value = Math.round((counselClaimed + Math.max(0, counselClaimed - _nvCounsel) * vatPct) * 100) / 100 || '';
 });
@@ -6220,8 +6238,13 @@ function setTxt(id, val)   { const e = document.getElementById(id); if (e) e.val
 function setNum(id, val)   { const e = document.getElementById(id); if (e) e.value = (val !== null && val !== undefined && val !== '') ? parseFloat(val) : ''; }
 function round2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
 function setDate(id, val)  { const e = document.getElementById(id); if (e) e.value = toDateInput(val); }
+function setYN(id, yes) { const e = document.getElementById(id); if (!e) return; e.value = yes ? 'Yes' : 'No'; e.classList.toggle('yn-yes', !!yes); e.classList.toggle('yn-no', !yes); } // S134
+document.addEventListener('change', ev => { const t = ev.target; if (t && t.classList && t.classList.contains('yn-select')) setYN(t.id, t.value === 'Yes'); });
 function setCheck(id, val) { const e = document.getElementById(id); if (e) e.checked = val === true || val === 'true' || val === 1; }
 
+// S134c: shade the Other TMC Fees row red while it is nil (blank or 0), live as the user types.
+function markOtherTMCFeesNil() { const i = document.getElementById('fc-OtherTMCFees'), r = document.getElementById('row-OtherTMCFees'); if (i && r) r.classList.toggle('nil-warn', !((parseFloat(i.value) || 0) > 0)); }
+document.getElementById('fc-OtherTMCFees')?.addEventListener('input', markOtherTMCFeesNil);
 document.getElementById('fc-VatPct')?.addEventListener('input', e => { e.target.classList.toggle('input-blank-warn', e.target.value.trim() === ''); });
 
 function openDocOverlay(url, label) { document.getElementById('doc-overlay-title').textContent = label; document.getElementById('doc-overlay-iframe').src = url; document.getElementById('doc-overlay').classList.add('open'); }
