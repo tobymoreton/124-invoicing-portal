@@ -28,6 +28,7 @@ const { URL } = require('url');
 const LIST_GUID      = '710dea64-11ae-4ae7-8fde-d4508206e1c1';
 const SITE_PATH      = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
+const API_BUILD      = 'attachmentswrite-v2-20260922-S137';
 
 // Deletion is irreversible (real Graph DELETE) — Management only, deliberately narrower
 // than upload (any signed-in TMC user). Mirrors caseupdate's DELETE_ALLOWED_EMAILS.
@@ -143,13 +144,20 @@ module.exports = async function (context, req) {
     return;
   }
 
-  // Body is the raw file bytes. Azure Functions gives a Buffer for binary bodies;
-  // fall back to Buffer.from if a string arrives.
+  // Body is the raw file bytes. The Functions host only hands Node a Buffer when the request
+  // Content-Type is application/octet-stream (or multipart/*); for ANY other type it decodes the
+  // bytes as a UTF-8 string, which destroys binary files (every byte sequence that is not valid
+  // UTF-8 becomes U+FFFD). The pre-S137 fallback Buffer.from(str, 'binary') then wrote those
+  // mangled bytes to SharePoint: 30 files corrupted 09/07-22/09/2026. A string body is refused.
   let buffer = req.body;
+  if (typeof buffer === 'string') {
+    context.log.error('attachmentswrite: body arrived as a string (Content-Type=' + (req.headers['content-type'] || '') + '), refusing to avoid corrupting ' + fileName);
+    context.res = { status: 415, headers: { 'X-Api-Build': API_BUILD }, body: 'Upload rejected: the file arrived as text and would have been corrupted. Reload the portal page (Ctrl+F5) and try again.' };
+    return;
+  }
   if (!Buffer.isBuffer(buffer)) {
-    if (typeof buffer === 'string') buffer = Buffer.from(buffer, 'binary');
-    else if (buffer == null)        buffer = Buffer.alloc(0);
-    else                            buffer = Buffer.from(buffer);
+    if (buffer == null) buffer = Buffer.alloc(0);
+    else                buffer = Buffer.from(buffer);
   }
   if (!buffer.length) {
     context.res = { status: 400, body: 'Empty file body.' };
@@ -196,8 +204,8 @@ module.exports = async function (context, req) {
     context.log('AUDIT attachment POST name=' + fileName + ' ref=' + ourRef + ' by=' + callerEmail);
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uploaded: true, id: driveItemId, name: item.name || fileName, stamped }),
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': API_BUILD },
+      body: JSON.stringify({ uploaded: true, id: driveItemId, name: item.name || fileName, stamped, build: API_BUILD }),
     };
   } catch (err) {
     context.log.error('Error uploading attachment:', err.message);
