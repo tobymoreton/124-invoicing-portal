@@ -79,6 +79,17 @@
     .form-input-num:focus{border-color:var(--gold);background:var(--white);}
     .form-input-text{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:5px 9px;width:280px;outline:none;transition:border-color var(--transition);}
     .form-input-text:focus{border-color:var(--gold);background:var(--white);}
+    /* S136: drafting-fee apportionment (Toby only; earnings figures only) */
+    .fee-split-link{background:transparent;border:none;padding:0;font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+    .fee-split-link:hover{color:var(--navy);}
+    .fee-split-row{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:6px 0;font-size:12px;color:var(--grey-mid);}
+    .fee-split-row .form-input-num{width:74px;}
+    .fee-split-row .form-select{width:150px;}
+    .fee-split-remove{background:transparent;border:1px solid var(--grey-light);border-radius:4px;color:var(--grey-mid);width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;}
+    .fee-split-remove:hover{border-color:var(--error);color:var(--error);}
+    .fee-split-summary{font-size:12px;text-align:right;padding:6px 0 10px;color:var(--grey-mid);border-bottom:1px solid var(--grey-faint);}
+    .fee-split-summary.error{color:var(--error);font-weight:600;}
+    .fee-split-summary b{color:var(--navy);font-weight:600;}
     .form-badge{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;}
     .form-badge.yes{background:var(--success-bg);color:var(--success);}
     .form-badge.no{background:var(--error-bg);color:var(--error);}
@@ -236,6 +247,25 @@
               <option value="toby@tmclegal.co.uk">Toby</option>
             </select>
           </span>
+        </div>
+
+        <!-- S136: apportion the drafting fee between the drafter and other drafters. EARNINGS
+             FIGURES ONLY (myshare / Draftsman Billing) — the invoice document never changes.
+             Shown to toby@ only (see FEE_SPLIT_ALLOWED); /api/createdraft refuses anyone else. -->
+        <div id="fee-split-wrap" style="display:none;">
+          <div class="form-row" style="border-bottom:none;padding-bottom:4px;">
+            <span class="form-label">Apportion drafting fee</span>
+            <span class="form-value">
+              <button type="button" class="fee-split-link" id="btn-fee-split-toggle">Attribute part of the fee to someone else&hellip;</button>
+            </span>
+          </div>
+          <div id="fee-split-body" style="display:none;">
+            <div id="fee-split-rows"></div>
+            <div class="fee-split-row" style="padding-top:0;">
+              <button type="button" class="fee-split-link" id="btn-fee-split-add">+ add another person</button>
+            </div>
+            <div class="fee-split-summary" id="fee-split-summary"></div>
+          </div>
         </div>
 
         <div class="form-row">
@@ -511,6 +541,10 @@
 <script src="/invoice-generator.js"></script>
 <script>
 const ADMIN_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
+// S136: who may apportion a drafting fee between drafters. Deliberately not ADMIN_EMAILS —
+// Toby's decision 22/09/2026 excludes Danielle. Mirrored server-side in createdraft-index.js.
+const FEE_SPLIT_ALLOWED = ['toby@tmclegal.co.uk'];
+let feeSplitRows   = [];   // S136: [{email, pct}] as typed — validated by getFeeSplit()
 let callerEmail    = null;
 let selectedCase   = null;
 let _caseCache     = [];
@@ -539,6 +573,7 @@ async function init() {
     return;
   }
   el('main-content').style.display = 'block';
+  if (FEE_SPLIT_ALLOWED.includes(callerEmail)) el('fee-split-wrap').style.display = '';   // S136
   initCaseSearch();
   initListeners();
   preloadCases();  // background — no await
@@ -747,6 +782,9 @@ async function loadFigures(fields) {
   const caseDrafter = String(fields.BillDraftedByText || '').trim().toLowerCase();
   draftedBySelect.value = draftedByOpts.includes(caseDrafter) ? caseDrafter : '';
   el('inp-bespoke-attributed-to').value = draftedBySelect.value;
+  // S136: an apportionment belongs to one invoice — never carry it across to the next case.
+  feeSplitRows = [];
+  renderFeeSplitRows();
 
   // Override / minimum-fee controls for the newly selected case.
   // If the case is flagged MinimumFee=Yes, pre-tick the minimum on whichever
@@ -863,6 +901,22 @@ function initListeners() {
     recalc();
   });
   el('btn-bespoke-jump').addEventListener('click', activateBespokeMode);
+  // S136: drafting-fee apportionment controls (the wrapper is only visible to FEE_SPLIT_ALLOWED).
+  el('btn-fee-split-toggle').addEventListener('click', () => {
+    const body = el('fee-split-body');
+    const open = body.style.display === 'none';
+    if (open && !feeSplitRows.length) feeSplitRows.push({ email: '', pct: '' });
+    if (!open) feeSplitRows = [];            // closing the box withdraws the apportionment
+    body.style.display = open ? '' : 'none';
+    renderFeeSplitRows();
+    recalc();
+  });
+  el('btn-fee-split-add').addEventListener('click', () => {
+    if (feeSplitRows.length >= 3) return;   // the drafter plus up to three others
+    feeSplitRows.push({ email: '', pct: '' });
+    renderFeeSplitRows();
+    recalc();
+  });
   el('inp-include-tmc').addEventListener('change', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
   el('inp-zero-vat-ok').addEventListener('change', recalc);
@@ -1059,6 +1113,14 @@ function recalc() {
   const draftedBy = (el('inp-drafted-by').value || '').trim();
   const draftedByMissing = !draftedBy;
 
+  // S136: drafting-fee apportionment — validated here so the Preview button carries the reason.
+  // Applies to the IP drafting fee (DraftingFeeElement) only; timed work, LA fee and bespoke
+  // amounts are untouched and so is the invoice document.
+  const feeSplit = getFeeSplit(draftedBy);
+  renderFeeSplitSummary(feeSplit, draftedBy, draftingFee);
+  const feeSplitError = feeSplit.error
+    || (feeSplit.rows.length && draftingFee <= 0 ? 'the apportionment needs an inter partes drafting fee to apportion — enter one or remove the apportionment rows.' : '');
+
   // Required on every invoice, not just those carrying a drafting fee - the field decides who
   // gets paid for the work.
   el('drafted-by-required').style.display = 'inline';
@@ -1079,10 +1141,12 @@ function recalc() {
   if (zeroVatBlock) zeroVatBlock.style.display = zeroVat ? 'flex' : 'none';
   const zeroVatUnconfirmed = zeroVat && !(zeroVatOk && zeroVatReason.length >= 10);
 
-  const blockReason = draftedByMissing
+  const blockReason0 = draftedByMissing
     ? 'Choose who drafted the bill above \u2014 it must be set on every invoice.'
     : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.'
     : (zeroVatUnconfirmed ? 'This invoice carries a value but no VAT \u2014 check \u201cVAT on drafting fee?\u201d on the case, or confirm the zero rating and give a reason above.' : ''));
+  // S136: an invalid apportionment holds the Preview button like any other blocker.
+  const blockReason = blockReason0 || (feeSplitError ? ('Apportionment: ' + feeSplitError) : '');
   const issueBtn=el('btn-issue');
   issueBtn.disabled = !!blockReason;
   issueBtn.title    = blockReason || 'Open the rendered draft for review';
@@ -1109,6 +1173,7 @@ function recalc() {
     ],
     bespokeExpensesLine: el('inp-bespoke-expenses-line').value,
     draftedByEmail:     draftedBy,
+    feeSplit:           feeSplit.rows,      // S136: [{email, pct}] — [] when no apportionment
     wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
       idx:      +tr.getAttribute('data-idx'),
       wipId:    tr.getAttribute('data-wip-id') || '',
@@ -1315,6 +1380,7 @@ async function approveDraft() {
       caseItemId:        selectedCase.id || '',
       checkedWipIds:     wipIdsForBilling,
       checkedWipEntries: c.checkedWipEntries || [],
+      draftingFeeSplit:  c.feeSplit || [],   // S136: earnings-only apportionment; server re-validates
     };
 
     const r = await fetch('/api/createdraft', {
@@ -1384,6 +1450,81 @@ function captureInvoicePdf(invoiceData) {
 
 // ── Helpers ───────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
+
+// ── S136: drafting-fee apportionment ────────────────────────────────────────
+// The drafter keeps 100 minus the listed percentages. Stored by /api/createdraft as plain text
+// `email:pct;email:pct` on the Invoice Library (DraftingFeeSplit) and read only by the earnings
+// figures (/api/invoices?myshare= and index.html Draftsman Billing). Never touches the invoice.
+function drafterOptions() {
+  return Array.from(el('inp-drafted-by').options).filter(o => o.value).map(o => ({ email: o.value, name: o.textContent }));
+}
+function drafterName(email) {
+  const o = drafterOptions().find(d => d.email === email);
+  return o ? o.name : (email || '—');
+}
+function renderFeeSplitRows() {
+  const host = el('fee-split-rows');
+  if (!host) return;
+  const opts = drafterOptions();
+  host.innerHTML = feeSplitRows.map((row, i) => `
+    <div class="fee-split-row" data-i="${i}">
+      <span>Attribute</span>
+      <input type="number" class="form-input-num fee-split-pct" min="0.01" max="100" step="0.01" placeholder="%" value="${esc(row.pct)}" />
+      <span>% to</span>
+      <select class="form-select fee-split-who">
+        <option value="">&mdash; select &mdash;</option>
+        ${opts.map(o => `<option value="${esc(o.email)}"${o.email === row.email ? ' selected' : ''}>${esc(o.name)}</option>`).join('')}
+      </select>
+      <button type="button" class="fee-split-remove" title="Remove">&times;</button>
+    </div>`).join('');
+  host.querySelectorAll('.fee-split-row').forEach(div => {
+    const i = +div.getAttribute('data-i');
+    div.querySelector('.fee-split-pct').addEventListener('input',  e => { feeSplitRows[i].pct   = e.target.value; recalc(); });
+    div.querySelector('.fee-split-who').addEventListener('change', e => { feeSplitRows[i].email = e.target.value; recalc(); });
+    div.querySelector('.fee-split-remove').addEventListener('click', () => { feeSplitRows.splice(i, 1); renderFeeSplitRows(); recalc(); });
+  });
+  const body = el('fee-split-body');
+  if (body && !feeSplitRows.length) body.style.display = 'none';
+  const tog = el('btn-fee-split-toggle');
+  if (tog) tog.textContent = (body && body.style.display !== 'none') ? 'Withdraw the apportionment' : 'Attribute part of the fee to someone else…';
+}
+// Returns { rows: [{email, pct}], error: '' }. Rows left completely blank are ignored; a
+// half-filled row is an error, not a silent drop — this decides who gets paid.
+function getFeeSplit(draftedBy) {
+  const rows = [];
+  const seen = new Set();
+  let sum = 0;
+  for (const r of feeSplitRows) {
+    const email = String(r.email || '').trim().toLowerCase();
+    const raw   = String(r.pct == null ? '' : r.pct).trim();
+    if (!email && !raw) continue;
+    if (!email) return { rows, error: 'choose who the ' + raw + '% goes to.' };
+    const pct = Math.round((parseFloat(raw) || 0) * 100) / 100;
+    if (!(pct > 0) || pct > 100) return { rows, error: 'enter a percentage above 0 and at most 100 for ' + drafterName(email) + '.' };
+    if (draftedBy && email === draftedBy) return { rows, error: drafterName(email) + ' is the drafter and keeps the remainder automatically — pick someone else.' };
+    if (seen.has(email)) return { rows, error: drafterName(email) + ' is listed twice.' };
+    seen.add(email);
+    sum += pct;
+    rows.push({ email, pct });
+  }
+  if (sum > 100 + 1e-9) return { rows, error: 'the percentages add up to ' + (Math.round(sum * 100) / 100) + '% — they may not exceed 100%.' };
+  return { rows, error: '' };
+}
+function renderFeeSplitSummary(split, draftedBy, draftingFee) {
+  const box = el('fee-split-summary');
+  if (!box) return;
+  if (!feeSplitRows.length) { box.textContent = ''; box.className = 'fee-split-summary'; return; }
+  if (split.error) { box.textContent = split.error.charAt(0).toUpperCase() + split.error.slice(1); box.className = 'fee-split-summary error'; return; }
+  if (!split.rows.length) { box.textContent = 'No apportionment yet — fill in a row or remove it.'; box.className = 'fee-split-summary'; return; }
+  if (draftingFee <= 0) { box.textContent = 'No inter partes drafting fee on this invoice to apportion.'; box.className = 'fee-split-summary error'; return; }
+  const sum  = split.rows.reduce((s, r) => s + r.pct, 0);
+  const keep = Math.round((100 - sum) * 100) / 100;
+  const r2   = n => Math.round(n * 100) / 100;
+  const parts = [`<b>${esc(drafterName(draftedBy))}</b> keeps ${keep}% = <b>${gbp(r2(draftingFee * keep / 100))}</b>`]
+    .concat(split.rows.map(r => `<b>${esc(drafterName(r.email))}</b> ${r.pct}% = <b>${gbp(r2(draftingFee * r.pct / 100))}</b>`));
+  box.innerHTML = parts.join(' &middot; ') + '<br><span style="font-size:11px;">Earnings figures only — the invoice itself is unchanged.</span>';
+  box.className = 'fee-split-summary';
+}
 function rowShow(id, show) { el(id).style.display = show ? 'flex' : 'none'; }
 function gbp(n) { return '\u00a3' + (+n || 0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function fmtDate(s) { try { return new Date(s).toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'}); } catch { return s; } }

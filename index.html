@@ -1345,6 +1345,25 @@ function nameFromEmail(email) {
   return email.split('@')[0].replace(/\./g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 }
 
+// S136: who is credited with an invoice's drafting fee, and with how much. A blank
+// DraftingFeeSplit (every pre-S136 invoice) credits the whole DraftingFeeElement to the
+// drafter, exactly as before. With a split the drafter keeps 100 minus the listed percentages
+// and each named person gets theirs. EARNINGS FIGURES ONLY — the invoice document never reads
+// this. Same algebra as the server's /api/invoices?myshare=; change both together.
+function feeShares(inv) {
+  const dfe     = parseFloat(inv.DraftingFeeElement) || 0;
+  const drafter = (inv.DraftedByEmail || '').toLowerCase();
+  const split   = Array.isArray(inv.FeeSplit) ? inv.FeeSplit : [];
+  if (!split.length || dfe <= 0) return [{ email: drafter, amount: dfe, pct: null }];
+  const r2  = n => Math.round(n * 100) / 100;
+  const sum = split.reduce((s, p) => s + (parseFloat(p.pct) || 0), 0);
+  // Recipients are rounded to the penny; the drafter takes what is left, so the shares always
+  // add back to the fee exactly (33.33/33.33 of £1,022.69 would otherwise lose a penny).
+  const recips = split.map(p => ({ email: String(p.email || '').toLowerCase(), amount: r2(dfe * (parseFloat(p.pct) || 0) / 100), pct: r2(parseFloat(p.pct) || 0) }));
+  const given  = recips.reduce((s, p) => s + p.amount, 0);
+  return [{ email: drafter, amount: r2(dfe - given), pct: r2(100 - sum) }].concat(recips);
+}
+
 const MEDALS = ['🥇','🥈','🥉'];
 
 function toggleSection(id) {
@@ -1412,10 +1431,13 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && !_isFinance && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
-    const name = nameFromEmail(inv.DraftedByEmail);
-    if (!draft[name]) draft[name]=0;
-    draft[name] += parseFloat(inv.DraftingFeeElement)||0;
+    // S136: one credit per share — the drafter's remainder plus any apportioned recipients.
+    feeShares(inv).forEach(sh => {
+      if (!_isAdmin && !_isFinance && sh.email && sh.email !== _callerEmail) return;
+      const name = nameFromEmail(sh.email);
+      if (!draft[name]) draft[name]=0;
+      draft[name] += sh.amount;
+    });
   });
   const dRows = Object.entries(draft).sort((a,b)=>a[0]==='Unassigned'?1:b[0]==='Unassigned'?-1:b[1]-a[1]);
   const dGrand = dRows.reduce((s,[,v])=>s+v,0);
@@ -1453,12 +1475,14 @@ function renderDraftsman() {
     if (!d) return;
     const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     if (k !== mk) return;
-    if (!_isAdmin && !_isFinance && inv.DraftedByEmail && inv.DraftedByEmail.toLowerCase() !== _callerEmail) return;
-    const name = nameFromEmail(inv.DraftedByEmail);
-    if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
-    const dfe = parseFloat(inv.DraftingFeeElement)||0;
-    totals[name].drafting += dfe;
-    totals[name].vat      += dfe * vatRateFor(inv.OrderDetails);
+    // S136: drafting credit follows feeShares() — drafter's remainder plus apportioned recipients.
+    feeShares(inv).forEach(sh => {
+      if (!_isAdmin && !_isFinance && sh.email && sh.email !== _callerEmail) return;
+      const name = nameFromEmail(sh.email);
+      if (!totals[name]) totals[name]={drafting:0,timed:0,vat:0};
+      totals[name].drafting += sh.amount;
+      totals[name].vat      += sh.amount * vatRateFor(inv.OrderDetails);
+    });
   });
   allLineItems.forEach(li => {
     const d = li.InvoiceDate ? new Date(li.InvoiceDate) : null;
@@ -1491,19 +1515,30 @@ function renderDraftsman() {
   const buildBreakdown = (name, v) => {
     const bkdId = 'bkd-' + name.replace(/\s+/g, '-');
 
-    // Drafting rows — one per invoice attributed to this draftsman
-    const draftInvs = allInvoices.filter(inv => {
+    // Drafting rows — one per share of a drafting fee credited to this draftsman this month.
+    // S136: with no split that is one row per invoice they drafted, as before; with a split the
+    // drafter's row carries their remainder and each recipient gets a row on the same case.
+    const draftInvs = [];
+    allInvoices.forEach(inv => {
       const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
-      if (!d) return false;
+      if (!d) return;
       const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      return k === mk && nameFromEmail(inv.DraftedByEmail) === name;
-    }).map(inv => ({
-      casename: inv.Casename || '—',
-      ourref:   inv.Ourref   || '—',
-      drafting: parseFloat(inv.DraftingFeeElement) || 0,
-      // VAT on the drafting element only — the timed side carries its own below.
-      vat:      (parseFloat(inv.DraftingFeeElement) || 0) * vatRateFor(inv.OrderDetails),
-    }));
+      if (k !== mk) return;
+      feeShares(inv).forEach(sh => {
+        if (nameFromEmail(sh.email) !== name) return;
+        const isDrafter = sh.email === (inv.DraftedByEmail || '').toLowerCase();
+        draftInvs.push({
+          casename: inv.Casename || '—',
+          ourref:   inv.Ourref   || '—',
+          drafting: sh.amount,
+          // VAT on the drafting element only — the timed side carries its own below.
+          vat:      sh.amount * vatRateFor(inv.OrderDetails),
+          note:     sh.pct === null ? ''
+                  : isDrafter ? ('Keeps ' + sh.pct + '% of the drafting fee')
+                  : (sh.pct + '% of ' + nameFromEmail(inv.DraftedByEmail) + "'s drafting fee"),
+        });
+      });
+    });
 
     // Timed rows — group line items by OurRef for this draftsman
     const timedByRef = {};
@@ -1523,13 +1558,14 @@ function renderDraftsman() {
     const caseMap = {};
     draftInvs.forEach(r => {
       const key = r.ourref;
-      if (!caseMap[key]) caseMap[key] = { casename: r.casename, ourref: r.ourref, drafting: 0, timed: 0, vat: 0 };
+      if (!caseMap[key]) caseMap[key] = { casename: r.casename, ourref: r.ourref, drafting: 0, timed: 0, vat: 0, note: '' };
       caseMap[key].drafting += r.drafting;
       caseMap[key].vat      += r.vat;
+      if (r.note) caseMap[key].note = r.note;   // S136
     });
     Object.entries(timedByRef).forEach(([ref, t]) => {
       if (ref === '__none__') return;
-      if (!caseMap[ref]) caseMap[ref] = { casename: t.casename, ourref: ref, drafting: 0, timed: 0, vat: 0 };
+      if (!caseMap[ref]) caseMap[ref] = { casename: t.casename, ourref: ref, drafting: 0, timed: 0, vat: 0, note: '' };
       caseMap[ref].timed += t.timed;
       caseMap[ref].vat   += t.timedVat;
     });
@@ -1548,7 +1584,7 @@ function renderDraftsman() {
 
     const dataRows = rows.map(r => `
       <tr class="ds-bkd-row" style="${bkStyle}">
-        <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}<div style="font-size:10px;color:var(--grey-mid);margin-top:2px;font-family:'IBM Plex Mono',monospace;">${esc(r.ourref)}</div></td>
+        <td style="${bkCellL}color:var(--navy)">${esc(r.casename)}<div style="font-size:10px;color:var(--grey-mid);margin-top:2px;font-family:'IBM Plex Mono',monospace;">${esc(r.ourref)}</div>${r.note ? `<div style="font-size:10px;color:var(--gold);margin-top:2px;">${esc(r.note)}</div>` : ''}</td>
         <td style="${bkCell}">${r.drafting > 0 ? fc(r.drafting) : '—'}</td>
         <td style="${bkCell}">${r.timed    > 0 ? fc(r.timed)    : '—'}</td>
         <td style="${bkCell}">${fc(r.drafting + r.timed)}</td>
