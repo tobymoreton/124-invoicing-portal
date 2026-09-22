@@ -45,6 +45,7 @@ const SELECT_FIELDS = [
   'Case_x0020_ID',
   'DraftedByEmail',       // Mirror of DraftedBy/Email — use this, not DraftedBy
   'DraftingFeeElement',   // Drafting fee portion of invoice
+  'DraftingFeeSplit',     // S136: `email:pct;email:pct` — earnings-only apportionment of the drafting fee
   'BespokeMirror',        // Text mirror of the Bespoke Yes/No column - Graph drops Boolean fields
   'VAT',                  // VAT amount
   'Net',                  // Net amount (ex VAT)
@@ -196,10 +197,31 @@ module.exports = async function (context, req) {
         // The drafter's non-timed entitlement is the invoice's DraftingFeeElement when it
         // carries one (IP drafting invoices). LA, bespoke and timed-only invoices leave
         // DraftingFeeElement at 0, so those fall back to the Net-minus-timed residual as before.
+        //
+        // S136: DraftingFeeSplit apportions the DraftingFeeElement ONLY (Toby's decision,
+        // 22/09/2026): the drafter keeps 100 minus the listed percentages, each listed person
+        // gets theirs. The residual fallback (dfe = 0) is not split. Blank column = no split.
         const dfe       = inv.DraftingFeeElement || 0;
-        const rest      = isDrafter
-          ? (dfe > 0 ? dfe : Math.max(0, (inv.Net || 0) - agg.total))
-          : 0;
+        const split     = inv.FeeSplit || [];
+        const splitSum  = split.reduce((s, p) => s + p.pct, 0);
+        const myPct     = split.filter(p => p.email === callerEmail).reduce((s, p) => s + p.pct, 0);
+        // Recipients are rounded to the penny and the drafter takes what is left, so the shares
+        // always add back to the fee exactly (index.html feeShares() does the same).
+        const r2        = n => Math.round(n * 100) / 100;
+        const givenAway = split.reduce((s, p) => s + r2(dfe * p.pct / 100), 0);
+        let rest = 0;
+        let splitPct = null;   // the % of the drafting fee this row credits to the caller, when split
+        if (isDrafter) {
+          if (dfe > 0) {
+            rest = splitSum > 0 ? r2(dfe - givenAway) : dfe;
+            if (splitSum > 0) splitPct = r2(100 - splitSum);
+          } else {
+            rest = Math.max(0, (inv.Net || 0) - agg.total);
+          }
+        } else if (myPct > 0 && dfe > 0) {
+          rest     = r2(dfe * myPct / 100);
+          splitPct = r2(myPct);
+        }
         if (!mine && !rest) continue;
 
         rows.push({
@@ -211,6 +233,7 @@ module.exports = async function (context, req) {
           Bespoke:      inv.Bespoke || false,
           drafter:      inv.DraftedByEmail || null,
           isDrafter,
+          splitPct,                              // S136: null unless the drafting fee is apportioned
           myTimed:      +mine.toFixed(2),
           myRemainder:  +rest.toFixed(2),
           myShare:      +(mine + rest).toFixed(2),
@@ -227,7 +250,7 @@ module.exports = async function (context, req) {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
           'X-Invoice-Window': 'myshare-' + myShareMode,
-          'X-Api-Build': 'S107-linevalue-fallback',
+          'X-Api-Build': 'S136-fee-split',
         },
         body: JSON.stringify({
           mode:      myShareMode,
@@ -392,9 +415,15 @@ async function fetchAllInvoices(token, callerEmailFilter) {
     url = page['@odata.nextLink'] || null;
   }
 
-  // Non-admin/non-finance: filter to caller's own invoices only (server-side security)
+  // Non-admin/non-finance: filter to caller's own invoices only (server-side security).
+  // S136: "own" now also means an invoice whose drafting fee is partly apportioned to the
+  // caller, so index.html's Draftsman Billing panel can show them that share — otherwise
+  // their panel would understate what their My Cases card (myshare, full ledger) reports.
   if (callerEmailFilter) {
-    all = all.filter(inv => (inv.DraftedByEmail || '').toLowerCase() === callerEmailFilter);
+    all = all.filter(inv =>
+      (inv.DraftedByEmail || '').toLowerCase() === callerEmailFilter
+      || (inv.FeeSplit || []).some(p => p.email === callerEmailFilter)
+    );
   }
 
   // Sort by DueDate asc — null dates go last
@@ -465,6 +494,8 @@ function normalise(item) {
     Case_x0020_ID:      f.Case_x0020_ID       || null,
     DraftedByEmail:     f.DraftedByEmail      || null,
     DraftingFeeElement: toNum(f.DraftingFeeElement),
+    DraftingFeeSplit:   f.DraftingFeeSplit    || null,   // S136: raw text, for display/audit
+    FeeSplit:           parseFeeSplit(f.DraftingFeeSplit), // S136: [{email, pct}], [] when none
     Bespoke:            String(f.BespokeMirror || '').trim().toLowerCase() === 'yes',
     VAT:                toNum(f.VAT),
     Net:                toNum(f.Net),
@@ -477,6 +508,22 @@ function normalise(item) {
 function toNum(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
+}
+
+// S136: `email:pct;email:pct` -> [{email, pct}]. Tolerant on read: a malformed part is dropped
+// rather than failing the whole ledger, and the drafter's own share (100 minus the sum) is
+// worked out by the consumer. Written only by /api/createdraft, which validates strictly.
+function parseFeeSplit(text) {
+  const out = [];
+  String(text || '').split(';').forEach(part => {
+    const i = part.lastIndexOf(':');
+    if (i < 1) return;
+    const email = part.slice(0, i).trim().toLowerCase();
+    const pct   = parseFloat(part.slice(i + 1));
+    if (!email || !(pct > 0) || pct > 100) return;
+    out.push({ email, pct });
+  });
+  return out;
 }
 
 // AmountOutstanding is a calculated SP field — Graph returns null for it.
