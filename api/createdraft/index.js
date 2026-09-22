@@ -23,6 +23,9 @@
  *   checkedWipEntries object[] — full entry data for Line Items creation:
  *                                [{_id, DateCompleted, WorkDone, HoursSpent, Rate,
  *                                   CaseName, OurRef, Email}]
+ *   draftingFeeSplit  object[]  — OPTIONAL, S136. [{email, pct}] — apportions the drafting fee
+ *                                for EARNINGS FIGURES ONLY (myshare, Draftsman Billing). The
+ *                                invoice itself is untouched. Accepted from toby@ only.
  *
  * Returns: { fileName, pdfUrl, status: 'Draft' }
  *
@@ -43,6 +46,10 @@ const CASES_LIST   = 'ae420bda-e550-499c-b337-90e4f33617c1';
 // The SWA Entra SSO gate already restricts callers to the firm's tenant;
 // the domain check below is defence-in-depth at the API layer.
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
+
+// S136: the only account allowed to apportion a drafting fee between drafters. Deliberately
+// NOT the admin list — Danielle is admin and is excluded by Toby's decision (22/09/2026).
+const SPLIT_ALLOWED_EMAILS = ['toby@tmclegal.co.uk'];
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -69,7 +76,7 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries } = body || {};
+  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries, draftingFeeSplit } = body || {};
   if (!pdfBase64 || !computed || !caseFields) {
     context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields.' };
     return;
@@ -107,6 +114,42 @@ module.exports = async function (context, req) {
   const _zeroVatNote = (_grandAmt > 0 && _vatAmt <= 0 && _zeroVatReason)
     ? ' [NO VAT: ' + _zeroVatReason + ' \u2014 confirmed by ' + draftedByEmail + ']'
     : '';
+
+  // S136: drafting-fee apportionment between drafters — earnings figures only, never the invoice.
+  // Stored on the Invoice Library as plain text `email:pct;email:pct` (DraftingFeeSplit). The
+  // drafter keeps 100 minus the sum. Blank column = no split = the behaviour every invoice had
+  // before S136. It is a wage-bearing field, so it is validated here as strictly as DraftedByEmail
+  // and a non-permitted caller is refused outright rather than having it silently dropped.
+  let splitText = '';
+  if (Array.isArray(draftingFeeSplit) && draftingFeeSplit.length > 0) {
+    if (!SPLIT_ALLOWED_EMAILS.includes(callerEmail)) {
+      context.res = { status: 403, body: 'Drafting-fee apportionment may only be set by ' + SPLIT_ALLOWED_EMAILS.join(', ') + '.' };
+      return;
+    }
+    if ((Number(computed.draftingFee) || 0) <= 0) {
+      context.res = { status: 400, body: 'This invoice carries no drafting fee, so there is nothing to apportion. Remove the apportionment rows.' };
+      return;
+    }
+    const seen  = new Set();
+    const parts = [];
+    let sum = 0;
+    for (const row of draftingFeeSplit) {
+      const email = String((row && row.email) || '').trim().toLowerCase();
+      const pct   = Math.round((Number(row && row.pct) || 0) * 100) / 100;
+      if (!DRAFTERS.includes(email))  { context.res = { status: 400, body: 'Apportionment: "' + email + '" is not a member of the drafting team.' }; return; }
+      if (email === draftedByEmail)   { context.res = { status: 400, body: 'Apportionment: the drafter keeps the remainder automatically. Do not list them as a recipient.' }; return; }
+      if (seen.has(email))            { context.res = { status: 400, body: 'Apportionment: ' + email + ' is listed twice.' }; return; }
+      if (!(pct > 0 && pct <= 100))   { context.res = { status: 400, body: 'Apportionment: each percentage must be above 0 and at most 100.' }; return; }
+      seen.add(email);
+      sum += pct;
+      parts.push(email + ':' + String(pct));
+    }
+    if (sum > 100 + 1e-9) {
+      context.res = { status: 400, body: 'Apportionment: the percentages add up to ' + (Math.round(sum * 100) / 100) + '%. They may not exceed 100%.' };
+      return;
+    }
+    splitText = parts.join(';');
+  }
 
   try {
     const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
@@ -182,6 +225,9 @@ module.exports = async function (context, req) {
       DraftedByEmail:       draftedByEmail,
       VendorName:           caseFields.Firm_x0028_text_x0029_ || '',
       DraftWipIds:          wipIdsCsv,
+      // S136: only written when a split was supplied — never write an empty string over the
+      // column, so an invoice with no split reads exactly as every pre-S136 invoice does.
+      ...(splitText ? { DraftingFeeSplit: splitText } : {}),
       // DELIBERATELY OMITTED to keep Status = "Draft":
       //   InvoiceDate  — blank
       //   AmountDue    — 0 / omitted
