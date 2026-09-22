@@ -433,17 +433,31 @@ async function resolveMissingFirms(token, items) {
     (items || []).forEach(function(item) {
       var f = item.fields || {};
       var firm = null;
-      if (f.FirmLookupId) {
-        firm = byId[String(f.FirmLookupId)] || null;
+      var _txt = (f['Firm_x0028_text_x0029_'] || '').trim().toLowerCase();
+      var _byLookup = f.FirmLookupId ? (byId[String(f.FirmLookupId)] || null) : null;
+      // S135: the portal's Firm dropdown writes ONLY the text (Graph app-only cannot write the
+      // Lookup), so when the text names a different firm from the Lookup row, the text is the
+      // later edit and wins. 1741383: text "Cambridge House Law Centre", Lookup 1506 shared with
+      // 1741357 whose text is "???" — the Lookup still points at the booking-in placeholder.
+      if (_byLookup && (!_txt || (_byLookup.Title || '').trim().toLowerCase() === _txt)) {
+        firm = _byLookup;
+      } else if (!_txt && f.FirmLookupId) {
+        firm = null;
       } else {
         var nameKey = (f['Firm_x0028_text_x0029_'] || '').trim().toLowerCase();
         if (nameKey) {
           var candidates = byNameList[nameKey] || [];
-          // Ambiguous (duplicate firm names in Client Firms) — do not guess which one.
-          // Leaving it blank is the honest outcome per the no-fabrication rule; a wrong
-          // address is worse than a missing one.
           if (candidates.length === 1) firm = candidates[0];
+          // S135: duplicates are only ambiguous if their ADDRESSES differ — see singleAddressFor.
+          else if (candidates.length > 1) firm = singleAddressFor(candidates);
         }
+      }
+      // S135 (Lesley, 22/09, Amir Eden-1741383): the linked Client Firms row can be an empty
+      // duplicate of a firm whose other row holds the address. Fall back to same-name rows, but
+      // only where they agree on one address — two different addresses still leave it blank.
+      if (firm && !(firm.AddressLine1 || '').trim()) {
+        var alt = singleAddressFor(byNameList[(firm.Title || '').trim().toLowerCase()] || []);
+        if (alt) firm = Object.assign({}, alt, { Title: firm.Title || alt.Title });
       }
       if (!firm) return;
 
@@ -464,6 +478,16 @@ async function resolveMissingFirms(token, items) {
   } catch (e) {
     // Silent no-op - keep the request succeeding with a blank firm rather than erroring.
   }
+}
+
+// S135: of several same-name Client Firms rows, return one carrying an address if every row
+// that HAS an address has the same one; otherwise null (conflicting addresses = don't guess).
+function singleAddressFor(rows) {
+  var withAddr = (rows || []).filter(function(r) { return (r.AddressLine1 || '').trim(); });
+  if (!withAddr.length) return null;
+  var sig = function(r) { return ADDR_MAP.map(function(p) { return (r[p[1]] || '').trim().toLowerCase(); }).join('|'); };
+  var first = sig(withAddr[0]);
+  return withAddr.every(function(r) { return sig(r) === first; }) ? withAddr[0] : null;
 }
 
 function getToken(tenantId, clientId, clientSecret) {
