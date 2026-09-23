@@ -1619,7 +1619,11 @@
                 <div class="kv-ctl-label">% of counsel's fees payable</div>
                 <input type="number" id="scn-counsel-pct" step="1" min="0" value="100" />
               </div>
-              <div class="kv-help">The percentage of counsel's fees you expect to pay. 100% is the figure on the Settlement tab; drop it to model counsel taking a cut alongside the solicitor.</div>
+              <div class="kv-ctl">
+                <div class="kv-ctl-label">Or a fixed sum counsel will accept (£ inc VAT)</div>
+                <input type="number" id="scn-counsel-fixed" step="0.01" min="0" placeholder="blank = use the %" />
+              </div>
+              <div class="kv-help">The percentage of counsel's fees you expect to pay. 100% is the figure on the Settlement tab; drop it to model counsel taking a cut alongside the solicitor. Where counsel has offered to accept a set figure, enter it as a fixed sum instead — it overrides the % until cleared.</div>
             </div>
             <div class="kv-tile">
               <div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-scn-fee">—</div>
@@ -4580,6 +4584,7 @@ function scnResetDefaults(){
   const f = caseFields, c = computed;
   scnEl('scn-figure').value = c.offerOrSettlement ? c.offerOrSettlement.toFixed(2) : '';
   scnEl('scn-counsel-pct').value = 100;
+  { const _cf = scnEl('scn-counsel-fixed'); if (_cf) _cf.value = ''; scnEl('scn-counsel-pct').disabled = false; } // S138
   scnEl('scn-interest-mode').value = 'within';
   scnEl('scn-interest-date').value = new Date().toISOString().substring(0,10);
   // S116: follow the Settlement tab's resolved treatment (its own selector, else the legacy Offers flag).
@@ -4603,9 +4608,14 @@ function computeScenario(){
   const scnCoaIn    = Math.max(0, scnNum('scn-coa-in-figure'));
   const _scnSplit   = scnCoaIn > 0;
   const figure      = figureGross;
-  const pct         = scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct');
   const counselBase = counselPayable(f); // S134
-  const counselEff  = round2(counselBase * pct / 100);
+  // S138 (Toby, 23/09): counsel sometimes offers to accept a fixed sum. A figure in scn-counsel-fixed
+  // overrides the % box; pct is then derived from it (share of payable) for display only.
+  const counselFixed = Math.max(0, scnNum('scn-counsel-fixed'));
+  const pct         = counselFixed > 0 ? (counselBase > 0 ? round2(counselFixed / counselBase * 100) : 0)
+                    : (scnEl('scn-counsel-pct').value === '' ? 100 : scnNum('scn-counsel-pct'));
+  const counselEff  = counselFixed > 0 ? round2(counselFixed) : round2(counselBase * pct / 100);
+  { const _pe = scnEl('scn-counsel-pct'); if (_pe) _pe.disabled = counselFixed > 0; }
   const intMode     = scnEl('scn-interest-mode').value;
   const coaMode     = _scnSplit ? 'ontop' : 'within';
   const asAtStr     = scnEl('scn-interest-date').value;
@@ -4659,7 +4669,7 @@ function computeScenario(){
   });
   // Names the Scenarios renderer expects, over the top of the shared figures.
   return Object.assign(s, {
-    figure: figure, pct: pct, counselBase: counselBase, counselEff: counselEff,
+    figure: figure, pct: pct, counselBase: counselBase, counselEff: counselEff, counselFixed: counselFixed > 0,
     intMode: intMode, coaMode: coaMode, hasAuth: hasAuth, interestAmt: interestAmt,
     coaTimeCharge: coaTimeCharge, courtFee: scnCourtFee,
     totalLiab: s.totalPayable, feeBasis: feeBasisSel, coaAssumedRecovered: _assumeRecovered,
@@ -4693,7 +4703,8 @@ function renderScenarioTab(){
   setText('scn-c-pc-vat', fmt(c.pcIncVAT)); setText('scn-c-tmcpc-vat', fmt(c.tmcPCIncVAT));
   setText('scn-c-disb-vat', fmt(c.disbIncVAT)); setText('scn-c-counsel-vat', fmt(c.counselIncVAT)); setText('scn-c-total-vat', fmt(c.totalClaimed));
   setText('scn-r-Disb', fmt(s.disbIncVAT));
-  setText('scn-r-Counsel', s.pct === 100 ? fmt(s.counselEff) : fmt(s.counselEff) + ' (' + s.pct + '% of ' + fmt(s.counselBase) + ')');
+  setText('scn-r-Counsel', s.counselFixed ? fmt(s.counselEff) + ' (fixed sum \u2014 ' + s.pct + '% of ' + fmt(s.counselBase) + ')'
+    : s.pct === 100 ? fmt(s.counselEff) : fmt(s.counselEff) + ' (' + s.pct + '% of ' + fmt(s.counselBase) + ')');
   setText('scn-r-COA', s.coaMode === 'ontop' ? fmt(s.totalCOA) + ' — paid for separately'
     : fmt(s.totalCOA) + ' — already out of the bill money above');
   setText('scn-r-Other', fmt(s.otherTMC));
@@ -4908,7 +4919,7 @@ document.getElementById('scn-nl-apply')?.addEventListener('click', () => {
       said.push('costs of assessment on top but no amount given — enter it under “For the costs of assessment” to include it');
     else if (p.wholeInclusive) said.push('costs of assessment inside the offer (it is expressed as inclusive)');
   }
-  if (p.counselPct != null) { scnEl('scn-counsel-pct').value = p.counselPct; said.push("counsel at " + p.counselPct + '%'); }
+  if (p.counselPct != null) { const _cf = scnEl('scn-counsel-fixed'); if (_cf) _cf.value = ''; scnEl('scn-counsel-pct').value = p.counselPct; said.push("counsel at " + p.counselPct + '%'); }
   renderScenarioTab();
   echo.textContent = (said.length ? 'Read as: ' + said.join(' · ') + '.' : 'Nothing recognised.')
     + (p.missing.length ? ' Could not find ' + p.missing.join(', ') + ' — set ' + (p.missing.length > 1 ? 'those' : 'that') + ' by hand.' : '')
@@ -5090,6 +5101,7 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
   const q = scnProRataSolve();
   if (!q) { note.textContent = 'Needs counsel\u2019s fees payable, counsel\u2019s fees claimed and claimed profit costs to be more than zero.'; return; }
   if (q.paid <= 0) { note.textContent = 'Nothing is left for counsel once disbursements, other TMC costs, the costs of assessment and the drafting fee are met.'; return; }
+  { const _cf = scnEl('scn-counsel-fixed'); if (_cf) _cf.value = ''; } // S138: the solve sets the %, so a fixed sum gives way
   scnEl('scn-counsel-pct').value = Math.min(100, Math.max(0, q.pct)).toFixed(2);
   renderScenarioTab();
   // S125: re-read the scenario AFTER the % has been written back, so every figure quoted below is
@@ -5103,8 +5115,8 @@ document.getElementById('scn-prorata')?.addEventListener('click', () => {
     ? 'Pro rata rate ' + fmtPct(q.r) + ' \u2014 the figure covers everything claimed, so counsel takes no reduction.'
     : 'Pro rata rate ' + fmtPct(q.r) + '. Counsel takes ' + fmt(a.counselEff) + ' against ' + fmt(q.Ccl)
       + ' claimed \u2014 a reduction of ' + fmt(round2(q.Cpay - a.counselEff)) + ' on the ' + fmt(q.Cpay)
-      + ' payable. The solicitor\u2019s net profit costs recover at the same rate on ' + fmt(q.P)
-      + ' \u2014 their own profit costs plus TMC\u2019s in the bill.')
+      + ' payable. The solicitor recovers the same rate of their own profit costs claimed, '
+      + fmt(q.P) + ' inc VAT.')
     + ' Measured after the drafting fee. Not saved.' + mismatch;
   // S125: the same answer said as an instruction \u2014 what to actually ask chambers for.
   const ask = scnEl('scn-prorata-ask');
@@ -5255,8 +5267,14 @@ function renderKeyVariables(prefix, c, f, figureSrcText) {
   put('vat', (vatPct * 100).toFixed(vatPct * 100 % 1 ? 1 : 0) + '%');
   // S125: counsel tile — what is actually payable, and on Scenarios the % that produced it.
   put('counsel', fmt(c.counselEff != null ? c.counselEff : (c.counsel || 0)));
-  put('counsel-sub', c.pct != null && c.pct !== 100
+  // S138: a fixed sum — on Scenarios the fixed-sum box, on Settlement a payable figure typed below claimed.
+  const _cClaim = c.counselIncVAT || 0, _cPay = c.counselEff != null ? c.counselEff : (c.counsel || 0);
+  put('counsel-sub', c.counselFixed
+    ? 'Fixed sum counsel will accept \u2014 ' + c.pct + '% of ' + fmt(c.counselBase || 0) + ' payable.'
+    : c.pct != null && c.pct !== 100
     ? c.pct + '% of ' + fmt(c.counselBase || 0) + ' claimed as payable.'
+    : (c.pct == null && !counselPayableIsDefault(f) && _cClaim > 0 && Math.abs(_cPay - _cClaim) > 0.005)
+    ? 'Fixed sum entered as payable \u2014 ' + fmtPct(_cPay / _cClaim) + ' of ' + fmt(_cClaim) + ' claimed (inc VAT).'
     : (counselPayableIsDefault(f) ? 'Nothing entered as payable, so counsel\u2019s fees claimed (inc VAT) are used. Paid in full out of the offer.' : 'Paid in full out of the offer.'));
 }
 
