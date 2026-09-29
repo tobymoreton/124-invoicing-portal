@@ -675,6 +675,7 @@
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="/invoice-generator.js"></script><!-- S140: Schedule of Work print from Case Actions -->
 </head>
 <body>
 
@@ -2338,7 +2339,7 @@
           <div class="card">
             <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
               <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
-              <span style="display:inline-flex;align-items:center;gap:10px;"><span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span><button type="button" id="ca-expand-toggle" class="ca-expand-btn" title="Show full Work Done text and edit it in place">⤡ Expand entries</button></span>
+              <span style="display:inline-flex;align-items:center;gap:10px;"><span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span><button type="button" id="ca-print-sched" class="ca-expand-btn" title="Print a Schedule of Work of every billable action (billed and unbilled), in the invoice format" onclick="printCaSchedule()">🖨 Schedule of Work</button><button type="button" id="ca-expand-toggle" class="ca-expand-btn" title="Show full Work Done text and edit it in place">⤡ Expand entries</button></span>
             </div>
             <div>
               <table class="ca-table" id="ca-table">
@@ -6933,6 +6934,38 @@ function renderEmailsTable() {
   tbody.querySelectorAll('.ca-btn-edit').forEach(btn => { btn.addEventListener('click', () => { caEditingId = btn.dataset.id; renderEmailsTable(); renderCaTable(); }); });
   tbody.querySelectorAll('.ca-btn-cancel').forEach(btn => { btn.addEventListener('click', () => { caEditingId = null; renderEmailsTable(); renderCaTable(); }); });
   tbody.querySelectorAll('.ca-btn-save').forEach(btn => { btn.addEventListener('click', () => saveCaRow(btn.dataset.id)); });
+}
+
+// S140 — Print a Schedule of Work from Case Actions, same layout as the one appended to
+// invoices (generateScheduleHTML in /invoice-generator.js). Covers EVERY billable action on
+// the case — billed and unbilled — i.e. Billable? not false. Values via caRowValue so the
+// figures match the Amt column (billed rows keep their invoiced snapshot).
+function printCaSchedule() {
+  if (typeof generateScheduleHTML !== 'function' || typeof INVOICE_CSS === 'undefined') { alert('Schedule generator not loaded — refresh the page and try again.'); return; }
+  if (!caLoaded) { alert('Case actions are still loading — try again in a moment.'); return; }
+  const rows = caActions.map(a => a.fields || {})
+    .filter(f => f['Billable_x003f_'] !== false && f['Billable_x003f_'] !== 0)
+    .map(f => ({
+      date:     f['field_12'] || f['field_1'] || null,
+      workDone: f['field_2'] || '',
+      hours:    parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0,
+      rate:     parseFloat(f['field_6']) || 0,
+      amount:   Math.round(caRowValue(f) * 100) / 100,
+    }))
+    .sort((x, y) => (x.date ? new Date(x.date).getTime() : 0) - (y.date ? new Date(y.date).getTime() : 0));
+  if (!rows.length) { alert('No billable actions on this case.'); return; }
+  const f = caseFields || {};
+  const caseName = deriveFullCaseName(f) || caseDisplayName(f);
+  const ourRef = (f['Ourreference_x0028_text_x0029_'] || '').trim();
+  const html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    + '<title>Schedule of Work ' + escHtml(ourRef) + '</title>'
+    + '<style>' + INVOICE_CSS + '</style></head><body>'
+    + generateScheduleHTML(rows, caseName, ourRef)
+    + '</body></html>';
+  const win = window.open('', '_blank');
+  if (!win) { alert('Pop-up blocked — allow pop-ups for the portal and try again.'); return; }
+  win.document.write(html); win.document.close(); win.focus();
+  setTimeout(() => win.print(), 600);
 }
 
 async function loadCaseActions() {
