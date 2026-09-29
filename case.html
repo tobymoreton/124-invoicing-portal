@@ -1285,9 +1285,9 @@
             <div class="kv-tile"><div class="kv-label">Current Offer</div><div class="kv-value" id="kv-sett-figure">—</div><div class="kv-sub" id="kv-sett-figure-src">—</div><div class="kv-help">The all-in sum this sheet is built on. Every figure below is worked out from it. If it looks wrong, check the Offers tab — a figure entered there overrides the box on this tab.</div></div>
             <div class="kv-tile"><div class="kv-label">Interest</div><div class="kv-value" id="kv-sett-interest">—</div><div class="kv-sub" id="kv-sett-interest-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Is interest in the offer?</div><select id="f-InterestTreatment" disabled><option value="Within">Included in offer</option><option value="OnTop">Paid separately</option><option value="None">Not included in offer</option></select></div><div class="kv-help">Say here whether the offer already contains interest. Included in offer — the sum is all-in and is broken down into costs and interest. Paid separately or not included — interest is still to be claimed, and the figure above is what to ask for. Interest runs at 8% from the Authority to Assess date, less anything already paid on account.</div></div>
             <div class="kv-tile"><div class="kv-label">Costs of assessment</div><div class="kv-value" id="kv-sett-coa">—</div><div class="kv-sub" id="kv-sett-coa-sub">—</div><div class="kv-help">What the assessment cost — TMC's time plus the court fee, whoever paid it. What the paying party paid for it is entered beside the bill figure in Settlement Details; any gap comes off the profit costs.</div></div>
-            <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-help">What counsel is actually being paid out of the offer. Enter it on the Costs Payable card below, or pull it across from the bill with “From Claimed”.</div></div>
-            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
-            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div><div class="kv-help">Set on the Costs Claimed tab, not here. At 0% every VAT figure on this tab is nil.</div></div>
+            <div class="kv-tile"><div class="kv-label">Counsel's fees payable</div><div class="kv-value" id="kv-sett-counsel">—</div><div class="kv-sub" id="kv-sett-counsel-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Payable (£ inc VAT)</div><input type="number" id="f-Counselsfeespayable" class="liab-input" step="0.01" min="0" disabled /><button class="import-btn" id="btn-import-counsel" disabled>↓ From Claimed</button></div><div class="kv-help">What counsel is actually being paid out of the offer. Type it in the box above (Edit first), or pull it across from the bill with “From Claimed”.</div></div>
+            <div class="kv-tile"><div class="kv-label">Drafting fee</div><div class="kv-value" id="kv-sett-fee">—</div><div class="kv-sub" id="kv-sett-fee-sub">—</div><div class="kv-ctl"><div class="kv-ctl-label">Fee basis</div><select id="inp-sett-fee-basis"><option value="assessed">% of net recovery (as recovered)</option><option value="drawn">% of costs as drawn</option></select><div class="kv-ctl-label">Fee %</div><input type="number" id="inp-sett-fee-pct" class="liab-input" step="0.1" min="0" /><label class="kv-check"><input type="checkbox" id="inp-sett-include-tmc" /> Include TMC time in fee base?</label></div><div class="kv-help">TMC's fee for drawing the bill. “As drawn” is a percentage of the costs claimed; “as recovered” is a percentage of what actually comes in, so the fee moves with the settlement.</div></div>
+            <div class="kv-tile"><div class="kv-label">VAT claimed</div><div class="kv-value" id="kv-sett-vat">—</div><div class="kv-sub">Applies to every figure on this tab.</div><div class="kv-ctl"><div class="kv-ctl-label">VAT % claimed</div><input type="number" id="f-SettVatPct" class="liab-input" step="0.5" min="0" disabled /></div><div class="kv-help">The same setting as on the Costs Claimed tab — change it here (Edit first) and it changes for the whole case when you save. At 0% every VAT figure on this tab is nil.</div></div>
           </div>
         </div>
       </div>
@@ -1451,8 +1451,7 @@
             <div class="liab-row">
               <dt>Counsel's Fees payable</dt>
               <dd class="coa-cell">
-                <input type="number" id="f-Counselsfeespayable" class="liab-input" step="0.01" min="0" disabled />
-                <button class="import-btn" id="btn-import-counsel" disabled>↓ From Claimed</button>
+                <span class="liab-static" id="r-CounselPayableShow">—</span>
               </dd>
             </div>
             <div class="liab-row"><dt>Total Costs of Assessment <span class="sett-hint" id="r-TotalCOA-liab-note" style="display:inline;"></span></dt><dd><span class="liab-static" id="r-TotalCOA-liab">—</span></dd></div>
@@ -1489,35 +1488,7 @@
           <div class="read-row"><dt id="lbl-rec-coacost">Less: cost of the assessment (TMC’s invoice + any court fee the client paid direct)</dt><dd id="r-LessCOACost">—</dd></div>
           <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
           <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
-          <div class="read-row">
-            <dt style="padding-top:6px;padding-bottom:6px;">
-              <label style="font-size:12px;color:var(--grey-mid);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:400;text-transform:none;letter-spacing:0;">
-                <input type="checkbox" id="inp-sett-include-tmc" style="width:13px;height:13px;accent-color:var(--navy);"> Include TMC time in fee base?
-              </label>
-            </dt>
-            <dd style="padding-top:6px;padding-bottom:6px;"></dd>
-          </div>
-          <!-- S109: drafting fee % and basis, live on this screen. They drive the settlement
-               figures, so having to leave for the Billing Info card to change them meant
-               guessing at the effect. Both recalculate the card as you type. The % is saved to
-               the case with Save Changes; the basis is the fee BASE and is the same control as
-               the checkbox above, kept in sync both ways. -->
-          <div class="read-row">
-            <dt style="padding-top:6px;padding-bottom:6px;">Drafting Fee Basis</dt>
-            <dd style="padding-top:6px;padding-bottom:6px;">
-              <select id="inp-sett-fee-basis" style="width:100%;max-width:230px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;background:var(--white);">
-                <option value="assessed">% of net recovery (as recovered)</option>
-                <option value="drawn">% of costs as drawn</option>
-              </select>
-            </dd>
-          </div>
-          <div class="read-row">
-            <dt style="padding-top:6px;padding-bottom:6px;">Drafting Fee %</dt>
-            <dd style="padding-top:6px;padding-bottom:6px;">
-              <input type="number" id="inp-sett-fee-pct" step="0.1" min="0" style="width:110px;padding:5px 8px;border:1.5px solid var(--grey-line,#D9D9D9);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;text-align:right;" />
-              <span style="color:var(--grey-mid);font-size:12px;margin-left:4px;">%</span>
-            </dd>
-          </div>
+          <!-- S139: fee basis, fee % and Include-TMC-time moved into the Drafting fee Key Variables tile. -->
           <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
           <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="r-PctPC">—</dd></div>
           <div class="read-row pct"><dt>% Recovery Against Overall Bill</dt><dd id="r-PctBill">—</dd></div>
@@ -3203,6 +3174,8 @@ function settFieldsInUse() {
     live[sp] = el.value === '' ? null : parseFloat(el.value);
   }
   const d = document.getElementById('f-DateSettled0'); if (d) live['DateSettled0'] = d.value ? d.value + 'T00:00:00Z' : null;
+  // S139: VAT % typed in the Key Variables tile (box is a %, column is a fraction).
+  const vt = document.getElementById('f-SettVatPct'); if (vt) live['VAT_x0020__x0025__x0020_Claimed'] = vt.value === '' ? null : (parseFloat(vt.value) || 0) / 100;
   return live;
 }
 
@@ -5338,7 +5311,7 @@ function renderSettlementTab() {
   const f = caseFields; const c = computed; const i = interest;
   // S125: Key Variables tiles, naming where the figure actually came from — a box reading £0 while
   // the sheet is built on an Offers-tab override was the single most confusing thing on this tab.
-  renderKeyVariables('kv-sett', c, f,
+  renderKeyVariables('kv-sett', c, settFieldsInUse(),
     c.figureSource === 'sheet'      ? 'Figure for Settlement Sheet, from the Offers tab.'
     : c.figureSource === 'settlement' ? 'Total Settlement, entered on this tab.'
     : c.figureSource === 'offer'      ? "Paying party's last offer, from the Offers tab."
@@ -5390,6 +5363,7 @@ function renderSettlementTab() {
     setNum('f-COAAwarded', f['COAAwarded']); setNum('f-CourtFeePaidByTMC', f['CourtFeePaidByTMC']);
     setNum('f-CourtFeeRecovered', f['CourtFeeRecovered']); setNum('f-COALimit', f['Limit_x0020_Costs_x0020_of_x0020']);
     setNum('f-InterestInFigure', f['InterestInFigure']);
+    { const _v = f['VAT_x0020__x0025__x0020_Claimed']; setNum('f-SettVatPct', (_v === null || _v === undefined || _v === '') ? null : Math.round(parseFloat(_v) * 10000) / 100); } // S139
     _cfFromHidden(); // S133
   }
   // S116d: the Interest tab's own figure, as at the date of settlement/assessment (today if blank),
@@ -5397,6 +5371,7 @@ function renderSettlementTab() {
   { const g = settInternalInterestGuide(); setText('hint-sett-interest-calc', g.text); }
   renderVatOnDraftingBanner(); // S116j
   setText('r-Disbursements', fmt(c.disbIncVAT)); setText('r-TotalLiab', fmt(c.totalPayable));
+  setText('r-CounselPayableShow', fmt(c.counselEff != null ? c.counselEff : (c.counsel || 0))); // S139: box moved to the Key Variables tile
   // ── S116: outcome, COA treatment, awarded figure, court fees, and the plain-English working ──
   const assessed = c.outcome === 'Assessed';
   const onTop    = c.coaTreatment === 'OnTop';
@@ -5750,12 +5725,19 @@ document.getElementById('btn-sett-save').addEventListener('click', async () => {
   }
   // S116b: the COA cap is an EXISTING column (Limit_x0020_Costs_x0020_of_x0020, net), now editable here.
   { const v = document.getElementById('f-COALimit')?.value ?? ''; fields['Limit_x0020_Costs_x0020_of_x0020'] = v === '' ? null : parseFloat(v); }
+  // S139: VAT % from the Key Variables tile - sent only when changed; same S131 rule as the Costs Claimed save.
+  { const vp = document.getElementById('f-SettVatPct')?.value ?? ''; const _old = caseFields['VAT_x0020__x0025__x0020_Claimed'];
+    const oldPct = (_old === null || _old === undefined || _old === '') ? '' : String(Math.round(parseFloat(_old) * 10000) / 100);
+    if (vp !== oldPct && !(vp !== '' && oldPct !== '' && parseFloat(vp) === parseFloat(oldPct))) {
+      fields['VAT_x0020__x0025__x0020_Claimed'] = vp === '' ? null : parseFloat(vp) / 100;
+      if (vp !== '' && (parseFloat(vp) || 0) !== 0 && caseFields['VatZeroConfirmed']) fields['VatZeroConfirmed'] = null;
+    } }
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) {
     // The saved value is now the case value, so drop the override rather than leave a stale
     // one sitting on top of it.
     _settFeePctOverride = null; _settFeeBasisTouched = false; _settOutcomeOverride = null; _settCOATreatmentOverride = null; _settInterestTreatmentOverride = null;
-    try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); } catch(e) { console.error('Settlement re-render:', e); }
+    try { computeFigures(); computeInterest(); renderHeader(); renderSettlementTab(); renderOffersTab(); renderCostsTab(); renderInterestTab(); if ('VAT_x0020__x0025__x0020_Claimed' in fields) { renderVatZeroBanner(); renderVatOnDraftingBanner(); renderOverviewTab(); } } catch(e) { console.error('Settlement re-render:', e); } // S139: VAT may have changed
     tabSetReadMode('sett','tab-settlement');
   } else btn.disabled = false;
 });
@@ -5822,10 +5804,11 @@ document.getElementById('btn-op-save').addEventListener('click', async () => {
 });
 
 document.getElementById('btn-import-counsel').addEventListener('click', () => {
-  const f = caseFields; const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0;
+  const f = settFieldsInUse(); const counselClaimed = parseFloat(f['CounselsFeesClaimed']) || 0; // S139: live VAT
   const _nvCounsel = parseFloat(f['NonVatableCounselFees']) || 0; // S134: was NonVatableCounselsFees (no such field)
   const vatPct = parseFloat(f['VAT_x0020__x0025__x0020_Claimed']) || 0;
   document.getElementById('f-Counselsfeespayable').value = Math.round((counselClaimed + Math.max(0, counselClaimed - _nvCounsel) * vatPct) * 100) / 100 || '';
+  document.getElementById('f-Counselsfeespayable').dispatchEvent(new Event('input', { bubbles: true })); // S139: tile updates at once
 });
 
 const coaPicker = document.getElementById('coa-picker');
@@ -5881,7 +5864,7 @@ document.getElementById('cf-by-tmc')?.addEventListener('change', _cfToHidden);
 document.getElementById('cf-by-client')?.addEventListener('change', _cfToHidden);
 // S116e: every settlement box recomputes the whole tab live (Recovery card included) as you type;
 // the COA card then gets its "(unsaved)" tag from _updateTotalCOADisplay.
-[...Object.values(SETT_LIVE_FIELDS), 'f-DateSettled0'].forEach(id => document.getElementById(id)?.addEventListener('input', () => {
+[...Object.values(SETT_LIVE_FIELDS), 'f-DateSettled0', 'f-SettVatPct'].forEach(id => document.getElementById(id)?.addEventListener('input', () => {
   renderSettlementLive(); _updateTotalCOADisplay();
 }));
 // Provisional assessment: costs of assessment are capped at £1,500 exclusive of VAT and the court
