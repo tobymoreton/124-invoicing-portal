@@ -171,6 +171,10 @@ const SELECT_FIELDS = [
   // Booking In tab
   'DateReceived',
   'DateAssigned',
+  // S141 (2026-10-06) - Number column on Cases: total time-ledger hours, written by the
+  // matter-file-reorg skill. Read-only in the portal; shown on admin.html's Unassigned Cases rows.
+  // Column confirmed to exist 06/10/2026 (a PATCH naming it through /api/caseupdate was accepted).
+  'LedgerHours',
   'Turnaround_x0020__x0001f3af_',
   'FeeEarner_x0028_fromFM_x0029_',
   'Work_x0020_In_x0020_Progress',
