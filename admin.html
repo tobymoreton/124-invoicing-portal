@@ -260,6 +260,8 @@
        and run under the deadline column. Clip with an ellipsis instead; full text on hover. */
     .uc-task-chip{width:92px;max-width:92px;text-align:center;flex-shrink:0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .uc-ack-chip{width:60px;text-align:center;flex-shrink:0;margin-top:2px;}
+    /* S141: total time-ledger hours (Cases.LedgerHours, written by the file reorganisation). Read-only. */
+    .uc-ledger{flex-shrink:0;margin-top:2px;width:58px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--navy-mid);white-space:nowrap;}
     .uc-deadline-wrap{flex-shrink:0;margin-top:2px;width:160px;}
     .uc-deadline-label{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);opacity:.75;margin-bottom:2px;}
     .uc-deadline-label.uc-deadline-label-set{color:var(--red);opacity:1;}
@@ -1683,6 +1685,10 @@ function renderUnassignedCases(){
     const dateRec=f['DateReceived']?new Date(f['DateReceived']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
     const task=f['Task']||'';
     const laip=f['InterPartesorLegalAid']||'';
+    // S141: Ledger hrs - whole hours, blank (never 0) when the field is empty.
+    const lhRaw=f['LedgerHours'];
+    const lhNum=(lhRaw===null||lhRaw===undefined||lhRaw==='')?NaN:Number(lhRaw);
+    const ledgerTxt=isNaN(lhNum)?'':Math.round(lhNum).toLocaleString('en-GB');
     const notes=dsPlain(f['Notes']);
     const deadlineRaw=(f['Deadline']||'').slice(0,10);
     const laipOptions=['','Inter Partes','Legal Aid','Both'];
@@ -1720,6 +1726,7 @@ function renderUnassignedCases(){
         '<div class="ar-case">'+escHtml(name)+'</div>'+
         (fe?'<div class="ar-detail">FE: '+escHtml(fe)+'</div>':'')+
       '</div>'+
+      '<div class="uc-ledger"'+(ledgerTxt?' title="Total hours on the time ledgers"':'')+'>'+(ledgerTxt?ledgerTxt+'<div class="uc-rec-label">Ledger hrs</div>':'')+'</div>'+
       (laipSelHtml)+
       (task?'<span class="task-chip uc-task-chip" title="'+escHtml(task)+'">'+escHtml(task)+'</span>':'<span class="uc-task-chip"></span>')+
       '<span class="task-chip uc-ack-chip" title="'+(ackSent?'Acknowledged \u2014 click to clear':'Not acknowledged \u2014 click to mark as acknowledged')+'" style="cursor:pointer;'+(ackSent?'background:#DCFCE7;color:#14532D;':'background:#FEE2E2;color:#991B1B;')+'">'+(ackSent?'Ack \u2713':'No Ack')+'</span>'+
