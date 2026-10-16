@@ -263,7 +263,10 @@ module.exports = async function (context, req) {
           const liRate  = parseFloat(entry.Rate)       || 0;
           const liValue = Math.round(liHours * liRate * 100) / 100;
           const liFields = {
-            Title:    entry.WorkDone   || entry.CaseName || caseFields.Title || '', // SP required field
+            // S143: SP Title is single-line text, max 255. A longer narrative made the POST fail, the
+            // catch swallowed it, and that time vanished from Line Items (337 lines since June). Full
+            // narrative still goes in field_1 (Note, unlimited).
+            Title:    String(entry.WorkDone || entry.CaseName || caseFields.Title || '').slice(0, 255), // SP required field
             field_1:  entry.WorkDone   || '',       // Work Done (text)
             field_2:  liHours,                      // Time (hours)
             field_3:  liRate,                       // Rate £/hr
