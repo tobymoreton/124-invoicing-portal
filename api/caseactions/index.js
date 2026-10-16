@@ -237,7 +237,10 @@ module.exports = async function (context, req) {
         field_9:  b.brief || 'Preparation/Perusal',
         field_12: dateWorkDone,
         field_16: ref,
-        field_18: b.email || callerEmail,
+        // S142: the earnings ledger credits field_18, the Case Actions screen shows the name.
+        // Derive the email FROM the chosen Completed By so the two can never disagree; fall back
+        // to the old behaviour only when the name does not resolve to a known person.
+        field_18: resolvePersonEmail(b.completedBy) || b.email || callerEmail,
         Completedby_x0028_text_x0029_: b.completedBy || '',
         Casename_x0028_text_x0029_:    b.caseName    || '',
         TimeSpentMirror: timeSpent,
@@ -272,6 +275,8 @@ module.exports = async function (context, req) {
       if (b.brief     !== undefined) fields['field_9'] = b.brief;
       if (b.billable  !== undefined) fields['Billable_x003f_'] = !!b.billable;
       if (b.completedBy !== undefined) fields['Completedby_x0028_text_x0029_'] = b.completedBy;
+      // S142: keep field_18 (what invoices and myshare credit) in step with the name shown.
+      if (b.completedBy !== undefined) { const em = resolvePersonEmail(b.completedBy); if (em) fields['field_18'] = em; }
       if (b.dateWorkDone !== undefined) fields['field_12'] = b.dateWorkDone;
 
       // S117 — persist Num_BillableAmount_x00a3_ whenever rate or hours change. The stored
@@ -456,4 +461,24 @@ function graphDelete(url, token) {
     req.on('error', reject);
     req.end();
   });
+}
+
+// S142: name/email -> canonical email. Exact-token match only ('daniel' must not hit 'danielle').
+// Mirrors resolveAssignee() in case.html / cases.html. Unknown -> null, never guessed.
+const PERSON_EMAILS = {
+  joanna:'joanna@tmclegal.co.uk', tracy:'tracy@tmclegal.co.uk', kelly:'kelly@tmclegal.co.uk',
+  tom:'tom@tmclegal.co.uk', julie:'julie@tmclegal.co.uk', daniel:'daniel@tmclegal.co.uk',
+  toby:'toby@tmclegal.co.uk', danielle:'danielle@tmclegal.co.uk',
+  lesley:'lesley@tmclegal.co.uk', david:'david@tmclegal.co.uk',
+};
+function resolvePersonEmail(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!s) return null;
+  const set = Object.values(PERSON_EMAILS);
+  for (const tok of s.split(/[\s;,]+/)) {
+    if (!tok) continue;
+    if (PERSON_EMAILS[tok]) return PERSON_EMAILS[tok];
+    if (set.includes(tok)) return tok;
+  }
+  return null;
 }
