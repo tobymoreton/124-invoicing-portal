@@ -586,6 +586,16 @@
     .ds-btn:hover{background:var(--navy);color:var(--gold);border-color:var(--navy);}
     a.ds-btn{display:inline-block;text-decoration:none;}
     .ds-btn .ds-n{opacity:.6;font-weight:500;margin-left:5px;}
+    /* S142: 4% drafting-fee WIP per draftsman */
+    .ds-btn .ds-fee{display:block;font-size:11px;font-weight:500;opacity:.75;margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+    .ds-4pct-total{text-align:center;font-size:12px;color:var(--grey-mid);margin-top:10px;}
+    .ds-4pct-total b{color:var(--navy);font-family:'IBM Plex Mono',monospace;}
+    .ds-4pct{border:1px solid var(--grey-light);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;background:#FBF6E8;}
+    .ds-4pct h4{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8A7040;}
+    .ds-4pct table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    .ds-4pct td{padding:3px 4px;border-bottom:1px solid rgba(0,0,0,.05);}
+    .ds-4pct td.r{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+    .ds-4pct tr.tot td{font-weight:700;border-bottom:none;border-top:1.5px solid rgba(0,0,0,.15);}
     #modal-draftsman .modal{max-width:1040px;}
     .ds-case{border:1px solid var(--grey-light);padding:14px 16px;border-radius:var(--radius-sm);margin-bottom:10px;background:var(--white);}
     .ds-case:nth-child(odd){background:var(--cream);}
@@ -608,8 +618,9 @@
     .ds-empty{color:var(--grey-mid);font-size:13px;}
   </style>
   <div class="ds-panel">
-    <h3>&#128100; Draftsmen &mdash; case lists<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen case lists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">One button per draftsman, with their number of open cases. Click to see that person&rsquo;s cases with the booking-in notes, the current position and any drafting notes. Danielle is not listed &mdash; cases assigned to her sit in Unassigned Cases.</span></button></h3>
+    <h3>&#128100; Draftsmen &mdash; case lists<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen case lists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">One button per draftsman, with their number of open cases. Click to see that person&rsquo;s cases with the booking-in notes, the current position and any drafting notes. Danielle is not listed &mdash; cases assigned to her sit in Unassigned Cases. The &pound; figure is each person&rsquo;s 4% drafting-fee WIP: 4% of profit costs claimed (ex VAT) on open cases they drafted (Bill Drafted By, else the assignee) that have no drafting fee invoiced yet &mdash; the same figure as the tile on their own dashboard.</span></button></h3>
     <div class="ds-btns" id="ds-btns"><span class="ds-empty">Loading&hellip;</span></div>
+    <div class="ds-4pct-total" id="ds-4pct-total"></div>
   </div>
   <div class="ds-panel">
     <h3>&#128193; Draftsmen &mdash; SharePoint folders<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen folders"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Opens each draftsman&rsquo;s Bills of Costs folder in SharePoint (new tab). Read-only access to their files. Management view.</span></button></h3>
@@ -2025,20 +2036,86 @@ function dsPlain(html){
   return t;
 }
 
+// S142: 4% drafting-fee WIP per draftsman. Same rules as the "4% of O/Standing PC Claimed"
+// tile on cases.html (S81/S127) so the two always agree:
+//   base     = open-case preload (rawCases, closed excluded server-side - NOT allCases,
+//              which also drops 'settled' and would under-count against the tile)
+//   excluded = any Our Ref carrying a drafting fee on a live invoice, at any age
+//              (/api/invoices?billedrefs=1 - full history, unscoped)
+//   drafter  = BillDraftedByText, else the primary assignee; neither -> unattributed
+//   value    = 4% x ProfitCostsClaimed (ex VAT), cases with PC > 0 only
+// If billedrefs fails the figures stay blank: without it every billed case would count
+// and the 4% would be overstated. Blank beats wrong.
+const DS_PEOPLE=['toby','danielle','joanna','tracy','kelly','tom','julie','daniel','lesley','david'];
+let dsBilledRefs=null;      // Set of Our Refs already invoiced with a drafting fee
+let dsBilledRefsState='';   // '', 'loading', 'ok', 'failed'
+
+function dsDrafterOf(raw){
+  const s=String(raw||'').trim().toLowerCase();
+  if(!s) return '';
+  for(const tok of s.split(/[\s;,]+/)){
+    if(!tok) continue;
+    const first=tok.includes('@')?tok.split('@')[0]:tok;
+    if(DS_PEOPLE.includes(first)) return first;
+  }
+  return '';
+}
+
+function ds4pctRows(key){
+  if(!dsBilledRefs) return null;
+  return rawCases
+    .filter(c=>!dsBilledRefs.has(c.fields['Ourreference_x0028_text_x0029_']))
+    .filter(c=>(dsDrafterOf(c.fields['BillDraftedByText'])||dsDrafterOf(c.fields['assignedToTextValue']))===key)
+    .map(c=>({f:c.fields,ref:c.fields['Ourreference_x0028_text_x0029_']||'',pc:parseFloat(c.fields['ProfitCostsClaimed_x0028_Ex_x002'])||0}))
+    .filter(x=>x.pc>0)
+    .sort((a,b)=>b.pc-a.pc);
+}
+
+function dsMoney(n){ return '£'+(Number(n)||0).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function dsLoadBilledRefs(){
+  if(dsBilledRefsState==='loading'||dsBilledRefsState==='ok') return;
+  dsBilledRefsState='loading';
+  try{
+    const r=await fetch('/api/invoices?billedrefs=1');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const refs=await r.json();
+    if(!Array.isArray(refs)) throw new Error('unexpected response');
+    dsBilledRefs=new Set(refs);
+    dsBilledRefsState='ok';
+  }catch(e){
+    dsBilledRefsState='failed';
+    console.warn('S142 billedrefs failed - 4% figures left blank:',e.message);
+  }
+  renderDraftsmenButtons();
+}
+
 function renderDraftsmenButtons(){
   const el=document.getElementById('ds-btns');
   if(!el) return;
   const counts={};
   allCases.forEach(c=>{ const k=dsKey(c.fields); if(k) counts[k]=(counts[k]||0)+1; });
   el.innerHTML='';
+  if(!dsBilledRefsState) dsLoadBilledRefs();
+  let firm4pct=0;
   DS_ROSTER.forEach(name=>{
     const k=name.toLowerCase();
+    const rows=ds4pctRows(k);
+    const fee=rows?rows.reduce((s,x)=>s+x.pc,0)*0.04:null;
+    if(fee) firm4pct+=fee;
+    const feeTxt=dsBilledRefsState==='ok'?(fee>0?dsMoney(fee):'\u2014'):(dsBilledRefsState==='failed'?'4% n/a':'\u2026');
     const b=document.createElement('button');
     b.className='ds-btn';
-    b.innerHTML=escHtml(name)+'<span class="ds-n">'+(counts[k]||0)+'</span>';
+    b.innerHTML=escHtml(name)+'<span class="ds-n">'+(counts[k]||0)+'</span><span class="ds-fee">'+feeTxt+'</span>';
     b.addEventListener('click',()=>openDraftsman(k,name));
     el.appendChild(b);
   });
+  const tot=document.getElementById('ds-4pct-total');
+  if(tot){
+    tot.innerHTML=dsBilledRefsState==='ok'
+      ? '4% drafting-fee WIP (uninvoiced), all draftsmen: <b>'+dsMoney(firm4pct)+'</b>'
+      : dsBilledRefsState==='failed' ? 'Could not load invoiced refs \u2014 4% figures not shown.' : '';
+  }
 }
 
 async function openDraftsman(key,label){
@@ -2046,8 +2123,21 @@ async function openDraftsman(key,label){
   document.getElementById('ds-modal-title').textContent=(label||key)+' \u2014 cases';
   openModal('modal-draftsman');
   const list=allCases.filter(c=>dsKey(c.fields)===key);
-  if(!list.length){ body.innerHTML='<div class="ds-empty">No open cases.</div>'; return; }
-  body.innerHTML=list.map(c=>{
+  const rows4=ds4pctRows(key);
+  let h4='';
+  if(rows4&&rows4.length){
+    const totPc=rows4.reduce((s,x)=>s+x.pc,0);
+    h4='<div class="ds-4pct"><h4>4% drafting-fee WIP \u2014 '+dsMoney(totPc*0.04)+'</h4><table>'+
+      '<tr><td><b>Case</b></td><td class="r"><b>PC claimed</b></td><td class="r"><b>4%</b></td></tr>'+
+      rows4.map(x=>'<tr><td>'+(x.ref?'<a href="/case.html?ref='+encodeURIComponent(x.ref)+'">'+escHtml(caseDisplayName(x.f))+'</a>':escHtml(caseDisplayName(x.f)))+'</td>'+
+        '<td class="r">'+dsMoney(x.pc)+'</td><td class="r">'+dsMoney(x.pc*0.04)+'</td></tr>').join('')+
+      '<tr class="tot"><td>Total</td><td class="r">'+dsMoney(totPc)+'</td><td class="r">'+dsMoney(totPc*0.04)+'</td></tr>'+
+      '</table></div>';
+  }else if(dsBilledRefsState==='failed'){
+    h4='<div class="ds-4pct"><h4>4% drafting-fee WIP</h4>Could not load invoiced refs \u2014 not shown.</div>';
+  }
+  if(!list.length){ body.innerHTML=h4+'<div class="ds-empty">No open cases.</div>'; return; }
+  body.innerHTML=h4+list.map(c=>{
     const f=c.fields||{};
     const ref=(f['Ourreference_x0028_text_x0029_']||'').trim();
     const cp=dsPlain(f['Current_x0020_Position']);
