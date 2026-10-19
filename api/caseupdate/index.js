@@ -162,10 +162,22 @@ module.exports = async function (context, req) {
 
     await graphPatch(patchUrl, token, fields);
 
+    // S146 (Toby, 19/10/2026): "if a case is closed any actions need to be marked non-billable".
+    // When this update closes the case, every unbilled billable action on it is set non-billable.
+    // Non-fatal: the case update itself has already succeeded.
+    let unbilled = null;
+    const statusVal = [fields.StatusMirror, fields.Status]
+      .map(v => (v && typeof v === 'object') ? (v.Value || '') : (v || ''))
+      .map(v => String(v).trim().toLowerCase());
+    if (statusVal.includes('closed')) {
+      try { unbilled = await unbillClosedCaseActions(token, itemId); }
+      catch (e) { context.log.error('S146 unbill on close failed for case ' + itemId + ':', e.message); unbilled = { error: e.message }; }
+    }
+
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updated: true }),
+      body: JSON.stringify({ updated: true, ...(unbilled ? { closedCaseActionsUnbilled: unbilled } : {}) }),
     };
   } catch (err) {
     context.log.error('Error updating case:', err.message);
@@ -295,6 +307,54 @@ function graphPatch(url, token, body) {
     });
     req.on('error', reject);
     req.write(payload);
+    req.end();
+  });
+}
+
+// ── S146: unbill a closed case's actions ─────────────────────────────────────
+const TT2_GUID = '67db204c-30a5-4f4d-b276-60852d9967e1';
+async function unbillClosedCaseActions(token, caseItemId) {
+  const c = await graphGetJson('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID
+    + '/items/' + caseItemId + '/fields?$select=Ourreference_x0028_text_x0029_', token);
+  const ref = String(c.Ourreference_x0028_text_x0029_ || '').trim();
+  if (!ref) return { ref: null, count: 0 };
+  // No $select: Boolean columns are silently dropped from a $select on this tenant.
+  let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + TT2_GUID
+    + "/items?$expand=fields&$top=500&$filter=fields/field_16 eq '" + ref.replace(/'/g, "''") + "'";
+  let count = 0, failed = 0;
+  while (url) {
+    const page = await graphGetJson(url, token);
+    for (const it of (page.value || [])) {
+      const f = it.fields || {};
+      if (f.Billable_x003f_ === true && f.Billed_x003f_ !== true) {
+        try {
+          await graphPatch('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + TT2_GUID
+            + '/items/' + it.id + '/fields', token, { Billable_x003f_: false });
+          count++;
+        } catch (e) { failed++; }
+      }
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+  return { ref, count, failed };
+}
+
+function graphGetJson(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname, path: u.pathname + u.search, method: 'GET',
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/json',
+                 Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
+    }, function (res) {
+      let data = '';
+      res.on('data', ch => { data += ch; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) { reject(new Error('Graph GET ' + res.statusCode + ': ' + data.slice(0, 200))); return; }
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
     req.end();
   });
 }
