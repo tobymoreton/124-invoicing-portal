@@ -115,8 +115,11 @@ module.exports = async function (context, req) {
     // issue too: an unverifiable draft is not issued.
     {
       const gFields = await graphGet('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-        + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '/fields?$select=DraftWipIds', token);
-      const gIds = String(gFields.DraftWipIds || '').split(',').map(x => x.trim()).filter(Boolean);
+        + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '/fields?$select=DraftWipIds,Invoicetype', token);
+      // S145: a bespoke-only bill ('Other') closes off the case's timesheet but creates NO line
+      // items, by design (invoice-create.html isBespokeOnly). Do not demand them.
+      const gIds = String(gFields.Invoicetype || '') === 'Other' ? []
+        : String(gFields.DraftWipIds || '').split(',').map(x => x.trim()).filter(Boolean);
       const missing = [];
       for (let k = 0; k < gIds.length; k += 8) {
         const batch = gIds.slice(k, k + 8);
@@ -266,7 +269,9 @@ module.exports = async function (context, req) {
             + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
             + '&$filter=fields/field_7 eq \'' + wipId + '\'';
           const liResult = await graphGetUnindexed(liSearchUrl, token);
-          const liItems  = liResult.value || [];
+          // S145: stamp only this draft's lines (InvoiceIDRef blank) — never re-stamp a line
+          // already carrying another invoice's number.
+          const liItems  = (liResult.value || []).filter(li => !String((li.fields || {}).InvoiceIDRef || '').trim());
 
           for (const liItem of liItems) {
             await patchListItem(token, LINE_ITEMS, liItem.id, {
