@@ -259,6 +259,7 @@ module.exports = async function (context, req) {
     // silently excluded roughly half the billed ledger from that table. /api/lineitems now
     // fills a blank date from the parent invoice as a safety net, but the right place to set
     // it is here, at the moment the invoice is issued and the date is known.
+    const stamped = []; // S147: lines stamped on this issue, with their time value
     if (wipIds.length > 0) {
       context.log('Updating Line Items with invoice number…');
       let liDone = 0, liFailed = 0;
@@ -266,7 +267,7 @@ module.exports = async function (context, req) {
         try {
           const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
             + '/lists/' + LINE_ITEMS + '/items'
-            + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
+            + '?$expand=fields($select=id,field_7,InvoiceIDRef,ValueMirror,field_2,field_3)'
             + '&$filter=fields/field_7 eq \'' + wipId + '\'';
           const liResult = await graphGetUnindexed(liSearchUrl, token);
           // S145: stamp only this draft's lines (InvoiceIDRef blank) — never re-stamp a line
@@ -278,7 +279,9 @@ module.exports = async function (context, req) {
               InvoiceIDRef: String(invoiceNumber),
               InvoiceDate:  invoiceDateIso,
             });
+            const f = liItem.fields || {};
             liDone++;
+            stamped.push({ id: liItem.id, value: (parseFloat(f.ValueMirror) || Math.round((parseFloat(f.field_2) || 0) * (parseFloat(f.field_3) || 0) * 100) / 100) });
           }
         } catch (e) {
           context.log.error('Line Item update failed for wipId', wipId, ':', e.message);
@@ -286,6 +289,42 @@ module.exports = async function (context, req) {
         }
       }
       context.log('Line Items: updated=' + liDone + ', failed=' + liFailed);
+    }
+
+    // ── 9b. S147: earnings follow what was BILLED, not the time recorded ─────────
+    // A drafter can write the timed figure down (or up) on the bill. The line items were
+    // created at full hours × rate, so the Draftsman Billing panel showed the full time
+    // value while the client was billed less — £5,494 more shown in the panel than invoiced
+    // on 16 invoices between June and October 2026 (pay is taken from the invoices, so this
+    // was a reporting gap, not an overpayment). At issue, scale this invoice's lines so their
+    // total equals TimedElement. Skipped for bespoke-only bills ('Other') and when
+    // TimedElement is blank or zero (no reliable billed figure). Forward-only: issued lines
+    // are never revisited. The full time value is still on the TT2 entry (hours × rate).
+    let earningsScaled = null;
+    try {
+      const billedTimed = parseFloat(String(itemFields.TimedElement == null ? '' : itemFields.TimedElement).replace(/[£,\s]/g, '')) || 0;
+      const invType     = String(itemFields.Invoicetype || '').trim();
+      const lineTotal   = stamped.reduce((a, s) => a + s.value, 0);
+      if (invType !== 'Other' && billedTimed > 0 && lineTotal > 0 && Math.abs(billedTimed - lineTotal) > 0.005) {
+        const factor = billedTimed / lineTotal;
+        const scaled = stamped.map(s => ({ id: s.id, value: Math.round(s.value * factor * 100) / 100 }));
+        // put the rounding remainder on the largest line so the total matches to the penny
+        const remainder = Math.round((billedTimed - scaled.reduce((a, s) => a + s.value, 0)) * 100) / 100;
+        if (remainder !== 0) {
+          const big = scaled.reduce((m, s) => (s.value > m.value ? s : m), scaled[0]);
+          big.value = Math.round((big.value + remainder) * 100) / 100;
+        }
+        let scaledDone = 0, scaledFailed = 0;
+        for (const s of scaled) {
+          try { await patchListItem(token, LINE_ITEMS, s.id, { ValueMirror: s.value }); scaledDone++; }
+          catch (e) { context.log.error('ValueMirror scale failed for line', s.id, ':', e.message); scaledFailed++; }
+        }
+        earningsScaled = { timeValue: Math.round(lineTotal * 100) / 100, billedTimed, factor: Math.round(factor * 10000) / 10000, linesScaled: scaledDone, linesFailed: scaledFailed };
+        context.log('S147 earnings scaled:', JSON.stringify(earningsScaled));
+      }
+    } catch (e) {
+      context.log.error('S147 earnings scaling failed:', e.message);
+      earningsScaled = { error: e.message };
     }
 
     // ── Done ──────────────────────────────────────────────────────────────────
@@ -302,6 +341,7 @@ module.exports = async function (context, req) {
         tt2Failed:     tt2Errors.length,
         tt2Errors,
         wipIds,
+        earningsScaled,
       }),
     };
 
