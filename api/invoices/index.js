@@ -51,6 +51,7 @@ const SELECT_FIELDS = [
   'Net',                  // Net amount (ex VAT)
   'Cancelled',            // Boolean — filter these out
   'Theirref',             // Client's own reference
+  'DraftWipIds',          // S144: CSV of TT2 ids billed — only its COUNT is returned (WipCount)
 ].join(',');
 
 const ADMIN_EMAILS = [
@@ -501,6 +502,9 @@ function normalise(item) {
     Net:                toNum(f.Net),
     Cancelled:          f.Cancelled           || false,
     Theirref:           f.Theirref            || null,
+    // S144: how many time entries this invoice billed. index.html's anomaly panel compares it
+    // with the Line Items carrying this invoice number; fewer lines = time credited to nobody.
+    WipCount:           String(f.DraftWipIds || '').split(',').filter(x => x.trim()).length,
     FileUrl:            item.webUrl           || null,
   };
 }
