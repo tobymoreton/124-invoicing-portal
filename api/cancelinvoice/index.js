@@ -34,6 +34,31 @@ const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
 
 const CANCEL_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
 const NOTIFY_EMAIL  = 'office@tmclegal.co.uk';
+// S145: every live (not cancelled) Invoice Library item that lists any of `ids` in DraftWipIds,
+// other than `exceptItemId`. Returns Map<wipId, [{id, number}]>. One full pass of the library
+// (~3k rows, $top=999) — DraftWipIds is not indexed, so it cannot be filtered server-side.
+async function liveHoldersOf(token, ids, exceptItemId) {
+  const want = new Set(ids.map(String));
+  const out  = new Map();
+  let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + INVOICE_LIB
+    + '/items?$expand=fields($select=id,DraftWipIds,Cancelled,OrderDetails)&$top=999';
+  while (url) {
+    const page = await graphGet(url, token);
+    for (const it of (page.value || [])) {
+      const f = it.fields || {};
+      if (f.Cancelled || String(it.id) === String(exceptItemId)) continue;
+      for (const w of String(f.DraftWipIds || '').split(',')) {
+        const k = w.trim();
+        if (!k || !want.has(k)) continue;
+        if (!out.has(k)) out.set(k, []);
+        out.get(k).push({ id: String(it.id), number: f.OrderDetails || null });
+      }
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+  return out;
+}
+
 // Graph Mail.Send requires a licensed mailbox to send from.
 // Set MAIL_SENDER in app settings to e.g. 'toby@tmclegal.co.uk'
 // If not set, the email step is skipped and a warning is logged.
@@ -87,11 +112,20 @@ module.exports = async function (context, req) {
     context.log('DraftWipIds:', wipIds);
     context.log('Cancelling:', invoiceTitle);
 
+    // ── S145: leave alone any entry that also sits on another live draft/invoice ──
+    // Before S145 a cancel unbilled every entry it listed and deleted every line item for it —
+    // including ones belonging to a different, issued invoice (13325, 28/07/2026).
+    const held    = wipIds.length ? await liveHoldersOf(token, wipIds, listItemId) : new Map();
+    const skipped = wipIds.filter(w => held.has(w));
+    if (skipped.length) context.log('S145: leaving ' + skipped.length + ' entries untouched (on another live invoice):', skipped.join(','));
+    const ownIds  = wipIds.filter(w => !held.has(w));
+    const myNumber = String(itemFields.OrderDetails || '').trim();   // '' for a draft
+
     // ── 2. Revert TT2 entries ─────────────────────────────────────────────────
-    if (wipIds.length > 0) {
+    if (ownIds.length > 0) {
       context.log('Reverting', wipIds.length, 'TT2 entries…');
       let tt2Done = 0, tt2Failed = 0;
-      for (const wipId of wipIds) {
+      for (const wipId of ownIds) {
         try {
           await patchListItem(token, TT2, wipId, { 'Billed_x003f_': false });
           tt2Done++;
@@ -103,18 +137,21 @@ module.exports = async function (context, req) {
       context.log('TT2 reverted: done=' + tt2Done + ', failed=' + tt2Failed);
     }
 
-    // ── 3. Delete Line Items where field_7 in DraftWipIds ────────────────────
-    if (wipIds.length > 0) {
+    // ── 3. Delete THIS invoice's Line Items (field_7 in DraftWipIds) ─────────
+    // S145: only lines that belong to this invoice — InvoiceIDRef = its number when issued,
+    // blank when it is still a draft. Lines stamped with another invoice number are never touched.
+    if (ownIds.length > 0) {
       context.log('Deleting Line Items…');
       let liDeleted = 0, liFailed = 0;
-      for (const wipId of wipIds) {
+      for (const wipId of ownIds) {
         try {
           const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
             + '/lists/' + LINE_ITEMS + '/items'
-            + '?$expand=fields($select=id,field_7)'
+            + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
             + '&$filter=fields/field_7 eq \'' + wipId + '\'';
           const liResult = await graphGetUnindexed(liSearchUrl, token);
-          const liItems  = liResult.value || [];
+          const liItems  = (liResult.value || []).filter(li =>
+            String((li.fields || {}).InvoiceIDRef || '').trim() === myNumber);
 
           for (const liItem of liItems) {
             await deleteListItem(token, LINE_ITEMS, liItem.id);
