@@ -1083,7 +1083,7 @@ const ANOMALY_RULES = [
     test:(i,o,due)=>!!i.OrderDetails && due===0 },
   { key:'missingLines', sev:'critical', label:'Time billed but missing from earnings figures',
     why:'Fewer line items than time entries billed — that time is credited to nobody. Ask Toby to repair.',
-    test:(i)=>!!i.OrderDetails && (i.WipCount||0) > (_liCountByInv[String(i.OrderDetails)]||0) },
+    test:(i)=>!!i.OrderDetails && i.Invoicetype!=='Other' && (i.WipCount||0) > (_liCountByInv[String(i.OrderDetails)]||0) },   // S145: 'Other' = bespoke-only, no line items by design
   { key:'bigOverdue', sev:'review', label:'Overdue above £5,000',
     why:'Large sums outstanding past their due date.',
     test:(i,o,due,st,today)=>st!=='paid' && o>5000 && i.DueDate && new Date(i.DueDate)<today }
