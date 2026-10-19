@@ -250,6 +250,11 @@ module.exports = async function (context, req) {
     // knows the hours and the rate at this point; there is no reason to ask another system to
     // do the multiplication. The reader in /api/invoices also derives it as a safety net.
     const entriesToBill = Array.isArray(checkedWipEntries) ? checkedWipEntries : [];
+    // S144: failures are reported back to the drafter, not just logged. Before S143 a rejected
+    // line item was swallowed here and the time silently vanished from everyone's figures.
+    // /api/issueinvoice now refuses to issue a draft with missing line items, so the drafter
+    // must know at once.
+    const liFailedIds = [];
     if (entriesToBill.length > 0) {
       context.log('Creating', entriesToBill.length, 'Line Item(s)…');
       let liCreated = 0;
@@ -291,7 +296,8 @@ module.exports = async function (context, req) {
         } catch (liErr) {
           context.log.error('Line Item creation failed for TT2 id', entry._id, ':', liErr.message);
           liFailed++;
-          // Don't abort — continue with remaining entries
+          liFailedIds.push(String(entry._id || ''));
+          // Don't abort — continue with remaining entries (S144: reported in the response)
         }
       }
       context.log('Line Items: created=' + liCreated + ', failed=' + liFailed);
@@ -315,7 +321,7 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName, pdfUrl, status: 'Draft' }),
+      body: JSON.stringify({ fileName, pdfUrl, status: 'Draft', lineItemsFailed: liFailedIds.length, lineItemsFailedIds: liFailedIds }),
     };
 
   } catch (err) {
