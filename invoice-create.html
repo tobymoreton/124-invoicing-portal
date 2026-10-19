@@ -1405,8 +1405,18 @@ async function approveDraft() {
     const linkHtml = pdfUrl
       ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft \u2192</a>'
       : '';
-    el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
-    el('issue-status').className = 'status-msg success';
+    // S144: a draft whose time entries did not all reach Line Items cannot be issued
+    // (/api/issueinvoice refuses it). Say so now rather than letting Lesley find out.
+    const liFail = +(result.lineItemsFailed || 0);
+    if (liFail > 0) {
+      el('issue-status').innerHTML = '\u26a0 Draft created, but ' + liFail + ' time entr' + (liFail === 1 ? 'y' : 'ies')
+        + ' failed to record (TT2 id' + (liFail === 1 ? ' ' : 's ') + esc((result.lineItemsFailedIds || []).join(', ')) + ').'
+        + ' It will be blocked at issue. Tell Toby before it goes to Lesley.' + linkHtml;
+      el('issue-status').className = 'status-msg error';
+    } else {
+      el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
+      el('issue-status').className = 'status-msg success';
+    }
 
   } catch (err) {
     spinner.classList.remove('visible');

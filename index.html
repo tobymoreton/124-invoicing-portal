@@ -1081,14 +1081,21 @@ const ANOMALY_RULES = [
   { key:'zeroValue', sev:'review', label:'Issued with £0 due',
     why:'Invoice raised for nothing — usually a data error.',
     test:(i,o,due)=>!!i.OrderDetails && due===0 },
+  { key:'missingLines', sev:'critical', label:'Time billed but missing from earnings figures',
+    why:'Fewer line items than time entries billed — that time is credited to nobody. Ask Toby to repair.',
+    test:(i)=>!!i.OrderDetails && (i.WipCount||0) > (_liCountByInv[String(i.OrderDetails)]||0) },
   { key:'bigOverdue', sev:'review', label:'Overdue above £5,000',
     why:'Large sums outstanding past their due date.',
     test:(i,o,due,st,today)=>st!=='paid' && o>5000 && i.DueDate && new Date(i.DueDate)<today }
 ];
 const SEV_STYLE = { critical:'#991B1B', high:'#B45309', review:'#6B7280' };
 
+// S144: line items per invoice number, rebuilt on every anomaly pass (admins hold the full ledger).
+let _liCountByInv = {};
 function findAnomalies(){
   const today=new Date(); today.setHours(0,0,0,0);
+  _liCountByInv = {};
+  for (const li of allLineItems) { const k=String(li.InvoiceIDRef||''); if (k) _liCountByInv[k]=(_liCountByInv[k]||0)+1; }
   const found={};
   for (const r of ANOMALY_RULES) found[r.key]=[];
   for (const i of allInvoices){
