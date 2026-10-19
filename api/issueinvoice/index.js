@@ -108,6 +108,35 @@ module.exports = async function (context, req) {
     }
     context.log('DraftedByEmail guard passed.');
 
+    // ── S144: line-item completeness guard ───────────────────────────────────
+    // Every ticked time entry (DraftWipIds) must have its Line Item, or that time is billed to
+    // the client but credited to nobody (S143: 337 lines lost this way, June-Oct 2026). Checked
+    // BEFORE consuming the invoice number, like the guard above. A Graph error here blocks the
+    // issue too: an unverifiable draft is not issued.
+    {
+      const gFields = await graphGet('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+        + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '/fields?$select=DraftWipIds', token);
+      const gIds = String(gFields.DraftWipIds || '').split(',').map(x => x.trim()).filter(Boolean);
+      const missing = [];
+      for (let k = 0; k < gIds.length; k += 8) {
+        const batch = gIds.slice(k, k + 8);
+        const found = await Promise.all(batch.map(id => graphGetUnindexed('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+          + '/lists/' + LINE_ITEMS + '/items?$expand=fields($select=id,field_7)'
+          + '&$filter=fields/field_7 eq \'' + id + '\'&$top=5', token)));
+        batch.forEach((id, j) => { if (!((found[j] && found[j].value) || []).length) missing.push(id); });
+      }
+      if (missing.length) {
+        context.res = {
+          status: 400,
+          body: 'Cannot issue — ' + missing.length + ' of ' + gIds.length + ' time entr' + (gIds.length === 1 ? 'y has' : 'ies have')
+            + ' no line item, so that time would be credited to nobody (TT2 id' + (missing.length === 1 ? ' ' : 's ')
+            + missing.join(', ') + '). Ask Toby to repair the draft before issuing.',
+        };
+        return;
+      }
+      context.log('Line-item guard passed: ' + gIds.length + ' of ' + gIds.length + ' present.');
+    }
+
     // ── 1. Read + increment invoice counter ───────────────────────────────────
     context.log('Reading invoice counter…');
     const counterUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
