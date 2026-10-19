@@ -181,6 +181,26 @@ module.exports = async function (context, req) {
       context.log('No existing draft found — proceeding.');
     }
 
+    // ── S145: time entries already on another live draft or invoice ────────────
+    // 28/07/2026, 1741013: 13325 was issued, then a second draft was made from the same
+    // (already billed) entries and cancelled — and cancelling it unbilled the entries and
+    // deleted 13325's line items. An entry may sit on one live draft/invoice only.
+    {
+      const ids = (Array.isArray(checkedWipIds) ? checkedWipIds : []).map(String).filter(Boolean);
+      if (ids.length) {
+        const held = await liveHoldersOf(token, ids, null);
+        if (held.size) {
+          const where = [...new Set([].concat(...[...held.values()]).map(h => h.number ? 'invoice ' + h.number : 'an open draft'))];
+          context.res = {
+            status: 409,
+            body: held.size + ' of the ticked time entr' + (held.size === 1 ? 'y is' : 'ies are') + ' already on '
+              + where.join(', ') + '. Untick ' + (held.size === 1 ? 'it' : 'them') + ' (or cancel that draft first) and try again.',
+          };
+          return;
+        }
+      }
+    }
+
     const invoiceType = resolveInvoiceType(computed);
 
     // ── Draft filename ────────────────────────────────────────────────────────
@@ -329,6 +349,32 @@ module.exports = async function (context, req) {
     context.res = { status: 500, body: 'Error: ' + err.message };
   }
 };
+
+
+// S145: every live (not cancelled) Invoice Library item that lists any of `ids` in DraftWipIds,
+// other than `exceptItemId`. Returns Map<wipId, [{id, number}]>. One full pass of the library
+// (~3k rows, $top=999) — DraftWipIds is not indexed, so it cannot be filtered server-side.
+async function liveHoldersOf(token, ids, exceptItemId) {
+  const want = new Set(ids.map(String));
+  const out  = new Map();
+  let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + INVOICE_LIB
+    + '/items?$expand=fields($select=id,DraftWipIds,Cancelled,OrderDetails)&$top=999';
+  while (url) {
+    const page = await graphGet(url, token);
+    for (const it of (page.value || [])) {
+      const f = it.fields || {};
+      if (f.Cancelled || String(it.id) === String(exceptItemId)) continue;
+      for (const w of String(f.DraftWipIds || '').split(',')) {
+        const k = w.trim();
+        if (!k || !want.has(k)) continue;
+        if (!out.has(k)) out.set(k, []);
+        out.get(k).push({ id: String(it.id), number: f.OrderDetails || null });
+      }
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+  return out;
+}
 
 // ── Invoice type ──────────────────────────────────────────────────────────────
 
