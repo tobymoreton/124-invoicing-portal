@@ -7603,9 +7603,12 @@ async function submitAddAction() {
     for (var i = lo; i <= hi; i++) {
       var row = rows[i] || [], cols = {}, ok = true;
       for (var t = 0; t < tokens.length; t++) {
-        var found = -1;
-        for (var c = 0; c < row.length; c++) {
-          if (norm(row[c]).indexOf(tokens[t]) === 0) { found = c; break; }
+        // S149: a token may list alternatives with '|' ('f/e or csl ref|fee earner').
+        var found = -1, alts = tokens[t].split('|');
+        for (var c = 0; c < row.length && found < 0; c++) {
+          for (var a = 0; a < alts.length; a++) {
+            if (norm(row[c]).indexOf(alts[a]) === 0) { found = c; break; }
+          }
         }
         if (found < 0) { ok = false; break; }
         cols[tokens[t]] = found;
@@ -7618,7 +7621,7 @@ async function submitAddAction() {
   var SPECS = {
     feeEarners:  { label: 'Fee Earners',                must: ['fe ref', 'fee earner (fe)/description', 'time (hrs)', 'profit costs'] },
     partSummary: { label: 'Part Summary',               must: ['part', 'no.', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"] },
-    billPod:     { label: 'Bill and Points of Dispute', must: ['item no.', 'part no.', 'f/e or csl ref', 'narrative', 'hrs', 'profit costs'] },
+    billPod:     { label: 'Bill and Points of Dispute', must: ['item no.', 'part no.', 'f/e or csl ref|fee earner', 'narrative', 'hrs', 'profit costs'] },
     disb:        { label: 'Disbursements',              must: ['expense code', 'vat', 'totals'] },
     billSummary: { label: 'Bill Summary',               must: ['inter partes bill of costs overview:'] },
     counsel:     { label: 'Counsel',                    must: ['csl ref', 'counsel name', 'total fees'], optional: true }
@@ -7707,7 +7710,7 @@ async function submitAddAction() {
 
   function readLines(hit) {
     var rows = hit.sheet.rows, h = hit.header;
-    var cItem = h.cols['item no.'], cPart = h.cols['part no.'], cRef = h.cols['f/e or csl ref'],
+    var cItem = h.cols['item no.'], cPart = h.cols['part no.'], cRef = h.cols['f/e or csl ref|fee earner'],
         cNar = h.cols['narrative'], cHrs = h.cols['hrs'], cPC = h.cols['profit costs'];
     var out = [];
     for (var i = h.row + 1; i < rows.length; i++) {
