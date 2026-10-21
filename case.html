@@ -2068,7 +2068,7 @@
               <td class="tbl-computed" id="cv-otherTMCInc">—</td>
             </tr>
             <tr class="other-row" id="row-OtherTMCFees">
-              <td class="row-label">Other TMC Fees (ie invoices previously rendered) — excl bill<div class="prior-inv-note">Please do check to ensure that there are no prior invoices on this case for work done prior to bill preparation</div><label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
+              <td class="row-label">Other TMC Fees (ie invoices previously rendered) — excl bill (inc VAT)<div class="prior-inv-note">Please do check to ensure that there are no prior invoices on this case for work done prior to bill preparation</div><label style="font-size:11px;color:var(--grey-mid);display:block;font-weight:400;margin-top:3px;"><input type="checkbox" id="fc-OtherTMCFees-vatable" disabled style="width:12px;height:12px;vertical-align:middle;margin-right:3px;"> Vatable?</label></td>
               <td><input type="number" id="fc-OtherTMCFees" class="tbl-input" step="0.01" disabled /></td>
               <td class="tbl-computed" id="cv-vatOtherTMCFees-row">—</td>
               <td class="tbl-computed" id="cv-otherTMCFeesInc">—</td>
@@ -5611,7 +5611,8 @@ function renderCostsTab() {
   setText('cv-vatPC-row', vatablePC > 0 ? fmt(vatablePC * vatPct) : '\u2014'); setText('cv-pcInc', fmt(vatablePC * (1 + vatPct)));
   setText('cv-pcNonVatInc', nonVatablePC > 0 ? fmt(nonVatablePC) : '\u2014'); setText('cv-vatTMC-row', fmt(tmc * vatPct)); setText('cv-tmcInc', fmt(tmc * (1 + vatPct))); setText('cv-tmcNonVatInc', tmcNonVat > 0 ? fmt(tmcNonVat) : '\u2014');
   setText('cv-vatOtherTMC-row', otherTMCPCVat ? fmt(otherTMC * vatPct) : '\u2014'); setText('cv-otherTMCInc', otherTMCPCVat ? fmt(otherTMC * (1 + vatPct)) : fmt(otherTMC));
-  setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt * vatPct) : '\u2014'); setText('cv-otherTMCFeesInc', otherTMCFeesVat ? fmt(otherTMCFeesAmt * (1 + vatPct)) : '\u2014');
+  // S152 (Toby, 21/10): Other TMC Fees are entered INC VAT (as computeFigures and the PDF treat them) - show the VAT inside, not on top.
+setText('cv-vatOtherTMCFees-row', otherTMCFeesVat ? fmt(otherTMCFeesAmt - otherTMCFeesAmt / (1 + vatPct)) : '\u2014'); setText('cv-otherTMCFeesInc', fmt(otherTMCFeesAmt));
   setText('cv-disbInc', fmt(disb + vatDisb)); setText('cv-vatCounsel-row', vatableCounsel > 0 ? fmt(vatableCounsel * vatPct) : '\u2014'); setText('cv-counselInc', fmt(vatableCounsel * (1 + vatPct)));
   setText('cv-counselNonVatInc', nonVatCounsel > 0 ? fmt(nonVatCounsel) : '\u2014');
   setText('cc-totalIPPC', fmt(c.totalIPPC)); setText('cc-vatPC', fmt(c.vatOnPC)); setText('cc-counsel', fmt(c.counselClaimed)); setText('cc-vatCounsel', fmt(c.vatOnCounsel)); setText('cc-disb', fmt(c.disbursements)); setText('cc-vatDisb', fmt((c.disbIncVAT||0) - (c.disbursements||0))); setText('cc-vatLAPC', fmt(c.vatOnLAPC)); setText('cc-totalClaimed', fmt(c.totalCostsClaimed));
