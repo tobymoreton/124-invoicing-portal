@@ -773,12 +773,27 @@
     <tr style="display:none;"><td></td><td id="pdf-rec-lesscoa"></td></tr>
     <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
     <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
-<tr id="pdf-rec-r-intel" style="display:none;"><td>Interest Element</td><td id="pdf-rec-intel"></td></tr>
     <tr><td>Drafting Fee (net)</td><td id="pdf-rec-drafting"></td></tr>
     <tr class="highlight"><td>Net Profit Costs Recovery (after Drafting Fee)</td><td id="pdf-rec-netafter"></td></tr>
     <tr><td>% Recovery Against Claimed Profit Costs</td><td id="pdf-rec-pctpc"></td></tr>
     <tr><td>% Recovery Against Overall Bill</td><td id="pdf-rec-pctbill"></td></tr>
   </table>
+<!-- S151 (Toby, 21/10): VAT Summary - the split client finance teams asked for (no VAT on interest). -->
+<div id="pdf-vat-summary">
+<h2>VAT Summary</h2>
+<table class="tbl-vert">
+<tr><td>Profit Costs</td><td id="pdf-vs-pc"></td></tr>
+<tr><td>VAT</td><td id="pdf-vs-pcvat"></td></tr>
+<tr><td>Disbursements</td><td id="pdf-vs-disb"></td></tr>
+<tr><td>VAT</td><td id="pdf-vs-disbvat"></td></tr>
+<tr><td>Counsel's Fees</td><td id="pdf-vs-counsel"></td></tr>
+<tr><td>VAT</td><td id="pdf-vs-counselvat"></td></tr>
+<tr><td>TMC Fees</td><td id="pdf-vs-fees"></td></tr>
+<tr><td>VAT</td><td id="pdf-vs-feesvat"></td></tr>
+<tr><td>Interest</td><td id="pdf-vs-interest"></td></tr>
+<tr class="total-row"><td>Total</td><td id="pdf-vs-total"></td></tr>
+</table>
+</div>
 </div>
 
 <nav class="nav">
@@ -6095,13 +6110,34 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-pay-disb').textContent = fmt(c.disbIncVAT); document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
   document.getElementById('pdf-pay-coa').textContent = fmt(c.totalCOA); document.getElementById('pdf-pay-other').textContent = fmt(c.otherTMC);
   document.getElementById('pdf-pay-total').textContent = fmt(c.totalPayable);
-  // S150: interest inside the figure shown as its own line between Net PC and Drafting Fee; taken off the net
-// figure only so Net after Drafting Fee and both % rows are unchanged (Toby 21/10).
-const _intEl = resolveInterestTreatment(caseFields) === 'within' ? (c.interestInFigure || 0) : 0;
-document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting - _intEl);
-document.getElementById('pdf-rec-r-intel').style.display = _intEl > 0.005 ? '' : 'none'; document.getElementById('pdf-rec-intel').textContent = fmt(_intEl);
+  document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
   document.getElementById('pdf-rec-drafting').textContent = fmt(c.netDraftingFee); document.getElementById('pdf-rec-netafter').textContent = fmt(c.netAfterDrafting);
   document.getElementById('pdf-rec-pctpc').textContent = fmtPct(c.pctPC); document.getElementById('pdf-rec-pctbill').textContent = fmtPct(c.pctBill);
+// S151 (Toby, 21/10): VAT Summary at the foot of the report - the split a client's finance team asked for
+// on global settlements (no VAT on interest). Display only: nothing above it, and no stored figure, changes.
+// Reconciles to the total received: PC kept + disbs + counsel + TMC's fees + interest. Interest inside the
+// figure is taken out of the solicitor's share BEFORE its VAT is split, so it carries none.
+{
+  const _vf = settFieldsInUse();
+  const _vh = 1 + (parseFloat(_vf['VAT_x0020__x0025__x0020_Claimed']) || 0);
+  const _r2 = (x) => Math.round((x || 0) * 100) / 100;
+  const _split = (gross, netRatio) => { const n = _r2(gross * netRatio); return [n, _r2(_r2(gross) - n)]; };
+  const _int = c.intMode === 'none' ? 0 : _r2(c.interestInFigure);
+  const _coaOn = (c.coaDeduct || 0) > 0;
+  const [_pcN, _pcV] = _split(c.grossAfterDrafting - (c.intMode === 'within' ? _int : 0), 1 / _vh);
+  const _dsN = _r2((c.disbursements || 0) + (_coaOn ? (c.courtFeeOut || 0) : 0));
+  const _dsV = _r2((c.disbIncVAT || 0) - (c.disbursements || 0));
+  const [_coN, _coV] = _split(c.counsel, c.counselIncVAT > 0 ? c.counselClaimed / c.counselIncVAT : 1);
+  const _fee  = [_r2(c.netDraftingFee), _r2((c.draftingFeeGross || 0) - (c.netDraftingFee || 0))];
+  const _tmc  = _split(_coaOn ? c.coa : 0, 1 / _vh);
+  const _oth  = _split(c.otherTMC, _vf['OtherTMCFeesVatable'] !== false ? 1 / _vh : 1);
+  const _yfN = _r2(_fee[0] + _tmc[0] + _oth[0]), _yfV = _r2(_fee[1] + _tmc[1] + _oth[1]);
+  const _vsTotal = _r2(_pcN + _pcV + _dsN + _dsV + _coN + _coV + _yfN + _yfV + _int);
+  if (Math.abs(_vsTotal - (c.totalReceivable || 0)) > 0.05) console.warn('[S151] VAT Summary total', _vsTotal, 'vs total received', c.totalReceivable);
+  const _vs = { pc: _pcN, pcvat: _pcV, disb: _dsN, disbvat: _dsV, counsel: _coN, counselvat: _coV, fees: _yfN, feesvat: _yfV, interest: _int, total: _vsTotal };
+  for (const k in _vs) { const el = document.getElementById('pdf-vs-' + k); if (el) el.textContent = fmt(_vs[k]); }
+  const _vsWrap = document.getElementById('pdf-vat-summary'); if (_vsWrap) _vsWrap.style.display = (c.offerOrSettlement || 0) > 0 ? '' : 'none';
+}
   const pdfEl = document.getElementById('pdf-output');
   pdfEl.style.cssText = 'display:block;position:fixed;left:-9999px;top:0;width:794px;background:#fff;padding:20px;';
   const logoEl = document.getElementById('pdf-logo');
