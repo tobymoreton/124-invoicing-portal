@@ -2156,6 +2156,8 @@
           <div class="read-row"><dt>Principal Sum Remaining</dt><dd id="i-PrincipalRemaining">—</dd></div>
           <div class="read-row"><dt>Current Daily Interest Rate</dt><dd id="i-DailyRate">—</dd></div>
           <div class="read-row" id="i-r-gap" style="display:none;"><dt>Late formal service (3-month rule)</dt><dd id="i-Gap"></dd></div>
+<div class="read-row" id="i-r-delay" style="display:none;"><dt>Delay period</dt><dd id="i-Delay"></dd></div>
+<div class="read-row" id="i-r-notadded" style="display:none;"><dt>Interest not added (delay)</dt><dd id="i-NotAdded"></dd></div>
 <div class="read-row highlight"><dt>Total Interest to Date</dt><dd id="i-TotalInterest">—</dd></div>
           <div class="read-row"><dt>Total Sum Including Interest</dt><dd id="i-TotalInclInterest">—</dd></div>
           <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
@@ -3572,10 +3574,10 @@ function computeInterest() {
     interestOn, preAuth, totalInterim, principalRemaining, currentDailyRate,
     totalInterest, totalInclInterest, totalInclCOA, coaManual, excluded,
     periods: [
-      { days: days1 - x1, principal: p1, rate: r1, interest: int1 },
-      { days: days2 - x2, principal: p2, rate: r2, interest: int2 },
-      { days: days3 - x3, principal: p3, rate: r3, interest: int3 },
-      { days: days4 - x4, principal: p4, rate: r4, interest: int4 },
+      { days: days1 - x1, excluded: x1, principal: p1, rate: r1, interest: int1 },
+      { days: days2 - x2, excluded: x2, principal: p2, rate: r2, interest: int2 },
+      { days: days3 - x3, excluded: x3, principal: p3, rate: r3, interest: int3 },
+      { days: days4 - x4, excluded: x4, principal: p4, rate: r4, interest: int4 },
     ],
   };
 }
@@ -5680,12 +5682,21 @@ function renderInterestTab() {
     setText('i-ServedFormally', _s ? fmtDate(_s) : 'Not served formally');
     if (_r) _r.style.display = _a ? '' : 'none';
     setText('i-Gap', !_a ? '' : !_g ? 'None: formally served ' + fmtDate(_s) + ', within 3 months'
-      : _x.days > 0 ? '-' + fmt(_x.amount) + ' (' + _x.days + ' days from ' + fmtDate(_g.from.toISOString()) + (_g.to ? ' to ' + fmtDate(_g.to.toISOString()) : ', not yet served formally') + ')'
-      : _g.to ? 'Served late (' + fmtDate(_g.to.toISOString()) + '), nothing to deduct'
-      : 'Not served formally: interest stops ' + fmtDate(_g.from.toISOString())); }
+      : _g.to ? 'Served late: formally served ' + fmtDate(_g.to.toISOString()) : 'Not served formally');
+    // S156 (Toby, 21/10): the delay itself - dates, days and the interest NOT added for it.
+    const _show = !!(_a && _g);
+    ['i-r-delay', 'i-r-notadded'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = _show ? '' : 'none'; });
+    if (_show) {
+      const _now = new Date(); _now.setHours(0, 0, 0, 0);
+      const _end = _g.to && _g.to < _now ? _g.to : _now;
+      const _dd = Math.max(0, daysBetween(_g.from, _end));
+      setText('i-Delay', !_dd && !_g.to ? 'Starts ' + fmtDate(_g.from.toISOString()) + ' unless served formally by then'
+        : fmtDate(_g.from.toISOString()) + (_g.to ? ' to ' + fmtDate(_g.to.toISOString()) : ' to date (not yet served formally)') + ' - ' + _dd + ' day' + (_dd === 1 ? '' : 's'));
+      setText('i-NotAdded', fmt(_x.amount || 0));
+    } }
   i.periods.forEach((p, idx) => {
-    const n = idx + 1; const active = p.days > 0 || p.interest > 0; const cls = active ? 'mono' : 'dim';
-    document.getElementById('p-days-' + n).textContent = active ? fmtN(p.days, 0) : '—';
+    const n = idx + 1; const active = p.days > 0 || p.interest > 0 || p.excluded > 0; const cls = active ? 'mono' : 'dim';
+    document.getElementById('p-days-' + n).textContent = active ? fmtN(p.days, 0) + (p.excluded ? ' (' + p.excluded + ' excl)' : '') : '—';
     document.getElementById('p-principal-' + n).textContent = active ? fmt(p.principal) : '—';
     document.getElementById('p-rate-' + n).textContent = active ? fmt(p.rate) : '—';
     document.getElementById('p-interest-' + n).textContent = active ? fmt(p.interest) : '—';
