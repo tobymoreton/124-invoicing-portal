@@ -773,6 +773,7 @@
     <tr style="display:none;"><td></td><td id="pdf-rec-lesscoa"></td></tr>
     <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
     <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
+<tr id="pdf-rec-r-intel" style="display:none;"><td>Interest Element</td><td id="pdf-rec-intel"></td></tr>
     <tr><td>Drafting Fee (net)</td><td id="pdf-rec-drafting"></td></tr>
     <tr class="highlight"><td>Net Profit Costs Recovery (after Drafting Fee)</td><td id="pdf-rec-netafter"></td></tr>
     <tr><td>% Recovery Against Claimed Profit Costs</td><td id="pdf-rec-pctpc"></td></tr>
@@ -6094,7 +6095,11 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-pay-disb').textContent = fmt(c.disbIncVAT); document.getElementById('pdf-pay-counsel').textContent = fmt(c.counsel);
   document.getElementById('pdf-pay-coa').textContent = fmt(c.totalCOA); document.getElementById('pdf-pay-other').textContent = fmt(c.otherTMC);
   document.getElementById('pdf-pay-total').textContent = fmt(c.totalPayable);
-  document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
+  // S150: interest inside the figure shown as its own line between Net PC and Drafting Fee; taken off the net
+// figure only so Net after Drafting Fee and both % rows are unchanged (Toby 21/10).
+const _intEl = resolveInterestTreatment(caseFields) === 'within' ? (c.interestInFigure || 0) : 0;
+document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting - _intEl);
+document.getElementById('pdf-rec-r-intel').style.display = _intEl > 0.005 ? '' : 'none'; document.getElementById('pdf-rec-intel').textContent = fmt(_intEl);
   document.getElementById('pdf-rec-drafting').textContent = fmt(c.netDraftingFee); document.getElementById('pdf-rec-netafter').textContent = fmt(c.netAfterDrafting);
   document.getElementById('pdf-rec-pctpc').textContent = fmtPct(c.pctPC); document.getElementById('pdf-rec-pctbill').textContent = fmtPct(c.pctBill);
   const pdfEl = document.getElementById('pdf-output');
