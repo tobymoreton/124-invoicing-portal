@@ -2729,6 +2729,16 @@ function interestGap(f) {
   if (served && served <= from) return null;
   return { from: from, to: served };
 }
+// S154 (Toby, 21/10): interest never runs before the Authority to Assess. A payment on account dated on or
+// before it is treated as received AT the authority date - it reduces the opening principal and no period
+// starts (or ends) before that date. Was: periods ran from 2024 payments, and computeInterest produced
+// negative days (auth -> earlier payment) and so negative interest.
+function clampToAuth(f, v) {
+  if (!v) return null;
+  const d = new Date(v); if (isNaN(d)) return null;
+  const a = f && f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
+  return a && !isNaN(a) && d < a ? a : d;
+}
 function gapDaysIn(gap, start, end) {
   if (!gap || !start || !end) return 0;
   const lo = start > gap.from ? start : gap.from;
@@ -3434,9 +3444,9 @@ function interestTotalAsAt(f, interestOn, asAt) {
   const ip1 = parseFloat(f['InterimPayment1']) || 0;
   const ip2 = parseFloat(f['InterimPayment2']) || 0;
   const ip3 = parseFloat(f['InterimPayment3']) || 0;
-  const ipd1 = f['InterimPaymentDate1'] ? new Date(f['InterimPaymentDate1']) : null;
-  const ipd2 = f['InterimPaymentDate2'] ? new Date(f['InterimPaymentDate2']) : null;
-  const ipd3 = f['InterimPaymentDate3'] ? new Date(f['InterimPaymentDate3']) : null;
+  const ipd1 = clampToAuth(f, f['InterimPaymentDate1']);
+  const ipd2 = clampToAuth(f, f['InterimPaymentDate2']);
+  const ipd3 = clampToAuth(f, f['InterimPaymentDate3']);
   const authDate = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   if (!authDate) return 0;
   // Floor each period's principal at 0 so interest STOPS (never goes negative) if interim
@@ -3471,7 +3481,7 @@ function interestPeriodsAsAt(f, interestOn, asAt) {
   const preAuth = parseFloat(f['TotalPreAuthorityPayments']) || 0;
   const ip  = [parseFloat(f['InterimPayment1']) || 0, parseFloat(f['InterimPayment2']) || 0, parseFloat(f['InterimPayment3']) || 0];
   const ipd = ['InterimPaymentDate1', 'InterimPaymentDate2', 'InterimPaymentDate3']
-    .map(k => f[k] ? new Date(f[k]) : null);
+    .map(k => clampToAuth(f, f[k]));
   // A period ends at the next payment date, but never later than the as-at date.
   const endOr  = d => (d && d < asAt) ? d : asAt;
   const starts = [authDate, ipd[0], ipd[1], ipd[2]];
@@ -3527,9 +3537,9 @@ function computeInterest() {
   const ip1         = parseFloat(f['InterimPayment1'])                  || 0;
   const ip2         = parseFloat(f['InterimPayment2'])                  || 0;
   const ip3         = parseFloat(f['InterimPayment3'])                  || 0;
-  const ipd1        = f['InterimPaymentDate1'] ? new Date(f['InterimPaymentDate1']) : null;
-  const ipd2        = f['InterimPaymentDate2'] ? new Date(f['InterimPaymentDate2']) : null;
-  const ipd3        = f['InterimPaymentDate3'] ? new Date(f['InterimPaymentDate3']) : null;
+  const ipd1        = clampToAuth(f, f['InterimPaymentDate1']);
+  const ipd2        = clampToAuth(f, f['InterimPaymentDate2']);
+  const ipd3        = clampToAuth(f, f['InterimPaymentDate3']);
   const authDate    = f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   const coaManual   = parseFloat(f['CostsOfAssessmentForInterestTabO']) || 0;
   const interestOn = sumOverride > 0 ? sumOverride : (computed.totalBill || 0);
