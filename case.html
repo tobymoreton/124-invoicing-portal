@@ -1359,6 +1359,7 @@
                 <button class="import-btn" id="btn-import-interest" disabled>↓ Use internal calc</button>
                 <span class="sett-hint" id="hint-sett-interest-calc" style="margin:0;"></span>
               </div>
+<div class="sett-hint" id="sett-int-mismatch" style="display:none;color:var(--red,#a33);font-weight:600;margin-top:6px;"></div>
               <div class="sett-hint">Leave blank until a figure is agreed — the tile above shows what interest has accrued in the meantime. This box is the figure actually agreed or awarded, and once entered it replaces the calculation everywhere. It changes no recovery figure: recovered interest counts as profit costs.</div>
             </div>
           </div>
@@ -5403,6 +5404,22 @@ function renderSettlementTab() {
       setText('kv-sett-interest-sub', 'No Authority to Assess date — set one on the Interest tab.');
     }
   }
+  // S157 (Toby, 21/10): the saved "Of which, interest" is a stored number and never updates itself. Warn
+  // when it differs by more than £1 from the recalculation (as at Date Settled, else today) - e.g. a figure
+  // adopted before S153/S154. Never changes it: an agreed or awarded figure is legitimately different.
+  { const _m = document.getElementById('sett-int-mismatch');
+    if (_m) {
+      const _saved = parseFloat(f['InterestInFigure']) || 0;
+      const _g = (_saved > 0 && c.intMode === 'within') ? settInternalInterestGuide() : null;
+      const _on = !!(_g && _g.amount !== null && Math.abs(_saved - _g.amount) > 1);
+      _m.style.display = _on ? '' : 'none';
+      if (_on) {
+        const _d = f['DateSettled0'] ? new Date(f['DateSettled0']) : new Date();
+        _m.textContent = '\u26A0 Saved interest ' + fmt(_saved) + ', but it recalculates to ' + fmt(_g.amount) + ' as at '
+          + fmtDate(_d.toISOString()) + ' (' + (_saved > _g.amount ? fmt(_saved - _g.amount) + ' higher' : fmt(_g.amount - _saved) + ' lower')
+          + '). If the saved figure was agreed or awarded, leave it. Otherwise click Edit, then "Use internal calc", then Save.';
+      }
+    } }
   // S125: the working behind the interest figure. When interest is INSIDE the offer the figure is
   // the back-worked one, so the table must run on the costs element — not on the whole offer, or it
   // shows a different (larger) number than the tile above it and neither adds back to the offer.
