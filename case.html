@@ -2150,11 +2150,12 @@
         <dl class="read-grid" style="margin-top:8px;">
           <div class="read-row"><dt>Interest Calculated On</dt><dd id="i-InterestOn">—</dd></div>
           <div class="read-row"><dt>Authority to Assess</dt><dd id="i-AuthToAssess">—</dd></div>
+<div class="read-row"><dt>Date Served Formally</dt><dd id="i-ServedFormally"></dd></div>
           <div class="read-row"><dt>Total Pre-Authority Payments</dt><dd id="i-PreAuthTotal">—</dd></div>
           <div class="read-row"><dt>Total Interim Payments</dt><dd id="i-InterimTotal">—</dd></div>
           <div class="read-row"><dt>Principal Sum Remaining</dt><dd id="i-PrincipalRemaining">—</dd></div>
           <div class="read-row"><dt>Current Daily Interest Rate</dt><dd id="i-DailyRate">—</dd></div>
-          <div class="read-row" id="i-r-gap" style="display:none;"><dt>Excluded: late formal service</dt><dd id="i-Gap"></dd></div>
+          <div class="read-row" id="i-r-gap" style="display:none;"><dt>Late formal service (3-month rule)</dt><dd id="i-Gap"></dd></div>
 <div class="read-row highlight"><dt>Total Interest to Date</dt><dd id="i-TotalInterest">—</dd></div>
           <div class="read-row"><dt>Total Sum Including Interest</dt><dd id="i-TotalInclInterest">—</dd></div>
           <div class="read-row"><dt>Costs of Assessment (manual)</dt><dd id="i-CoA">—</dd></div>
@@ -5673,8 +5674,15 @@ function renderInterestTab() {
   setText('i-TotalInclCOA', fmt(i.totalInclCOA)); setText('i-InterestOn', fmt(i.interestOn)); setText('i-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
   setText('i-PreAuthTotal', fmt(i.preAuth)); setText('i-InterimTotal', fmt(i.totalInterim)); setText('i-PrincipalRemaining', fmt(i.principalRemaining));
   setText('i-DailyRate', fmt(i.currentDailyRate)); setText('i-TotalInterest', fmt(i.totalInterest)); setText('i-TotalInclInterest', fmt(i.totalInclInterest)); setText('i-CoA', fmt(i.coaManual));
-  { const _x = i.excluded || {}; const _r = document.getElementById('i-r-gap'); if (_r) _r.style.display = _x.days > 0 ? '' : 'none';
-    if (_x.days > 0) setText('i-Gap', '-' + fmt(_x.amount) + ' (' + _x.days + ' days from ' + fmtDate(_x.gap.from.toISOString()) + (_x.gap.to ? ' to ' + fmtDate(_x.gap.to.toISOString()) : ', not yet formally served') + ')'); }
+  // S155 (Toby, 21/10): formal service date and the 3-month check always visible on the Interest tab.
+  { const _x = i.excluded || {}; const _r = document.getElementById('i-r-gap');
+    const _a = f['DateofAuthoritytoAssess'], _s = f['DateServedFormally0'], _g = interestGap(f);
+    setText('i-ServedFormally', _s ? fmtDate(_s) : 'Not served formally');
+    if (_r) _r.style.display = _a ? '' : 'none';
+    setText('i-Gap', !_a ? '' : !_g ? 'None: formally served ' + fmtDate(_s) + ', within 3 months'
+      : _x.days > 0 ? '-' + fmt(_x.amount) + ' (' + _x.days + ' days from ' + fmtDate(_g.from.toISOString()) + (_g.to ? ' to ' + fmtDate(_g.to.toISOString()) : ', not yet served formally') + ')'
+      : _g.to ? 'Served late (' + fmtDate(_g.to.toISOString()) + '), nothing to deduct'
+      : 'Not served formally: interest stops ' + fmtDate(_g.from.toISOString())); }
   i.periods.forEach((p, idx) => {
     const n = idx + 1; const active = p.days > 0 || p.interest > 0; const cls = active ? 'mono' : 'dim';
     document.getElementById('p-days-' + n).textContent = active ? fmtN(p.days, 0) : '—';
