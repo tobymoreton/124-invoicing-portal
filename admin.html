@@ -617,7 +617,7 @@
     .ds-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:3px;}
     .ds-empty{color:var(--grey-mid);font-size:13px;}
   </style>
-  <div class="ds-panel">
+  <div class="ds-panel" id="ds-cases-panel" style="display:none"><!-- S150: Toby + Danielle only (shown in gatePage) -->
     <h3>&#128100; Draftsmen &mdash; case lists<button type="button" class="info-btn" style="margin-left:6px;" aria-label="About Draftsmen case lists"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">One button per draftsman, with their number of open cases. Click to see that person&rsquo;s cases with the booking-in notes, the current position and any drafting notes. Danielle is not listed &mdash; cases assigned to her sit in Unassigned Cases. The &pound; figure is each person&rsquo;s 4% drafting-fee WIP: 4% of profit costs claimed (ex VAT) on open cases they drafted (Bill Drafted By, else the assignee) that have no drafting fee invoiced yet &mdash; the same figure as the tile on their own dashboard.</span></button></h3>
     <div class="ds-btns" id="ds-btns"><span class="ds-empty">Loading&hellip;</span></div>
     <div class="ds-4pct-total" id="ds-4pct-total"></div>
@@ -1997,7 +1997,7 @@ document.getElementById('ci-date').value=new Date().toISOString().slice(0,10);
     // S79: admin dashboard opened to all signed-in staff (removed non-admin-tier redirect).
     // Management-only actions (delete) stay gated via the not-mgmt class + server enforcement.
     if(!caseDeleters.includes(email)) document.body.classList.add('not-mgmt');
-    adManagement=management.includes(email);
+    adManagement=management.includes(email); if(adManagement){ const dsp=document.getElementById('ds-cases-panel'); if(dsp) dsp.style.display=''; } // S150
     if(email==='toby@tmclegal.co.uk'){ const b=document.getElementById('btn-att-types'); if(b) b.style.display='inline-flex'; }
     wireBanner(email);
   }catch(e){ if(link) link.remove(); /* auth check failed — leave page usable, server gates still apply */ }
