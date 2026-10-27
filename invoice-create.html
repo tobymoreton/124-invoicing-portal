@@ -331,16 +331,6 @@
         </div>
 
         <div class="form-row">
-          <span class="form-label">But say&hellip; (line text only)</span>
-          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
-            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
-              <input type="checkbox" class="wip-check" id="inp-but-say-ip"> Add &ldquo;But say&rdquo;
-            </label>
-            <input type="text" class="form-input-num" id="inp-but-say-ip-text" placeholder="e.g. &pound;4,000.00" style="display:none;" />
-          </span>
-        </div>
-
-        <div class="form-row">
           <span class="form-label">VAT on drafting fee?</span>
           <span class="form-value"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="inp-vat-drafting" /><span id="fig-vat-on-drafting"></span></label></span>
         </div>
@@ -394,6 +384,20 @@
           <span class="form-value">
             <input type="text" class="form-input-text" id="inp-timed-work-line" placeholder="Work done per attached schedule" />
           </span>
+        </div>
+
+        <div class="form-row">
+          <span class="form-label">But say&hellip; (line text only)</span>
+          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" class="wip-check" id="inp-but-say-tw"> Add &ldquo;But say&rdquo;
+            </label>
+            <input type="text" class="form-input-num" id="inp-but-say-tw-text" placeholder="e.g. &pound;4,000.00" style="display:none;" />
+          </span>
+        </div>
+        <div class="form-row" id="row-but-say-tw-preview" style="display:none;">
+          <span class="form-label">Line will read</span>
+          <span class="form-value" id="fig-but-say-tw-preview" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
 
         <div class="wip-toolbar" style="margin-top:14px;">
@@ -928,8 +932,8 @@ function initListeners() {
     recalc();
   });
   el('inp-include-tmc').addEventListener('change', recalc);
-  el('inp-but-say-ip').addEventListener('change', recalc);
-  el('inp-but-say-ip-text').addEventListener('input', recalc);
+  el('inp-but-say-tw').addEventListener('change', recalc);
+  el('inp-but-say-tw-text').addEventListener('input', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
   el('inp-zero-vat-ok').addEventListener('change', recalc);
   el('inp-zero-vat-reason').addEventListener('input', recalc);
@@ -1009,11 +1013,6 @@ function recalc() {
     ipLine = 'Preparing Draft Bill of Costs';
   }
   if (minFeeIp && ipLine) ipLine += ' | Minimum fee';
-  // S149: "But say ..." — wording only, never changes any figure.
-  const butSayIp   = !!(el('inp-but-say-ip')?.checked);
-  const butSayText = (el('inp-but-say-ip-text')?.value || '').trim();
-  if (el('inp-but-say-ip-text')) el('inp-but-say-ip-text').style.display = butSayIp ? '' : 'none';
-  if (butSayIp && ipLine) ipLine += ' | But say' + (butSayText ? ' ' + butSayText : '');
   el('fig-drafting-line').textContent = ipLine;
 
   // LA drafting fee (always As Drawn) — with optional override / minimum fee
@@ -1101,6 +1100,15 @@ function recalc() {
       twInput.value = twBase;
     }
   }
+  // S149: "But say ..." on the timed work line — wording only, never changes any figure.
+  // Appended at output time so it never collides with the live " | N hrs" refresh above.
+  const butSayTw     = !!(el('inp-but-say-tw')?.checked);
+  const butSayTwText = (el('inp-but-say-tw-text')?.value || '').trim();
+  const timedWorkLineOut = (twInput.value || 'Work done per attached schedule')
+    + (butSayTw ? ' | But say' + (butSayTwText ? ' ' + butSayTwText : '') : '');
+  el('inp-but-say-tw-text').style.display    = butSayTw ? '' : 'none';
+  el('row-but-say-tw-preview').style.display = butSayTw ? '' : 'none';
+  el('fig-but-say-tw-preview').textContent   = butSayTw ? timedWorkLineOut : '';
 
   // VAT — applies to timed always; applies to both drafting fees when vatOnDrafting true
   const vatBase  = timedFee + (vatOnDrafting ? (draftingFee + laFee) : 0) + bespokeAmt;
@@ -1181,7 +1189,7 @@ function recalc() {
     minimumFeeIp: minFeeIp, minimumFeeLa: minFeeLa,
     draftingFeeLine:    ipLine,
     laFeeLine:          el('fig-la-drafting-line').textContent,
-    timedWorkLine:      el('inp-timed-work-line').value || 'Work done per attached schedule',
+    timedWorkLine:      timedWorkLineOut,
     timedHrs,
     bespokeInvoiceLine: el('inp-bespoke-line').value,
     bespokeLines: [
