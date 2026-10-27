@@ -771,18 +771,19 @@
     <tr id="pdf-rec-r-plus" style="display:none;"><td></td><td id="pdf-rec-plus"></td></tr>
     <tr style="display:none;"><td></td><td id="pdf-rec-lessfixed"></td></tr>
     <tr style="display:none;"><td></td><td id="pdf-rec-lesscoa"></td></tr>
-    <tr><td>Gross Profit Costs Recovery</td><td id="pdf-rec-gross"></td></tr>
-    <tr><td>Net Profit Costs Recovery</td><td id="pdf-rec-netbefore"></td></tr>
+    <tr><td>Gross Profit Costs Recovery<span class="lbl-incl-int"></span></td><td id="pdf-rec-gross"></td></tr>
+    <tr><td>Net Profit Costs Recovery<span class="lbl-incl-int"></span></td><td id="pdf-rec-netbefore"></td></tr>
     <tr><td>Drafting Fee (net)</td><td id="pdf-rec-drafting"></td></tr>
-    <tr class="highlight"><td>Net Profit Costs Recovery (after Drafting Fee)</td><td id="pdf-rec-netafter"></td></tr>
+    <tr class="highlight"><td>Net Profit Costs Recovery (after Drafting Fee)<span class="lbl-incl-int"></span></td><td id="pdf-rec-netafter"></td></tr>
     <tr><td>% Recovery Against Claimed Profit Costs</td><td id="pdf-rec-pctpc"></td></tr>
     <tr><td>% Recovery Against Overall Bill</td><td id="pdf-rec-pctbill"></td></tr>
   </table>
+<div id="pdf-rec-int-note" style="display:none;font-size:8pt;color:#333;margin:-2mm 0 3mm;"></div>
 <!-- S151 (Toby, 21/10): VAT Summary - the split client finance teams asked for (no VAT on interest). -->
 <div id="pdf-vat-summary">
 <h2>VAT Summary</h2>
 <table class="tbl-vert">
-<tr><td>Profit Costs</td><td id="pdf-vs-pc"></td></tr>
+<tr><td>Profit Costs<span class="lbl-excl-int"></span></td><td id="pdf-vs-pc"></td></tr>
 <tr><td>VAT</td><td id="pdf-vs-pcvat"></td></tr>
 <tr><td>Disbursements</td><td id="pdf-vs-disb"></td></tr>
 <tr><td>VAT</td><td id="pdf-vs-disbvat"></td></tr>
@@ -1492,7 +1493,7 @@
         <div class="card-head"><span class="card-title">Recovery</span><button type="button" class="info-btn" aria-label="About Recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">Your profit-costs recovery after the drafting fee. Ticking 'Include TMC time in fee base?' bases the drafting fee on drawn costs rather than net recovery; the figures here recalculate live.</span></button></div>
         <div style="padding:16px 22px 0;">
           <div class="recovery-highlight">
-            <span class="rh-label">Net PC Recovery (after Drafting Fee)</span>
+            <span class="rh-label">Net PC Recovery (after Drafting Fee)<span class="lbl-incl-int"></span></span>
             <span class="rh-value" id="r-NetAfterDrafting">—</span>
           </div>
         </div>
@@ -1504,8 +1505,8 @@
           <div class="read-row"><dt id="lbl-rec-coa">Plus: costs of assessment recovered on top</dt><dd id="r-PlusCOA">—</dd></div>
           <div class="read-row"><dt>Less: disbursements, counsel &amp; other TMC fees</dt><dd id="r-LessFixed">—</dd></div>
           <div class="read-row"><dt id="lbl-rec-coacost">Less: cost of the assessment (TMC’s invoice + any court fee the client paid direct)</dt><dd id="r-LessCOACost">—</dd></div>
-          <div class="read-row"><dt>Gross Profit Costs Recovery</dt><dd id="r-GrossPCRecovery">—</dd></div>
-          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)</dt><dd id="r-NetBeforeDrafting">—</dd></div>
+          <div class="read-row"><dt>Gross Profit Costs Recovery<span class="lbl-incl-int"></span></dt><dd id="r-GrossPCRecovery">—</dd></div>
+          <div class="read-row"><dt>Net PC Recovery (before Drafting Fee)<span class="lbl-incl-int"></span></dt><dd id="r-NetBeforeDrafting">—</dd></div>
           <!-- S139: fee basis, fee % and Include-TMC-time moved into the Drafting fee Key Variables tile. -->
           <div class="read-row"><dt>Drafting Fee (net)</dt><dd id="r-DraftingFee">—</dd></div>
           <div class="read-row pct"><dt>% Recovery of Profit Costs</dt><dd id="r-PctPC">—</dd></div>
@@ -2748,6 +2749,18 @@ function clampToAuth(f, v) {
   const d = new Date(v); if (isNaN(d)) return null;
   const a = f && f['DateofAuthoritytoAssess'] ? new Date(f['DateofAuthoritytoAssess']) : null;
   return a && !isNaN(a) && d < a ? a : d;
+}
+// S159 (Toby, 27/10): say where profit costs include or exclude interest. Recovery figures and % lines
+// count interest inside the figure as profit costs; the VAT Summary splits it out with no VAT.
+function setInterestLabels(c) {
+  const amt = c ? (c.interestInFigure || 0) : 0;
+  const incl = !!c && c.intMode === 'within' && amt > 0.005;
+  const excl = !!c && c.intMode !== 'none' && amt > 0.005;
+  document.querySelectorAll('.lbl-incl-int').forEach(e => { e.textContent = incl ? ' (incl interest)' : ''; });
+  document.querySelectorAll('.lbl-excl-int').forEach(e => { e.textContent = excl ? ' (excl interest)' : ''; });
+  const n = document.getElementById('pdf-rec-int-note');
+  if (n) { n.style.display = incl ? '' : 'none';
+    n.textContent = incl ? 'Interest of ' + fmt(amt) + ' is treated as profit costs in the recovery and % figures above. The VAT Summary below shows it separately, with no VAT.' : ''; }
 }
 function gapDaysIn(gap, start, end) {
   if (!gap || !start || !end) return 0;
@@ -5527,7 +5540,7 @@ function renderSettlementTab() {
   setText('r-LessCOACost', c.coaDeduct ? '−' + fmt(c.coaDeduct) : (c.coaExcludedByOffer ? 'Not deducted' : '—')); // S158: was coaCost
   setText('r-InterestOn', fmt(i.interestOn)); setText('r-AuthToAssess', fmtDate(f['DateofAuthoritytoAssess']));
   setText('r-DailyRate', fmt(i.currentDailyRate)); setText('r-TotalInterest', fmt(i.totalInterest)); setText('r-TotalInclCOA', fmt(i.totalInclCOA));
-  setText('r-NetAfterDrafting', fmt(c.netAfterDrafting)); setText('r-GrossPCRecovery', fmt(c.grossPC)); setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
+  setInterestLabels(c); setText('r-NetAfterDrafting', fmt(c.netAfterDrafting)); setText('r-GrossPCRecovery', fmt(c.grossPC)); setText('r-NetBeforeDrafting', fmt(c.netBeforeDrafting));
   setText('r-DraftingFee', fmt(c.netDraftingFee)); setText('r-PctPC', fmtPct(c.pctPC)); setText('r-PctBill', fmtPct(c.pctBill));
   // S109: keep the two fee controls showing the values actually being used. The % shows the
   // unsaved override when there is one, otherwise the saved case value; the basis mirrors the
@@ -6227,6 +6240,7 @@ async function generateSettlementPDF() {
   document.getElementById('pdf-rec-gross').textContent = fmt(c.grossPC); document.getElementById('pdf-rec-netbefore').textContent = fmt(c.netBeforeDrafting);
   document.getElementById('pdf-rec-drafting').textContent = fmt(c.netDraftingFee); document.getElementById('pdf-rec-netafter').textContent = fmt(c.netAfterDrafting);
   document.getElementById('pdf-rec-pctpc').textContent = fmtPct(c.pctPC); document.getElementById('pdf-rec-pctbill').textContent = fmtPct(c.pctBill);
+setInterestLabels(c);
 // S151 (Toby, 21/10): VAT Summary at the foot of the report - the split a client's finance team asked for
 // on global settlements (no VAT on interest). Display only: nothing above it, and no stored figure, changes.
 // Reconciles to the total received: PC kept + disbs + counsel + TMC's fees + interest. Interest inside the
