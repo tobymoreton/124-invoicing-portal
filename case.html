@@ -2537,7 +2537,7 @@
         <div class="card-body">
           <div id="inv-case-msg" style="font-size:13px;color:var(--grey-mid);padding:6px 2px;">Loading&hellip;</div>
           <table class="ca-table" id="inv-case-table" style="display:none;">
-            <thead><tr><th style="width:70px;">Inv #</th><th style="width:80px;">Date</th><th style="width:80px;">Due</th><th class="ca-right" style="width:85px;">Net (PC)</th><th class="ca-right" style="width:75px;">VAT</th><th class="ca-right" style="width:90px;">Total</th><th class="ca-right" style="width:95px;">Outstanding</th><th style="width:80px;">Status</th><th style="width:55px;">Type</th><th style="width:45px;"></th></tr></thead>
+            <thead><tr><th style="width:70px;">Inv #</th><th style="width:80px;">Date</th><th style="width:80px;">Due</th><th class="ca-right" style="width:85px;">Net (PC)</th><th class="ca-right" style="width:75px;">VAT</th><th class="ca-right" style="width:90px;">Total</th><th class="ca-right" style="width:95px;">Outstanding</th><th style="width:80px;">Status</th><th style="width:55px;">Type</th><th style="width:45px;"></th><th style="width:55px;"></th></tr></thead>
             <tbody id="inv-case-tbody"></tbody>
           </table>
         </div>
@@ -6503,9 +6503,25 @@ function renderCaseInvoices() {
     + ' \u00b7 ' + fmt(totNet) + ' net \u00b7 ' + fmt(totDue) + ' inc VAT \u00b7 ' + fmt(totOut) + ' outstanding'
     + (rows.length > live.length ? ' \u00b7 ' + (rows.length - live.length) + ' cancelled' : '');
 
+  // P124 Email action: opens ack-email-builder invoice.html pre-filled. Shown only on issued
+  // invoices: a draft has no invoice number (createdraft leaves OrderDetails blank, Status
+  // reads "Draft"), and cancelled invoices are excluded. AcknowledgementEmail NOT passed yet:
+  // source field unconfirmed (f['Acknowledgmentemail'] holds a template URL, not an address).
+  const _ef = caseFields || {};
+  const _eMulti = !!(_ef['Andothers_x003f_']);
+  const _eMatter = _eMulti ? (_ef['MultiClaimants'] || '') : [_ef['OurPartyFirstName'], _ef['OurPartySurname']].filter(Boolean).join(' ');
+  const _eOurRef = (_ef['Ourreference_x0028_text_x0029_'] || '').trim();
+  const _eYourRef = _ef['ClientCaseReference'] || '';
+  const _emailUrl = r => 'https://blue-forest-06239b410.7.azurestaticapps.net/invoice.html?'
+    + 'InvoiceNumber=' + encodeURIComponent(r.OrderDetails || '')
+    + '&matter=' + encodeURIComponent(_eMatter)
+    + '&yourref=' + encodeURIComponent(r.Theirref || _eYourRef)
+    + '&ourref=' + encodeURIComponent(_eOurRef);
+
   rows.forEach(r => {
     const cancelled = r.Cancelled === true;
     const status = (r.Status_Text || r.Status || '').trim();
+    const canEmail = !cancelled && !!String(r.OrderDetails || '').trim() && !/^draft/i.test(status);
     const out = (r.AmountOutstanding === null || r.AmountOutstanding === undefined) ? null : parseFloat(r.AmountOutstanding);
     const tr = document.createElement('tr');
     tr.className = 'ca-row';
@@ -6520,6 +6536,8 @@ function renderCaseInvoices() {
       + '<td class="ca-cell" style="font-size:11px;">' + escHtml(cancelled ? 'Cancelled' : (status || '\u2014')) + '</td>'
       + '<td class="ca-cell" style="font-size:11px;">' + escHtml(r.LAorIP || '\u2014') + '</td>'
       + '<td class="ca-cell ca-center">' + (r.FileUrl ? '<a href="' + escHtml(r.FileUrl) + '" target="_blank" rel="noopener" title="Open invoice">\u2197</a>' : '') + '</td>';
+    tr.insertAdjacentHTML('beforeend', '<td class="ca-cell ca-center" style="font-size:11px;">'
+      + (canEmail ? '<a href="' + escHtml(_emailUrl(r)) + '" target="_blank" rel="noopener" title="Email this invoice">Email</a>' : '') + '</td>');
     tbody.appendChild(tr);
   });
 
