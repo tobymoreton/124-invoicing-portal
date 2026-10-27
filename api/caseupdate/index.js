@@ -160,6 +160,25 @@ module.exports = async function (context, req) {
     const patchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
                    + '/lists/' + LIST_GUID + '/items/' + itemId + '/fields';
 
+    // DateClosed (27/10/2026): stamp Cases.DateClosed0 when this update CLOSES the case.
+    // Only on a transition (case not already Closed) or when the date is blank, so re-saving a
+    // closed case never moves its date. Never cleared on reopen; re-closing restamps it.
+    // Non-fatal: a failed read leaves the update to run without a stamp.
+    const isClosedVal = v => String((v && typeof v === 'object') ? (v.Value || '') : (v || '')).trim().toLowerCase() === 'closed';
+    let dateClosedStamped = null;
+    if ((isClosedVal(fields.StatusMirror) || isClosedVal(fields.Status)) && !('DateClosed0' in fields)) {
+      try {
+        const cur = await graphGetJson('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + LIST_GUID
+          + '/items/' + itemId + '?$expand=fields($select=Status,StatusMirror,DateClosed0)', token);
+        const cf = (cur && cur.fields) || {};
+        const wasClosed = isClosedVal(cf.StatusMirror) || isClosedVal(cf.Status);
+        if (!wasClosed || !cf.DateClosed0) {
+          dateClosedStamped = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) + 'T00:00:00Z';
+          fields.DateClosed0 = dateClosedStamped;
+        }
+      } catch (e) { context.log.error('DateClosed read failed for case ' + itemId + ':', e.message); }
+    }
+
     await graphPatch(patchUrl, token, fields);
 
     // S146 (Toby, 19/10/2026): "if a case is closed any actions need to be marked non-billable".
@@ -176,8 +195,8 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updated: true, ...(unbilled ? { closedCaseActionsUnbilled: unbilled } : {}) }),
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': 'dateclosed-20261027' },
+      body: JSON.stringify({ updated: true, ...(unbilled ? { closedCaseActionsUnbilled: unbilled } : {}), ...(dateClosedStamped ? { dateClosed: dateClosedStamped } : {}) }),
     };
   } catch (err) {
     context.log.error('Error updating case:', err.message);
