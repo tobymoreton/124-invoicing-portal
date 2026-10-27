@@ -2532,6 +2532,13 @@
         <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
         <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
+      <!-- S160: Invoicing Notes (column InvoicingNotes on Cases) -->
+      <div class="card" id="inv-notes-card">
+        <div class="card-head"><span class="card-title">Invoicing Notes</span><span style="display:flex;gap:8px;align-items:center;"><span class="edit-msg" id="msg-invnotes"></span><button type="button" class="btn-edit" id="btn-invnotes-edit" style="padding:6px 16px;font-size:12.5px;">✏️ Edit</button><button type="button" class="btn-edit-save" id="btn-invnotes-save" style="padding:6px 16px;font-size:12.5px;">✓ Save</button><button type="button" class="btn-edit-cancel" id="btn-invnotes-cancel" style="padding:6px 16px;font-size:12.5px;display:none;">Cancel</button></span></div>
+        <div class="card-body">
+          <textarea id="inv-InvoicingNotes" rows="5" disabled placeholder="Any notes about invoicing this case&hellip;" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--cream);outline:none;transition:all .18s ease;width:100%;resize:vertical;"></textarea>
+        </div>
+      </div>
       <div class="card">
         <div class="card-head"><span class="card-title">Invoices on this case</span><span class="card-title" id="inv-case-summary" style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--grey-mid);"></span></div>
         <div class="card-body">
@@ -5772,6 +5779,7 @@ function renderNotesTab() {
   const f = caseFields;
   const ntEl = document.getElementById('nt-Notes'); if (ntEl) ntEl.value = f['Notes'] || '';
   const dnEl = document.getElementById('nt-DraftingNotes'); if (dnEl) dnEl.value = f['draftingNotes'] || '';
+  const inEl = document.getElementById('inv-InvoicingNotes'); if (inEl) inEl.value = f['InvoicingNotes'] || ''; // S160
 }
 
 const TAB_FIELDS = {
@@ -6175,6 +6183,27 @@ document.getElementById('btn-notes-save').addEventListener('click', async () => 
   await doSave(fields, btn, msg, 'edit-msg');
   if (msg.className.includes('ok')) { renderNotesTab(); tabSetReadMode('notes','tab-notes'); } else btn.disabled = false;
 });
+
+// S160: Invoicing Notes card on the Invoicing tab — own Edit/Save/Cancel, saves InvoicingNotes only.
+(function () {
+  const ta = document.getElementById('inv-InvoicingNotes');
+  const bE = document.getElementById('btn-invnotes-edit'), bS = document.getElementById('btn-invnotes-save'),
+        bC = document.getElementById('btn-invnotes-cancel'), msg = document.getElementById('msg-invnotes');
+  if (!ta || !bE || !bS || !bC || !msg) return;
+  function mode(edit) {
+    bE.style.display = edit ? 'none' : 'inline-flex';
+    bS.style.display = edit ? 'inline-flex' : 'none';
+    bC.style.display = edit ? 'inline-flex' : 'none';
+    ta.disabled = !edit; if (edit) { bS.disabled = false; ta.focus(); }
+  }
+  bE.addEventListener('click', () => { msg.textContent = ''; msg.className = 'edit-msg'; mode(true); });
+  bC.addEventListener('click', () => { ta.value = caseFields['InvoicingNotes'] || ''; msg.textContent = ''; mode(false); });
+  bS.addEventListener('click', async () => {
+    bS.disabled = true; msg.className = 'edit-msg'; msg.textContent = 'Saving…';
+    await doSave({ InvoicingNotes: ta.value || null }, bS, msg, 'edit-msg');
+    if (msg.className.includes('ok')) mode(false);
+  });
+})();
 
 async function doSave(fields, btn, msg, msgClass) {
   const cls = msgClass || 'save-msg';
