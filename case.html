@@ -6505,8 +6505,9 @@ function renderCaseInvoices() {
 
   // P124 Email action: opens ack-email-builder invoice.html pre-filled. Shown only on issued
   // invoices: a draft has no invoice number (createdraft leaves OrderDetails blank, Status
-  // reads "Draft"), and cancelled invoices are excluded. AcknowledgementEmail NOT passed yet:
-  // source field unconfirmed (f['Acknowledgmentemail'] holds a template URL, not an address).
+  // reads "Draft"), and cancelled invoices are excluded. AcknowledgementEmail deliberately NOT
+  // passed: the invoice recipient address is not stored on the case (Toby, 27/10/2026) - typed
+  // on the email page instead.
   const _ef = caseFields || {};
   const _eMulti = !!(_ef['Andothers_x003f_']);
   const _eMatter = _eMulti ? (_ef['MultiClaimants'] || '') : [_ef['OurPartyFirstName'], _ef['OurPartySurname']].filter(Boolean).join(' ');
