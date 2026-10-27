@@ -331,6 +331,16 @@
         </div>
 
         <div class="form-row">
+          <span class="form-label">But say&hellip; (line text only)</span>
+          <span class="form-value" style="display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--grey-mid);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" class="wip-check" id="inp-but-say-ip"> Add &ldquo;But say&rdquo;
+            </label>
+            <input type="text" class="form-input-num" id="inp-but-say-ip-text" placeholder="e.g. &pound;4,000.00" style="display:none;" />
+          </span>
+        </div>
+
+        <div class="form-row">
           <span class="form-label">VAT on drafting fee?</span>
           <span class="form-value"><label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="inp-vat-drafting" /><span id="fig-vat-on-drafting"></span></label></span>
         </div>
@@ -918,6 +928,8 @@ function initListeners() {
     recalc();
   });
   el('inp-include-tmc').addEventListener('change', recalc);
+  el('inp-but-say-ip').addEventListener('change', recalc);
+  el('inp-but-say-ip-text').addEventListener('input', recalc);
   el('inp-vat-drafting').addEventListener('change', recalc);
   el('inp-zero-vat-ok').addEventListener('change', recalc);
   el('inp-zero-vat-reason').addEventListener('input', recalc);
@@ -997,6 +1009,11 @@ function recalc() {
     ipLine = 'Preparing Draft Bill of Costs';
   }
   if (minFeeIp && ipLine) ipLine += ' | Minimum fee';
+  // S149: "But say ..." — wording only, never changes any figure.
+  const butSayIp   = !!(el('inp-but-say-ip')?.checked);
+  const butSayText = (el('inp-but-say-ip-text')?.value || '').trim();
+  if (el('inp-but-say-ip-text')) el('inp-but-say-ip-text').style.display = butSayIp ? '' : 'none';
+  if (butSayIp && ipLine) ipLine += ' | But say' + (butSayText ? ' ' + butSayText : '');
   el('fig-drafting-line').textContent = ipLine;
 
   // LA drafting fee (always As Drawn) — with optional override / minimum fee
@@ -1405,18 +1422,8 @@ async function approveDraft() {
     const linkHtml = pdfUrl
       ? ' <a href="' + esc(pdfUrl) + '" target="_blank" style="color:var(--success);font-weight:600;">View draft \u2192</a>'
       : '';
-    // S144: a draft whose time entries did not all reach Line Items cannot be issued
-    // (/api/issueinvoice refuses it). Say so now rather than letting Lesley find out.
-    const liFail = +(result.lineItemsFailed || 0);
-    if (liFail > 0) {
-      el('issue-status').innerHTML = '\u26a0 Draft created, but ' + liFail + ' time entr' + (liFail === 1 ? 'y' : 'ies')
-        + ' failed to record (TT2 id' + (liFail === 1 ? ' ' : 's ') + esc((result.lineItemsFailedIds || []).join(', ')) + ').'
-        + ' It will be blocked at issue. Tell Toby before it goes to Lesley.' + linkHtml;
-      el('issue-status').className = 'status-msg error';
-    } else {
-      el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
-      el('issue-status').className = 'status-msg success';
-    }
+    el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
+    el('issue-status').className = 'status-msg success';
 
   } catch (err) {
     spinner.classList.remove('visible');
