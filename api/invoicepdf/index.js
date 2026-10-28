@@ -80,9 +80,13 @@ module.exports = async function (context, req) {
     // Graph converts to PDF from a list of source formats that includes htm and html.
     // The call answers 302 with a short-lived pre-authenticated URL; graphGetBinary
     // follows it without the Authorization header, as Graph requires.
-    context.log('Converting', sourceName, 'to PDF…');
+    // 28/10/2026: some Library items are stored as PDF already (uploaded, not portal-issued).
+    // Graph cannot convert pdf→pdf (406 InputFormatNotSupported), so stream those as-is.
+    const sourceExt = (sourceName.match(/\.([^.]+)$/) || [, ''])[1].toLowerCase();
+    const isPdfSource = sourceExt === 'pdf';
+    context.log(isPdfSource ? 'Streaming stored PDF' : 'Converting', sourceName, isPdfSource ? '' : 'to PDF…');
     const convertUrl = 'https://graph.microsoft.com/v1.0/drives/' + driveId
-      + '/items/' + driveItemId + '/content?format=pdf';
+      + '/items/' + driveItemId + '/content' + (isPdfSource ? '' : '?format=pdf');
     const pdfBuffer = await graphGetBinary(convertUrl, token);
 
     // A conversion that quietly returns something other than a PDF must not be handed to
@@ -100,13 +104,15 @@ module.exports = async function (context, req) {
         'Content-Disposition': 'attachment; filename="' + pdfName + '"',
         'Content-Length':      String(pdfBuffer.length),
         'Cache-Control':       'no-store',
+        'X-Api-Build':         'invoicepdf-20261028-pdf-passthrough',
       },
       isRaw: true,
       body:  pdfBuffer,
     };
   } catch (err) {
     context.log.error('invoicepdf error:', err.message, err.stack);
-    context.res = { status: 500, body: 'Could not produce a PDF for this invoice: ' + err.message };
+    context.res = { status: 500, headers: { 'X-Api-Build': 'invoicepdf-20261028-pdf-passthrough' },
+      body: 'Could not produce a PDF for this invoice: ' + err.message };
   }
 };
 
