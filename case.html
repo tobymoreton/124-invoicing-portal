@@ -2367,6 +2367,12 @@
               <input type="search" id="ca-search" autocomplete="off" placeholder="Search actions by keyword (work done, brief, fee earner, date). Esc clears." style="flex:1;padding:8px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;" />
               <span id="ca-search-count" style="font-size:12px;color:var(--grey-mid);white-space:nowrap;"></span>
             </div>
+            <div class="ca-ask-bar" style="padding:10px 16px;border-bottom:1px solid rgba(27,42,74,.08);display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+              <input type="text" id="ca-ask" autocomplete="off" maxlength="500" placeholder="Ask a question, e.g. how long has been spent preparing for the detailed assessment?" style="flex:1;min-width:240px;padding:8px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;" />
+              <button type="button" id="ca-ask-btn" class="ca-expand-btn">Ask</button>
+              <button type="button" id="ca-ask-clear" class="ca-expand-btn" hidden>Clear</button>
+              <div id="ca-ask-result" style="flex-basis:100%;font-size:12.5px;line-height:1.45;color:var(--navy);display:none;"></div>
+            </div>
             <div>
               <table class="ca-table" id="ca-table">
                 <colgroup>
@@ -7329,21 +7335,59 @@ function renderCaTable() {
   renderWipBox();
 }
 
+// 28/10/2026 - Case Actions "Ask" box -> /api/caseask. The AI only SELECTS entries (ids); every total shown
+// here is added up from those rows by caRowValue, and the table is filtered to them so the answer can be checked.
+let caAskIds = null; // Set of TT2 ids from the last answer, or null when no question is active
+function caAskWire() {
+  const q = document.getElementById('ca-ask'), b = document.getElementById('ca-ask-btn'), c = document.getElementById('ca-ask-clear');
+  if (!q || !b || !c || q.dataset.wired) return;
+  q.dataset.wired = '1';
+  b.addEventListener('click', caAsk);
+  c.addEventListener('click', caAskClear);
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); caAsk(); } if (e.key === 'Escape') caAskClear(); });
+}
+function caAskClear() {
+  caAskIds = null; const r = document.getElementById('ca-ask-result'); if (r) { r.style.display = 'none'; r.innerHTML = ''; }
+  const c = document.getElementById('ca-ask-clear'); if (c) c.hidden = true;
+  applyCaSearch();
+}
+async function caAsk() {
+  const q = document.getElementById('ca-ask'), b = document.getElementById('ca-ask-btn'), r = document.getElementById('ca-ask-result'), c = document.getElementById('ca-ask-clear');
+  const question = (q.value || '').trim(); const ref = (caseFields?.['Ourreference_x0028_text_x0029_'] || '').trim();
+  if (!question || !ref || b.disabled) return;
+  b.disabled = true; b.textContent = 'Thinking\u2026'; r.style.display = 'block'; r.style.color = 'var(--grey-mid)'; r.textContent = 'Reading ' + caActions.length + ' entries\u2026';
+  try {
+    const resp = await fetch('/api/caseask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ref, question }) });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+    caAskIds = new Set((data.ids || []).map(String));
+    const byId = new Map(caActions.map(a => [String(a.id), a]));
+    let n = 0, hrs = 0, amt = 0;
+    caAskIds.forEach(id => { const a = byId.get(id); if (a) { const f = a.fields || {}; n++; hrs += parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; amt += caRowValue(f); } });
+    r.style.color = 'var(--navy)';
+    r.innerHTML = '<strong>' + n + (n === 1 ? ' entry' : ' entries') + ' \u00b7 ' + fmtN(hrs, 2) + ' hrs \u00b7 ' + fmt(amt) + '</strong> \u2014 ' + escHtml(data.interpretation || '')
+      + (data.note ? '<br><span style="color:var(--grey-mid);">' + escHtml(data.note) + '</span>' : '')
+      + '<br><span style="color:var(--grey-mid);font-size:11px;">AI picked the entries; the totals are added up from them. The list below is filtered to those entries \u2014 check it. Clear to show all.</span>';
+    c.hidden = false;
+  } catch (e) { caAskIds = null; c.hidden = true; r.style.color = '#991B1B'; r.textContent = 'Could not answer: ' + e.message; }
+  finally { b.disabled = false; b.textContent = 'Ask'; applyCaSearch(); }
+}
 // 28/10/2026 - Case Actions keyword search. Words in any order, all must match, case-insensitive.
 // Hides rendered rows in place (no re-render), so inline edits keep focus; the row being edited always shows.
 function applyCaSearch() {
   const inp = document.getElementById('ca-search'); const cnt = document.getElementById('ca-search-count'); const tbody = document.getElementById('ca-tbody');
   if (!inp || !tbody) return;
+  caAskWire();
   if (!inp.dataset.wired) { inp.dataset.wired = '1'; inp.addEventListener('input', applyCaSearch); inp.addEventListener('keydown', e => { if (e.key === 'Escape') { inp.value = ''; applyCaSearch(); } }); }
   const terms = inp.value.toLowerCase().split(/\s+/).filter(Boolean);
   const byId = new Map(caActions.map(a => [a.id, a]));
   let shown = 0, hrs = 0, amt = 0;
   tbody.querySelectorAll('tr[data-id]').forEach(tr => {
-    const hit = !terms.length || tr.classList.contains('ca-editing-row') || terms.every(t => (tr.dataset.q || '').includes(t));
+    const hit = tr.classList.contains('ca-editing-row') || ((!caAskIds || caAskIds.has(tr.dataset.id)) && (!terms.length || terms.every(t => (tr.dataset.q || '').includes(t))));
     tr.style.display = hit ? '' : 'none';
     if (hit) { shown++; const a = byId.get(tr.dataset.id); if (a) { const f = a.fields || {}; hrs += parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; amt += caRowValue(f); } }
   });
-  if (cnt) cnt.textContent = terms.length ? (shown + ' of ' + caActions.length + ' match \u00b7 ' + fmtN(hrs, 2) + ' hrs \u00b7 ' + fmt(amt)) : '';
+  if (cnt) cnt.textContent = (terms.length || caAskIds) ? (shown + ' of ' + caActions.length + ' match \u00b7 ' + fmtN(hrs, 2) + ' hrs \u00b7 ' + fmt(amt)) : '';
 }
 
 function renderWipBox() {
