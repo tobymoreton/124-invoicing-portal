@@ -7244,6 +7244,7 @@ function renderCaTable() {
         <div class="ca-edit-panel">
           <div class="ca-edit-head"><span>Editing action</span><span style="color:var(--grey-mid);font-weight:500;text-transform:none;letter-spacing:0;">${escHtml(dateStr)}${byName ? ' · ' + escHtml(byName.split(' ')[0]) : ''}</span>${billed ? '<span class="ca-billed-badge">Billed</span>' : ''}</div>
           <div class="ca-edit-grid">
+            <label class="ca-ef ca-ef-sm"><span>Date</span><input type="date" class="ca-edit-date" data-id="${id}" value="${caDateInput(f['field_12'] || f['field_1'])}"${billed ? ' disabled title="Billed - date locked"' : ''} /></label>
             <label class="ca-ef"><span>Brief</span><select class="ca-edit-brief" data-id="${id}">${_briefOpts}</select></label>
             <label class="ca-ef"><span>By</span><select class="ca-edit-by" data-id="${id}">${caCompletedByOptions(byName)}</select></label>
             <label class="ca-ef ca-ef-sm"><span>Hrs</span><input type="number" class="ca-edit-hrs" data-id="${id}" value="${hrs}" step="0.25" min="0" /></label>
@@ -7499,6 +7500,9 @@ async function setCaBillable(a, checked, cbEl) {
     alert('Could not update billable: ' + err.message);
   }
 }
+// 28/10/2026 - editable Date Work Done (field_12) in the edit panel. UTC date part, same convention as the API
+// (field_12 is stored as an ISO UTC string). On save the original time-of-day is kept so same-day ordering holds.
+function caDateInput(raw) { const s = String(raw || ''); return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : ''; }
 async function saveCaRow(id) {
   const scope = document.querySelector('.tab-panel.active') || document;
   const wd = scope.querySelector(`.ca-edit-wd[data-id="${id}"]`)?.value.trim() || '';
@@ -7507,13 +7511,17 @@ async function saveCaRow(id) {
   const briefEl = scope.querySelector(`.ca-edit-brief[data-id="${id}"]`); const brief = briefEl ? briefEl.value : undefined;
   const billEl = scope.querySelector(`.ca-edit-bill[data-id="${id}"]`); const billable = billEl ? billEl.checked : undefined;
   const byEl = scope.querySelector(`.ca-edit-by[data-id="${id}"]`); const completedBy = byEl ? byEl.value : undefined;
+  const dateEl = scope.querySelector(`.ca-edit-date[data-id="${id}"]`); let dateWorkDone;
+  { const a0 = caActions.find(a => a.id === id); const raw = a0?.fields?.['field_12'] || a0?.fields?.['field_1'] || '';
+    if (dateEl && !dateEl.disabled && /^\d{4}-\d{2}-\d{2}$/.test(dateEl.value) && dateEl.value !== caDateInput(raw)) { const t = /^\d{4}-\d{2}-\d{2}T/.test(String(raw)) ? new Date(raw) : null; dateWorkDone = dateEl.value + (t && !isNaN(t) ? t.toISOString().slice(10) : 'T12:00:00.000Z'); } }
   const saveBtn = scope.querySelector(`.ca-btn-save[data-id="${id}"]`); const cancelBtn = scope.querySelector(`.ca-btn-cancel[data-id="${id}"]`);
   if (saveBtn) saveBtn.disabled = true; if (cancelBtn) cancelBtn.disabled = true;
   try {
-    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable, completedBy }) });
+    const resp = await fetch('/api/caseactions', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ itemId: id, workDone: wd, timeSpent: hrs, rate, brief, billable, completedBy, dateWorkDone }) });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const idx = caActions.findIndex(a => a.id === id);
-    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; if (completedBy !== undefined) f['Completedby_x0028_text_x0029_'] = completedBy; }
+    if (idx !== -1) { const f = caActions[idx].fields || {}; f['field_2'] = wd; f['field_3'] = hrs; f['TimeSpentMirror'] = hrs; f['field_6'] = rate; f['Num_BillableAmount_x00a3_'] = hrs * rate; if (brief !== undefined) f['field_9'] = brief; if (billable !== undefined) f['Billable_x003f_'] = billable; if (completedBy !== undefined) f['Completedby_x0028_text_x0029_'] = completedBy; if (dateWorkDone) f['field_12'] = dateWorkDone; }
+    if (dateWorkDone) caActions.sort((x, y) => new Date(y.fields?.['field_12'] || y.fields?.['field_1'] || 0) - new Date(x.fields?.['field_12'] || x.fields?.['field_1'] || 0)); // keep newest-first after a date change
     caEditingId = null; renderCaTable(); renderEmailsTable();
   } catch (err) { if (saveBtn) saveBtn.disabled = false; if (cancelBtn) cancelBtn.disabled = false; alert('Save failed: ' + err.message); }
 }
