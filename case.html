@@ -2363,6 +2363,10 @@
               <span style="display:inline-flex;align-items:center;gap:8px;"><span class="card-title">Case Actions</span><button type="button" class="info-btn info-left" aria-label="About Case Actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12.01" y1="8" x2="12" y2="8"/></svg><span class="info-tip">The time and actions recorded against this case: date, fee earner, hours, rate and value.</span></button></span>
               <span style="display:inline-flex;align-items:center;gap:10px;"><span id="ca-summary" style="font-size:12px;color:var(--grey-mid);"></span><button type="button" id="ca-print-sched" class="ca-expand-btn" title="Print a Schedule of Work of every billable action (billed and unbilled), in the invoice format" onclick="printCaSchedule()">🖨 Schedule of Work</button><button type="button" id="ca-expand-toggle" class="ca-expand-btn" title="Show full Work Done text and edit it in place">⤡ Expand entries</button></span>
             </div>
+            <div class="ca-search-bar" style="padding:10px 16px;border-bottom:1px solid rgba(27,42,74,.08);display:flex;align-items:center;gap:10px;">
+              <input type="search" id="ca-search" autocomplete="off" placeholder="Search actions by keyword (work done, brief, fee earner, date). Esc clears." style="flex:1;padding:8px 12px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:13px;" />
+              <span id="ca-search-count" style="font-size:12px;color:var(--grey-mid);white-space:nowrap;"></span>
+            </div>
             <div>
               <table class="ca-table" id="ca-table">
                 <colgroup>
@@ -7271,6 +7275,7 @@ function renderCaTable() {
         <td class="ca-cell ca-center"><input type="checkbox" class="ca-sched-check" data-id="${id}" ${caSchedule.has(id) ? 'checked' : ''} /></td>
         <td class="ca-cell ca-actions">${_hasEmail ? '<button class="ca-email-btn" data-id="' + escHtml(id) + '" title="View full email" style="background:none;border:none;cursor:pointer;font-size:15px;padding:0 4px 0 0;">\u2709</button>' : ''}<button class="ca-btn-edit" data-id="${id}">\u270f\ufe0f</button></td>`;
     }
+    tr.dataset.q = [dateStr, byName, brief, workDone, rate ? fmtN(rate, 2) : '', amt ? fmt(amt) : ''].join(' ').toLowerCase(); // keyword search haystack
     tbody.appendChild(tr);
   });
   tbody.querySelectorAll('.ca-email-btn').forEach(btn => {
@@ -7320,7 +7325,25 @@ function renderCaTable() {
     const _h = row.querySelector('.ca-edit-hrs'); const _r = row.querySelector('.ca-edit-rate'); const _a = row.querySelector('.ca-edit-amt');
     if (_h && _r && _a) { const _u = () => { _a.textContent = fmt((parseFloat(_h.value)||0)*(parseFloat(_r.value)||0)); }; _h.addEventListener('input', _u); _r.addEventListener('input', _u); }
   });
+  applyCaSearch();
   renderWipBox();
+}
+
+// 28/10/2026 - Case Actions keyword search. Words in any order, all must match, case-insensitive.
+// Hides rendered rows in place (no re-render), so inline edits keep focus; the row being edited always shows.
+function applyCaSearch() {
+  const inp = document.getElementById('ca-search'); const cnt = document.getElementById('ca-search-count'); const tbody = document.getElementById('ca-tbody');
+  if (!inp || !tbody) return;
+  if (!inp.dataset.wired) { inp.dataset.wired = '1'; inp.addEventListener('input', applyCaSearch); inp.addEventListener('keydown', e => { if (e.key === 'Escape') { inp.value = ''; applyCaSearch(); } }); }
+  const terms = inp.value.toLowerCase().split(/\s+/).filter(Boolean);
+  const byId = new Map(caActions.map(a => [a.id, a]));
+  let shown = 0, hrs = 0, amt = 0;
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    const hit = !terms.length || tr.classList.contains('ca-editing-row') || terms.every(t => (tr.dataset.q || '').includes(t));
+    tr.style.display = hit ? '' : 'none';
+    if (hit) { shown++; const a = byId.get(tr.dataset.id); if (a) { const f = a.fields || {}; hrs += parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0; amt += caRowValue(f); } }
+  });
+  if (cnt) cnt.textContent = terms.length ? (shown + ' of ' + caActions.length + ' match \u00b7 ' + fmtN(hrs, 2) + ' hrs \u00b7 ' + fmt(amt)) : '';
 }
 
 function renderWipBox() {
