@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statements — TMC Legal Limited</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,300&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <!-- S161 (28/10/2026): dedicated client Statements page for Toby + Danielle.
+       The statement itself (statementInvoices / printStatement / exportStatementExcel and their
+       helpers) is a COPY of index.html. Change both together, or the two statements will disagree. -->
+  <style>
+    :root{
+      --navy:#001B44;--navy-mid:#253A60;--gold:#B59A6A;--gold-pale:#F5EDD0;
+      --cream:#F4F1EA;--white:#FFFFFF;--grey-mid:#6B7280;--grey-light:#E2DDD4;--grey-faint:#F0EDE6;
+      --red:#991B1B;--shadow-sm:0 1px 3px rgba(27,42,74,.08),0 2px 8px rgba(27,42,74,.06);
+      --radius:8px;--radius-sm:5px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'IBM Plex Sans',sans-serif;background:var(--cream);color:var(--navy);min-height:100vh;font-size:14px;line-height:1.5;}
+    .nav{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(27,42,74,.25);}
+    .nav-brand{display:flex;align-items:center;gap:16px;}
+    .nav-wordmark{font-family:'Spectral',serif;font-weight:300;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
+    .nav-divider{width:1px;height:18px;background:rgba(201,168,76,.3);}
+    .nav-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(245,242,235,.55);}
+    .nav-link{font-size:13px;font-weight:500;color:rgba(201,168,76,.85);text-decoration:none;padding:7px 16px;border:1px solid rgba(201,168,76,.3);border-radius:var(--radius-sm);}
+    .nav-link:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.08);}
+    .wrap{max-width:1100px;margin:0 auto;padding:28px 32px 60px;}
+    h1{font-family:'Spectral',serif;font-weight:400;font-size:26px;margin-bottom:4px;}
+    .sub{color:var(--grey-mid);font-size:13px;margin-bottom:20px;}
+    .bar{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+    #q{flex:1;min-width:240px;padding:10px 14px;border:1px solid var(--grey-light);border-radius:var(--radius-sm);font:inherit;background:var(--white);}
+    #q:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(181,154,106,.18);}
+    .summary{font-size:12.5px;color:var(--grey-mid);}
+    .card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:var(--navy);color:var(--gold);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:10px 14px;}
+    td{padding:10px 14px;border-top:1px solid var(--grey-faint);font-size:13px;vertical-align:middle;}
+    tr:hover td{background:#FBF9F4;}
+    .num{text-align:right;font-variant-numeric:tabular-nums;}
+    .od{color:var(--red);font-weight:600;}
+    .btn{font:inherit;font-size:12px;font-weight:600;border-radius:var(--radius-sm);padding:6px 12px;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:var(--gold);white-space:nowrap;}
+    .btn.alt{background:var(--white);color:var(--navy);}
+    .btn:disabled{opacity:.5;cursor:wait;}
+    .msg{padding:32px;text-align:center;color:var(--grey-mid);font-style:italic;}
+    .err{color:var(--red);font-style:normal;}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">
+    <span class="nav-wordmark">TMC Legal</span>
+    <span class="nav-divider"></span>
+    <span class="nav-title">Statements</span>
+  </div>
+  <a href="/admin.html" class="nav-link">&larr; Admin</a>
+</nav>
+
+<div class="wrap">
+  <h1>Client Statements</h1>
+  <div class="sub">Every client with an outstanding, overdue or part-paid invoice. Search, then print or export.</div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search client&hellip;" autocomplete="off" disabled />
+    <span class="summary" id="summary"></span>
+  </div>
+  <div class="card"><div id="list"><div class="msg">Loading&hellip;</div></div></div>
+</div>
+
+<script>
+const ADMIN_EMAILS = ['toby@tmclegal.co.uk','danielle@tmclegal.co.uk'];
+let allInvoices = [];
+let clients = [];   // [{name, n, out, overdue, oldest}]
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function money(v){ const n=parseFloat(v)||0; return '£'+n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fdate(v){ if(!v) return '—'; const d=new Date(v); return isNaN(d)?esc(v):d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+// ── Copied from index.html (keep in step) ───────────────────────────────────
+function normalizeStatus(inv, today) {
+  if (!inv.OrderDetails && !inv.InvoiceDate) return 'Draft';
+  const raw=(inv.Status_Text||inv.Status||'').trim();
+  const lo=raw.toLowerCase();
+  if (lo==='paid')         return 'Paid';
+  if (lo.includes('part')) return 'Part-Paid';
+  if (lo==='outstanding')  return 'Outstanding';
+  if (lo==='overdue')      return 'Overdue';
+  const due=inv.DueDate?new Date(inv.DueDate):null;
+  if (due&&today&&due<today) return 'Overdue';
+  return 'Outstanding';
+}
+let _caseTaskMap = null, _caseTaskPromise = null;
+function ensureCaseTasks(){
+  if (_caseTaskPromise) return _caseTaskPromise;
+  // Reuse index.html's 30-min cache if present (read only); otherwise one live pull.
+  try{
+    const c = JSON.parse(sessionStorage.getItem('tmc_casetasks')||'null');
+    if (c && Date.now() - c.cachedAt < 30*60*1000 && c.t) { _caseTaskMap = c.t; _caseTaskPromise = Promise.resolve(_caseTaskMap); return _caseTaskPromise; }
+  }catch(e){}
+  _caseTaskPromise = (async () => {
+    try{
+      const r = await fetch('/api/cases?preload=1&closed=1', { headers:{ Accept:'application/json' } });
+      const j = r.ok ? await r.json() : null;
+      const t = {};
+      ((j && j.value) || []).forEach(c=>{
+        const f = c.fields || {};
+        const k = String(f['Ourreference_x0028_text_x0029_']||'').trim().toLowerCase();
+        if (k) t[k] = String(f['Task']||'').trim();
+      });
+      if (Object.keys(t).length) _caseTaskMap = t;
+    }catch(e){}
+    return _caseTaskMap;
+  })();
+  return _caseTaskPromise;
+}
+function taskForRef(ref){
+  if (!_caseTaskMap || !ref) return '';
+  return _caseTaskMap[String(ref).trim().toLowerCase()] || '';
+}
+function taskShort(t){
+  const s = String(t||'').toLowerCase();
+  if (!s) return '';
+  if (s.includes('budget'))   return 'Budget';
+  if (s.includes('schedule')) return 'Schedule';
+  if (s.includes('replies') || s.includes('reply')) return 'Replies';
+  if (s.includes('dispute'))  return 'PoDs';
+  if (s.includes('bill'))     return 'Bill';
+  const w = String(t).trim().split(/\s+/)[0];
+  return w.length > 12 ? w.slice(0,12) : w;
+}
+function statementInvoices(clientName) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return allInvoices.filter(inv => {
+    const s = normalizeStatus(inv, today);
+    return inv.VendorName === clientName
+      && (s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid')
+      && (parseFloat(inv.AmountDue)||0) > 0;
+  }).sort((a,b) => new Date(a.InvoiceDate||0) - new Date(b.InvoiceDate||0));
+}
+async function printStatement(clientName) {
+  const invoices = statementInvoices(clientName);
+  if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+  await ensureCaseTasks();   // S113: Task column on the statement
+
+  const groups = {};
+  invoices.forEach(inv => {
+    const g = (inv.LAorIP||'').trim() === 'Legal Aid' ? 'Legal Aid' : (inv.LAorIP||'').trim() === 'Inter Partes' ? 'Inter Partes' : 'Other';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(inv);
+  });
+
+  const totalOutstanding = invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0);
+  const stmtDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+  const f = v => { const n=parseFloat(v); return isNaN(n)?'£0.00':'£'+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); };
+  const fd = v => { if(!v)return'—'; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+
+  const groupHTML = Object.entries(groups).map(([grp, invs]) => {
+    const rows = invs.map((inv,i) => {
+      const paid = [1,2,3].reduce((s,n)=>s+(parseFloat(inv[`PaymentAmount${n}`])||0),0);
+      const bg = i%2===1?'background:#f5f5f8;':'';
+      return `<tr style="${bg}">
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.OrderDetails||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Ourref||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.Theirref||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;max-width:220px;">${inv.Casename||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${taskShort(taskForRef(inv.Ourref))||'—'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:center;">${fd(inv.InvoiceDate)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${f(inv.AmountDue)}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;">${paid>0?f(paid):'£0.00'}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;text-align:right;font-weight:700;color:#1B2A4A;">${f(inv.AmountOutstanding)}</td>
+      </tr>`;
+    }).join('');
+    const grpTotal = invs.reduce((s,inv)=>s+(parseFloat(inv.AmountOutstanding)||0),0);
+    return `<div style="margin-bottom:28px;">
+      <div style="font-family:Georgia,serif;font-size:14px;font-weight:700;color:#1B2A4A;border-bottom:2px solid #C9A84C;padding-bottom:4px;margin-bottom:0;">${grp}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#1B2A4A;">
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE NO</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">YOUR REF</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">CASE</th>
+          <th style="padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">TASK</th>
+          <th style="padding:8px 10px;text-align:center;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">INVOICE DATE</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">AMOUNT INVOICED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">PAYMENTS RECEIVED (£)</th>
+          <th style="padding:8px 10px;text-align:right;font-size:10px;letter-spacing:.08em;color:#C9A84C;font-weight:600;">OUTSTANDING (£)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f0ede6;">
+          <td colspan="8" style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;">Sub-total</td>
+          <td style="padding:8px 10px;font-size:12px;font-weight:700;text-align:right;border-top:2px solid #1B2A4A;color:#1B2A4A;">${f(grpTotal)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Client Statement — ${clientName}</title>
+  <style>
+    @page{margin:20mm 18mm;}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1B2A4A;margin:0;padding:0;font-size:13px;}
+    @media print{.no-print{display:none;}}
+  </style>
+</head><body>
+  <div class="no-print" style="background:#1B2A4A;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;">
+    <span style="color:#C9A84C;font-weight:600;font-size:14px;">Client Statement — ${clientName}</span>
+    <span style="display:flex;gap:10px;">
+      <button id="stmt-xl" style="background:#FFFFFF;color:#1B2A4A;border:none;padding:8px 20px;font-weight:700;cursor:pointer;border-radius:4px;font-size:13px;">Export to Excel</button>
+      <button onclick="window.print()" style="background:#C9A84C;color:#1B2A4A;border:none;padding:8px 20px;font-weight:700;cursor:pointer;border-radius:4px;font-size:13px;">Print / Save as PDF</button>
+    </span>
+  </div>
+  <div style="padding:20px 24px;">
+    <table style="width:100%;margin-bottom:24px;"><tr>
+      <td style="vertical-align:top;width:50%;">
+        <img src="/New%20Logo%20Gold%2C%20Silver%20and%20Navy.png" style="height:60px;" alt="TMC Legal" />
+        <div style="margin-top:12px;">
+          <div style="font-size:18px;font-weight:700;color:#1B2A4A;margin-bottom:2px;">Client Statement</div>
+          <div style="font-size:14px;color:#555;">${clientName}</div>
+        </div>
+      </td>
+      <td style="vertical-align:top;text-align:right;font-size:12px;line-height:1.7;color:#1B2A4A;">
+        Fennels Lodge<br>St Peters Close<br>Loudwater<br>Buckinghamshire<br>HP11 1JT
+        <br><br>
+        Tel: 01628 526 236<br>
+        Email: danielle@tmclegal.co.uk
+      </td>
+    </tr></table>
+    <div style="font-size:11px;color:#555;margin-bottom:20px;">Statement date: ${stmtDate}</div>
+    ${groupHTML}
+    <table style="width:100%;margin-top:16px;"><tr>
+      <td style="background:#1B2A4A;padding:12px 16px;text-align:right;">
+        <span style="color:rgba(255,255,255,.7);font-size:12px;font-weight:600;letter-spacing:.08em;">TOTAL OUTSTANDING</span>
+        <span style="color:#C9A84C;font-size:20px;font-weight:700;margin-left:20px;font-family:Georgia,serif;">${f(totalOutstanding)}</span>
+      </td>
+    </tr></table>
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e1d6;font-size:11px;color:#888;">
+      <strong style="color:#1B2A4A;">Payment Details:</strong> Please make cheques payable to T M Costings or bank transfer to Sort Code: 40-47-84 | Account: 61842959 | Reference: your invoice number.
+    </div>
+  </div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=1000,height=800');
+  w.document.write(html);
+  w.document.close();
+  // Wired here rather than inline in the popup HTML so a client name containing an
+  // apostrophe can never break the handler, and so ExcelJS is used from THIS window.
+  const xl = w.document.getElementById('stmt-xl');
+  if (xl) xl.onclick = () => exportStatementExcel(clientName);
+}
+
+async function exportStatementExcel(clientName) {
+  if (typeof ExcelJS === 'undefined') { alert('Excel library did not load — refresh the portal and try again.'); return; }
+  const invoices = statementInvoices(clientName);
+  if (!invoices.length) { alert('No outstanding invoices found for ' + clientName); return; }
+  await ensureCaseTasks();   // S113: Task column on the export
+
+  const NAVY = 'FF1B2A4A', GOLD = 'FFC9A84C', BAND = 'FFF5F5F8';
+  const MONEY = '\u00a3#,##0.00';
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Statement');
+  ws.columns = [{width:12},{width:12},{width:16},{width:34},{width:12},{width:14},{width:16},{width:18},{width:16}];
+
+  ws.addRow(['Client Statement']).getCell(1).font = { name:'Arial', size:14, bold:true, color:{argb:NAVY} };
+  ws.addRow([clientName]).getCell(1).font = { name:'Arial', size:11, bold:true };
+  ws.addRow(['Statement date: ' + new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'})]);
+  ws.addRow([]);
+
+  const groups = {};
+  invoices.forEach(inv => {
+    const t = (inv.LAorIP||'').trim();
+    const g = t === 'Legal Aid' ? 'Legal Aid' : t === 'Inter Partes' ? 'Inter Partes' : 'Other';
+    (groups[g] = groups[g] || []).push(inv);
+  });
+
+  const HEAD = ['Invoice no','Our ref','Your ref','Case','Task','Invoice date','Amount invoiced','Payments received','Outstanding'];
+  Object.entries(groups).forEach(([grp, invs]) => {
+    ws.addRow([grp]).getCell(1).font = { name:'Arial', size:11, bold:true, color:{argb:NAVY} };
+    const h = ws.addRow(HEAD);
+    h.eachCell(c => {
+      c.font = { name:'Arial', size:10, bold:true, color:{argb:GOLD} };
+      c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
+    });
+    invs.forEach((inv, i) => {
+      const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n])||0), 0);
+      const r = ws.addRow([
+        inv.OrderDetails || '', inv.Ourref || '', inv.Theirref || '', inv.Casename || '',
+        taskShort(taskForRef(inv.Ourref)) || '',
+        inv.InvoiceDate ? new Date(inv.InvoiceDate) : null,
+        parseFloat(inv.AmountDue)||0, paid, parseFloat(inv.AmountOutstanding)||0
+      ]);
+      r.eachCell((c, col) => {
+        c.font = { name:'Arial', size:10 };
+        if (i % 2 === 1) c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:BAND} };
+        if (col === 6) c.numFmt = 'DD/MM/YYYY';
+        if (col >= 7)  c.numFmt = MONEY;
+      });
+    });
+    const sub = ws.addRow(['','','','','','','','Sub-total', invs.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
+    sub.eachCell(c => { c.font = { name:'Arial', size:10, bold:true }; });
+    sub.getCell(9).numFmt = MONEY;
+    ws.addRow([]);
+  });
+
+  const tot = ws.addRow(['','','','','','','','TOTAL OUTSTANDING', invoices.reduce((s,inv) => s + (parseFloat(inv.AmountOutstanding)||0), 0)]);
+  [8,9].forEach(n => {
+    const c = tot.getCell(n);
+    c.font = { name:'Arial', size:11, bold:true, color:{argb:GOLD} };
+    c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
+  });
+  tot.getCell(9).numFmt = MONEY;
+
+  const slug = (clientName || 'Client').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = slug + '-Statement-' + stamp + '.xlsx';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+// ── end copy ──────────────────────────────────────────────────────────────
+
+// ── Page logic (S161) ───────────────────────────────────────────────────────
+function buildClients(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const map = {};
+  allInvoices.forEach(inv => {
+    const name = inv.VendorName; if (!name) return;
+    const s = normalizeStatus(inv, today);
+    if (!(s === 'Outstanding' || s === 'Overdue' || s === 'Part-Paid')) return;
+    if (!((parseFloat(inv.AmountDue)||0) > 0)) return;      // same test as statementInvoices
+    const c = map[name] || (map[name] = { name, n:0, out:0, overdue:0, oldest:null });
+    const o = parseFloat(inv.AmountOutstanding)||0;
+    c.n++; c.out += o;
+    if (s === 'Overdue') c.overdue += o;
+    const d = inv.InvoiceDate ? new Date(inv.InvoiceDate) : null;
+    if (d && !isNaN(d) && (!c.oldest || d < c.oldest)) c.oldest = d;
+  });
+  clients = Object.values(map).sort((a,b) => a.name.localeCompare(b.name, 'en-GB', {sensitivity:'base'}));
+}
+
+function renderList(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const rows = q ? clients.filter(c => c.name.toLowerCase().includes(q)) : clients;
+  const tot = rows.reduce((s,c) => s + c.out, 0);
+  document.getElementById('summary').textContent =
+    rows.length + ' client' + (rows.length===1?'':'s') + ' · ' + money(tot) + ' outstanding';
+  const list = document.getElementById('list');
+  if (!rows.length) { list.innerHTML = '<div class="msg">' + (clients.length ? 'No client matches that search.' : 'No outstanding invoices.') + '</div>'; return; }
+  list.innerHTML = '<table><thead><tr><th>Client</th><th class="num">Invoices</th><th>Oldest invoice</th>'
+    + '<th class="num">Overdue</th><th class="num">Outstanding</th><th></th></tr></thead><tbody>'
+    + rows.map(c => {
+        const i = clients.indexOf(c);
+        return '<tr><td>' + esc(c.name) + '</td><td class="num">' + c.n + '</td><td>' + fdate(c.oldest) + '</td>'
+          + '<td class="num' + (c.overdue > 0.005 ? ' od' : '') + '">' + (c.overdue > 0.005 ? money(c.overdue) : '—') + '</td>'
+          + '<td class="num"><strong>' + money(c.out) + '</strong></td>'
+          + '<td class="num"><button class="btn" data-i="' + i + '" data-act="pdf">Statement</button> '
+          + '<button class="btn alt" data-i="' + i + '" data-act="xl">Excel</button></td></tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const c = clients[+b.dataset.i]; if (!c) return;
+  b.disabled = true;
+  try { b.dataset.act === 'xl' ? await exportStatementExcel(c.name) : await printStatement(c.name); }
+  finally { b.disabled = false; }
+});
+
+(async function init(){
+  const list = document.getElementById('list');
+  let email = '';
+  try {
+    const r = await fetch('/.auth/me');
+    const d = r.ok ? await r.json() : null;
+    const p = (d && d.clientPrincipal) || {};
+    email = (p.userDetails || '').toLowerCase();
+  } catch(e) {}
+  if (!ADMIN_EMAILS.includes(email)) {
+    list.innerHTML = '<div class="msg">Statements are available to Toby and Danielle only.</div>';
+    return;
+  }
+  try {
+    const r = await fetch('/api/invoices?all=1', { headers:{ Accept:'application/json' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    allInvoices = (await r.json()).filter(inv => !inv.Cancelled);
+  } catch(e) {
+    list.innerHTML = '<div class="msg err">Could not load invoices (' + esc(e.message) + '). Refresh to try again.</div>';
+    return;
+  }
+  buildClients();
+  const q = document.getElementById('q');
+  q.disabled = false; q.focus();
+  q.addEventListener('input', renderList);
+  renderList();
+  ensureCaseTasks();   // warm the Task column in the background
+})();
+</script>
+</body>
+</html>
