@@ -17,7 +17,7 @@
 const https   = require('https');
 const { URL } = require('url');
 
-const BUILD          = 'caseask-20261028-1';
+const BUILD          = 'caseask-20261028-2';
 const TT2_GUID       = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const SITE_PATH      = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const ALLOWED_DOMAIN = '@tmclegal.co.uk';
@@ -86,7 +86,7 @@ module.exports = async function (context, req) {
 
     const system = 'You help staff at a legal costs firm query the time ledger ("Case Actions") for ONE case. '
       + 'Each row is: id | date work done (dd/mm/yyyy) | fee earner | brief (work type) | hours | billable Y/N | billed Y/N | work done narrative. '
-      + 'Select every row that answers the question and call select_rows. Read narratives for meaning, not just keywords '
+      + 'Select every row that answers the question. You MUST answer by calling the select_rows tool exactly once; never answer in plain text. Read narratives for meaning, not just keywords '
       + '(e.g. "preparing for the detailed assessment" covers preparation for the hearing, points of dispute, replies, bundles, skeletons where the context shows it). '
       + 'Never compute totals; the system adds up the rows you select. If the question is ambiguous, choose the most reasonable reading and state it. '
       + 'If no rows match, return an empty list and say why in the note. Use only the rows given; do not invent anything.';
@@ -110,12 +110,15 @@ module.exports = async function (context, req) {
           required: ['interpretation', 'ids'],
         },
       }],
-      tool_choice: { type: 'tool', name: 'select_rows' },
+      tool_choice: { type: 'auto' }, // b2: 'tool'/'any' rejected by this model (400) — system prompt requires the call instead
       messages: [{ role: 'user', content: user }],
     });
 
     const use = (ai.content || []).find(c => c.type === 'tool_use' && c.name === 'select_rows');
-    if (!use) return reply(context, 502, { error: 'No selection returned by the model.', build: BUILD });
+    if (!use) {
+      const txt = (ai.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ').slice(0, 500);
+      return reply(context, 502, { error: 'No selection returned by the model.', modelText: txt, stop: ai.stop_reason, build: BUILD });
+    }
 
     // 3. Keep only ids that really are on this case; do the arithmetic here.
     const asked = Array.isArray(use.input.ids) ? use.input.ids.map(String) : [];
