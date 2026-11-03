@@ -34,6 +34,16 @@ const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
 
 const CANCEL_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
 const NOTIFY_EMAIL  = 'office@tmclegal.co.uk';
+const POOL          = 6;   // S150: concurrent Graph calls per stage
+
+// S150: run fn over items, at most `size` at a time.
+async function runPool(items, size, fn) {
+  let i = 0;
+  const workers = Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (i < items.length) { const it = items[i++]; await fn(it); }
+  });
+  await Promise.all(workers);
+}
 // S145: every live (not cancelled) Invoice Library item that lists any of `ids` in DraftWipIds,
 // other than `exceptItemId`. Returns Map<wipId, [{id, number}]>. One full pass of the library
 // (~3k rows, $top=999) — DraftWipIds is not indexed, so it cannot be filtered server-side.
@@ -121,48 +131,44 @@ module.exports = async function (context, req) {
     const ownIds  = wipIds.filter(w => !held.has(w));
     const myNumber = String(itemFields.OrderDetails || '').trim();   // '' for a draft
 
-    // ── 2. Revert TT2 entries ─────────────────────────────────────────────────
+    // ── 2 + 3. Revert TT2 entries and delete THIS invoice's Line Items ───────
+    // S150: run in parallel (POOL at a time). One-at-a-time took >45s on a 60-entry draft
+    // (13676, 03/11/2026) — SWA returned "Backend call failure" while the function carried on.
+    // S145 rule kept: only lines whose InvoiceIDRef = this invoice's number (blank for a draft).
+    let tt2Done = 0, tt2Failed = 0, liDeleted = 0, liFailed = 0;
     if (ownIds.length > 0) {
-      context.log('Reverting', wipIds.length, 'TT2 entries…');
-      let tt2Done = 0, tt2Failed = 0;
-      for (const wipId of ownIds) {
-        try {
-          await patchListItem(token, TT2, wipId, { 'Billed_x003f_': false });
-          tt2Done++;
-        } catch (e) {
-          context.log.error('TT2 revert failed for id', wipId, ':', e.message);
-          tt2Failed++;
-        }
-      }
-      context.log('TT2 reverted: done=' + tt2Done + ', failed=' + tt2Failed);
-    }
-
-    // ── 3. Delete THIS invoice's Line Items (field_7 in DraftWipIds) ─────────
-    // S145: only lines that belong to this invoice — InvoiceIDRef = its number when issued,
-    // blank when it is still a draft. Lines stamped with another invoice number are never touched.
-    if (ownIds.length > 0) {
-      context.log('Deleting Line Items…');
-      let liDeleted = 0, liFailed = 0;
-      for (const wipId of ownIds) {
-        try {
-          const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
-            + '/lists/' + LINE_ITEMS + '/items'
-            + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
-            + '&$filter=fields/field_7 eq \'' + wipId + '\'';
-          const liResult = await graphGetUnindexed(liSearchUrl, token);
-          const liItems  = (liResult.value || []).filter(li =>
-            String((li.fields || {}).InvoiceIDRef || '').trim() === myNumber);
-
-          for (const liItem of liItems) {
-            await deleteListItem(token, LINE_ITEMS, liItem.id);
-            liDeleted++;
+      context.log('Reverting', ownIds.length, 'TT2 entries and deleting their Line Items (pool ' + POOL + ')…');
+      await Promise.all([
+        runPool(ownIds, POOL, async (wipId) => {
+          try {
+            await patchListItem(token, TT2, wipId, { 'Billed_x003f_': false });
+            tt2Done++;
+          } catch (e) {
+            context.log.error('TT2 revert failed for id', wipId, ':', e.message);
+            tt2Failed++;
           }
-        } catch (e) {
-          context.log.error('Line Item delete failed for wipId', wipId, ':', e.message);
-          liFailed++;
-        }
-      }
-      context.log('Line Items: deleted=' + liDeleted + ', failed=' + liFailed);
+        }),
+        runPool(ownIds, POOL, async (wipId) => {
+          try {
+            const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+              + '/lists/' + LINE_ITEMS + '/items'
+              + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
+              + '&$filter=fields/field_7 eq \'' + wipId + '\'';
+            const liResult = await graphGetUnindexed(liSearchUrl, token);
+            const liItems  = (liResult.value || []).filter(li =>
+              String((li.fields || {}).InvoiceIDRef || '').trim() === myNumber);
+            for (const liItem of liItems) {
+              await deleteListItem(token, LINE_ITEMS, liItem.id);
+              liDeleted++;
+            }
+          } catch (e) {
+            context.log.error('Line Item delete failed for wipId', wipId, ':', e.message);
+            liFailed++;
+          }
+        }),
+      ]);
+      context.log('TT2 reverted: done=' + tt2Done + ', failed=' + tt2Failed
+        + ' | Line Items: deleted=' + liDeleted + ', failed=' + liFailed);
     }
 
     // ── 4. Patch Invoice Library item — mark Cancelled ────────────────────────
@@ -201,7 +207,7 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cancelled: true, invoiceTitle }),
+      body: JSON.stringify({ cancelled: true, invoiceTitle, tt2Done, tt2Failed, liDeleted, liFailed, skipped: skipped.length }),
     };
 
   } catch (err) {
