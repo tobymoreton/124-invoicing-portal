@@ -848,6 +848,10 @@ async function loadFigures(fields) {
   el('inp-min-fee-la').checked         = caseMinFee && laHasFigures;
   el('inp-la-drafting-override').value = (caseMinFee && laHasFigures) ? '50' : '';
   el('inp-timed-override').value       = '';
+  // S161 (Toby, 04/11): the case's costs-of-assessment cap IS the timed-work limit. Pre-fill it so the
+  // invoice and the Settlement sheet start from the same figure.
+  const _caseCoaCap = parseFloat(fields['Limit_x0020_Costs_x0020_of_x0020']) || 0;
+  el('inp-limit-timed').value = _caseCoaCap > 0 ? _caseCoaCap : '';
 
   // TMC time goes into the drafting fee calc by DEFAULT. Two client firms never
   // allow it — Bhatt Murphy and TV Edwards — so for those the box is forced off
@@ -1037,7 +1041,27 @@ function initListeners() {
   el('preview-sheet-btn').addEventListener('click', () => {
     const ref = (selectedCase && selectedCase.fields && selectedCase.fields.Ourreference_x0028_text_x0029_ || '').trim();
     if (!ref) { showMsg('issue-status', 'No case reference on this invoice \u2014 open the case and use the Settlement tab.', 'error'); return; }
-    window.open('case.html?ref=' + encodeURIComponent(ref) + '&settlementsheet=1', '_blank', 'noopener');
+    const url = 'case.html?ref=' + encodeURIComponent(ref) + '&settlementsheet=1';
+    // S161: the sheet is built from the CASE, so a cap set only on this form (not yet drafted) must reach
+    // the case first or the sheet uses full time. Open the tab now (inside the click, so it is not
+    // popup-blocked), save the cap, then point the tab at the sheet.
+    const cap = Math.round(((selectedCase.computed && selectedCase.computed.coaCapNet) || 0) * 100) / 100;
+    const caseCap = parseFloat(selectedCase.fields['Limit_x0020_Costs_x0020_of_x0020']) || 0;
+    if (!(cap > 0) || Math.abs(cap - caseCap) <= 0.005 || !selectedCase.id) { window.open(url, '_blank', 'noopener'); return; }
+    const w = window.open('about:blank', '_blank'); if (w) { try { w.opener = null; } catch (_) {} }
+    fetch('/api/caseupdate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: selectedCase.id, fields: { Limit_x0020_Costs_x0020_of_x0020: cap } }) })
+      .then(async r => { if (!r.ok) throw new Error((await r.text()) || 'HTTP ' + r.status); })
+      .then(() => {
+        selectedCase.fields['Limit_x0020_Costs_x0020_of_x0020'] = cap;
+        try { sessionStorage.removeItem('tmc_case_' + ref); } catch (_) {}
+        showMsg('issue-status', 'Costs-of-assessment cap of ' + gbp(cap) + ' net saved to the case for the sheet.', 'success');
+        if (w) w.location.href = url; else window.open(url, '_blank', 'noopener');
+      })
+      .catch(err => {
+        if (w) w.close();
+        showMsg('issue-status', 'Could not save the costs-of-assessment cap to the case (' + err.message + ') \u2014 sheet not produced, it would use full time.', 'error');
+      });
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closePreview(); });
 }
@@ -1104,6 +1128,7 @@ function recalc() {
 
   // Timed work — collect checked entries
   let timedRaw = 0;
+  let coaCapNet = 0; // S161
   let timedHrs = 0;
   const checkedWipIds     = [];
   const checkedWipEntries = [];
@@ -1168,6 +1193,17 @@ function recalc() {
   el('fig-timed-billed-note').textContent = timedOverride !== null
     ? 'overridden' + (_tDiff ? ' (' + (_tDiff > 0 ? gbp(_tDiff) + ' written off' : gbp(-_tDiff) + ' above full value') + ')' : '')
     : (timedLimited < timedRaw ? 'limited (' + gbp(_tDiff) + ' written off)' : '');
+  // S161: on a drafting invoice a limit (or a write-down override) on the timed work is the case's
+  // costs-of-assessment cap. createdraft saves it to the case, so Settlement, Scenarios, Overview and
+  // the Settlement Report use the same figure as the invoice. Timed-only invoices never touch the cap.
+  const _coaCapCase = parseFloat((selectedCase && selectedCase.fields || {})['Limit_x0020_Costs_x0020_of_x0020']) || 0;
+  coaCapNet = ((draftingFee || 0) > 0 || (laFee || 0) > 0)
+    ? (limitTimed > 0 ? limitTimed : (timedOverride !== null && timedOverride < timedRaw ? timedOverride : 0))
+    : 0;
+  coaCapNet = Math.round(coaCapNet * 100) / 100;
+  if (coaCapNet > 0 && Math.abs(coaCapNet - _coaCapCase) > 0.005)
+    el('fig-timed-billed-note').textContent += (el('fig-timed-billed-note').textContent ? ' · ' : '')
+      + 'will be saved as the case’s costs-of-assessment cap (' + gbp(coaCapNet) + ' net)';
 
   // Update timed work line placeholder with live hours.
   // Once the user edits the line, leave their wording exactly as typed.
@@ -1274,6 +1310,7 @@ function recalc() {
   selectedCase.computed = {
     draftingFee, laFee, timedFee, bespokeAmt, bespokeExp, bespokeExpVat,
     vat, subTotal, grand, vatOnDrafting, feePct, laFeePct, limitTimed, basis,
+    coaCapNet,   // S161: saved to the case's Limit_x0020_Costs_x0020_of_x0020 by createdraft
     zeroVat, zeroVatReason: (zeroVat && zeroVatOk) ? zeroVatReason : '',
     minimumFeeIp: minFeeIp, minimumFeeLa: minFeeLa,
     draftingFeeLine:    ipLine,
@@ -1526,6 +1563,14 @@ async function approveDraft() {
       : '';
     el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
     el('issue-status').className = 'status-msg success';
+    // S161: the cap reached the case (or did not — say so, the sheet would be wrong).
+    if (result.coaCapSaved) {
+      f['Limit_x0020_Costs_x0020_of_x0020'] = result.coaCapSaved;
+      el('issue-status').innerHTML += ' Costs-of-assessment cap of ' + esc(gbp(result.coaCapSaved)) + ' net saved to the case.';
+      try { sessionStorage.removeItem('tmc_case_' + (f.Ourreference_x0028_text_x0029_ || '').trim()); } catch (_) {}
+    } else if (result.coaCapError) {
+      el('issue-status').innerHTML += ' <span style="color:var(--error);font-weight:600;">The costs-of-assessment cap was NOT saved to the case (' + esc(result.coaCapError) + ') — set it on the Settlement tab before producing the sheet.</span>';
+    }
     // S159: an expense that could not be stamped would be offered again on the next draft.
     if (Array.isArray(result.expensesFailedIds) && result.expensesFailedIds.length) {
       el('issue-status').innerHTML += '<br><strong style="color:var(--error);">' + result.expensesFailedIds.length

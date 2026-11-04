@@ -3239,6 +3239,7 @@ document.getElementById('op-court-add-save').addEventListener('click', async () 
   finally { btn.disabled = false; }
 });
 
+var _caseFresh = false, _deepSheetFired = false; // S161
 function renderCaseUI(firstPaint) {
   // S109: take the drafting-fee base from the case's own record before anything is computed.
   // Until now _settFeeOnDrawn started false on every load, so the Settlement tab valued the
@@ -3274,6 +3275,15 @@ function renderCaseUI(firstPaint) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display     = 'block';
   loadLiveCOA(); // S150
+  // S161 (Toby, 04/11): the deep-linked Settlement Report was built on the FIRST paint, which can come
+  // from a sessionStorage copy of the case up to 30 minutes old — so a cap saved minutes earlier (e.g.
+  // from the invoice form) was missed and the report used full time. Now it waits for the fresh
+  // /api/cases load (_caseFresh) and for the live COA, and runs once.
+  if (_caseFresh && !_deepSheetFired && new URLSearchParams(window.location.search).get('settlementsheet') === '1') {
+    _deepSheetFired = true;
+    const _setBtn = document.querySelector('.tab-btn[data-tab="settlement"]');
+    if (_setBtn) setTimeout(() => { _setBtn.click(); Promise.resolve(_coaLivePromise).then(() => setTimeout(() => { computeFigures(); generateSettlementPDF(); }, 700)); }, 300);
+  }
   if (firstPaint === false) return;
   loadExpenses(); // S159
   // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
@@ -3294,11 +3304,7 @@ function renderCaseUI(firstPaint) {
   // the draft is issued): open the Settlement tab and produce the settlement sheet without
   // a further click. The generator stays here because this is the only page carrying the
   // computed figures and the hidden report block it renders from.
-  const _deepSheet = new URLSearchParams(window.location.search).get('settlementsheet');
-  if (_deepSheet === '1') {
-    const _setBtn = document.querySelector('.tab-btn[data-tab="settlement"]');
-    if (_setBtn) setTimeout(() => { _setBtn.click(); Promise.resolve(_coaLivePromise).then(() => setTimeout(() => { generateSettlementPDF(); }, 700)); }, 300); // S150: wait for the live COA
-  }
+  // S161: the settlementsheet=1 deep link now runs higher up, from the FRESH case load only.
 }
 
 async function loadCase() {
@@ -3323,6 +3329,7 @@ async function loadCase() {
       if (!idMatch) { showError('Case not found', 'No case with id ' + idParam + '.'); return; }
       caseItemId = idMatch.id;
       caseFields = idMatch.fields || {};
+      _caseFresh = true; // S161
       renderCaseUI(true);
     } catch (err) {
       showError('Error loading case', err.message);
@@ -3366,6 +3373,7 @@ async function loadCase() {
     caseItemId = match.id;
     caseFields = match.fields || {};
     try { sessionStorage.setItem('tmc_case_' + ref, JSON.stringify({ id: match.id, fields: match.fields, cachedAt: Date.now() })); } catch (e) {}
+    _caseFresh = true; // S161: from here on caseFields is the live record, not the session cache
     renderCaseUI(!painted);
   } catch (err) {
     if (!painted) showError('Error loading case', err.message);
@@ -6525,6 +6533,7 @@ async function doSave(fields, btn, msg, msgClass) {
 }
 
 async function generateSettlementPDF() {
+  computeFigures(); // S161: never print a stale `computed` — always the current case, cap included
   const f = caseFields; const c = computed; const btn = document.getElementById('btn-gen-pdf');
   btn.disabled = true;
   document.getElementById('pdf-case').textContent = caseDisplayName(f) || '—';
