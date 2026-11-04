@@ -23,6 +23,10 @@
  *   checkedWipEntries object[] — full entry data for Line Items creation:
  *                                [{_id, DateCompleted, WorkDone, HoursSpent, Rate,
  *                                   CaseName, OurRef, Email}]
+ *   checkedExpenseIds string[]  — OPTIONAL, S159. CaseExpenses item ids (paid by TMC) to recharge on
+ *                                this invoice. Re-read here: each must belong to the case, be paid by TMC
+ *                                and sit on no other draft/invoice, and their total must match the form's.
+ *                                Stamped with this draft's Invoice Library item id (InvoiceItemId).
  *   draftingFeeSplit  object[]  — OPTIONAL, S136. [{email, pct}] — apportions the drafting fee
  *                                for EARNINGS FIGURES ONLY (myshare, Draftsman Billing). The
  *                                invoice itself is untouched. Accepted from toby@ only.
@@ -40,6 +44,7 @@ const SITE_PATH    = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const INVOICE_LIB  = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS   = '496468a5-e2ed-48db-8826-58cb08844eee';
 const CASES_LIST   = 'ae420bda-e550-499c-b337-90e4f33617c1';
+const EXPENSES_LIST = '14d9fb67-1c55-484d-85ba-730ce73569a0';  // CaseExpenses   // S159 — same value in api/expenses, issueinvoice, cancelinvoice
 
 // Draft creation is open to ALL authenticated TMC Legal staff:
 // draftsmen create drafts; Lesley (finance) and admins can too.
@@ -76,7 +81,7 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries, draftingFeeSplit } = body || {};
+  const { pdfBase64, computed, caseFields, caseItemId, checkedWipIds, checkedWipEntries, draftingFeeSplit, checkedExpenseIds } = body || {};
   if (!pdfBase64 || !computed || !caseFields) {
     context.res = { status: 400, body: 'Missing required fields: pdfBase64, computed, caseFields.' };
     return;
@@ -104,14 +109,16 @@ module.exports = async function (context, req) {
   const _vatAmt        = Number(computed.vat)   || 0;
   const _grandAmt      = Number(computed.grand) || 0;
   const _zeroVatReason = String((computed && computed.zeroVatReason) || '').trim();
-  if (_grandAmt > 0 && _vatAmt <= 0 && _zeroVatReason.length < 10) {
+  // S159: tested on the fees (Net), not the grand total — recharged expenses carry no VAT of TMC's own.
+  const _feesAmt       = Number(computed.subTotal) || 0;
+  if (_feesAmt > 0 && _vatAmt <= 0 && _zeroVatReason.length < 10) {
     context.res = {
       status: 400,
       body: 'This invoice carries a value but no VAT. Check "VAT on drafting fee?" on the case. If the invoice really is correct without VAT, confirm it on the form and give a reason of at least 10 characters.',
     };
     return;
   }
-  const _zeroVatNote = (_grandAmt > 0 && _vatAmt <= 0 && _zeroVatReason)
+  const _zeroVatNote = (_feesAmt > 0 && _vatAmt <= 0 && _zeroVatReason)
     ? ' [NO VAT: ' + _zeroVatReason + ' \u2014 confirmed by ' + draftedByEmail + ']'
     : '';
 
@@ -201,6 +208,39 @@ module.exports = async function (context, req) {
       }
     }
 
+    // ── S159: TMC-paid expenses to recharge ─────────────────────────────────
+    // Re-read every ticked expense before anything is written. Refuse the draft if any is not this
+    // case's, not paid by TMC, already on a draft/invoice, or if the amounts moved since the form
+    // loaded (the invoice HTML already prints them, so they must match exactly).
+    const expIds = [...new Set((Array.isArray(checkedExpenseIds) ? checkedExpenseIds : []).map(String).filter(x => /^\d+$/.test(x)))];
+    let expTotal = 0;
+    if (expIds.length) {
+      const expBase = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + EXPENSES_LIST + '/items/';
+      const problems = [];
+      for (const xid of expIds) {
+        let xf;
+        try { xf = await graphGet(expBase + xid + '/fields', token); }
+        catch (e) { problems.push('expense ' + xid + ' could not be read'); continue; }
+        const label = '"' + String(xf.Title || xid) + '"';
+        if (String(xf.Ourref || '').trim().toLowerCase() !== String(caseRef).trim().toLowerCase()) { problems.push(label + ' is not on this case'); continue; }
+        if (String(xf.PaidBy || '') !== 'TMC')              { problems.push(label + ' was paid by the client'); continue; }
+        if (String(xf.InvoiceItemId || '').trim())          { problems.push(label + ' is already on ' + (xf.InvoiceNumber ? 'invoice ' + xf.InvoiceNumber : 'another draft')); continue; }
+        expTotal += Math.round(((parseFloat(xf.AmountNet) || 0) + (parseFloat(xf.VATAmount) || 0)) * 100) / 100;
+      }
+      expTotal = Math.round(expTotal * 100) / 100;
+      const formTotal = Math.round((Number(computed.expLinesTotal) || 0) * 100) / 100;
+      if (!problems.length && Math.abs(expTotal - formTotal) > 0.005) {
+        problems.push('the expenses total ' + expTotal.toFixed(2) + ' does not match the form (' + formTotal.toFixed(2) + ') — an expense was changed after the form loaded');
+      }
+      if (problems.length) {
+        context.res = { status: 409, body: 'Expenses: ' + problems.join('; ') + '. Reload the case on this page and try again.' };
+        return;
+      }
+    } else if ((Number(computed.expLinesTotal) || 0) > 0) {
+      context.res = { status: 400, body: 'Expenses are ticked on the form but none reached the server. Reload the page and try again.' };
+      return;
+    }
+
     const invoiceType = resolveInvoiceType(computed);
 
     // ── Draft filename ────────────────────────────────────────────────────────
@@ -235,7 +275,7 @@ module.exports = async function (context, req) {
       Net:                  computed.subTotal  || 0,
       VAT:                  computed.vat       || 0,
       DraftingFeeElement:   computed.draftingFee || 0,
-      Expenses:             (computed.bespokeExp || 0) + (computed.bespokeExpVat || 0),
+      Expenses:             Math.round(((computed.bespokeExp || 0) + (computed.bespokeExpVat || 0) + expTotal) * 100) / 100, // S159: + Expenses tab lines
       Ourref:               caseFields.Ourreference_x0028_text_x0029_ || '',
       Theirref:             caseFields.ClientCaseReference || '',
       LAorIP:               caseFields.InterPartesorLegalAid || '',
@@ -323,6 +363,15 @@ module.exports = async function (context, req) {
       context.log('Line Items: created=' + liCreated + ', failed=' + liFailed);
     }
 
+    // ── S159: stamp the recharged expenses with this draft ───────────────────
+    // InvoiceItemId = this Invoice Library item. api/issueinvoice adds the number; api/cancelinvoice
+    // clears both. A failure is reported back — the expense would otherwise be offered again.
+    const expFailedIds = [];
+    for (const xid of expIds) {
+      try { await patchListItem(token, EXPENSES_LIST, xid, { InvoiceItemId: String(listItemId) }); }
+      catch (e) { context.log.error('Expense stamp failed for', xid, ':', e.message); expFailedIds.push(xid); }
+    }
+
     // ── Write MinimumFee back to the Cases list ──────────────────────────
     // The portal exposes two minimum-fee ticks (IP £375 / LA £50). The Cases list
     // has a single Yes/No MinimumFee column, so the two ticks are reduced to one
@@ -341,7 +390,8 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName, pdfUrl, status: 'Draft', lineItemsFailed: liFailedIds.length, lineItemsFailedIds: liFailedIds }),
+      body: JSON.stringify({ fileName, pdfUrl, status: 'Draft', lineItemsFailed: liFailedIds.length, lineItemsFailedIds: liFailedIds,
+        expensesStamped: expIds.length - expFailedIds.length, expensesFailedIds: expFailedIds }),
     };
 
   } catch (err) {
