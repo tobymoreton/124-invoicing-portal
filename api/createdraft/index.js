@@ -387,11 +387,30 @@ module.exports = async function (context, req) {
       }
     }
 
+    // ── S161: the timed-work limit on a drafting invoice IS the costs-of-assessment cap ──
+    // (Toby, 04/11/2026: "If the costs of assessment are limited, this MUST be reflected everywhere.")
+    // invoice-create sends computed.coaCapNet only when the invoice carries a drafting fee and the timed
+    // work is limited or written down by override. Written to the case so Settlement, Scenarios, Overview
+    // and the Settlement Report use the same cap as the invoice. Non-fatal, like MinimumFee above.
+    let coaCapSaved = null, coaCapError = null;
+    const coaCapNet = Math.round((parseFloat(computed.coaCapNet) || 0) * 100) / 100;
+    if (caseItemId && coaCapNet > 0) {
+      try {
+        await patchListItem(token, CASES_LIST, caseItemId, { Limit_x0020_Costs_x0020_of_x0020: coaCapNet });
+        coaCapSaved = coaCapNet;
+        context.log('Cases COA cap set to ' + coaCapNet + ' on item ' + caseItemId);
+      } catch (capErr) {
+        coaCapError = capErr.message;
+        context.log.error('Cases COA cap patch failed for item ' + caseItemId + ':', capErr.message);
+      }
+    }
+
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Api-Build': 'S161-coa-cap' },
       body: JSON.stringify({ fileName, pdfUrl, status: 'Draft', lineItemsFailed: liFailedIds.length, lineItemsFailedIds: liFailedIds,
-        expensesStamped: expIds.length - expFailedIds.length, expensesFailedIds: expFailedIds }),
+        expensesStamped: expIds.length - expFailedIds.length, expensesFailedIds: expFailedIds,
+        coaCapSaved, coaCapError }),
     };
 
   } catch (err) {
