@@ -1,0 +1,452 @@
+/**
+ * P124 — Invoicing Portal
+ * Azure Function: /api/cancelinvoice
+ *
+ * Cancels a draft or issued invoice. Admin + finance (Toby, Danielle, Lesley).
+ *
+ * Sequence:
+ *   1. Auth check (admin + finance)
+ *   2. Read DraftWipIds from Invoice Library item
+ *   3. Revert each TT2 entry: Billed_x003f_ = false
+ *   4. Delete each Line Item where field_7 is in DraftWipIds
+ *   5. Patch Invoice Library item: Cancelled = true, AmountDue = 0, Net = 0,
+ *      DraftingFeeElement = 0, Expenses = 0
+ *   6. Send cancellation email to office@tmclegal.co.uk via Graph Mail.Send
+ *
+ * POST body (JSON):
+ *   listItemId   string   — Invoice Library SP list item ID
+ *
+ * Returns: { cancelled: true, invoiceTitle }
+ *
+ * GUIDs:
+ *   Invoice Library:  5c366b19-0da9-4be9-b68f-60e6a0209cdb
+ *   Line Items:       496468a5-e2ed-48db-8826-58cb08844eee
+ *   Time Tracking2:   67db204c-30a5-4f4d-b276-60852d9967e1
+ */
+
+const https   = require('https');
+const { URL } = require('url');
+
+const SITE_PATH   = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
+const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
+const LINE_ITEMS  = '496468a5-e2ed-48db-8826-58cb08844eee';
+const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
+
+const CANCEL_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
+const NOTIFY_EMAIL  = 'office@tmclegal.co.uk';
+const POOL          = 6;   // S150: concurrent Graph calls per stage
+
+// S150: run fn over items, at most `size` at a time.
+async function runPool(items, size, fn) {
+  let i = 0;
+  const workers = Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (i < items.length) { const it = items[i++]; await fn(it); }
+  });
+  await Promise.all(workers);
+}
+// S145: every live (not cancelled) Invoice Library item that lists any of `ids` in DraftWipIds,
+// other than `exceptItemId`. Returns Map<wipId, [{id, number}]>. One full pass of the library
+// (~3k rows, $top=999) — DraftWipIds is not indexed, so it cannot be filtered server-side.
+async function liveHoldersOf(token, ids, exceptItemId) {
+  const want = new Set(ids.map(String));
+  const out  = new Map();
+  let url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH + '/lists/' + INVOICE_LIB
+    + '/items?$expand=fields($select=id,DraftWipIds,Cancelled,OrderDetails)&$top=999';
+  while (url) {
+    const page = await graphGet(url, token);
+    for (const it of (page.value || [])) {
+      const f = it.fields || {};
+      if (f.Cancelled || String(it.id) === String(exceptItemId)) continue;
+      for (const w of String(f.DraftWipIds || '').split(',')) {
+        const k = w.trim();
+        if (!k || !want.has(k)) continue;
+        if (!out.has(k)) out.set(k, []);
+        out.get(k).push({ id: String(it.id), number: f.OrderDetails || null });
+      }
+    }
+    url = page['@odata.nextLink'] || null;
+  }
+  return out;
+}
+
+// Graph Mail.Send requires a licensed mailbox to send from.
+// Set MAIL_SENDER in app settings to e.g. 'toby@tmclegal.co.uk'
+// If not set, the email step is skipped and a warning is logged.
+
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+module.exports = async function (context, req) {
+  context.log('P124 /api/cancelinvoice called');
+
+  const callerEmail = getCallerEmail(req);
+  if (!callerEmail || !CANCEL_EMAILS.includes(callerEmail)) {
+    context.res = { status: 403, body: 'Forbidden — not authorised to cancel invoices.' };
+    return;
+  }
+
+  const { TENANT_ID, CLIENT_ID, CLIENT_SECRET, MAIL_SENDER } = process.env;
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
+    context.res = { status: 500, body: 'Missing required app settings.' };
+    return;
+  }
+
+  let body;
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  } catch (e) {
+    context.res = { status: 400, body: 'Invalid JSON body.' };
+    return;
+  }
+
+  const { listItemId } = body || {};
+  if (!listItemId) {
+    context.res = { status: 400, body: 'Missing required field: listItemId.' };
+    return;
+  }
+
+  try {
+    const token = await getToken(TENANT_ID, CLIENT_ID, CLIENT_SECRET);
+
+    // ── 1. Read Invoice Library item fields ───────────────────────────────────
+    context.log('Reading Invoice Library item fields…');
+    const fieldsUrl  = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+      + '/lists/' + INVOICE_LIB + '/items/' + listItemId + '/fields';
+    const itemFields = await graphGet(fieldsUrl, token);
+
+    const wipIdsCsv    = itemFields.DraftWipIds  || '';
+    const invoiceTitle = itemFields.Title         || listItemId;
+    const invoiceRef   = itemFields.OrderDetails  || '(draft — no number assigned)';
+    const caseName     = itemFields.Casename      || '';
+    const wipIds       = wipIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
+
+    context.log('DraftWipIds:', wipIds);
+    context.log('Cancelling:', invoiceTitle);
+
+    // ── S145: leave alone any entry that also sits on another live draft/invoice ──
+    // Before S145 a cancel unbilled every entry it listed and deleted every line item for it —
+    // including ones belonging to a different, issued invoice (13325, 28/07/2026).
+    const held    = wipIds.length ? await liveHoldersOf(token, wipIds, listItemId) : new Map();
+    const skipped = wipIds.filter(w => held.has(w));
+    if (skipped.length) context.log('S145: leaving ' + skipped.length + ' entries untouched (on another live invoice):', skipped.join(','));
+    const ownIds  = wipIds.filter(w => !held.has(w));
+    const myNumber = String(itemFields.OrderDetails || '').trim();   // '' for a draft
+
+    // ── 2 + 3. Revert TT2 entries and delete THIS invoice's Line Items ───────
+    // S150: run in parallel (POOL at a time). One-at-a-time took >45s on a 60-entry draft
+    // (13676, 03/11/2026) — SWA returned "Backend call failure" while the function carried on.
+    // S145 rule kept: only lines whose InvoiceIDRef = this invoice's number (blank for a draft).
+    let tt2Done = 0, tt2Failed = 0, liDeleted = 0, liFailed = 0;
+    if (ownIds.length > 0) {
+      context.log('Reverting', ownIds.length, 'TT2 entries and deleting their Line Items (pool ' + POOL + ')…');
+      await Promise.all([
+        runPool(ownIds, POOL, async (wipId) => {
+          try {
+            await patchListItem(token, TT2, wipId, { 'Billed_x003f_': false });
+            tt2Done++;
+          } catch (e) {
+            context.log.error('TT2 revert failed for id', wipId, ':', e.message);
+            tt2Failed++;
+          }
+        }),
+        runPool(ownIds, POOL, async (wipId) => {
+          try {
+            const liSearchUrl = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+              + '/lists/' + LINE_ITEMS + '/items'
+              + '?$expand=fields($select=id,field_7,InvoiceIDRef)'
+              + '&$filter=fields/field_7 eq \'' + wipId + '\'';
+            const liResult = await graphGetUnindexed(liSearchUrl, token);
+            const liItems  = (liResult.value || []).filter(li =>
+              String((li.fields || {}).InvoiceIDRef || '').trim() === myNumber);
+            for (const liItem of liItems) {
+              await deleteListItem(token, LINE_ITEMS, liItem.id);
+              liDeleted++;
+            }
+          } catch (e) {
+            context.log.error('Line Item delete failed for wipId', wipId, ':', e.message);
+            liFailed++;
+          }
+        }),
+      ]);
+      context.log('TT2 reverted: done=' + tt2Done + ', failed=' + tt2Failed
+        + ' | Line Items: deleted=' + liDeleted + ', failed=' + liFailed);
+    }
+
+    // ── 4. Patch Invoice Library item — mark Cancelled ────────────────────────
+    context.log('Patching Invoice Library item as cancelled…');
+    await patchListItem(token, INVOICE_LIB, listItemId, {
+      Cancelled:          true,
+      AmountDue:          0,
+      Net:                0,
+      DraftingFeeElement: 0,
+      Expenses:           0,
+    });
+    context.log('Invoice Library item patched — Status will flip to Cancelled.');
+
+    // ── 5. Send cancellation email ────────────────────────────────────────────
+    if (MAIL_SENDER) {
+      try {
+        context.log('Sending cancellation email…');
+        const subject = 'Invoice Cancelled — ' + invoiceRef + (caseName ? ' | ' + caseName : '');
+        const htmlBody = '<p>An invoice has been cancelled in the TMC Legal invoicing portal.</p>'
+          + '<p><strong>Invoice:</strong> ' + invoiceRef + '<br>'
+          + (caseName ? '<strong>Case:</strong> ' + caseName + '<br>' : '')
+          + '<strong>Cancelled by:</strong> ' + callerEmail + '</p>'
+          + '<p>The associated WIP entries have been un-billed and line items deleted.</p>';
+
+        await sendMail(token, MAIL_SENDER, NOTIFY_EMAIL, subject, htmlBody);
+        context.log('Cancellation email sent.');
+      } catch (mailErr) {
+        // Email failure is non-fatal — log and continue
+        context.log.error('Cancellation email failed:', mailErr.message);
+      }
+    } else {
+      context.log('MAIL_SENDER not set — skipping cancellation email.');
+    }
+
+    // ── Done ──────────────────────────────────────────────────────────────────
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cancelled: true, invoiceTitle, tt2Done, tt2Failed, liDeleted, liFailed, skipped: skipped.length }),
+    };
+
+  } catch (err) {
+    context.log.error('cancelinvoice error:', err.message, err.stack);
+    context.res = { status: 500, body: 'Error: ' + err.message };
+  }
+};
+
+// ── Identity ──────────────────────────────────────────────────────────────────
+
+function getCallerEmail(req) {
+  try {
+    const header = req.headers && req.headers['x-ms-client-principal'];
+    if (!header) return null;
+    const decoded   = Buffer.from(header, 'base64').toString('utf8');
+    const principal = JSON.parse(decoded);
+    if (principal.userDetails) return principal.userDetails.toLowerCase();
+    const claim = (principal.claims || []).find(
+      c => c.typ === 'preferred_username' || c.typ === 'email' || c.typ === 'upn'
+        || c.typ === 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    );
+    return claim ? claim.val.toLowerCase() : null;
+  } catch { return null; }
+}
+
+// ── Token ─────────────────────────────────────────────────────────────────────
+
+function getToken(tenantId, clientId, clientSecret) {
+  return new Promise(function (resolve, reject) {
+    const body = new URLSearchParams({
+      grant_type:    'client_credentials',
+      client_id:     clientId,
+      client_secret: clientSecret,
+      scope:         'https://graph.microsoft.com/.default',
+    }).toString();
+
+    const options = {
+      hostname: 'login.microsoftonline.com',
+      path:     '/' + tenantId + '/oauth2/v2.0/token',
+      method:   'POST',
+      headers: {
+        'Content-Type':   'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      },
+    };
+
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.access_token) resolve(json.access_token);
+          else reject(new Error('Token error: ' + (json.error_description || data)));
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+// ── HTTP helpers ──────────────────────────────────────────────────────────────
+
+function graphGet(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'GET',
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph GET ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// Like graphGet but adds the Prefer header to allow filtering on non-indexed SP columns.
+function graphGetUnindexed(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'GET',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept:        'application/json',
+        Prefer:        'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph GET (unindexed) ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function graphPatch(url, token, body, retries) {
+  retries = retries === undefined ? 1 : retries;
+  return new Promise(function (resolve, reject) {
+    const payload = JSON.stringify(body);
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'PATCH',
+      headers: {
+        Authorization:    'Bearer ' + token,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 409 && retries > 0) {
+          // resourceModified — another process updated the item; retry once after brief delay
+          setTimeout(() => {
+            graphPatch(url, token, body, retries - 1).then(resolve).catch(reject);
+          }, 500);
+          return;
+        }
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph PATCH ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : {}); }
+        catch (e) { resolve({}); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+function graphDelete(url, token) {
+  return new Promise(function (resolve, reject) {
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'DELETE',
+      headers: { Authorization: 'Bearer ' + token },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph DELETE ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        resolve({});
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function graphPost(url, token, body) {
+  return new Promise(function (resolve, reject) {
+    const payload = JSON.stringify(body);
+    const u = new URL(url);
+    const options = {
+      hostname: u.hostname,
+      path:     u.pathname + u.search,
+      method:   'POST',
+      headers: {
+        Authorization:    'Bearer ' + token,
+        'Content-Type':   'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    };
+    const req = https.request(options, function (res) {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 400) {
+          reject(new Error('Graph POST ' + res.statusCode + ' — ' + url.split('?')[0] + ': ' + data.slice(0, 400)));
+          return;
+        }
+        try { resolve(data ? JSON.parse(data) : {}); }
+        catch (e) { resolve({}); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function patchListItem(token, listGuid, itemId, fields) {
+  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+    + '/lists/' + listGuid + '/items/' + itemId + '/fields';
+  await graphPatch(url, token, fields);
+}
+
+async function deleteListItem(token, listGuid, itemId) {
+  const url = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+    + '/lists/' + listGuid + '/items/' + itemId;
+  await graphDelete(url, token);
+}
+
+async function sendMail(token, from, to, subject, htmlBody) {
+  const url = 'https://graph.microsoft.com/v1.0/users/' + from + '/sendMail';
+  await graphPost(url, token, {
+    message: {
+      subject,
+      body: { contentType: 'HTML', content: htmlBody },
+      toRecipients: [{ emailAddress: { address: to } }],
+    },
+    saveToSentItems: true,
+  });
+}
