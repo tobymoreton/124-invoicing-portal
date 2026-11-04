@@ -1387,13 +1387,13 @@
               <div class="sett-hint">Blank = no cap. Provisional assessment: £1,500 ex VAT and court fee (CPR 47.15(5)).</div>
             </div>
             <div class="field">
-              <label>Court fee &amp; expenses (£)</label>
-              <div id="cf-exp-summary" style="font-size:14px;color:var(--navy);padding:6px 0;">—</div>
-              <button type="button" class="import-btn" data-goto-tab="expenses">Open Expenses tab</button>
+              <label>Court fee (N258 / hearing fee) (£)</label>
+              <input type="number" id="f-CourtFeeAmt" step="0.01" min="0" disabled />
+              <span class="cf-paidby">Paid by <label><input type="radio" name="cfPaidBy" id="cf-by-client" value="client" disabled /> the client</label> <label><input type="radio" name="cfPaidBy" id="cf-by-tmc" value="tmc" disabled /> TMC</label></span>
               <input type="hidden" id="f-CourtFeePaidByTMC" />
               <input type="hidden" id="f-ClientPaidExpenses" />
               <div class="sett-hint sett-hint-gold" id="cf-warn" hidden></div>
-              <div class="sett-hint">Taken from the Expenses tab (S159). Anything TMC paid goes on TMC's invoice and is recharged.</div>
+              <div class="sett-hint">If TMC paid it, it goes on TMC's invoice and is recharged.</div>
             </div>
           </section>
           <section class="si-group">
@@ -2282,69 +2282,7 @@
         <button class="btn-qa btn-qa-reminder" data-goto-tab="reminders">🔔 Add Reminder</button>
         <button class="btn-qa btn-qa-action" data-goto-tab="caseactions">⚡ Add Action</button>
       </div>
-      <!-- S159: Expenses. Paid by TMC → recharged on TMC's invoice; Settlement's court fee is fed from here. -->
-      <div style="display:flex;gap:22px;align-items:flex-start;">
-        <div style="flex:1;min-width:0;">
-          <div class="card">
-            <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;">
-              <span class="card-title">Expenses</span>
-              <span id="exp-summary" style="font-size:12px;color:var(--grey-mid);"></span>
-            </div>
-            <div class="sett-hint sett-hint-gold" id="exp-legacy" hidden style="margin:12px 16px 0;"></div>
-            <div id="exp-error" hidden style="margin:12px 16px 0;padding:10px 12px;border-radius:var(--radius-sm);background:#FEE2E2;color:#991B1B;font-size:12.5px;"></div>
-            <div>
-              <table class="ca-table" id="exp-table">
-                <colgroup>
-                  <col style="width:84px;"/><col style="width:120px;"/><col/>
-                  <col style="width:84px;"/><col style="width:70px;"/><col style="width:84px;"/>
-                  <col style="width:66px;"/><col style="width:96px;"/><col style="width:64px;"/>
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>Date</th><th>Type</th><th>Description</th>
-                    <th class="ca-right">Net</th><th class="ca-right">VAT</th><th class="ca-right">Total</th>
-                    <th>Paid by</th><th>Invoice</th><th></th>
-                  </tr>
-                </thead>
-                <tbody id="exp-tbody"></tbody>
-              </table>
-            </div>
-            <div id="exp-loading" style="padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">Loading expenses…</div>
-            <div id="exp-empty" style="display:none;padding:32px;text-align:center;color:var(--grey-mid);font-size:13px;">No expenses recorded for this case.</div>
-            <div id="exp-totals" style="display:none;padding:12px 16px;border-top:1px solid rgba(27,42,74,.1);font-size:12.5px;color:var(--navy);"></div>
-          </div>
-        </div>
-        <div style="width:290px;flex-shrink:0;">
-          <div class="card">
-            <div class="card-head"><span class="card-title" id="exp-form-title">Add Expense</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
-              <input type="hidden" id="exp-edit-id" />
-              <div class="field"><label>Date paid</label><input type="date" id="exp-date" /></div>
-              <div class="field"><label>Type</label>
-                <select id="exp-type" style="padding:10px 14px;border:1.5px solid rgba(27,42,74,.18);border-radius:var(--radius-sm);font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--navy);background:var(--white);outline:none;width:100%;">
-                  <option>Court fee</option><option>Courier / postage</option><option>Copying</option><option>Other</option>
-                </select>
-              </div>
-              <div class="field"><label>Description</label><input type="text" id="exp-desc" maxlength="255" placeholder="e.g. N258 detailed assessment fee" /></div>
-              <div class="field"><label>Amount ex VAT (£)</label><input type="number" id="exp-net" min="0" step="0.01" placeholder="0.00" /></div>
-              <div class="field"><label>VAT (£)</label><input type="number" id="exp-vat" min="0" step="0.01" placeholder="0.00" />
-                <div class="sett-hint">Court fees carry no VAT — leave blank.</div></div>
-              <div class="field"><label>Paid by</label>
-                <span class="cf-paidby" style="display:flex;gap:14px;">
-                  <label><input type="radio" name="expPaidBy" id="exp-by-client" value="Client" checked /> the client</label>
-                  <label><input type="radio" name="expPaidBy" id="exp-by-tmc" value="TMC" /> TMC</label>
-                </span>
-                <div class="sett-hint">Paid by TMC: offered on the next draft invoice and recharged.</div>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button type="button" class="btn-edit-save" id="btn-exp-save" style="display:inline-flex;justify-content:center;flex:1;">Add expense</button>
-                <button type="button" class="btn-edit-save" id="btn-exp-cancel" style="display:none;justify-content:center;background:var(--white);color:var(--navy);border:1px solid rgba(27,42,74,.25);">Cancel</button>
-              </div>
-              <div id="exp-form-msg" style="font-size:12px;color:#991B1B;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="coming-soon"><div class="icon">🧾</div><h3>Expenses</h3><p>Coming soon.</p></div>
     </div>
 
     <!-- ════════ REMINDERS TAB ════════ -->
@@ -3275,7 +3213,6 @@ function renderCaseUI(firstPaint) {
   document.getElementById('app').style.display     = 'block';
   loadLiveCOA(); // S150
   if (firstPaint === false) return;
-  loadExpenses(); // S159
   // If deep-linking to a specific action from the Draftsman Dash, auto-switch to Case Actions tab
   const _deepAction = new URLSearchParams(window.location.search).get('action');
   if (_deepAction) {
@@ -6161,167 +6098,35 @@ function _updateTotalCOADisplay() {
                          coaExcludedByOffer: offerExcludesCOA(settFieldsInUse()), // S158
                          coaShortfall: onTop ? round2(coaCost - coaRecoverable) : 0 }, onTop, true);
 }
-// S133 → S159: the court fee is no longer typed on the Settlement tab. It is the Expenses tab's
-// totals by payer, which /api/expenses writes into the same two columns after every change.
+// S133: the court fee is ONE amount with who paid it, stored in the same two columns as before.
 function _cfFromHidden() {
   const tmc = parseFloat(document.getElementById('f-CourtFeePaidByTMC')?.value) || 0;
   const cli = parseFloat(document.getElementById('f-ClientPaidExpenses')?.value) || 0;
-  const s = document.getElementById('cf-exp-summary'), warn = document.getElementById('cf-warn');
-  if (s) {
-    const parts = [];
-    if (cli) parts.push('Paid by the client ' + fmt(cli));
-    if (tmc) parts.push('Paid by TMC ' + fmt(tmc));
-    s.textContent = parts.length ? parts.join(' · ') : 'None';
+  const amt = document.getElementById('f-CourtFeeAmt'), warn = document.getElementById('cf-warn');
+  const rT = document.getElementById('cf-by-tmc'), rC = document.getElementById('cf-by-client');
+  if (!amt || !rT || !rC) return;
+  if (tmc > 0 && cli > 0) {             // legacy: recorded against both — say so, change nothing
+    amt.value = round2(tmc + cli); rT.checked = false; rC.checked = false;
+    if (warn) { warn.hidden = false; warn.textContent = 'Recorded as paid partly by TMC (' + fmt(tmc) + ') and partly by the client (' + fmt(cli) + '). Choose who paid it to correct this.'; }
+    return;
   }
-  const legacy = Array.isArray(_expRows) && _expRows.length === 0 && (tmc > 0 || cli > 0);
-  if (warn) {
-    warn.hidden = !legacy;
-    if (legacy) warn.textContent = 'Entered before the Expenses tab existed. Add it on the Expenses tab — the first expense added there replaces this figure.';
-  }
+  if (warn) warn.hidden = true;
+  amt.value = tmc > 0 ? tmc : (cli > 0 ? cli : '');
+  rT.checked = tmc > 0; rC.checked = !(tmc > 0);
 }
-
-// ════════ S159: EXPENSES TAB ════════
-// `var`, not `let`: _cfFromHidden runs during the first settlement render.
-var _expRows = null, _expTotals = null;
-function _expRef() { return ((caseFields && caseFields['Ourreference_x0028_text_x0029_']) || '').trim(); }
-function _expShowError(msg) {
-  const e = document.getElementById('exp-error'); if (!e) return;
-  e.hidden = !msg; e.textContent = msg || '';
+function _cfToHidden() {
+  const a = parseFloat(document.getElementById('f-CourtFeeAmt')?.value);
+  const byTMC = !!document.getElementById('cf-by-tmc')?.checked;
+  const hT = document.getElementById('f-CourtFeePaidByTMC'), hC = document.getElementById('f-ClientPaidExpenses');
+  if (!hT || !hC) return;
+  const v = isNaN(a) ? '' : String(a);
+  hT.value = byTMC ? v : ''; hC.value = byTMC ? '' : v;
+  const warn = document.getElementById('cf-warn'); if (warn) warn.hidden = true;
+  renderSettlementLive(); _updateTotalCOADisplay();
 }
-async function loadExpenses() {
-  const ref = _expRef(); if (!ref) return;
-  try {
-    const r = await fetch('/api/expenses?ref=' + encodeURIComponent(ref));
-    if (!r.ok) { let m = 'HTTP ' + r.status; try { m = (await r.json()).error || m; } catch (_) {} throw new Error(m); }
-    _expApply(await r.json(), false);
-  } catch (e) {
-    console.error('Expenses:', e);
-    document.getElementById('exp-loading').style.display = 'none';
-    _expShowError('Could not load expenses: ' + e.message);
-  }
-}
-function _expApply(data, wrote) {
-  _expRows = data.rows || [];
-  _expTotals = data.totals || { client: 0, tmc: 0, tmcOpen: 0 };
-  _expShowError('');
-  if (wrote && data.mirrorError) _expShowError('Expense saved, but the Settlement figure was not updated: ' + data.mirrorError);
-  if (wrote && data.mirror) {
-    caseFields['CourtFeePaidByTMC']  = data.mirror.CourtFeePaidByTMC;
-    caseFields['ClientPaidExpenses'] = data.mirror.ClientPaidExpenses;
-    const hT = document.getElementById('f-CourtFeePaidByTMC'), hC = document.getElementById('f-ClientPaidExpenses');
-    if (hT) hT.value = data.mirror.CourtFeePaidByTMC || '';
-    if (hC) hC.value = data.mirror.ClientPaidExpenses || '';
-    const editing = !!document.getElementById('tab-settlement')?.classList.contains('editing');
-    if (editing) { _cfFromHidden(); renderSettlementLive(); _updateTotalCOADisplay(); _settInputResults(); }
-    else { computeFigures(); computeInterest(); renderSettlementTab(); renderScenarioTab(); renderOverviewTab(); }
-  }
-  renderExpensesTab();
-  _cfFromHidden();
-}
-function renderExpensesTab() {
-  const tbody = document.getElementById('exp-tbody'); if (!tbody) return;
-  const rows = _expRows || [];
-  document.getElementById('exp-loading').style.display = 'none';
-  document.getElementById('exp-empty').style.display = rows.length ? 'none' : 'block';
-  tbody.innerHTML = rows.map(r => {
-    const inv = r.status === 'invoiced' ? 'Invoice ' + escHtml(r.invoiceNumber)
-              : r.status === 'draft'    ? 'On draft'
-              : (r.paidBy === 'TMC' ? '<span style="color:#92400E;">To invoice</span>' : '—');
-    const acts = r.status === 'open'
-      ? '<button type="button" class="exp-act" data-exp-edit="' + r.id + '" title="Edit" style="border:none;background:none;cursor:pointer;color:var(--navy);">✎</button>'
-        + '<button type="button" class="exp-act" data-exp-del="' + r.id + '" title="Delete" style="border:none;background:none;cursor:pointer;color:#991B1B;">✕</button>'
-      : '<span title="On an invoice — cancel it to change this" style="color:var(--grey-mid);">🔒</span>';
-    return '<tr>'
-      + '<td>' + escHtml(fmtDate(r.date)) + '</td>'
-      + '<td>' + escHtml(r.type) + '</td>'
-      + '<td style="white-space:normal;">' + escHtml(r.description) + '</td>'
-      + '<td class="ca-right">' + fmt(r.net) + '</td>'
-      + '<td class="ca-right">' + (r.vat ? fmt(r.vat) : '—') + '</td>'
-      + '<td class="ca-right">' + fmt(r.gross) + '</td>'
-      + '<td>' + (r.paidBy === 'TMC' ? 'TMC' : 'Client') + '</td>'
-      + '<td>' + inv + '</td>'
-      + '<td class="ca-center">' + acts + '</td></tr>';
-  }).join('');
-  const t = _expTotals || { client: 0, tmc: 0, tmcOpen: 0 };
-  const tot = document.getElementById('exp-totals');
-  tot.style.display = rows.length ? 'block' : 'none';
-  tot.innerHTML = 'Paid by the client <strong>' + fmt(t.client) + '</strong> &nbsp;·&nbsp; Paid by TMC <strong>' + fmt(t.tmc) + '</strong>'
-    + (t.tmcOpen ? ' &nbsp;·&nbsp; <span style="color:#92400E;">not yet invoiced <strong>' + fmt(t.tmcOpen) + '</strong></span>' : '');
-  document.getElementById('exp-summary').textContent = rows.length ? rows.length + ' expense' + (rows.length === 1 ? '' : 's') : '';
-  const legacyTmc = parseFloat(caseFields && caseFields['CourtFeePaidByTMC']) || 0;
-  const legacyCli = parseFloat(caseFields && caseFields['ClientPaidExpenses']) || 0;
-  const leg = document.getElementById('exp-legacy');
-  const showLeg = !rows.length && (legacyTmc > 0 || legacyCli > 0);
-  leg.hidden = !showLeg;
-  if (showLeg) leg.textContent = 'Settlement holds a court fee entered before this tab existed ('
-    + [legacyCli ? 'paid by the client ' + fmt(legacyCli) : '', legacyTmc ? 'paid by TMC ' + fmt(legacyTmc) : ''].filter(Boolean).join(', ')
-    + '). Add it here — the first expense you add replaces that figure.';
-}
-function _expResetForm() {
-  document.getElementById('exp-edit-id').value = '';
-  document.getElementById('exp-date').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('exp-type').value = 'Court fee';
-  document.getElementById('exp-desc').value = '';
-  document.getElementById('exp-net').value = '';
-  document.getElementById('exp-vat').value = '';
-  document.getElementById('exp-by-client').checked = true;
-  document.getElementById('exp-form-title').textContent = 'Add Expense';
-  document.getElementById('btn-exp-save').textContent = 'Add expense';
-  document.getElementById('btn-exp-cancel').style.display = 'none';
-  document.getElementById('exp-form-msg').textContent = '';
-}
-async function _expPost(body) {
-  const r = await fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.assign({ caseItemId: caseItemId }, body)) });
-  let data = null; try { data = await r.json(); } catch (_) {}
-  if (!r.ok) throw new Error((data && data.error) || ('HTTP ' + r.status));
-  _expApply(data, true);
-}
-document.getElementById('btn-exp-save')?.addEventListener('click', async () => {
-  const msg = document.getElementById('exp-form-msg'), btn = document.getElementById('btn-exp-save');
-  const id = document.getElementById('exp-edit-id').value;
-  const body = {
-    date: document.getElementById('exp-date').value,
-    type: document.getElementById('exp-type').value,
-    description: document.getElementById('exp-desc').value.trim(),
-    net: parseFloat(document.getElementById('exp-net').value) || 0,
-    vat: parseFloat(document.getElementById('exp-vat').value) || 0,
-    paidBy: document.getElementById('exp-by-tmc').checked ? 'TMC' : 'Client',
-  };
-  if (!body.date)        { msg.textContent = 'Enter the date paid.'; return; }
-  if (!body.description) { msg.textContent = 'Enter a description.'; return; }
-  if (!(body.net > 0))   { msg.textContent = 'Enter the amount ex VAT.'; return; }
-  msg.textContent = ''; btn.disabled = true;
-  try {
-    await _expPost(id ? Object.assign({ action: 'update', id }, body) : Object.assign({ action: 'add', ref: _expRef() }, body));
-    _expResetForm();
-  } catch (e) { msg.textContent = e.message; }
-  finally { btn.disabled = false; }
-});
-document.getElementById('btn-exp-cancel')?.addEventListener('click', _expResetForm);
-document.getElementById('exp-tbody')?.addEventListener('click', async e => {
-  const ed = e.target.closest('[data-exp-edit]'), del = e.target.closest('[data-exp-del]');
-  if (ed) {
-    const r = (_expRows || []).find(x => String(x.id) === ed.dataset.expEdit); if (!r) return;
-    document.getElementById('exp-edit-id').value = r.id;
-    document.getElementById('exp-date').value = r.date;
-    document.getElementById('exp-type').value = r.type || 'Other';
-    document.getElementById('exp-desc').value = r.description;
-    document.getElementById('exp-net').value = r.net;
-    document.getElementById('exp-vat').value = r.vat || '';
-    document.getElementById(r.paidBy === 'TMC' ? 'exp-by-tmc' : 'exp-by-client').checked = true;
-    document.getElementById('exp-form-title').textContent = 'Edit Expense';
-    document.getElementById('btn-exp-save').textContent = 'Save changes';
-    document.getElementById('btn-exp-cancel').style.display = 'inline-flex';
-    document.getElementById('exp-form-msg').textContent = '';
-  } else if (del) {
-    const r = (_expRows || []).find(x => String(x.id) === del.dataset.expDel); if (!r) return;
-    if (!confirm('Delete "' + r.description + '" (' + fmt(r.gross) + ')?')) return;
-    try { await _expPost({ action: 'delete', id: r.id }); _expResetForm(); }
-    catch (err) { _expShowError(err.message); }
-  }
-});
-_expResetForm();
+document.getElementById('f-CourtFeeAmt')?.addEventListener('input', _cfToHidden);
+document.getElementById('cf-by-tmc')?.addEventListener('change', _cfToHidden);
+document.getElementById('cf-by-client')?.addEventListener('change', _cfToHidden);
 // S116e: every settlement box recomputes the whole tab live (Recovery card included) as you type;
 // the COA card then gets its "(unsaved)" tag from _updateTotalCOADisplay.
 [...Object.values(SETT_LIVE_FIELDS), 'f-DateSettled0', 'f-SettVatPct'].forEach(id => document.getElementById(id)?.addEventListener('input', () => {
