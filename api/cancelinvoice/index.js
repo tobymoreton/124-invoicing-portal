@@ -31,6 +31,7 @@ const SITE_PATH   = 'tmcostings.sharepoint.com:/sites/TMCLegalLimited:';
 const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS  = '496468a5-e2ed-48db-8826-58cb08844eee';
 const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
+const EXPENSES_LIST = '14d9fb67-1c55-484d-85ba-730ce73569a0';  // CaseExpenses   // S159 — same value in api/expenses, createdraft, issueinvoice
 
 const CANCEL_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk', 'lesley@tmclegal.co.uk'];
 const NOTIFY_EMAIL  = 'office@tmclegal.co.uk';
@@ -171,6 +172,23 @@ module.exports = async function (context, req) {
         + ' | Line Items: deleted=' + liDeleted + ', failed=' + liFailed);
     }
 
+    // ── 3b. S159: release the recharged expenses ────────────────────────────
+    // Only rows stamped with THIS Invoice Library item. They go back to "To invoice".
+    let expReleased = 0, expFailed = 0;
+    try {
+      const xr = await graphGetUnindexed('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+        + '/lists/' + EXPENSES_LIST + '/items?$expand=fields($select=id,InvoiceItemId)'
+        + '&$filter=fields/InvoiceItemId eq \'' + String(listItemId).replace(/'/g, "''") + '\'&$top=200', token);
+      for (const x of (xr.value || [])) {
+        if (String((x.fields || {}).InvoiceItemId || '').trim() !== String(listItemId)) continue;
+        try { await patchListItem(token, EXPENSES_LIST, x.id, { InvoiceItemId: '', InvoiceNumber: '' }); expReleased++; }
+        catch (e) { context.log.error('Expense release failed for', x.id, ':', e.message); expFailed++; }
+      }
+    } catch (e) {
+      context.log.error('S159 expense release failed:', e.message);
+      expFailed = -1;
+    }
+
     // ── 4. Patch Invoice Library item — mark Cancelled ────────────────────────
     context.log('Patching Invoice Library item as cancelled…');
     await patchListItem(token, INVOICE_LIB, listItemId, {
@@ -207,7 +225,7 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cancelled: true, invoiceTitle, tt2Done, tt2Failed, liDeleted, liFailed, skipped: skipped.length }),
+      body: JSON.stringify({ cancelled: true, invoiceTitle, tt2Done, tt2Failed, liDeleted, liFailed, skipped: skipped.length, expReleased, expFailed }),
     };
 
   } catch (err) {

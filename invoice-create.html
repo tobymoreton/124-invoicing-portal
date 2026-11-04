@@ -120,6 +120,12 @@
 
     /* Bespoke */
     .bespoke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    /* S159: TMC-paid expenses from the case Expenses tab */
+    .exp-recharge{margin-top:18px;}
+    .exp-recharge-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--grey-light);font-size:13px;color:var(--navy);}
+    .exp-recharge-row .x-desc{flex:1;min-width:0;}
+    .exp-recharge-row .x-amt{font-variant-numeric:tabular-nums;white-space:nowrap;}
+    .exp-recharge-none{font-size:12.5px;color:var(--grey-mid);padding:6px 0;}
     .bespoke-cell{display:flex;flex-direction:column;gap:5px;}
     .bespoke-cell label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
     .bespoke-input{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--navy);background:var(--cream);border:1.5px solid var(--grey-light);border-radius:4px;padding:7px 10px;width:100%;outline:none;transition:border-color var(--transition);}
@@ -487,6 +493,12 @@
           </div>
         </div>
 
+        <!-- S159: expenses TMC paid, from the case Expenses tab — one invoice line each -->
+        <div class="exp-recharge" id="exp-recharge">
+          <div class="section-sub">Expenses paid by TMC (from the case Expenses tab)</div>
+          <div id="exp-recharge-list"><div class="exp-recharge-none">Loading&hellip;</div></div>
+        </div>
+
         <!-- Totals -->
         <div class="totals-block">
           <div class="totals-row" id="tot-row-drafting" style="display:none;"><span class="t-label">Drafting fee (IP)</span><span class="t-value" id="tot-drafting">&pound;0.00</span></div>
@@ -495,6 +507,7 @@
           <div class="totals-row" id="tot-row-bespoke" style="display:none;"><span class="t-label">Bespoke</span><span class="t-value" id="tot-bespoke">&pound;0.00</span></div>
           <div class="totals-row" id="tot-row-subtotal" style="display:none;"><span class="t-label">Sub Total</span><span class="t-value" id="tot-subtotal">&pound;0.00</span></div>
           <div class="totals-row"><span class="t-label">VAT @ 20%</span><span class="t-value" id="tot-vat">&pound;0.00</span></div>
+          <div class="totals-row" id="tot-row-exp-lines" style="display:none;"><span class="t-label">Expenses paid by TMC</span><span class="t-value" id="tot-exp-lines">&pound;0.00</span></div>
           <div class="totals-row" id="tot-row-expenses" style="display:none;"><span class="t-label">Expenses</span><span class="t-value" id="tot-expenses">&pound;0.00</span></div>
           <div class="totals-row grand"><span class="t-label">Grand Total</span><span class="t-value" id="tot-grand">&pound;0.00</span></div>
         </div>
@@ -564,6 +577,7 @@ let selectedCase   = null;
 let _caseCache     = [];
 let _cacheReady    = false;   // true once preload resolves
 let _allWipEntries = [];
+let _tmcExpenses = [];   // S159: TMC-paid expenses not yet on any invoice, from /api/expenses
 let _showNonBillable = false;
 
 // ── Identity ──────────────────────────────────────────────
@@ -708,7 +722,7 @@ function pickCase(fields, spId) {
 }
 
 function clearSelection() {
-  selectedCase = null; _allWipEntries = [];
+  selectedCase = null; _allWipEntries = []; _tmcExpenses = [];
   el('selected-case').classList.remove('visible');
   el('figures-section').classList.remove('visible');
   el('issue-section').classList.remove('visible');
@@ -842,6 +856,16 @@ async function loadFigures(fields) {
     }
   } catch (_) {}
 
+  // S159: TMC-paid expenses waiting to be recharged — pre-ticked, one invoice line each.
+  _tmcExpenses = [];
+  let _expLoadErr = '';
+  try {
+    const xr = await fetch('/api/expenses?invoiceable=1&ref=' + encodeURIComponent(ourRef));
+    if (xr.ok) _tmcExpenses = ((await xr.json()).rows || []);
+    else _expLoadErr = 'HTTP ' + xr.status;
+  } catch (e) { _expLoadErr = e.message; }
+  renderExpRecharge(_expLoadErr);
+
   el('figures-loading').style.display = 'none';
   el('figures-content').style.display = 'block';
 
@@ -851,6 +875,30 @@ async function loadFigures(fields) {
 }
 
 // ── WIP table ─────────────────────────────────────────────
+function renderExpRecharge(loadErr) {
+  const box = el('exp-recharge-list');
+  if (!box) return;
+  if (loadErr) {
+    box.innerHTML = '<div class="exp-recharge-none" style="color:var(--error);">Could not load the case expenses (' + esc(loadErr) + '). Anything TMC paid will not be on this invoice.</div>';
+    return;
+  }
+  if (!_tmcExpenses.length) {
+    box.innerHTML = '<div class="exp-recharge-none">None waiting to be invoiced.</div>';
+    return;
+  }
+  box.innerHTML = _tmcExpenses.map(x =>
+    '<label class="exp-recharge-row"><input type="checkbox" class="wip-check exp-check" data-exp-id="' + esc(String(x.id)) + '" checked />'
+    + '<span class="x-desc">' + esc(x.description) + ' <span style="color:var(--grey-mid);">\u00b7 ' + esc(x.type) + (x.date ? ' \u00b7 ' + esc(new Date(x.date).toLocaleDateString('en-GB')) : '') + '</span></span>'
+    + '<span class="x-amt">' + gbp(x.gross) + (x.vat ? ' <span style="color:var(--grey-mid);font-size:11.5px;">inc VAT ' + gbp(x.vat) + '</span>' : '') + '</span></label>'
+  ).join('');
+  box.querySelectorAll('.exp-check').forEach(c => c.addEventListener('change', recalc));
+}
+
+// S159: the line printed on the invoice for one recharged expense.
+function expInvoiceLine(x) {
+  return (x.description || x.type || 'Expense') + (x.vat ? ' (inc VAT ' + gbp(x.vat) + ')' : '');
+}
+
 function renderWipTable() {
   const tbody = el('wip-tbody');
   const unbilled = _allWipEntries.filter(e => !e.Billed);
@@ -1114,7 +1162,12 @@ function recalc() {
   const vatBase  = timedFee + (vatOnDrafting ? (draftingFee + laFee) : 0) + bespokeAmt;
   const vat      = Math.round(vatBase * 0.2 * 100) / 100;
   const subTotal = draftingFee + laFee + timedFee + bespokeAmt;
-  const grand    = subTotal + vat + bespokeExp + bespokeExpVat;
+  // S159: ticked TMC-paid expenses — recharged after VAT, like the bespoke expenses line.
+  const expChecked = new Set(Array.from(document.querySelectorAll('#exp-recharge-list .exp-check:checked')).map(c => c.getAttribute('data-exp-id')));
+  const expLines = _tmcExpenses.filter(x => expChecked.has(String(x.id)))
+    .map(x => ({ id: String(x.id), line: expInvoiceLine(x), amount: x.gross, net: x.net, vat: x.vat }));
+  const expLinesTotal = Math.round(expLines.reduce((a, x) => a + (x.amount || 0), 0) * 100) / 100;
+  const grand    = Math.round((subTotal + vat + bespokeExp + bespokeExpVat + expLinesTotal) * 100) / 100;
 
   // Totals rows
   rowShow('tot-row-drafting',    draftingFee > 0);
@@ -1123,6 +1176,8 @@ function recalc() {
   rowShow('tot-row-bespoke',     bespokeAmt > 0);
   rowShow('tot-row-subtotal',    subTotal > 0);
   rowShow('tot-row-expenses',    bespokeExp > 0 || bespokeExpVat > 0);
+  rowShow('tot-row-exp-lines',   expLinesTotal > 0);
+  el('tot-exp-lines').textContent   = gbp(expLinesTotal);
 
   el('tot-drafting').textContent    = gbp(draftingFee);
   el('tot-la-drafting').textContent = gbp(laFee);
@@ -1133,7 +1188,7 @@ function recalc() {
   el('tot-expenses').textContent    = gbp(bespokeExp + bespokeExpVat);
   el('tot-grand').textContent       = gbp(grand);
 
-  const hasSomething = draftingFee > 0 || laFee > 0 || timedFee > 0 || bespokeAmt > 0;
+  const hasSomething = draftingFee > 0 || laFee > 0 || timedFee > 0 || bespokeAmt > 0 || expLinesTotal > 0;
   const hasDraftingFee = draftingFee > 0 || laFee > 0;
   const draftedBy = (el('inp-drafted-by').value || '').trim();
   const draftedByMissing = !draftedBy;
@@ -1159,7 +1214,9 @@ function recalc() {
   // a case whose "VAT on drafting fee?" reads No comes out at zero VAT with nothing said, and a
   // run of those went out to one firm before anyone spotted it. Show the confirmation panel and
   // hold the button until the zero rating is expressly confirmed with a reason.
-  const zeroVat       = grand > 0 && vat <= 0;
+  // S159: tested on the FEES (subTotal), not the grand total — a recharged court fee or other
+  // expense carries no VAT of TMC's own, so an expenses-only invoice is not a nil-VAT mistake.
+  const zeroVat       = subTotal > 0 && vat <= 0;
   const zeroVatOk     = !!(el('inp-zero-vat-ok') && el('inp-zero-vat-ok').checked);
   const zeroVatReason = ((el('inp-zero-vat-reason') || {}).value || '').trim();
   const zeroVatBlock  = el('zero-vat-block');
@@ -1168,7 +1225,7 @@ function recalc() {
 
   const blockReason0 = draftedByMissing
     ? 'Choose who drafted the bill above \u2014 it must be set on every invoice.'
-    : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work or a bespoke amount.'
+    : (!hasSomething ? 'Nothing to invoice yet \u2014 enter a drafting fee, timed work, a bespoke amount or tick an expense.'
     : (zeroVatUnconfirmed ? 'This invoice carries a value but no VAT \u2014 check \u201cVAT on drafting fee?\u201d on the case, or confirm the zero rating and give a reason above.' : ''));
   // S136: an invalid apportionment holds the Preview button like any other blocker.
   const blockReason = blockReason0 || (feeSplitError ? ('Apportionment: ' + feeSplitError) : '');
@@ -1197,6 +1254,9 @@ function recalc() {
       { line: el('inp-bespoke-line-2').value, amount: bespokeAmt2 },
     ],
     bespokeExpensesLine: el('inp-bespoke-expenses-line').value,
+    expLines,                               // S159: [{id, line, amount, net, vat}]
+    expLinesTotal,
+    checkedExpenseIds: expLines.map(x => x.id),
     draftedByEmail:     draftedBy,
     feeSplit:           feeSplit.rows,      // S136: [{email, pct}] — [] when no apportionment
     wipLines: Array.from(el('wip-tbody').querySelectorAll('tr[data-idx]')).map(tr => ({
@@ -1288,6 +1348,7 @@ async function buildInvoiceData() {
     bespokeLines:      c.bespokeLines || [],
     expenses:          (c.bespokeExp || 0) + (c.bespokeExpVat || 0),
     bespokeExpensesLine: c.bespokeExpensesLine || '',
+    expenseLines:      (c.expLines || []).map(x => ({ line: x.line, amount: x.amount })),  // S159
     vatOnDrafting:   c.vatOnDrafting,
     logoDataUrl,
     scheduleLines:   c.scheduleLines || [],
@@ -1406,6 +1467,7 @@ async function approveDraft() {
       checkedWipIds:     wipIdsForBilling,
       checkedWipEntries: c.checkedWipEntries || [],
       draftingFeeSplit:  c.feeSplit || [],   // S136: earnings-only apportionment; server re-validates
+      checkedExpenseIds: c.checkedExpenseIds || [],   // S159: server re-reads and re-checks each
     };
 
     const r = await fetch('/api/createdraft', {
@@ -1432,6 +1494,12 @@ async function approveDraft() {
       : '';
     el('issue-status').innerHTML = '\u2713 Draft created for Lesley to review and issue.' + linkHtml;
     el('issue-status').className = 'status-msg success';
+    // S159: an expense that could not be stamped would be offered again on the next draft.
+    if (Array.isArray(result.expensesFailedIds) && result.expensesFailedIds.length) {
+      el('issue-status').innerHTML += '<br><strong style="color:var(--error);">' + result.expensesFailedIds.length
+        + ' expense(s) are on this draft but could not be marked as invoiced (id ' + esc(result.expensesFailedIds.join(', '))
+        + '). Tell Toby before another draft is made for this case.</strong>';
+    }
 
   } catch (err) {
     spinner.classList.remove('visible');

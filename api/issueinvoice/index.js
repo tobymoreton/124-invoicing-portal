@@ -40,6 +40,7 @@ const INVOICE_LIB = '5c366b19-0da9-4be9-b68f-60e6a0209cdb';
 const LINE_ITEMS  = '496468a5-e2ed-48db-8826-58cb08844eee';
 const TT2         = '67db204c-30a5-4f4d-b276-60852d9967e1';
 const COUNTER     = '7366b72d-02c4-4db1-a48b-907dfc7a33c7';
+const EXPENSES_LIST = '14d9fb67-1c55-484d-85ba-730ce73569a0';  // CaseExpenses   // S159 — same value in api/expenses, createdraft, cancelinvoice
 
 const ISSUE_EMAILS = ['lesley@tmclegal.co.uk', 'toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 
@@ -89,7 +90,7 @@ module.exports = async function (context, req) {
     context.log('Checking DraftedByEmail safety guard…');
     const guardUrl    = 'https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
       + '/lists/' + INVOICE_LIB + '/items/' + listItemId
-      + '/fields?$select=DraftedByEmail,DraftingFeeElement';
+      + '/fields?$select=DraftedByEmail,DraftingFeeElement,Net,VAT,Expenses';
     const guardFields = await graphGet(guardUrl, token);
     const draftedByEmail = (guardFields.DraftedByEmail || '').trim().toLowerCase();
     if (!draftedByEmail) {
@@ -107,6 +108,20 @@ module.exports = async function (context, req) {
       return;
     }
     context.log('DraftedByEmail guard passed.');
+
+    // S159: AmountDue is Net + VAT + Expenses as stored on the draft. The issue button sends
+    // AmountDue || Net + VAT, which has always dropped the Expenses column — so a bespoke expense
+    // (and now an Expenses-tab recharge) was printed on the invoice but missing from AmountDue.
+    const _num = v => parseFloat(String(v == null ? '' : v).replace(/[£,\s]/g, '')) || 0;
+    // Only when the button sent Net + VAT (the fallback) — an AmountDue already on the draft is kept.
+    const sentGrand  = Number(grandTotal) || 0;
+    const netPlusVat = Math.round((_num(guardFields.Net) + _num(guardFields.VAT)) * 100) / 100;
+    const amountDue  = Math.abs(sentGrand - netPlusVat) < 0.005
+      ? Math.round((netPlusVat + _num(guardFields.Expenses)) * 100) / 100
+      : sentGrand;
+    if (Math.abs(amountDue - (Number(grandTotal) || 0)) > 0.005) {
+      context.log('S159: AmountDue ' + amountDue + ' from the draft record (client sent ' + grandTotal + ').');
+    }
 
     // ── S144: line-item completeness guard ───────────────────────────────────
     // Every ticked time entry (DraftWipIds) must have its Line Item, or that time is billed to
@@ -221,7 +236,7 @@ module.exports = async function (context, req) {
       OrderDetails: String(invoiceNumber),
       InvoiceDate:  invoiceDateIso,
       DueDate:      dueDateIso,
-      AmountDue:    grandTotal,
+      AmountDue:    amountDue,   // S159
     });
     context.log('Invoice Library item patched.');
 
@@ -327,6 +342,22 @@ module.exports = async function (context, req) {
       earningsScaled = { error: e.message };
     }
 
+    // ── 9c. S159: stamp the recharged expenses with the invoice number ───────
+    let expensesStamped = 0, expensesFailed = 0;
+    try {
+      const xr = await graphGetUnindexed('https://graph.microsoft.com/v1.0/sites/' + SITE_PATH
+        + '/lists/' + EXPENSES_LIST + '/items?$expand=fields($select=id,InvoiceItemId)'
+        + '&$filter=fields/InvoiceItemId eq \'' + String(listItemId).replace(/'/g, "''") + '\'&$top=200', token);
+      for (const x of (xr.value || [])) {
+        if (String((x.fields || {}).InvoiceItemId || '').trim() !== String(listItemId)) continue;
+        try { await patchListItem(token, EXPENSES_LIST, x.id, { InvoiceNumber: String(invoiceNumber) }); expensesStamped++; }
+        catch (e) { context.log.error('Expense number stamp failed for', x.id, ':', e.message); expensesFailed++; }
+      }
+    } catch (e) {
+      context.log.error('S159 expense stamping failed:', e.message);
+      expensesFailed = -1;
+    }
+
     // ── Done ──────────────────────────────────────────────────────────────────
     // Collect TT2 and Line Item errors for diagnostics
     const liErrors  = [];
@@ -342,6 +373,8 @@ module.exports = async function (context, req) {
         tt2Errors,
         wipIds,
         earningsScaled,
+        amountDue,                       // S159
+        expensesStamped, expensesFailed, // S159 (-1 = the lookup itself failed)
       }),
     };
 

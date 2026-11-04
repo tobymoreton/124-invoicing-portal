@@ -1727,7 +1727,7 @@ async function issueInvoice(listItemId, grandTotal) {
     if (inv) {
       inv.OrderDetails = data.invoiceNumber;
       inv.InvoiceDate  = data.invoiceDate;
-      inv.AmountDue    = grandTotal;
+      inv.AmountDue    = (data.amountDue != null ? data.amountDue : grandTotal); // S159: server adds Expenses
     }
     closeDrawer();
     renderTable();

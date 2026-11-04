@@ -26,6 +26,9 @@
  *   bespokeLines     Array|null   [{line, amount}, ...] — rendered as separate line items (zero-amount lines skipped); falls back to bespokeInvoiceLine/bespokeAmt as one row when absent
  *   expenses         number       default 0 (combined bespoke expenses + expenses VAT)
  *   bespokeExpensesLine string    bespoke expenses line description — falls back to "Expenses" if blank
+ *   expenseLines     object[]     S159 — TMC-paid expenses from the case Expenses tab, recharged:
+ *                                 [{ line, amount }] (amount inc any VAT on the expense). One row
+ *                                 each after VAT, like the bespoke expenses row. Optional.
  *   vatOnDrafting    boolean      if true, VAT applies to draftingFee AND laFee
  *   logoDataUrl      string|null  base64 data URL for logo (inline); falls back to filename
  *   scheduleLines    Array|null   [{date, workDone, hours, rate, amount}] — appended as Schedule of Work
@@ -147,7 +150,11 @@ function generateInvoiceHTML(data) {
   const vatBase  = timedFee + (data.vatOnDrafting ? (draftingFee + laFee) : 0) + bespokeAmt;
   const vat      = Math.round(vatBase * 0.2 * 100) / 100;
   const subTotal = draftingFee + laFee + timedFee + bespokeAmt;
-  const grand    = subTotal + vat + expenses;
+  // S159: case Expenses tab lines (recharged, outside the VAT base — as bespoke expenses)
+  const expenseLines = (Array.isArray(data.expenseLines) ? data.expenseLines : [])
+    .filter(function (xl) { return (parseFloat(xl.amount) || 0) > 0; });
+  const expenseLinesTotal = Math.round(expenseLines.reduce(function (a, xl) { return a + (parseFloat(xl.amount) || 0); }, 0) * 100) / 100;
+  const grand    = Math.round((subTotal + vat + expenses + expenseLinesTotal) * 100) / 100;
 
   // Bespoke lines: rendered as separate rows when supplied; falls back to a single
   // row (bespokeInvoiceLine/bespokeAmt) when bespokeLines is absent or empty.
@@ -199,6 +206,9 @@ function generateInvoiceHTML(data) {
   const tots = [];
   if (hasBoth) tots.push('<tr><td>Sub Total</td><td style="white-space:nowrap">' + _fmtGBP(subTotal) + '</td></tr>');
   tots.push('<tr><td>VAT @ 20%</td><td>' + _fmtGBP(vat) + '</td></tr>');
+  expenseLines.forEach(function (xl) {
+    tots.push('<tr><td>' + _esc(xl.line || 'Expense') + '</td><td>' + _fmtGBP(parseFloat(xl.amount) || 0) + '</td></tr>');
+  });
   if (hasExpenses) tots.push('<tr><td>' + _esc(data.bespokeExpensesLine || 'Expenses') + '</td><td>' + _fmtGBP(expenses) + '</td></tr>');
   tots.push('<tr class="grand-total"><td>Grand Total</td><td>' + _fmtGBP(grand) + '</td></tr>');
   const totalsRows = tots.join('');
