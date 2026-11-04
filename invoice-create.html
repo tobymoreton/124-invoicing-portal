@@ -117,6 +117,19 @@
     .limit-row{display:flex;align-items:center;gap:16px;margin-top:12px;padding:10px 14px;background:var(--cream);border-radius:var(--radius);border:1px solid var(--grey-light);}
     .limit-label{font-size:12px;color:var(--grey-mid);font-weight:500;flex:1;}
     .limit-hint{font-size:11px;color:var(--grey-mid);margin-top:3px;}
+    /* S160: timed-work limit/override panel, above the schedule */
+    .timed-ctrl{margin-top:14px;border:1.5px solid var(--gold);border-radius:var(--radius);background:var(--white);overflow:hidden;}
+    .timed-ctrl-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:12px 16px;background:var(--cream);border-bottom:1px solid var(--grey-light);}
+    .timed-ctrl-head .tc-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--grey-mid);}
+    .timed-ctrl-head .tc-full{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:var(--navy);}
+    .timed-ctrl-head .tc-hrs{font-size:12px;color:var(--grey-mid);margin-left:8px;font-weight:400;}
+    .timed-ctrl .limit-row{margin:0;border:none;border-radius:0;border-bottom:1px solid var(--grey-faint);background:var(--white);}
+    .timed-ctrl .limit-label{font-size:13px;color:var(--navy);font-weight:600;}
+    .timed-ctrl .form-input-num{font-size:14px;}
+    .timed-ctrl-foot{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:12px 16px;}
+    .timed-ctrl-foot .tc-label{font-size:12px;font-weight:600;color:var(--navy);}
+    .timed-ctrl-foot .tc-billed{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:700;color:var(--navy);}
+    .timed-ctrl-foot .tc-note{font-size:11.5px;color:#92400E;margin-left:8px;font-weight:500;font-family:'IBM Plex Sans',sans-serif;}
 
     /* Bespoke */
     .bespoke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -406,6 +419,32 @@
           <span class="form-value" id="fig-but-say-tw-preview" style="font-size:12px;color:var(--grey-mid);"></span>
         </div>
 
+        <!-- S160: limit / override, above the schedule, with the full and billed figures -->
+        <div class="timed-ctrl" id="timed-ctrl">
+          <div class="timed-ctrl-head">
+            <span class="tc-label">Full value of ticked time (net)</span>
+            <span class="tc-full"><span id="fig-timed-full">&pound;0.00</span><span class="tc-hrs" id="fig-timed-full-hrs"></span></span>
+          </div>
+          <div class="limit-row">
+            <div>
+              <div class="limit-label">Limit timed work (net)</div>
+              <div class="limit-hint">Leave blank to bill the full value</div>
+            </div>
+            <input type="number" class="form-input-num" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" style="width:140px;" />
+          </div>
+          <div class="limit-row">
+            <div>
+              <div class="limit-label">Override timed total (net)</div>
+              <div class="limit-hint">Replaces the full or limited figure when set</div>
+            </div>
+            <input type="number" class="form-input-num" id="inp-timed-override" min="0" step="0.01" placeholder="No override" style="width:140px;" />
+          </div>
+          <div class="timed-ctrl-foot">
+            <span class="tc-label">Timed work on the invoice (net)</span>
+            <span class="tc-billed"><span id="fig-timed-billed">&pound;0.00</span><span class="tc-note" id="fig-timed-billed-note"></span></span>
+          </div>
+        </div>
+
         <div class="wip-toolbar" style="margin-top:14px;">
           <span class="wip-summary" id="wip-summary"></span>
           <button class="wip-toggle" id="wip-toggle-nonbillable">Show non-billable</button>
@@ -426,22 +465,6 @@
             <tr><td colspan="6" class="wip-no-entries">Loading&hellip;</td></tr>
           </tbody>
         </table>
-
-        <div class="limit-row">
-          <div>
-            <div class="limit-label">Limit timed work (net)</div>
-            <div class="limit-hint">Leave blank to use the computed total</div>
-          </div>
-          <input type="number" class="form-input-num" id="inp-limit-timed" min="0" step="0.01" placeholder="No limit" style="width:120px;" />
-        </div>
-
-        <div class="limit-row">
-          <div>
-            <div class="limit-label">Override timed total (net)</div>
-            <div class="limit-hint">Overrides the computed/limited total when set</div>
-          </div>
-          <input type="number" class="form-input-num" id="inp-timed-override" min="0" step="0.01" placeholder="No override" style="width:120px;" />
-        </div>
 
         <!-- Bespoke -->
         <div class="section-sub" id="bespoke-section">Bespoke Invoice (optional)</div>
@@ -1136,6 +1159,15 @@ function recalc() {
   const timedOverride    = timedOverrideRaw !== '' ? (parseFloat(timedOverrideRaw) || 0) : null;
   const timedLimited     = limitTimed > 0 ? Math.min(timedRaw, limitTimed) : timedRaw;
   const timedFee         = timedOverride !== null ? timedOverride : timedLimited;
+
+  // S160: full value alongside the limit/override, and what actually goes on the invoice.
+  el('fig-timed-full').textContent     = gbp(timedRaw);
+  el('fig-timed-full-hrs').textContent = timedHrs ? timedHrs + ' hr' + (timedHrs !== 1 ? 's' : '') : '';
+  el('fig-timed-billed').textContent   = gbp(timedFee);
+  const _tDiff = Math.round((timedRaw - timedFee) * 100) / 100;
+  el('fig-timed-billed-note').textContent = timedOverride !== null
+    ? 'overridden' + (_tDiff ? ' (' + (_tDiff > 0 ? gbp(_tDiff) + ' written off' : gbp(-_tDiff) + ' above full value') + ')' : '')
+    : (timedLimited < timedRaw ? 'limited (' + gbp(_tDiff) + ' written off)' : '');
 
   // Update timed work line placeholder with live hours.
   // Once the user edits the line, leave their wording exactly as typed.
