@@ -181,8 +181,8 @@ module.exports = async function (context, req) {
       const f    = entry.fields || {};
       const hrs  = parseFloat(f['TimeSpentMirror'] || f['field_3']) || 0;
       const rate = parseFloat(f['field_6']);
-      const pro  = parseFloat(f['ProRataApportionment']);
-      const factor = (isNaN(pro) || pro <= 0) ? 1 : pro / 100;
+      // S162 (05/11/2026, Toby): a limit caps the TOTAL only. Every row always shows its full value (hrs x rate); ProRataApportionment is deliberately ignored here (factor 1).
+      const factor = 1;
 
       // 🔴 2026-08-05 (S101) — THE STORED AMOUNT NO LONGER WINS ON UNBILLED ROWS.
       // Num_BillableAmount_x00a3_ is a SNAPSHOT of the SP calculated column
