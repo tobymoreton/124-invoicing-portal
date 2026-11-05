@@ -295,11 +295,10 @@ module.exports = async function (context, req) {
           if (cf['Billed_x003f_'] !== true) {
             const hrs  = (b.timeSpent !== undefined ? parseFloat(b.timeSpent) : parseFloat(cf['TimeSpentMirror'] || cf['field_3'])) || 0;
             const rate = (b.rate      !== undefined ? parseFloat(b.rate)      : parseFloat(cf['field_6']))                        || 0;
-            const pro  = parseFloat(cf['ProRataApportionment']);
             // Only write when both are positive. Writing 0 would wipe a good snapshot on a
             // rate-less row (the silent-zero fault) — leave that for a rate to be set first.
             if (hrs > 0 && rate > 0) {
-              fields['Num_BillableAmount_x00a3_'] = hrs * rate * ((isNaN(pro) || pro <= 0) ? 1 : pro / 100);
+              fields['Num_BillableAmount_x00a3_'] = hrs * rate; // S162 — full value, limit caps the total only
             }
           }
         } catch (e) {
