@@ -84,8 +84,7 @@ module.exports = async function (context, req) {
       if (hrs <= 0)                       { skippedNoHours++;     continue; }
       const curRate = parseFloat(f['field_6']) || 0;
       if (Math.abs(curRate - rate) < 0.005) { skippedSameRate++; continue; }
-      const pro    = parseFloat(f['ProRataApportionment']);
-      const factor = (isNaN(pro) || pro <= 0) ? 1 : pro / 100;
+      const factor = 1; // S162 — full value, limit caps the total only
       toUpdate.push({
         id: it.id,
         hrs,
