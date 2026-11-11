@@ -538,6 +538,7 @@
     <div class="poa-modal-head">Allocate payment to an invoice</div>
     <div class="poa-modal-body">
       <div class="poa-alloc-sum" id="alloc-sum"></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--navy);margin-top:10px;cursor:pointer;"><input type="checkbox" id="alloc-already" onchange="allocModeChanged()"> Already booked on the invoice by hand — just clear it from this list</label>
       <label class="poa-lbl">Invoice</label>
       <input class="poa-inp" id="alloc-inv" type="text" list="alloc-invs" placeholder="Invoice no., our ref, case or firm…" autocomplete="off" oninput="allocInvChanged()">
       <datalist id="alloc-invs"></datalist>
@@ -2525,9 +2526,31 @@ function allocLabel(i) {
     + ' \u2014 ' + (i.VendorName || '') + ' \u2014 \u00a3' + out.toFixed(2) + ' o/s';
 }
 
+// Normal mode: open invoices only. "Already booked" mode: any issued invoice, because
+// the hand-booked payment may already have taken it to Paid.
+function allocAlready() { const c = document.getElementById('alloc-already'); return !!(c && c.checked); }
 function allocOpenInvoices() {
+  const all = allocAlready();
   return (allInvoices || []).filter(i => i.OrderDetails && i.InvoiceDate && !i.Cancelled
-    && (parseFloat(i.AmountOutstanding) || 0) > 0.005);
+    && (all || (parseFloat(i.AmountOutstanding) || 0) > 0.005));
+}
+
+function allocFillList() {
+  const firm = (_allocRow.firm || '').trim().toLowerCase();
+  const list = allocOpenInvoices().sort((a, b) => {
+    const fa = (a.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
+    const fb = (b.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
+    return fa - fb || String(b.OrderDetails).localeCompare(String(a.OrderDetails));
+  });
+  document.getElementById('alloc-invs').innerHTML =
+    list.map(i => '<option value="' + esc(allocLabel(i)) + '"></option>').join('');
+}
+
+function allocModeChanged() {
+  allocFillList();
+  allocInvChanged();
+  document.getElementById('alloc-date').disabled = allocAlready();
+  document.getElementById('alloc-save').textContent = allocAlready() ? 'Clear from list' : 'Allocate';
 }
 
 function openAllocModal(id) {
@@ -2537,15 +2560,9 @@ function openAllocModal(id) {
   const money = v => '\u00a3' + (v || 0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('alloc-sum').innerHTML = esc(_allocRow.firm || '\u2014')
     + ' \u2014 <strong>' + money(_allocRow.remaining) + '</strong> unallocated';
-  // Same firm's open invoices first, then everyone else's.
-  const firm = (_allocRow.firm || '').trim().toLowerCase();
-  const list = allocOpenInvoices().sort((a, b) => {
-    const fa = (a.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
-    const fb = (b.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
-    return fa - fb || String(a.OrderDetails).localeCompare(String(b.OrderDetails));
-  });
-  document.getElementById('alloc-invs').innerHTML =
-    list.map(i => '<option value="' + esc(allocLabel(i)) + '"></option>').join('');
+  // Same firm's invoices first, then everyone else's.
+  document.getElementById('alloc-already').checked = false;
+  allocFillList();
   document.getElementById('alloc-inv').value = '';
   document.getElementById('alloc-inv').disabled = false;
   document.getElementById('alloc-inv-info').textContent = '';
@@ -2582,7 +2599,7 @@ function allocInvChanged() {
   if (!_allocInv) { info.textContent = v ? 'No open invoice matches — pick one from the list.' : ''; return; }
   const out = parseFloat(_allocInv.AmountOutstanding) || 0;
   info.textContent = 'Invoice ' + _allocInv.OrderDetails + ' \u2014 ' + (_allocInv.Casename || '') + ' \u2014 \u00a3' + out.toFixed(2) + ' outstanding';
-  const amt = Math.min(_allocRow.remaining || 0, out);
+  const amt = allocAlready() ? (_allocRow.remaining || 0) : Math.min(_allocRow.remaining || 0, out);
   document.getElementById('alloc-amount').value = amt.toFixed(2);
 }
 
@@ -2622,6 +2639,25 @@ async function submitAlloc() {
   if (isNaN(amount) || amount <= 0) { allocMsg('Enter a positive amount.', true); return; }
   if (amount - (_allocRow.remaining || 0) > 0.005) {
     allocMsg('Only \u00a3' + (_allocRow.remaining || 0).toFixed(2) + ' is unallocated on this payment.', true); return;
+  }
+  if (allocAlready()) {
+    // Hand-booked already: register write ONLY. Nothing touches the invoice.
+    if (!confirm('Clear \u00a3' + amount.toFixed(2) + ' from the unallocated list as already booked on invoice '
+        + _allocInv.OrderDetails + '? The invoice itself is not changed.')) return;
+    _allocPending = { id: _allocRow.id, amount: amount, ref: String(_allocInv.OrderDetails)
+      + (_allocInv.Ourref ? ' (' + _allocInv.Ourref + ')' : '') + ' - booked by hand' };
+    btn.disabled = true; btn.textContent = 'Clearing\u2026';
+    try {
+      await allocRegister();
+      _allocPending = null;
+      document.getElementById('alloc-modal-overlay').classList.remove('open');
+      loadPOA();
+    } catch (e) {
+      _allocPending = null;
+      allocMsg(e.message, true);
+      btn.disabled = false; btn.textContent = 'Clear from list';
+    }
+    return;
   }
   if (!date) { allocMsg('Payment date is required.', true); return; }
   const free = [1,2,3,4,5,6].find(n => !(parseFloat(_allocInv['PaymentAmount' + n]) > 0) && !_allocInv['PaymentDate' + n]);
