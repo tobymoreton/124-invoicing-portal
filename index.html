@@ -254,6 +254,11 @@
     .poa-table .poa-num{text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600;}
     .poa-age{color:var(--overdue);font-weight:600;font-size:11px;}
     .poa-note{color:var(--grey-mid);}
+    .poa-alloc-btn{padding:4px 12px;background:var(--navy);color:var(--gold);border:1.5px solid var(--navy);border-radius:4px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+    .poa-alloc-btn:hover{background:var(--gold);color:var(--navy);border-color:var(--gold);}
+    .poa-alloc-sum{font-size:12.5px;color:var(--navy);background:var(--cream);border-radius:4px;padding:8px 11px;margin-bottom:4px;}
+    .poa-alloc-sum strong{font-family:'IBM Plex Mono',monospace;}
+    .poa-alloc-inv{font-size:12px;color:var(--grey-mid);margin-top:6px;min-height:15px;}
     .poa-modal-overlay{display:none;position:fixed;inset:0;background:rgba(27,42,74,.35);z-index:500;backdrop-filter:blur(2px);align-items:center;justify-content:center;}
     .poa-modal-overlay.open{display:flex;}
     .poa-modal{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:440px;max-width:94vw;overflow:hidden;}
@@ -523,6 +528,29 @@
     <div class="poa-modal-foot">
       <button class="poa-btn-cancel" onclick="closePOAModal()">Cancel</button>
       <button class="poa-btn-save" id="poa-save" onclick="submitPOA()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- S164: allocate a payment on account to an invoice -->
+<div class="poa-modal-overlay" id="alloc-modal-overlay">
+  <div class="poa-modal" role="dialog" aria-modal="true" aria-label="Allocate payment to invoice">
+    <div class="poa-modal-head">Allocate payment to an invoice</div>
+    <div class="poa-modal-body">
+      <div class="poa-alloc-sum" id="alloc-sum"></div>
+      <label class="poa-lbl">Invoice</label>
+      <input class="poa-inp" id="alloc-inv" type="text" list="alloc-invs" placeholder="Invoice no., our ref, case or firm…" autocomplete="off" oninput="allocInvChanged()">
+      <datalist id="alloc-invs"></datalist>
+      <div class="poa-alloc-inv" id="alloc-inv-info"></div>
+      <div class="poa-2col">
+        <div><label class="poa-lbl">Amount (£)</label><input class="poa-inp" id="alloc-amount" type="number" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label class="poa-lbl">Payment date</label><input class="poa-inp" id="alloc-date" type="date"></div>
+      </div>
+      <div class="poa-msg" id="alloc-msg"></div>
+    </div>
+    <div class="poa-modal-foot">
+      <button class="poa-btn-cancel" onclick="closeAllocModal()">Cancel</button>
+      <button class="poa-btn-save" id="alloc-save" onclick="submitAlloc()">Allocate</button>
     </div>
   </div>
 </div>
@@ -2344,7 +2372,7 @@ function filterByAge(min, max) {
 
 // PAYMENTS ON ACCOUNT (unallocated) — admin only (Toby, Danielle). Lives here on the
 // invoicing tab, in plain sight, because this is where payments get worked. Capture
-// only for now; allocate is the next step. Gate mirrors /api/paymentsonaccount.
+// and (S164) allocate. Gate mirrors /api/paymentsonaccount.
 // ---- Shared GET helper (S81, audit P4) ------------------------------------
 // Three separate multi-hour misdiagnoses came from a loader that swallowed a failed
 // fetch and rendered nothing: S74 (booking-in-sheet threw, every field showed a dash),
@@ -2410,6 +2438,7 @@ function renderPOA(total) {
       + '<td class="poa-num">' + money(r.remaining) + '</td>'
       + '<td>' + fd(r.date) + (age != null ? ' <span class="poa-age">' + age + 'd</span>' : '') + '</td>'
       + '<td class="poa-note">' + esc(r.note || '') + '</td>'
+      + '<td style="text-align:right"><button class="poa-alloc-btn" onclick="openAllocModal(\'' + esc(String(r.id)) + '\')">Allocate</button></td>'
       + '</tr>';
   }).join('');
   wrap.innerHTML =
@@ -2422,7 +2451,7 @@ function renderPOA(total) {
     + '<button class="poa-add-btn" onclick="openPOAModal()">+ Payment received</button>'
     + '</div>'
     + (hot
-        ? '<div class="poa-list"><table class="poa-table"><thead><tr><th>Client firm</th><th class="poa-num">Unallocated</th><th>Received</th><th>Note</th></tr></thead><tbody>' + rowsHTML + '</tbody></table></div>'
+        ? '<div class="poa-list"><table class="poa-table"><thead><tr><th>Client firm</th><th class="poa-num">Unallocated</th><th>Received</th><th>Note</th><th></th></tr></thead><tbody>' + rowsHTML + '</tbody></table></div>'
         : '');
 }
 
@@ -2478,6 +2507,156 @@ async function submitPOA() {
   } catch (e) {
     poaMsg(e.message, true);
     if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
+  }
+}
+
+
+// ── S164: ALLOCATE a payment on account to an invoice ─────────────────────────
+// Two writes, one per source of truth, in this order:
+//   1. /api/payment          — money onto the invoice's first free PaymentAmountN slot
+//   2. /api/paymentsonaccount — 'allocate': records it against the on-account row
+// If 2 fails after 1 succeeded, the money IS on the invoice; the button becomes
+// "Retry register" and re-sends step 2 ONLY. Step 1 is never re-sent — no double-booking.
+let _allocRow = null, _allocInv = null, _allocPending = null;
+
+function allocLabel(i) {
+  const out = parseFloat(i.AmountOutstanding) || 0;
+  return (i.OrderDetails || '') + ' \u2014 ' + (i.Ourref || '') + ' \u2014 ' + (i.Casename || '')
+    + ' \u2014 ' + (i.VendorName || '') + ' \u2014 \u00a3' + out.toFixed(2) + ' o/s';
+}
+
+function allocOpenInvoices() {
+  return (allInvoices || []).filter(i => i.OrderDetails && i.InvoiceDate && !i.Cancelled
+    && (parseFloat(i.AmountOutstanding) || 0) > 0.005);
+}
+
+function openAllocModal(id) {
+  _allocRow = _poaRows.find(r => String(r.id) === String(id));
+  if (!_allocRow) return;
+  _allocInv = null; _allocPending = null;
+  const money = v => '\u00a3' + (v || 0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('alloc-sum').innerHTML = esc(_allocRow.firm || '\u2014')
+    + ' \u2014 <strong>' + money(_allocRow.remaining) + '</strong> unallocated';
+  // Same firm's open invoices first, then everyone else's.
+  const firm = (_allocRow.firm || '').trim().toLowerCase();
+  const list = allocOpenInvoices().sort((a, b) => {
+    const fa = (a.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
+    const fb = (b.VendorName || '').trim().toLowerCase() === firm ? 0 : 1;
+    return fa - fb || String(a.OrderDetails).localeCompare(String(b.OrderDetails));
+  });
+  document.getElementById('alloc-invs').innerHTML =
+    list.map(i => '<option value="' + esc(allocLabel(i)) + '"></option>').join('');
+  document.getElementById('alloc-inv').value = '';
+  document.getElementById('alloc-inv').disabled = false;
+  document.getElementById('alloc-inv-info').textContent = '';
+  document.getElementById('alloc-amount').value = (_allocRow.remaining || 0).toFixed(2);
+  document.getElementById('alloc-amount').disabled = false;
+  document.getElementById('alloc-date').value = _allocRow.date ? String(_allocRow.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+  document.getElementById('alloc-date').disabled = false;
+  const btn = document.getElementById('alloc-save');
+  btn.disabled = false; btn.textContent = 'Allocate';
+  allocMsg('');
+  document.getElementById('alloc-modal-overlay').classList.add('open');
+  document.getElementById('alloc-inv').focus();
+}
+
+function closeAllocModal() {
+  if (_allocPending && !confirm('The payment is on the invoice but the unallocated register has NOT been updated. Close anyway?')) return;
+  document.getElementById('alloc-modal-overlay').classList.remove('open');
+  if (_allocPending) loadPOA();
+}
+
+function allocMsg(t, err) {
+  const m = document.getElementById('alloc-msg');
+  if (!m) return;
+  m.textContent = t || '';
+  m.className = 'poa-msg' + (t ? (err ? ' err' : ' ok') : '');
+}
+
+function allocInvChanged() {
+  const v = document.getElementById('alloc-inv').value.trim();
+  const list = allocOpenInvoices();
+  // Exact pick from the list, or a bare invoice number typed in.
+  _allocInv = list.find(i => allocLabel(i) === v) || list.find(i => String(i.OrderDetails).trim() === v) || null;
+  const info = document.getElementById('alloc-inv-info');
+  if (!_allocInv) { info.textContent = v ? 'No open invoice matches — pick one from the list.' : ''; return; }
+  const out = parseFloat(_allocInv.AmountOutstanding) || 0;
+  info.textContent = 'Invoice ' + _allocInv.OrderDetails + ' \u2014 ' + (_allocInv.Casename || '') + ' \u2014 \u00a3' + out.toFixed(2) + ' outstanding';
+  const amt = Math.min(_allocRow.remaining || 0, out);
+  document.getElementById('alloc-amount').value = amt.toFixed(2);
+}
+
+async function allocRegister() {
+  const p = _allocPending;
+  const res = await fetch(API_POA, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'allocate', id: p.id, amount: p.amount, invoiceRef: p.ref }),
+  });
+  const text = await res.text();
+  let data = null; try { data = JSON.parse(text); } catch (e) {}
+  if (!res.ok) throw new Error((data && data.error) || text || ('Server error ' + res.status));
+  return data;
+}
+
+async function submitAlloc() {
+  const btn = document.getElementById('alloc-save');
+  // Retry path: step 1 already done — step 2 only.
+  if (_allocPending) {
+    btn.disabled = true; btn.textContent = 'Retrying\u2026';
+    try {
+      await allocRegister();
+      _allocPending = null;
+      document.getElementById('alloc-modal-overlay').classList.remove('open');
+      loadPOA();
+    } catch (e) {
+      allocMsg('Payment is on the invoice. Register still not updated: ' + e.message, true);
+      btn.disabled = false; btn.textContent = 'Retry register';
+    }
+    return;
+  }
+
+  if (!_allocInv) { allocMsg('Pick an invoice from the list.', true); return; }
+  const amount = Math.round(parseFloat(document.getElementById('alloc-amount').value) * 100) / 100;
+  const date   = document.getElementById('alloc-date').value;
+  if (isNaN(amount) || amount <= 0) { allocMsg('Enter a positive amount.', true); return; }
+  if (amount - (_allocRow.remaining || 0) > 0.005) {
+    allocMsg('Only \u00a3' + (_allocRow.remaining || 0).toFixed(2) + ' is unallocated on this payment.', true); return;
+  }
+  if (!date) { allocMsg('Payment date is required.', true); return; }
+  const free = [1,2,3,4,5,6].find(n => !(parseFloat(_allocInv['PaymentAmount' + n]) > 0) && !_allocInv['PaymentDate' + n]);
+  if (!free) { allocMsg('All six payment slots on invoice ' + _allocInv.OrderDetails + ' are in use.', true); return; }
+  if (!confirm('Book \u00a3' + amount.toFixed(2) + ' from ' + (_allocRow.firm || 'this payment')
+      + ' onto invoice ' + _allocInv.OrderDetails + ' (' + (_allocInv.Casename || _allocInv.Ourref || '') + ')?')) return;
+
+  btn.disabled = true; btn.textContent = 'Allocating\u2026';
+  allocMsg('');
+  const inv = _allocInv;
+  // Step 1 — money onto the invoice (server picks the first free slot).
+  let data;
+  try {
+    data = await applyPayment(inv._id, null, amount, date, false);
+  } catch (e) {
+    allocMsg(e.message, true);
+    btn.disabled = false; btn.textContent = 'Allocate';
+    return;
+  }
+  if (!data) { btn.disabled = false; btn.textContent = 'Allocate'; return; }  // overpay declined
+  renderTable();
+  renderStats();
+  refreshInvoiceStatus(inv._id, inv.Ourref);
+
+  // Step 2 — record it on the on-account row.
+  _allocPending = { id: _allocRow.id, amount: amount, ref: String(inv.OrderDetails) + (inv.Ourref ? ' (' + inv.Ourref + ')' : '') };
+  ['alloc-inv', 'alloc-amount', 'alloc-date'].forEach(x => { document.getElementById(x).disabled = true; });
+  try {
+    await allocRegister();
+    _allocPending = null;
+    document.getElementById('alloc-modal-overlay').classList.remove('open');
+    loadPOA();
+  } catch (e) {
+    allocMsg('Payment IS on invoice ' + inv.OrderDetails + ' (slot ' + (data.slot || '?') + '). Register NOT updated: ' + e.message, true);
+    btn.disabled = false; btn.textContent = 'Retry register';
   }
 }
 
