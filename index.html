@@ -779,7 +779,7 @@ function renderStats() {
     if (invD && invD.getFullYear()===nowY && invD.getMonth()===nowM) {
       invoicedMonth += amt; invoicedMonthN++;
     }
-    [1,2,3].forEach(i => {
+    [1,2,3,4,5,6].forEach(i => {
       const pd = inv[`PaymentDate${i}`] ? new Date(inv[`PaymentDate${i}`]) : null;
       const pa = parseFloat(inv[`PaymentAmount${i}`])||0;
       if (pd && pa > 0 && pd.getFullYear()===nowY && pd.getMonth()===nowM) { paidMonth+=pa; paidMonthN++; }
@@ -852,7 +852,7 @@ function openDrawer(id) {
   const canPay = _isAdmin && !!inv.OrderDetails && !!inv.InvoiceDate && !inv.Cancelled;
   const todayIso = new Date().toISOString().slice(0,10);
   const outNow = parseFloat(inv.AmountOutstanding);
-  const slots = [1,2,3].map(i => {
+  const slots = [1,2,3,4,5,6].map(i => {
     const a=parseFloat(inv[`PaymentAmount${i}`]), d=inv[`PaymentDate${i}`];
     const has = !isNaN(a) && a>0;
     if (!canPay) {
@@ -1011,8 +1011,8 @@ function applyFilters(today) {
 }
 
 function applySort(invoices) {
-  const DATE_FIELDS=['DueDate','InvoiceDate','PaymentDate1','PaymentDate2','PaymentDate3'];
-  const NUM_FIELDS=['AmountDue','AmountOutstanding','PaymentAmount1','PaymentAmount2','PaymentAmount3'];
+  const DATE_FIELDS=['DueDate','InvoiceDate','PaymentDate1','PaymentDate2','PaymentDate3','PaymentDate4','PaymentDate5','PaymentDate6'];
+  const NUM_FIELDS=['AmountDue','AmountOutstanding','PaymentAmount1','PaymentAmount2','PaymentAmount3','PaymentAmount4','PaymentAmount5','PaymentAmount6'];
   return [...invoices].sort((a,b) => {
     let av=a[sortField], bv=b[sortField];
     if (DATE_FIELDS.includes(sortField)) { av=new Date(av||0).getTime(); bv=new Date(bv||0).getTime(); }
@@ -1074,7 +1074,7 @@ const ANOMALY_RULES = [
     test:(i,o,due,st)=>o < -0.005 },
   { key:'payNoDate', sev:'high', label:'Payment recorded with no payment date',
     why:'Cannot be reconciled or aged.',
-    test:(i)=>[1,2,3].some(k=>(parseFloat(i['PaymentAmount'+k])||0)>0 && !i['PaymentDate'+k]) },
+    test:(i)=>[1,2,3,4,5,6].some(k=>(parseFloat(i['PaymentAmount'+k])||0)>0 && !i['PaymentDate'+k]) },
   { key:'noDueDate', sev:'high', label:'Issued with no due date — unchaseable',
     why:'Can never become overdue, so will never be chased.',
     test:(i,o,due,st)=>!!i.OrderDetails && !i.DueDate && st!=='paid' },
@@ -1770,14 +1770,14 @@ async function cancelInvoice(listItemId) {
 }
 
 // ── Payments (S73) ────────────────────────────────────────────────────────────
-// Three slots, no fourth. Management only. The server is the gate; this is the UI.
+// Six slots (4–6 added S163), no seventh. Management only. The server is the gate; this is the UI.
 // Nothing is written optimistically — every render comes back from SharePoint.
 
 function fillOutstanding() {
   const inv = allInvoices.find(i => i._id === activeId);
   if (!inv) return;
-  const free = [1,2,3].find(i => !(parseFloat(inv[`PaymentAmount${i}`]) > 0));
-  if (!free) { payMsg('All three payment slots are in use.', true); return; }
+  const free = [1,2,3,4,5,6].find(i => !(parseFloat(inv[`PaymentAmount${i}`]) > 0));
+  if (!free) { payMsg('All six payment slots are in use.', true); return; }
   const out = parseFloat(inv.AmountOutstanding);
   const amt = document.getElementById('pay-amt-' + free);
   if (amt && !isNaN(out) && out > 0) { amt.value = out.toFixed(2); amt.focus(); }
@@ -1813,11 +1813,11 @@ async function applyPayment(listItemId, slot, amount, date, confirmOverpay) {
   }
 
   // Update the in-memory invoice from the SERVER read-back, then recompute
-  // AmountOutstanding exactly as /api/invoices does (due minus the three payments).
+  // AmountOutstanding exactly as /api/invoices does (due minus the six payments).
   const inv = allInvoices.find(i => i._id === listItemId);
   if (inv && data && data.invoice) {
     const f = data.invoice;
-    [1,2,3].forEach(n => {
+    [1,2,3,4,5,6].forEach(n => {
       const a = parseFloat(f['PaymentAmount' + n]);
       inv['PaymentAmount' + n] = isNaN(a) ? null : a;
       inv['PaymentDate'   + n] = f['PaymentDate' + n] || null;
@@ -1826,7 +1826,7 @@ async function applyPayment(listItemId, slot, amount, date, confirmOverpay) {
     if (f.Status_Text) inv.Status_Text = f.Status_Text;
     const due = parseFloat(inv.AmountDue);
     if (!isNaN(due)) {
-      const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n]) || 0), 0);
+      const paid = [1,2,3,4,5,6].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n]) || 0), 0);
       inv.AmountOutstanding = Math.round((due - paid) * 100) / 100;
     }
     // The 30-min sessionStorage cache holds allInvoices. Without this, a reload
@@ -1952,7 +1952,7 @@ async function printStatement(clientName) {
 
   const groupHTML = Object.entries(groups).map(([grp, invs]) => {
     const rows = invs.map((inv,i) => {
-      const paid = [1,2,3].reduce((s,n)=>s+(parseFloat(inv[`PaymentAmount${n}`])||0),0);
+      const paid = [1,2,3,4,5,6].reduce((s,n)=>s+(parseFloat(inv[`PaymentAmount${n}`])||0),0);
       const bg = i%2===1?'background:#f5f5f8;':'';
       return `<tr style="${bg}">
         <td style="padding:8px 10px;border-bottom:1px solid #e5e1d6;font-size:12px;">${inv.OrderDetails||'—'}</td>
@@ -2077,7 +2077,7 @@ async function exportStatementExcel(clientName) {
       c.fill = { type:'pattern', pattern:'solid', fgColor:{argb:NAVY} };
     });
     invs.forEach((inv, i) => {
-      const paid = [1,2,3].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n])||0), 0);
+      const paid = [1,2,3,4,5,6].reduce((s,n) => s + (parseFloat(inv['PaymentAmount'+n])||0), 0);
       const r = ws.addRow([
         inv.OrderDetails || '', inv.Ourref || '', inv.Theirref || '', inv.Casename || '',
         taskShort(taskForRef(inv.Ourref)) || '',

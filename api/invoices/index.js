@@ -39,9 +39,15 @@ const SELECT_FIELDS = [
   'PaymentAmount1',
   'PaymentAmount2',
   'PaymentAmount3',
+  'PaymentAmount4',      // S163: slots 4–6
+  'PaymentAmount5',
+  'PaymentAmount6',
   'PaymentDate1',
   'PaymentDate2',
   'PaymentDate3',
+  'PaymentDate4',
+  'PaymentDate5',
+  'PaymentDate6',
   'Case_x0020_ID',
   'DraftedByEmail',       // Mirror of DraftedBy/Email — use this, not DraftedBy
   'DraftingFeeElement',   // Drafting fee portion of invoice
@@ -86,7 +92,7 @@ function inDefaultWindow(inv, cutoff) {
   const o = parseFloat(inv.AmountOutstanding);
   if (!isNaN(o) && Math.abs(o) > 0.005) return true;
   if (inv.InvoiceDate && new Date(inv.InvoiceDate) >= cutoff) return true;
-  for (const k of [1, 2, 3]) {
+  for (const k of [1, 2, 3, 4, 5, 6]) {
     const d = inv['PaymentDate' + k];
     if (d && new Date(d) >= cutoff) return true;
   }
@@ -251,7 +257,7 @@ module.exports = async function (context, req) {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache',
           'X-Invoice-Window': 'myshare-' + myShareMode,
-          'X-Api-Build': 'S136-fee-split',
+          'X-Api-Build': 'S163-six-payment-slots',
         },
         body: JSON.stringify({
           mode:      myShareMode,
@@ -489,9 +495,15 @@ function normalise(item) {
     PaymentAmount1:     toNum(f.PaymentAmount1),
     PaymentAmount2:     toNum(f.PaymentAmount2),
     PaymentAmount3:     toNum(f.PaymentAmount3),
+    PaymentAmount4:     toNum(f.PaymentAmount4),
+    PaymentAmount5:     toNum(f.PaymentAmount5),
+    PaymentAmount6:     toNum(f.PaymentAmount6),
     PaymentDate1:       f.PaymentDate1        || null,
     PaymentDate2:       f.PaymentDate2        || null,
     PaymentDate3:       f.PaymentDate3        || null,
+    PaymentDate4:       f.PaymentDate4        || null,
+    PaymentDate5:       f.PaymentDate5        || null,
+    PaymentDate6:       f.PaymentDate6        || null,
     Case_x0020_ID:      f.Case_x0020_ID       || null,
     DraftedByEmail:     f.DraftedByEmail      || null,
     DraftingFeeElement: toNum(f.DraftingFeeElement),
@@ -535,8 +547,7 @@ function parseFeeSplit(text) {
 function computeOutstanding(f) {
   const due = parseFloat(f.AmountDue);
   if (isNaN(due)) return null;
-  const p1 = parseFloat(f.PaymentAmount1) || 0;
-  const p2 = parseFloat(f.PaymentAmount2) || 0;
-  const p3 = parseFloat(f.PaymentAmount3) || 0;
-  return Math.round((due - p1 - p2 - p3) * 100) / 100;
+  let paid = 0;
+  for (let n = 1; n <= 6; n++) paid += parseFloat(f['PaymentAmount' + n]) || 0;
+  return Math.round((due - paid) * 100) / 100;
 }

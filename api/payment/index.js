@@ -5,8 +5,8 @@
  * Records, edits and clears payments against an Invoice Library item.
  * Management only (Toby, Danielle).
  *
- * The Invoice Library has THREE payment slots: PaymentAmount1/2/3 + PaymentDate1/2/3.
- * There is no fourth. A request that needs one is REJECTED, not silently dropped.
+ * The Invoice Library has SIX payment slots: PaymentAmount1–6 + PaymentDate1–6 (4–6 added S163).
+ * There is no seventh. A request that needs one is REJECTED, not silently dropped.
  *
  * ⚠️  Status and AmountOutstanding are CALCULATED SP columns. This function NEVER
  *     writes either of them. Writing the payment is enough — SharePoint recomputes.
@@ -14,7 +14,7 @@
  *
  * POST body (JSON):
  *   listItemId      string        — Invoice Library SP list item ID   (required)
- *   slot            1 | 2 | 3     — target slot. Omit to use the first free one.
+ *   slot            1–6           — target slot. Omit to use the first free one.
  *   amount          number | null — payment amount. null/0/'' = CLEAR the slot.
  *   date            'YYYY-MM-DD'  — payment date. Required when amount > 0.
  *   confirmOverpay  boolean       — must be true to book a payment that takes the
@@ -39,7 +39,9 @@ const PAYMENT_EMAILS = ['toby@tmclegal.co.uk', 'danielle@tmclegal.co.uk'];
 const READ_BACK = [
   'id', 'OrderDetails', 'AmountDue', 'Cancelled', 'InvoiceDate', 'Status', 'Status_Text',
   'PaymentAmount1', 'PaymentAmount2', 'PaymentAmount3',
+  'PaymentAmount4', 'PaymentAmount5', 'PaymentAmount6',
   'PaymentDate1', 'PaymentDate2', 'PaymentDate3',
+  'PaymentDate4', 'PaymentDate5', 'PaymentDate6',
 ];
 
 module.exports = async function (context, req) {
@@ -81,8 +83,8 @@ module.exports = async function (context, req) {
   }
 
   let slot = (body.slot === undefined || body.slot === null) ? null : parseInt(body.slot, 10);
-  if (slot !== null && [1, 2, 3].indexOf(slot) === -1) {
-    bad(context, 'slot must be 1, 2 or 3.', 'BAD_INPUT');
+  if (slot !== null && [1, 2, 3, 4, 5, 6].indexOf(slot) === -1) {
+    bad(context, 'slot must be 1 to 6.', 'BAD_INPUT');
     return;
   }
   if (clearing && slot === null) {
@@ -125,10 +127,10 @@ module.exports = async function (context, req) {
 
     // ── 2. Resolve the slot ───────────────────────────────────────────────────
     if (slot === null) {
-      slot = [1, 2, 3].find(n => paid(n) === 0 && !f['PaymentDate' + n]) || null;
+      slot = [1, 2, 3, 4, 5, 6].find(n => paid(n) === 0 && !f['PaymentDate' + n]) || null;
       if (slot === null) {
         bad(context,
-          'All three payment slots on this invoice are in use. Edit an existing payment instead.',
+          'All six payment slots on this invoice are in use. Edit an existing payment instead.',
           'NO_FREE_SLOT');
         return;
       }
@@ -137,7 +139,7 @@ module.exports = async function (context, req) {
     // ── 3. Overpayment guard — warn, never silently allow ─────────────────────
     if (!clearing) {
       const due   = parseFloat(f.AmountDue) || 0;
-      const other = [1, 2, 3].filter(n => n !== slot).reduce((s, n) => s + paid(n), 0);
+      const other = [1, 2, 3, 4, 5, 6].filter(n => n !== slot).reduce((s, n) => s + paid(n), 0);
       const newOutstanding = Math.round((due - other - amount) * 100) / 100;
       if (newOutstanding < 0 && body.confirmOverpay !== true) {
         context.res = {
@@ -170,7 +172,7 @@ module.exports = async function (context, req) {
 
     context.res = {
       status: 200,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Api-Build': 'S163-six-payment-slots' },
       body: JSON.stringify({ ok: true, slot: slot, cleared: clearing, invoice: after }),
     };
 
