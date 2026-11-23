@@ -413,7 +413,13 @@ function doHtmlReplace(html, invoiceNumber, invoiceDate) {
   //    We replace only the first occurrence to avoid touching any other DRAFT text
   html = html.replace('>DRAFT<', '>' + invoiceNumber + '<');
 
-  // 3. Invoice date placeholder
+  // 3. Invoice date placeholder. S164: the draft wraps it in <em style="color:#92400E">,
+  //    so replacing only the text left the issued date italic and red-brown. Strip the
+  //    wrapper first; the plain-text replace stays as the fallback for older drafts.
+  html = html.replace(
+    /<em[^>]*>DRAFT — date assigned on issue<\/em>/,
+    dateStr
+  );
   html = html.replace(
     'DRAFT — date assigned on issue',
     dateStr
@@ -431,6 +437,9 @@ function doHtmlReplace(html, invoiceNumber, invoiceDate) {
   // 5. Remove draft banner — matches from opening tag to closing </div>
   //    Uses a non-greedy match so we don't eat past the first </div>
   html = html.replace(/<div class="draft-banner">[\s\S]*?<\/div>/, '');
+
+  // 6. S164: all text on the issued invoice is black — footer firm details were #444 grey.
+  html = html.replace('.footer .firm-details { margin-top:3mm; color:#444;', '.footer .firm-details { margin-top:3mm; color:#000;');
 
   return html;
 }

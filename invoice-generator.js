@@ -96,7 +96,7 @@ const INVOICE_CSS = [
   '.totals-table .grand-total td { font-weight:bold; font-size:11pt; padding-top:2mm; }',
   '.footer { margin-top:auto; padding-top:12mm; text-align:center; font-size:9pt; color:#000; line-height:1.6; }',
   '.footer .bacs { text-decoration:underline; }',
-  '.footer .firm-details { margin-top:3mm; color:#444; font-size:8.5pt; }',
+  '.footer .firm-details { margin-top:3mm; color:#000; font-size:8.5pt; }',
   /* Schedule of Work styles */
   '.schedule-page { width:210mm; min-height:297mm; margin:0 auto; padding:18mm 20mm 20mm 20mm; display:flex; flex-direction:column; }',
   // S122. Solid fills, and background-color rather than the background shorthand.
