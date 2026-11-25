@@ -8218,7 +8218,7 @@ async function submitAddAction() {
 
   var SPECS = {
     feeEarners:  { label: 'Fee Earners',                must: ['fe ref', 'fee earner (fe)/description', 'time (hrs)', 'profit costs'] },
-    partSummary: { label: 'Part Summary',               must: ['part', 'no.', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"] },
+    partSummary: { label: 'Part Summary',               must: ['part', 'no.|part number', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"] },
     billPod:     { label: 'Bill and Points of Dispute', must: ['item no.', 'part no.', 'f/e or csl ref|fee earner', 'narrative', 'hrs', 'profit costs'] },
     disb:        { label: 'Disbursements',              must: ['expense code', 'vat', 'totals'] },
     billSummary: { label: 'Bill Summary',               must: ['inter partes bill of costs overview:'] },
@@ -8277,7 +8277,29 @@ async function submitAddAction() {
       if (a.indexOf('part summary (interpartes') === 0 || a.indexOf('part summary (inter partes') === 0) ipAnchor = i;
       else if (a.indexOf('part summary (legal aid') === 0) laAnchor = i;
     }
-    if (ipAnchor < 0) fail('The Part Summary tab carries no “Part Summary (Interpartes)” block heading, so the inter partes parts cannot be told apart from the legal aid block.');
+    if (ipAnchor < 0) {
+      // S166: pre-PMR layout — one block, "Part Number" header spanning A:B, the
+      // number in col B, the LAA line as a part row, closed by a "Totals" row.
+      var lh = findHeader(rows, ['part number', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"], 0, 40);
+      if (!lh || lh.cols['part number'] !== 0) fail('The Part Summary tab carries no “Part Summary (Interpartes)” block heading and is not the older single-block layout either, so the inter partes parts cannot be told apart from the legal aid line.');
+      var lip = [], llaa = null;
+      for (var j = lh.row + 1; j < rows.length; j++) {
+        var lr = rows[j] || [];
+        if (norm(lr[0]).indexOf('total') === 0) break;
+        var lno = lr[1];
+        if (lno == null || lno === '') continue;
+        var lp = {
+          no: String(lno).trim(),
+          vatRate: numLine(lr[lh.cols['vat rate']], 'a Part Summary VAT Rate cell'),
+          pc: numLine(lr[lh.cols['profit costs']], 'a Part Summary Profit Costs cell'),
+          counsel: numLine(lr[lh.cols["counsel's fees"]], "a Part Summary Counsel's fees cell"),
+          counselVat: numLine(lr[lh.cols["counsel's vat"]], "a Part Summary Counsel's VAT cell")
+        };
+        if (norm(lno) === 'laa') llaa = lp; else lip.push(lp);
+      }
+      if (!lip.length) fail('The Part Summary tab has no part rows.');
+      return { ip: lip, laa: llaa };
+    }
     var TOK = ['no.', 'vat rate', 'profit costs', "counsel's fees", "counsel's vat"];
     function block(anchor, stopAt) {
       var h = findHeader(rows, TOK, anchor + 1, Math.min(anchor + 6, rows.length - 1));
