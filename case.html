@@ -8258,7 +8258,19 @@ async function submitAddAction() {
     for (var i = h.row + 1; i < rows.length; i++) {
       var row = rows[i] || [];
       if (norm(row[cRef]) === 'total') { totalPC = numTotal(row[cPC], 'the Fee Earners total profit costs'); break; }
-      if ((row[cRef] == null || row[cRef] === '') && (row[cDesc] == null || row[cDesc] === '')) continue;
+      if ((row[cRef] == null || row[cRef] === '') && (row[cDesc] == null || row[cDesc] === '')) {
+        // S166: older templates carry the total on an UNLABELLED row (ref and
+        // description blank). Taken as the total only if it equals the sum of the
+        // fee-earner rows above it to the penny — otherwise it is not trusted.
+        var uv = row[cPC];
+        if (uv != null && uv !== '' && numLine(uv, 'the Fee Earners profit costs column') !== 0) {
+          var uTot = numLine(uv, 'the Fee Earners profit costs column');
+          var uSum = r2(list.reduce(function (s, x) { return s + x.pc; }, 0));
+          if (Math.abs(r2(uTot) - uSum) > 0.005) fail('The Fee Earners tab has no Total row, and the unlabelled figure ' + money(uTot) + ' below the fee earners does not equal their sum ' + money(uSum) + '. Nothing has been read.');
+          totalPC = uTot; break;
+        }
+        continue;
+      }
       list.push({
         ref: String(row[cRef] == null ? '' : row[cRef]).trim(),
         desc: String(row[cDesc] == null ? '' : row[cDesc]).trim(),
@@ -8393,7 +8405,19 @@ async function submitAddAction() {
       if (norm(row[cRef]) === 'total') { total = numTotal(row[cTot], 'the Counsel tab Total Fees'); break; }
       if (row[cName] != null && row[cName] !== '') names.push(String(row[cName]).trim());
     }
-    if (total === null) fail('The Counsel tab has no Total row, so counsel\u2019s fees cannot be read.');
+    if (total === null) {
+      // S166: older templates have no Total row on the Counsel tab. Sum the
+      // Total Fees of the named counsel rows; parseWorkbook only accepts that sum
+      // if it equals the Part Summary counsel figure to the penny.
+      var sum = 0, any = false;
+      for (var k = h.row + 1; k < rows.length; k++) {
+        var rk = rows[k] || [];
+        if (rk[cName] == null || rk[cName] === '') continue;
+        sum += numLine(rk[cTot], 'a Counsel tab Total Fees cell'); any = true;
+      }
+      if (!any) fail('The Counsel tab has no Total row and no counsel rows, so counsel\u2019s fees cannot be read.');
+      return { total: r2(sum), names: names, summed: true };
+    }
     return { total: total, names: names };
   }
 
@@ -8428,6 +8452,9 @@ async function submitAddAction() {
            + ' of counsel\u2019s fees. Rather than write a zero over a real figure, nothing has been read.');
       }
       counsel = { total: 0, names: [], absent: true };
+    } else if (counsel.summed && Math.abs(counsel.total - partCounsel) > 0.005) {
+      fail('The Counsel tab has no Total row, and its counsel rows sum to ' + money(counsel.total)
+         + ' against ' + money(partCounsel) + ' on the Part Summary. Nothing has been read.');
     }
 
     return {
@@ -8514,6 +8541,7 @@ async function submitAddAction() {
       }
     });
     if (xiiNote) warn.push(xiiNote);
+    if (m.counsel.summed) warn.push('The Counsel tab has no Total row \u2014 counsel\u2019s fees are the sum of its counsel rows, which matches the Part Summary.');
     if (m.counsel.absent) warn.push('No Counsel tab in this workbook, and the Part Summary agrees there are no counsel\u2019s fees. Counsel recorded as \u00a30.00.');
     if (!clLines.length) warn.push('No bill lines are attributed to any ticked costs lawyer, so bill preparation and other costs-lawyer time both come out at \u00a30.00.');
     if (xii === null) warn.push('There is no other costs-lawyer time on this bill, so \u201cOther TMC PC vatable?\u201d is left BLANK rather than guessed.');
