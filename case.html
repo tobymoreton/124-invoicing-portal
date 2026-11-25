@@ -8361,6 +8361,31 @@ async function submitAddAction() {
     return out;
   }
 
+  // S167: the Disbursements tab total must equal the disbursement lines on the
+  // Bill tab. A line with no Code/Disb drops out of the Disbursements tab (item
+  // 1368, MXY/CXY: £303 court fee) and the import would silently understate.
+  function readLineDisbs(hit) {
+    var rows = hit.sheet.rows, h = hit.header, hrow = rows[h.row] || [];
+    var cItem = h.cols['item no.'], cD = -1, cCode = -1;
+    for (var c = 0; c < hrow.length; c++) {
+      var t = norm(hrow[c]);
+      if (cD < 0 && t === 'disbs') cD = c;
+      if (cCode < 0 && t.indexOf('code/disb') === 0) cCode = c;
+    }
+    if (cD < 0) fail('The Bill and Points of Dispute tab has no “Disbs” column, so the Disbursements tab total cannot be checked against the bill lines. Nothing has been read.');
+    var total = 0, uncoded = [];
+    for (var i = h.row + 1; i < rows.length; i++) {
+      var row = rows[i] || [];
+      if (row[cItem] == null || row[cItem] === '') continue;
+      var v = numLine(row[cD], 'a bill line Disbs cell');
+      if (!v) continue;
+      total += v;
+      var code = cCode < 0 ? '' : norm(row[cCode]);
+      if (code === '' || code === '-') uncoded.push(String(row[cItem]).trim() + ' (' + money(v) + ')');
+    }
+    return { total: r2(total), uncoded: uncoded };
+  }
+
   function readDisb(hit) {
     var rows = hit.sheet.rows, h = hit.header;
     var cCode = h.cols['expense code'], cVat = h.cols['vat'], cTot = h.cols['totals'], hrow = rows[h.row] || [];
@@ -8439,6 +8464,13 @@ async function submitAddAction() {
     var parts = readParts(f.partSummary);
     var lines = readLines(f.billPod);
     var disb = readDisb(f.disb);
+    var lineDisb = readLineDisbs(f.billPod);
+    if (Math.abs(r2(disb.exVat) - lineDisb.total) > 0.005) {
+      fail('The Disbursements tab totals ' + money(disb.exVat) + ' but the disbursement lines on the Bill tab add up to '
+         + money(lineDisb.total) + ' (a gap of ' + money(r2(lineDisb.total - disb.exVat)) + ').'
+         + (lineDisb.uncoded.length ? ' Bill lines with no Code/Disb: item ' + lineDisb.uncoded.join(', item ') + '.' : '')
+         + ' Fix the coding in the bill and drop it again. Nothing has been read.');
+    }
     var totalBill = readTotalBill(f.billSummary);
     var counsel = readCounsel(f.counsel);
 
