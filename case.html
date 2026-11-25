@@ -8590,7 +8590,10 @@ async function submitAddAction() {
   function payloadOf(m, c) {
     return {
       'ProfitCostsClaimed_x0028_Ex_x002': c.iv,
-      'DraftingTimeClaimed': c.iAmt,
+      // S168: the two drafting fields are DISJOINT ("TMC Drafting Time (Vatable)" /
+      // "(Non-Vatable)" — computeFigures adds both). Writing the whole of (i) here
+      // as well as (x) below double-counted the non-vatable drafting.
+      'DraftingTimeClaimed': r2(c.iAmt - c.x),
       'CounselsFeesClaimed': r2(m.counsel.total),
       'DisbursementsClaimed': r2(m.disb.exVat),
       'VATonDisbursements': r2(m.disb.vat),
