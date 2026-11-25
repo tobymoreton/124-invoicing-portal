@@ -769,7 +769,8 @@ async function loadFigures(fields) {
   const feePct               = parseFloat(fields.Fee_x0025__x0028_number_x0029_) || 0;
   const laFeePct             = parseFloat(fields.LAA_x0020_Drafting_x0020_Fee_x00) || 0;
   const profitCosts          = parseFloat(fields.ProfitCostsClaimed_x0028_Ex_x002) || 0;
-  const tmcDraftingTime      = parseFloat(fields.DraftingTimeClaimed) || 0;
+  // S169: vatable + non-vatable drafting are disjoint fields; both are TMC profit costs.
+  const tmcDraftingTime      = (parseFloat(fields.DraftingTimeClaimed) || 0) + (parseFloat(fields.NonVatableTMCDraftingTime) || 0);
   const otherTMCPC           = parseFloat(fields['Other_x0020_TMC_x0020_PC_x0020__']) || 0;
   const tmcPC                = tmcDraftingTime + otherTMCPC;
   const laProfitCosts        = parseFloat(fields.LegalAidOnlyProfitCosts) || 0;

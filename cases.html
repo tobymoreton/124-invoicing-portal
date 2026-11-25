@@ -1083,14 +1083,22 @@ function statusClass(s){
   return 's-default';
 }
 function computeTotalCosts(f){
-  const pc       =parseFloat(f['ProfitCostsClaimed_x0028_Ex_x002'])||0;
-  const tmc      =parseFloat(f['DraftingTimeClaimed'])              ||0;
-  const other    =parseFloat(f['Other_x0020_TMC_x0020_PC_x0020__'])||0;
-  const disb     =parseFloat(f['DisbursementsClaimed'])             ||0;
-  const vatDisb  =parseFloat(f['VATonDisbursements'])               ||0;
-  const counsel  =parseFloat(f['CounselsFeesClaimed'])              ||0;
-  const vatPct   =parseFloat(f['VAT_x0020__x0025__x0020_Claimed'])  ||0;
-  return (pc+tmc+other)*(1+vatPct)+disb+vatDisb+counsel*(1+vatPct);
+  // S169: mirrors case.html computeFigures() totalCostsClaimed. Previously it ignored
+  // NonVatableTMCDraftingTime entirely and charged VAT on non-vatable PC/counsel/other.
+  const n=k=>parseFloat(f[k])||0;
+  const pc       =n('ProfitCostsClaimed_x0028_Ex_x002');
+  const nonVatPC =n('NonVatableProfitCosts');
+  const tmc      =n('DraftingTimeClaimed');           // vatable drafting
+  const tmcNV    =n('NonVatableTMCDraftingTime');     // non-vatable drafting (disjoint)
+  const other    =n('Other_x0020_TMC_x0020_PC_x0020__');
+  const otherVat =f['OtherTMCPCVatable']==='Yes';
+  const disb     =n('DisbursementsClaimed');
+  const vatDisb  =n('VATonDisbursements');
+  const counsel  =n('CounselsFeesClaimed');
+  const vatableCounsel=Math.round(Math.max(0,counsel-n('NonVatableCounselFees'))*100)/100;
+  const vatPct   =n('VAT_x0020__x0025__x0020_Claimed');
+  const vatablePC=(pc-nonVatPC)+tmc+(otherVat?other:0);
+  return pc+tmc+tmcNV+other+vatablePC*vatPct+disb+vatDisb+counsel+vatableCounsel*vatPct;
 }
 // ── Assignee resolution ────────────────────────────────────────────────────
 // assignedToTextValue is stored in three forms across the list: email
